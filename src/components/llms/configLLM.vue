@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import { ref } from 'vue'
 import Alert from '@/components/Alert'
 import { llmIcon, useModel } from '@/composables/useModel'
-import deepmerge from '@/utils/deepmerge'
+import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { exportJson, importJson } from '@/utils/jsonImportExport'
 
 const show = defineModel<boolean>({ required: true })

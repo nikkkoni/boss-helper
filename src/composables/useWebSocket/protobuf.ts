@@ -1,5 +1,6 @@
 import type { TechwolfChatProtocol } from './type'
 import { ElMessage } from 'element-plus'
+import { logger } from '@/utils/logger'
 import { AwesomeMessage } from './type'
 
 interface MessageArgs {
@@ -69,7 +70,7 @@ export class Message {
       }, () => {
         logger.debug('消息发送成功', this)
       }, () => {
-        logger.debug('消息发送失败', this)
+        logger.error('消息发送失败', this)
       })
     }
     // else if (window.__q_chatSend != null) { // 扩展限制，不能远程加载，暂不考虑实现

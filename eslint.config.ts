@@ -2,8 +2,10 @@ import antfu from '@antfu/eslint-config'
 
 export default antfu({
   ignores: ['.wxt/**', '.output/**', 'src/types/openapi.d.ts'],
-  tsx: true,
-  vue: true,
+  vue: {
+    sfcBlocks: true,
+    a11y: false,
+  },
   typescript: {
     tsconfigPath: './tsconfig.json',
   },

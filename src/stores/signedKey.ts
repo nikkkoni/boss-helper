@@ -1,13 +1,16 @@
 import type { Middleware } from 'openapi-fetch'
 import type { modelData } from '@/composables/useModel'
 import type { components, paths } from '@/types/openapi'
+import { ref, toRaw } from '#imports'
 import { watchThrottled } from '@vueuse/core'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import createClient from 'openapi-fetch'
 import { defineStore } from 'pinia'
+import { watch } from 'vue'
 import { useModel } from '@/composables/useModel'
 import { counter } from '@/message'
 import { useUser } from '@/stores/user'
+import { logger } from '@/utils/logger'
 
 type SignedKeyInfo = components['schemas']['KeyInfo']
 

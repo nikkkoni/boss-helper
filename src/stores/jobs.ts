@@ -1,7 +1,8 @@
 import type { FormData } from '@/types/formData'
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { checkJobCache } from '@/composables/useApplying'
-import { useHookVueData } from '@/composables/useVue'
+import { useHookVueData, useHookVueFn } from '@/composables/useVue'
+import { logger } from '@/utils/logger'
 
 export type EncryptJobId = bossZpJobItemData['encryptJobId']
 export type JobStatus = 'pending' | 'wait' | 'running' | 'success' | 'error' | 'warn'

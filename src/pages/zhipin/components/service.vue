@@ -1,12 +1,16 @@
 <script lang="ts" setup>
 import type { FetchResponse } from 'openapi-fetch'
 import type { components } from '@/types/openapi'
+import { computed, onMounted, ref } from '#imports'
 import { useCountdown } from '@vueuse/core'
 import { useQRCode } from '@vueuse/integrations/useQRCode'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { events } from 'fetch-event-stream'
+import { watch } from 'vue'
 import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
+import { jsonClone } from '@/utils/deepmerge'
+import { logger } from '@/utils/logger'
 import aiVue from './ai.vue'
 
 const signedKey = useSignedKey()
@@ -54,7 +58,7 @@ async function bindKey() {
           body: {
             data: {
               user_id: userID,
-              backup_user_id: user.info?.encryptUserId,
+              backup_user_id: user.info?.value?.encryptUserId,
             },
             signed_key: keyValue.value,
           },
@@ -71,7 +75,7 @@ async function bindKey() {
             body: {
               data: {
                 user_id: userID,
-                backup_user_id: user.info?.encryptUserId,
+                backup_user_id: user.info?.value?.encryptUserId,
               },
               callback: 'force_unbind',
               signed_key: keyValue.value,
@@ -104,7 +108,7 @@ async function buy(responseFn: (userId: string, backupUserId?: string) => Promis
   try {
     buyDialogLoading.value = true
     const userId = user.getUserId()?.toString()
-    const backupUserId = user.info?.encryptUserId
+    const backupUserId = user.info?.value?.encryptUserId
     if (userId == null) {
       ElMessage.error('请先登录')
       return

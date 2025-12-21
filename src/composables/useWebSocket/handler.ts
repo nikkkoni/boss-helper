@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-unsafe-call */
 import protobuf from 'protobufjs'
 import chatProto from '@/assets/chat.proto?raw'
 

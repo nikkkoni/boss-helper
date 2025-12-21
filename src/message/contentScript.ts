@@ -1,6 +1,7 @@
+import type { StorageItemKey } from '#imports'
 import type { Adapter, Message, OnMessage, SendMessage } from 'comctx'
-import type { StorageItemKey } from 'wxt/storage'
 import type { BackgroundCounter } from './background'
+import { browser, storage } from '#imports'
 import { defineProxy } from 'comctx'
 
 export const [, injectBackgroundCounter] = defineProxy(() => ({}) as BackgroundCounter, {
@@ -8,7 +9,7 @@ export const [, injectBackgroundCounter] = defineProxy(() => ({}) as BackgroundC
 })
 
 function genKey(key: string): StorageItemKey {
-  const prefixes = ['local:', 'session:', 'sync:', 'managed:']
+  const prefixes = ['local:', 'session:', 'sync:', 'managed:'] as const
   return prefixes.some(prefix => key.startsWith(prefix)) ? key as StorageItemKey : `sync:${key}`
 }
 
@@ -53,9 +54,7 @@ export class ContentCounter implements BackgroundCounter {
   async storageGet<T>(key: string, defaultValue: T): Promise<T>
   async storageGet<T>(key: string): Promise<T | null>
   async storageGet<T>(key: string, defaultValue?: T): Promise<T | null> {
-    const k = genKey(key)
-    const v = await storage.getItem<T>(k, { fallback: defaultValue })
-    return v
+    return storage.getItem<T>(genKey(key), { fallback: defaultValue })
   }
 
   async storageSet<T>(key: string, value: T) {
@@ -84,9 +83,7 @@ export class InjectBackgroundAdapter implements Adapter<MessageMeta> {
     const handler = (message?: Partial<Message<MessageMeta>>) => {
       callback(message)
     }
-    // @ts-expect-error ___
     browser.runtime.onMessage.addListener(handler)
-    // @ts-expect-error ___
     return () => browser.runtime.onMessage.removeListener(handler)
   }
 }

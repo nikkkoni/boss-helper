@@ -1,4 +1,6 @@
 <script lang="tsx" setup>
+import type { PropType } from '#imports'
+import { defineComponent, ref } from '#imports'
 import { ElMessage } from 'element-plus'
 import Alert from '@/components/Alert'
 import formItem from '@/components/form/formItem.vue'
@@ -7,6 +9,7 @@ import { getCacheManager } from '@/composables/useApplying'
 import { useCommon } from '@/composables/useCommon'
 import { formInfoData, useConf } from '@/stores/conf'
 import { amapGeocode } from '@/utils/amap'
+import { logger } from '@/utils/logger'
 import aiVue from './ai.vue'
 
 const conf = useConf()

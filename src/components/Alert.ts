@@ -1,6 +1,7 @@
 import type { AlertProps } from 'element-plus'
+import type { VNode } from 'vue'
 import { alertProps, ElAlert } from 'element-plus'
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { counter } from '@/message'
 
 export interface ExtendedAlertProps extends AlertProps {

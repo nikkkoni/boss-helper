@@ -8,7 +8,7 @@ import { reactive, ref, toRaw } from 'vue'
 import { counter } from '@/message'
 
 import { useUser } from '@/stores/user'
-import deepmerge from '@/utils/deepmerge'
+import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { exportJson, importJson } from '@/utils/jsonImportExport'
 import { logger } from '@/utils/logger'
 import { defaultFormData } from './info'

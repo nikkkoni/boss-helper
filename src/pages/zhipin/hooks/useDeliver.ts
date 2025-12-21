@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import { defineStore } from 'pinia'
 
 import { ref } from 'vue'
-import { cachePipelineResult, checkJobCache, createHandle, sendPublishReq } from '@/composables/useApplying'
+import { cachePipelineResult, createHandle, sendPublishReq } from '@/composables/useApplying'
 import { useCommon } from '@/composables/useCommon'
 import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
@@ -64,7 +64,7 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
           log.add(data, null, ctx, ctx.message)
           statistics.todayData.success++
           data.status.setStatus('success', '投递成功')
-          logger.debug(ctx)
+          logger.debug('投递成功', ctx)
           ctx.state = '成功'
           if (statistics.todayData.success >= conf.formData.deliveryLimit.value) {
             if (conf.formData.notification.value) {
@@ -82,7 +82,7 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
           }
           data.status.setStatus(e.state === 'warning' ? 'warn' : 'error', e.name as string ?? '没有消息')
           log.add(data, e as logErr, ctx)
-          logger.warn('过滤', ctx)
+          logger.warn('投递过滤', ctx)
           ctx.state = '过滤'
           ctx.err = e.message ?? ''
         }

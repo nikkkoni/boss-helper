@@ -1,9 +1,11 @@
 import type { CookieInfo } from '@/message/background'
 import { ElMessage } from 'element-plus'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useStatistics } from '@/composables/useStatistics'
 import { getRootVue } from '@/composables/useVue'
 import { counter } from '@/message'
 import { formDataKey, useConf } from '@/stores/conf'
+import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
 
 export interface UserInfo {

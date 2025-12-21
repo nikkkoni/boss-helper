@@ -1,7 +1,8 @@
+import type { Browser } from '#imports'
 import type { Adapter, Message, OnMessage, SendMessage } from 'comctx'
-import type { Cookies } from 'wxt/browser'
 import type { FormData } from '@/types/formData'
 import type { ResponseType } from '@/utils/request'
+import { browser, storage } from '#imports'
 import { defineProxy } from 'comctx'
 
 export const userKey = 'local:conf-user'
@@ -20,7 +21,7 @@ export interface CookieInfo {
 
 export type UserConf = Record<string, {
   info: CookieInfo
-  cookies: Cookies.Cookie[]
+  cookies: Browser.cookies.Cookie[]
 }>
 
 export class BackgroundCounter {
@@ -150,9 +151,7 @@ export class ProvideBackgroundAdapter implements Adapter<MessageMeta> {
     const handler = (message?: Partial<Message<MessageMeta>>) => {
       callback(message)
     }
-    // @ts-expect-error ___
     browser.runtime.onMessage.addListener(handler)
-    // @ts-expect-error ___
     return () => browser.runtime.onMessage.removeListener(handler)
   }
 }

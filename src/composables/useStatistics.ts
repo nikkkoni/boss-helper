@@ -1,9 +1,12 @@
 import type { Statistics } from '@/types/formData'
 
+import { ref } from '#imports'
 import { reactiveComputed, watchThrottled } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { counter } from '@/message'
 import { getCurDay } from '@/utils'
+import deepmerge, { jsonClone } from '@/utils/deepmerge'
+import { logger } from '@/utils/logger'
 
 export const todayKey = 'local:web-geek-job-Today'
 export const statisticsKey = 'local:web-geek-job-Statistics'

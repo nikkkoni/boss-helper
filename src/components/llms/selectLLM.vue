@@ -7,7 +7,7 @@ import {
   ElMessage,
   ElMessageBox,
 } from 'element-plus'
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import JobCard from '@/components/JobCard.vue'
 import { parseFiltering } from '@/composables/useApplying/utils'
 import { llmIcon, useModel } from '@/composables/useModel'
@@ -15,6 +15,7 @@ import { formInfoData, useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
+import { logger } from '@/utils/logger'
 
 const props = defineProps<{
   data: 'aiGreeting' | 'aiFiltering' | 'aiReply'

@@ -1,3 +1,4 @@
+import { defineUnlistedScript } from '#imports'
 import axios from 'axios'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
