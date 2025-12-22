@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { ElCheckbox, ElFormItem, ElLink } from 'element-plus'
+
 defineProps<{
   label: string
   help?: string

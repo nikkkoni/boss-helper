@@ -1,12 +1,12 @@
-import type { CookieInfo } from '@/utils/message/cookie'
-import { getRootVue } from '@/composables/useVue'
-import { formDataKey, useConf } from '@/stores/conf'
-import { logger } from '@/utils/logger'
-import { clearCookie, deleteCookie, getCookieInfo, saveCookie, switchCookie } from '@/utils/message/cookie'
-import { setStorage } from '@/utils/message/storage'
+import type { CookieInfo } from '@/message/background'
 import { ElMessage } from 'element-plus'
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useStatistics } from '@/composables/useStatistics'
+import { getRootVue } from '@/composables/useVue'
+import { counter } from '@/message'
+import { formDataKey, useConf } from '@/stores/conf'
+import { jsonClone } from '@/utils/deepmerge'
+import { logger } from '@/utils/logger'
 
 export interface UserInfo {
 
@@ -93,7 +93,7 @@ export function useUser() {
 
   async function initCookie() {
     try {
-      const res = (await getCookieInfo()) ?? {}
+      const res = (await counter.cookieInfo()) ?? {}
       logger.debug('账户数据', res)
       cookieDatas.value = res
     }
@@ -127,12 +127,12 @@ export function useUser() {
       statistics: await useStatistics().getStatistics(),
     }
     logger.debug('开始创建账户', info.value, val)
-    await saveCookie(val)
+    await counter.cookieSave(val)
     return val
   }
 
   async function clearUser() {
-    await clearCookie()
+    await counter.cookieClear()
   }
 
   async function changeUser(currentRow?: CookieInfo) {
@@ -150,7 +150,7 @@ export function useUser() {
 
     // 恢复目标账号的配置
     if (targetAccount.form) {
-      await setStorage(formDataKey, targetAccount.form)
+      await counter.storageSet(formDataKey, targetAccount.form)
     }
 
     if (targetAccount.statistics != null) {
@@ -158,12 +158,12 @@ export function useUser() {
     }
 
     // 切换到目标账号
-    await switchCookie(targetAccount.uid)
+    await counter.cookieSwitch(targetAccount.uid)
   }
 
   async function deleteUser(d: CookieInfo) {
     try {
-      await deleteCookie(d.uid)
+      await counter.cookieDelete(d.uid)
       delete cookieDatas.value[d.uid]
       ElMessage.success('账号删除成功')
     }

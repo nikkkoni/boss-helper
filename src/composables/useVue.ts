@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import { ref } from 'vue'
+import { ref, toValue } from 'vue'
 
 const rootVue = ref()
 
@@ -50,14 +50,13 @@ export function useHookVueData<T = any>(selectors: string, key: string, data: Re
 
     data.value = jobVue[key]
     update?.(toValue(jobVue[key] as T))
-    // eslint-disable-next-line no-restricted-properties, ts/no-unsafe-call
+    // eslint-disable-next-line no-restricted-properties
     const originalSet = jobVue.__lookupSetter__(key)
     // eslint-disable-next-line accessor-pairs
     Object.defineProperty(jobVue, key, {
       set(val: T) {
         data.value = val
         update?.(val)
-        // eslint-disable-next-line ts/no-unsafe-call
         originalSet.call(this, val)
       },
     })

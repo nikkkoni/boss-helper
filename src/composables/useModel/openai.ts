@@ -1,5 +1,5 @@
-import type { OnStream } from '@/utils/request'
 import type { llmConf, llmInfo, messageReps, prompt } from './type'
+import type { OnStream } from '@/utils/request'
 import { request } from '@/utils/request'
 import { desc, other } from './common'
 import { llm } from './type'
@@ -10,8 +10,8 @@ export type openaiLLMConf = llmConf<
     url: string
     model: string
     api_key: string
-  } & other &
-  {
+  } & other
+  & {
     advanced: {
       json?: boolean
       stream?: boolean

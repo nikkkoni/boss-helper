@@ -1,6 +1,6 @@
+import type { Handler, Pipeline, Step } from './type'
 import type { JobStatus } from '@/stores/jobs'
 import type { PipelineCacheItem, ProcessorType } from '@/types/pipelineCache'
-import type { Handler, Pipeline, Step } from './type'
 import { PipelineCacheManager } from '@/composables/usePipelineCache'
 import { JobAddressError, UnknownError } from '@/types/deliverError'
 import { amapDistance, amapGeocode } from '@/utils/amap'
@@ -116,7 +116,7 @@ export async function createHandle(): Promise<{
 /**
  * 创建缓存实例
  */
-function getCacheManager(): PipelineCacheManager {
+export function getCacheManager(): PipelineCacheManager {
   if (!cacheManager) {
     cacheManager = new PipelineCacheManager()
   }
@@ -141,18 +141,12 @@ export async function cachePipelineResult(
 /**
  * 检查职位是否有有效缓存
  */
-export function checkJobCache(encryptJobId: string): {
-  hasCache: boolean
-  cacheResult?: PipelineCacheItem
-} {
+export function checkJobCache(encryptJobId: string): PipelineCacheItem | null {
   const cacheManager = getCacheManager()
 
   if (cacheManager.isValidCache(encryptJobId)) {
     const cached = cacheManager.getCachedResult(encryptJobId)
-    if (cached) {
-      return { hasCache: true, cacheResult: cached }
-    }
+    return cached
   }
-
-  return { hasCache: false }
+  return null
 }

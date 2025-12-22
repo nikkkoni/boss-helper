@@ -1,6 +1,6 @@
+import type { messageReps } from './type'
 import type { Client } from '@/stores/signedKey'
 import type { components } from '@/types/openapi'
-import type { messageReps } from './type'
 import { signedKeyReqHandler, useSignedKey } from '@/stores/signedKey'
 
 function transformMessageReps(res: components['schemas']['LLMResponse'], prompt: string): messageReps {

@@ -1,8 +1,8 @@
-import { sendMessage } from './message'
+import { counter } from '@/message'
 
 // 通知
 export async function notification(content: string, type: 'basic' | 'image' | 'list' | 'progress' = 'basic') {
-  return sendMessage('notify', {
+  return counter.notify({
     title: 'Boss直聘批量投简历',
     message: content,
     type,
@@ -10,8 +10,6 @@ export async function notification(content: string, type: 'basic' | 'image' | 'l
       'https://img.bosszhipin.com/beijin/mcs/banner/3e9d37e9effaa2b6daf43f3f03f7cb15cfcd208495d565ef66e7dff9f98764da.jpg',
   })
 }
-
-window.__q_notify = notification
 
 // 动画
 export function animate({

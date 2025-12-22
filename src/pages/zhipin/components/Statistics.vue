@@ -1,4 +1,19 @@
 <script lang="ts" setup>
+import {
+  ElAlert,
+  ElButton,
+  ElButtonGroup,
+  ElCol,
+  ElDropdown,
+  ElDropdownItem,
+  ElDropdownMenu,
+  ElIcon,
+  ElMessage,
+  ElProgress,
+  ElRow,
+  ElStatistic,
+} from 'element-plus'
+import { computed, onMounted, ref } from 'vue'
 import { useCommon } from '@/composables/useCommon'
 import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
@@ -6,9 +21,6 @@ import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
 import { delay, notification } from '@/utils'
 import { logger } from '@/utils/logger'
-
-import { ElMessage } from 'element-plus'
-import { computed, ref } from 'vue'
 import { useDeliver } from '../hooks/useDeliver'
 import { usePager } from '../hooks/usePager'
 

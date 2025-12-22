@@ -1,7 +1,8 @@
+/* eslint-disable */
 // @ts-nocheck
 
-import chatProto from '@/assets/chat.proto'
 import protobuf from 'protobufjs'
+import chatProto from '@/assets/chat.proto'
 
 function mergeObjects(target, ...sources) {
   for (const source of sources) {
@@ -144,15 +145,15 @@ class ChatProtobufHandler {
     return iq
   }
 
-  createTextMessage(data:{
+  createTextMessage(data: {
     tempID: number
     isSelf: boolean
     from: {
       uid: number
       name: string
       avatar: string
-      encryptUid?:string
-      source?:number
+      encryptUid?: string
+      source?: number
     }
     to: {
       source: number
@@ -235,15 +236,15 @@ class ChatProtobufHandler {
     return protocol
   }
 
-  createImageMessage(data:{
+  createImageMessage(data: {
     tempID: number
     isSelf: boolean
     from: {
       uid: number
       name: string
       avatar: string
-      encryptUid?:string
-      source?:number
+      encryptUid?: string
+      source?: number
     }
     to: {
       source: number

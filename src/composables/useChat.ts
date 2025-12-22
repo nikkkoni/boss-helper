@@ -1,6 +1,6 @@
 import type { modelData } from './useModel'
-import { getCurDay, getCurTime } from '@/utils'
 import { reactive, ref, toRaw } from 'vue'
+import { getCurDay, getCurTime } from '@/utils'
 import { llmIcon } from './useModel'
 
 export type ChatMessages = ChatMessage[]

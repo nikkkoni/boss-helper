@@ -11,7 +11,7 @@ export interface llmMessageData {
   data?: bossZpJobItemData
   boss?: bossZpBossData
   card?: bossZpCardData
-  amap?:any
+  amap?: any
 }
 
 export interface llmMessageArgs {
@@ -77,8 +77,8 @@ export interface messageReps<T = string> {
 
 export type llmConf<M extends string, T> = { mode: M } & T
 
-export type formElm =
-  | { type: 'input', config?: InstanceType<typeof ElInput>['$props'] }
+export type formElm
+  = | { type: 'input', config?: InstanceType<typeof ElInput>['$props'] }
   | {
     type: 'inputNumber'
     config?: InstanceType<typeof ElInputNumber>['$props']

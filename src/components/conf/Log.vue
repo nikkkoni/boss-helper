@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { ElButton, ElDialog } from 'element-plus'
+
 const show = defineModel<boolean>({ required: true })
 </script>
 
@@ -14,12 +16,12 @@ const show = defineModel<boolean>({ required: true })
     <span>Log</span>
     <template #footer>
       <div>
-        <el-button @click="show = false">
+        <ElButton @click="show = false">
           Cancel
-        </el-button>
-        <el-button type="primary" @click="show = false">
+        </ElButton>
+        <ElButton type="primary" @click="show = false">
           Confirm
-        </el-button>
+        </ElButton>
       </div>
     </template>
   </ElDialog>

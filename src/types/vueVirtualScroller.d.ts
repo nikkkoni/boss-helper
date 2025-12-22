@@ -34,7 +34,7 @@ declare module 'vue-virtual-scroller' {
       startIndex: number,
       endIndex: number,
       visibleStartIndex: number,
-      visibleEndIndex: number
+      visibleEndIndex: number,
     ) => void
     'scroll-start': () => void
     'scroll-end': () => void
@@ -66,7 +66,7 @@ declare module 'vue-virtual-scroller' {
       RecycleScrollerEmitOptions,
       SlotsType<RecycleScrollerSlots<T>>
     >,
-    expose?: (exposed: RecycleScrollerInstance) => void
+    expose?: (exposed: RecycleScrollerInstance) => void,
   ) => VNode & {
     __ctx?: {
       props: RecycleScrollerProps<T> & PublicProps
@@ -81,7 +81,7 @@ declare module 'vue-virtual-scroller' {
       RecycleScrollerEmitOptions,
       SlotsType<RecycleScrollerSlots<T>>
     >,
-    expose?: (exposed: RecycleScrollerInstance) => void
+    expose?: (exposed: RecycleScrollerInstance) => void,
   ) => VNode & {
     __ctx?: {
       props: DynamicScrollerProps<T> & PublicProps
@@ -106,7 +106,7 @@ declare module 'vue-virtual-scroller' {
 
   export const DynamicScrollerItem: <T>(
     props: DynamicScrollerItemProps<T> & PublicProps,
-    ctx?: SetupContext<DynamicScrollerItemEmitOptions>
+    ctx?: SetupContext<DynamicScrollerItemEmitOptions>,
   ) => VNode
 
   export function IdState(options?: {

@@ -1,21 +1,37 @@
 <script lang="ts" setup>
+import { useMouse, useMouseInElement } from '@vueuse/core'
+import {
+  ElBadge,
+  ElCheckbox,
+  ElConfigProvider,
+  ElLink,
+  ElMessage,
+  ElTabPane,
+  ElTabs,
+  ElTag,
+  ElText,
+  ElTooltip,
+} from 'element-plus'
+
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useModel } from '@/composables/useModel'
+import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
 import elmGetter from '@/utils/elmGetter'
-import { useMouse, useMouseInElement } from '@vueuse/core'
-import { ElMessage } from 'element-plus'
-import { computed, onMounted, ref } from 'vue'
+import { logger } from '@/utils/logger'
 import { useDeliver } from '../hooks/useDeliver'
 import { usePager } from '../hooks/usePager'
-import aboutVue from './about.vue'
-import cardVue from './card.vue'
-import configVue from './config.vue'
-import logsVue from './logs.vue'
-import serviceVue from './service.vue'
-import statisticsVue from './statistics.vue'
+
+import About from './About.vue'
+import Appearance from './Appearance.vue'
+import Card from './Card.vue'
+import Config from './Config.vue'
+import Logs from './Logs.vue'
+import Service from './Service.vue'
+import Statistics from './Statistics.vue'
 
 const user = useUser()
 const model = useModel()
@@ -85,7 +101,7 @@ onMounted(async () => {
   void model.initModel()
   void signedKey.initSignedKey()
   try {
-    await jobList.initJobList()
+    await jobList.initJobList(conf.formData)
   }
   catch (e) {
     logger.error('初始化职位列表失败', { error: e })
@@ -163,25 +179,25 @@ function openStore() {
 </script>
 
 <template>
-  <el-config-provider namespace="ehp">
+  <ElConfigProvider namespace="ehp">
     <h2 style="display: flex; align-items: center">
-      Boos-Helper
-      <el-badge
+      Helper
+      <ElBadge
         :is-dot="isDot"
         :offset="[-2, 7]"
         style="cursor: pointer; display: inline-flex; margin: 0 4px"
         @click="openStore"
       >
-        <el-tag type="primary">
+        <ElTag type="primary">
           v{{ VITE_VERSION }} {{ isDot ? ' 有更新' : '' }}
-        </el-tag>
-      </el-badge>
-      <el-text v-if="todayData.total > 0" style="margin-right: 15px;">
-        今日: {{ todayData.success }}/{{ conf.formData.deliveryLimit.value }}
-      </el-text>
-      <el-text v-if="deliver.total > 0">
-        当前页面: {{ deliver.current + 1 }}/{{ deliver.total }}
-      </el-text>
+        </ElTag>
+      </ElBadge>
+      <ElText v-if="todayData.total > 0" style="margin-right: 15px;">
+        今日投递: {{ todayData.success }}/{{ conf.formData.deliveryLimit.value }}
+      </ElText>
+      <ElText v-if="deliver.total > 0">
+        当前页面处理: {{ deliver.current + 1 }}/{{ deliver.total }}
+      </ElText>
     </h2>
     <div
       style="
@@ -199,7 +215,7 @@ function openStore() {
         )"
         :key="item.key ?? item.data.title"
       >
-      <!-- <el-alert
+      <!-- <ElAlert
         v-if="now > GM_getValue(`netConf-${item.key}`, 0)"
         v-bind="item.data"
         @close="GM_setValue(`netConf-${item.key}`, now + 259200000)"
@@ -215,37 +231,40 @@ function openStore() {
     </ElTooltip>
     <ElTabs ref="tabsRef" data-help="鼠标移到对应元素查看提示">
       <ElTabPane label="统计" data-help="失败是成功她妈">
-        <statisticsVue />
+        <Statistics />
       </ElTabPane>
       <ElTabPane
         ref="searchRef"
         label="筛选"
       />
-      <ElTabPane label="配置" data-help="好好看，好好学">
-        <configVue />
+      <ElTabPane label="配置" Alertdata-help="好好看，好好学">
+        <Config />
+      </ElTabPane>
+      <ElTabPane label="外观" data-help="既是好看，也是伪装">
+        <Appearance />
       </ElTabPane>
       <ElTabPane v-if="signedKey.signedKey" label="AI" data-help="AI时代，脚本怎么能落伍!">
-        <serviceVue />
+        <Service />
       </ElTabPane>
       <ElTabPane label="日志" data-help="反正你也不看">
-        <logsVue />
+        <Logs />
       </ElTabPane>
       <ElTabPane
         label="关于&赞赏"
         class="hp-about-box"
         data-help="项目是写不完美的,但总要去追求完美"
       >
-        <aboutVue />
+        <About />
       </ElTabPane>
       <ElTabPane v-if="signedKey.netConf && signedKey.netConf.feedback">
         <template #label>
-          <el-link
+          <ElLink
             size="large"
             style="height: 100%"
             @click.stop="tagOpen(signedKey.netConf.feedback)"
           >
             反馈
-          </el-link>
+          </ElLink>
         </template>
       </ElTabPane>
       <ElTabPane>
@@ -260,7 +279,7 @@ function openStore() {
       </ElTabPane>
     </ElTabs>
     <Teleport to="#boss-helper-job-warp,.page-job-inner .page-job-content">
-      <cardVue />
+      <Card />
     </Teleport>
   <!-- <Teleport to=".page-job-wrapper">
     <chatVue
@@ -276,7 +295,7 @@ function openStore() {
       "
     />
   </Teleport> -->
-  </el-config-provider>
+  </ElConfigProvider>
 </template>
 
 <style lang="scss">

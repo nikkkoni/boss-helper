@@ -1,17 +1,26 @@
 <script lang="ts" setup>
-import type { NetConf } from '@/stores/signedKey'
 import type { Action } from 'element-plus'
+import type { NetConf } from '@/stores/signedKey'
+import {
+  ElAvatar,
+  ElButton,
+  ElConfigProvider,
+  ElDialog,
+  ElDropdown,
+  ElDropdownItem,
+  ElDropdownMenu,
+  ElMessage,
+  ElMessageBox,
+  ElSpace,
+  ElText,
+} from 'element-plus'
+import { onMounted, ref } from 'vue'
 import logVue from '@/components/conf/log.vue'
 import storeVue from '@/components/conf/store.vue'
 import userVue from '@/components/conf/user.vue'
 import { store } from '@/components/icon/store'
+import { counter } from '@/message'
 import { logger } from '@/utils/logger'
-import { getStorage, setStorage } from '@/utils/message/storage'
-import {
-  ElMessage,
-  ElMessageBox,
-} from 'element-plus'
-import { onMounted, ref } from 'vue'
 
 const confBox = ref(false)
 
@@ -24,7 +33,7 @@ const confs = {
 const confKey = ref<keyof typeof confs>('store')
 const dark = ref(false)
 
-getStorage('theme-dark', false).then((res) => {
+counter.storageGet('theme-dark', false).then((res) => {
   dark.value = res
 })
 
@@ -38,7 +47,7 @@ async function themeChange() {
     })
   }
   document.documentElement.classList.toggle('dark', dark.value)
-  await setStorage('theme-dark', dark.value)
+  await counter.storageSet('theme-dark', dark.value)
 }
 
 // logger.log(monkeyWindow, window, unsafeWindow);
@@ -61,7 +70,7 @@ onMounted(async () => {
 
   const protocol = 'boss-protocol'
   const protocol_val = '2025/06/14'
-  const protocol_date = await getStorage(protocol)
+  const protocol_date = await counter.storageGet<string>(protocol)
   if (protocol_date !== protocol_val) {
     ElMessageBox.alert(
       `1. 使用前先好好了解项目，阅读每一个标签和帮助,
@@ -88,7 +97,7 @@ Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blan
           '--el-messagebox-width: unset; white-space: pre-wrap; width: unset;max-width: unset;' as never,
         callback: (action: Action) => {
           if (action === 'confirm') {
-            setStorage(protocol, protocol_val)
+            counter.storageSet(protocol, protocol_val)
           }
         },
       },
@@ -98,7 +107,7 @@ Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blan
 </script>
 
 <template>
-  <el-config-provider namespace="ehp">
+  <ElConfigProvider namespace="ehp">
     <ElDropdown trigger="click">
       <ElAvatar
         :size="30"
@@ -135,7 +144,7 @@ Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blan
     <Teleport to="body">
       <component :is="confs[confKey].component" id="help-conf-box" v-model="confBox" />
     </Teleport>
-    <el-dialog
+    <ElDialog
       v-model="storeShow"
       title="BossHelper扩展商店"
       width="500"
@@ -155,24 +164,24 @@ Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blan
           {{ netConf?.version_description ?? '暂未获取到更新日志' }}
         </div>
       </div>
-      <el-space wrap>
+      <ElSpace wrap>
         <a v-for="(item, key) in store" :key="key" class="store-item-a" :href="netConf?.store?.[key]?.[1] ?? item[2]" target="_blank">
           <div class="store-item">
             <component :is="item[0]" />
             <img :src="netConf?.store?.[key]?.[2] ?? item[3]" alt="store" style="height: 20px;">
-            <el-text>{{ netConf?.store?.[key]?.[0] ?? item[1] }}</el-text>
+            <ElText>{{ netConf?.store?.[key]?.[0] ?? item[1] }}</ElText>
           </div>
         </a>
-      </el-space>
+      </ElSpace>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="storeShow = false">
+          <ElButton type="primary" @click="storeShow = false">
             关闭
-          </el-button>
+          </ElButton>
         </div>
       </template>
-    </el-dialog>
-  </el-config-provider>
+    </ElDialog>
+  </ElConfigProvider>
 </template>
 
 <style lang="scss">

@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import type { ElInput } from 'element-plus'
 import type {
   RecycleScrollerInstance,
 } from 'vue-virtual-scroller'
-import { useChat } from '@/composables/useChat'
-import { useUser } from '@/stores/user'
 import { watchIgnorable } from '@vueuse/core'
+import { ElAvatar, ElButton, ElIcon, ElInput } from 'element-plus'
 import { ref, watch } from 'vue'
 import {
   DynamicScroller,
   DynamicScrollerItem,
 } from 'vue-virtual-scroller'
+import { useChat } from '@/composables/useChat'
+import { useUser } from '@/stores/user'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
 const { chatMessages, chatInput } = useChat()
@@ -69,19 +69,19 @@ function inputMsgUpdate(v: string) {
             </div>
           </div>
           <div class="message-options">
-            <el-avatar
+            <ElAvatar
               :src="typeof item.avatar === 'string' ? item.avatar : undefined"
               :style="{
                 '--el-avatar-bg-color':
                   typeof item.avatar !== 'string' && item.avatar?.color,
               }"
             >
-              <el-icon
+              <ElIcon
                 v-if="item.avatar && typeof item.avatar !== 'string'"
                 size="large"
                 v-html="item.avatar.icon"
               />
-            </el-avatar>
+            </ElAvatar>
             <span class="message-date">
               <span class="date">{{ item.date[0] }}&nbsp;&nbsp;</span>
               <span class="time">{{ item.date[1] }}</span>
@@ -101,23 +101,23 @@ function inputMsgUpdate(v: string) {
         @update:model-value="inputMsgUpdate"
       />
       <div class="footer-right">
-        <el-avatar
+        <ElAvatar
           :src="
             chatInput.avatar
               ? undefined
-              : user.info?.tinyAvatar || user.info?.largeAvatar
+              : user.info.value?.tinyAvatar || user.info.value?.largeAvatar
           "
           :style="{ '--el-avatar-bg-color': chatInput?.avatar?.color }"
         >
-          <el-icon
+          <ElIcon
             v-if="chatInput.avatar"
             size="large"
             v-html="chatInput.avatar?.icon"
           />
-        </el-avatar>
-        <el-button type="primary" plain round>
+        </ElAvatar>
+        <ElButton type="primary" plain round>
           发送
-        </el-button>
+        </ElButton>
       </div>
     </div>
   </div>

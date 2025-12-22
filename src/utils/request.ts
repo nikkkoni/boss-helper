@@ -1,6 +1,6 @@
 import type { events } from 'fetch-event-stream'
+import { counter } from '@/message'
 import { loader } from '.'
-import { sendMessage } from './message'
 
 export class RequestError extends Error {
   constructor(message: string) {
@@ -8,8 +8,8 @@ export class RequestError extends Error {
     this.name = '请求错误'
   }
 }
-export type ResponseType =
-  | 'text'
+export type ResponseType
+  = | 'text'
   | 'json'
   | 'arraybuffer'
   | 'blob'
@@ -135,7 +135,7 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
     } as RequestInit
 
     if (isBackground) {
-      sendMessage('request', { url, data: requestData, timeout, responseType }).then((res) => {
+      counter.request({ url, data: requestData, timeout, responseType }).then((res) => {
         if (res instanceof Error) {
           reject(res)
         }
@@ -161,9 +161,9 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
         }
 
         const result
-              = responseType === 'json'
-                ? await response.json()
-                : await response.text()
+          = responseType === 'json'
+            ? await response.json()
+            : await response.text()
 
         resolve(result)
       }).catch((e) => {

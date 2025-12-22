@@ -53,26 +53,29 @@ export class Message {
   }
 
   toArrayBuffer(): ArrayBuffer {
-    // eslint-disable-next-line ts/no-unnecessary-type-assertion
     return this.msg.buffer.slice(0, this.msg.byteLength) as ArrayBuffer
   }
 
   send() {
-    if (window.ChatWebsocket != null) {
+    if ('GeekChatCore' in window && window.GeekChatCore != null) {
+      const client = window.GeekChatCore.getInstance().getClient().client
+      client.send(this)
+    }
+    else if ('ChatWebsocket' in window && window.ChatWebsocket != null) {
       window.ChatWebsocket.send(this)
     }
-    else if (window.EventBus != null) {
-      window.EventBus.publish('CHAT_SEND_TEXT', {
-        uid: this.args.to_uid,
-        encryptUid: this.args.to_name,
-        message: this.args.content,
-        msg: this.args.content,
-      }, () => {
-        logger.debug('消息发送成功', this)
-      }, () => {
-        logger.debug('消息发送失败', this)
-      })
-    }
+    // else if (window.EventBus != null) { // 2025-12-22 失效，疑似boss bug。暂时禁用
+    //   window.EventBus.publish('CHAT_SEND_TEXT', {
+    //     uid: this.args.to_uid,
+    //     encryptUid: this.args.to_name,
+    //     message: this.args.content,
+    //     msg: this.args.content,
+    //   }, () => {
+    //     logger.debug('消息发送成功', this)
+    //   }, () => {
+    //     logger.error('消息发送失败', this)
+    //   })
+    // }
     // else if (window.__q_chatSend != null) { // 扩展限制，不能远程加载，暂不考虑实现
     //   // 当无渠道时，从网络加载临时补丁
     //   window.__q_chatSend.call(this).then(() => {

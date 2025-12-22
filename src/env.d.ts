@@ -3,6 +3,7 @@ interface Window {
   ChatWebsocket?: {
     send: (e: { toArrayBuffer: () => ArrayBuffer }) => void
   }
+  GeekChatCore?: any
   EventBus?: {
     publish: (e: string, ...data: any[]) => void
     subscribe: (e: string, t: (...data: any[]) => void) => void

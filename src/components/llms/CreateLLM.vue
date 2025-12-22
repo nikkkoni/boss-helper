@@ -1,14 +1,22 @@
 <script lang="ts" setup>
 import type { modelData } from '@/composables/useModel'
 import type { llm } from '@/composables/useModel/type'
+import { reactiveComputed } from '@vueuse/core'
+import {
+  ElButton,
+  ElColorPicker,
+  ElDialog,
+  ElForm,
+  ElFormItem,
+  ElInput,
+  ElMessage,
+  ElScrollbar,
+} from 'element-plus'
+import { computed, ref } from 'vue'
 import { llms, useModel } from '@/composables/useModel'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
-import { reactiveComputed } from '@vueuse/core'
-import {
-  ElMessage,
-} from 'element-plus'
-import { computed, ref } from 'vue'
+import LLMForm from './LLMForm.vue'
 
 const props = defineProps<{
   model?: modelData
@@ -175,7 +183,7 @@ function create() {
 </script>
 
 <template>
-  <el-dialog
+  <ElDialog
     v-model="show"
     title="创建AI模型"
     width="70%"
@@ -184,7 +192,7 @@ function create() {
     draggable
     :z-index="20"
   >
-    <el-scrollbar height="60vh" style="padding: 20px">
+    <ElScrollbar height="60vh" style="padding: 20px">
       <div
         style="
           display: flex;
@@ -192,15 +200,15 @@ function create() {
           justify-content: space-between;
         "
       >
-        <el-form-item label="名称:" style="width: 70%">
-          <el-input v-model="createName" />
-        </el-form-item>
-        <el-form-item label="背景:">
-          <el-color-picker v-model="createColor" />
-        </el-form-item>
+        <ElFormItem label="名称:" style="width: 70%">
+          <ElInput v-model="createName" />
+        </ElFormItem>
+        <ElFormItem label="背景:">
+          <ElColorPicker v-model="createColor" />
+        </ElFormItem>
       </div>
 
-      <!-- <el-segmented
+      <!-- <ElSegmented
         v-model="selectLLM"
         :options="llmsOptions"
         block
@@ -208,30 +216,30 @@ function create() {
       >
         <template #default="{ item }">
           <div v-if="typeof item === 'object'" class="llms-select">
-            <el-icon size="20" v-html="item.icon" />
+            <ElIcon size="20" v-html="item.icon" />
             <div>{{ item.label || item.mode }}</div>
           </div>
         </template>
-      </el-segmented> -->
-      <el-form label-width="auto" size="large" label-position="left">
-        <lForm :key="formLLM" v-model="llmFormData" :data="llms[formLLM]" />
-      </el-form>
-    </el-scrollbar>
+      </ElSegmented> -->
+      <ElForm label-width="auto" size="large" label-position="left">
+        <LLMForm :key="formLLM" v-model="llmFormData" :data="llms[formLLM]" />
+      </ElForm>
+    </ElScrollbar>
     <template #footer>
       <div>
-        <el-button @click="show = false">
+        <ElButton @click="show = false">
           取消
-        </el-button>
-        <el-button type="info" @click="testShow = true">
+        </ElButton>
+        <ElButton type="info" @click="testShow = true">
           测试
-        </el-button>
-        <el-button type="primary" @click="create">
+        </ElButton>
+        <ElButton type="primary" @click="create">
           保存
-        </el-button>
+        </ElButton>
       </div>
     </template>
-  </el-dialog>
-  <el-dialog
+  </ElDialog>
+  <ElDialog
     v-model="testShow"
     title="模型测试"
     width="50%"
@@ -245,7 +253,7 @@ function create() {
     <div class="test-box">
       <div class="mb-4">
         <template v-for="(example, key) in testExample" :key="key">
-          <el-button
+          <ElButton
             v-for="(item, index) in example"
             :key="key + index"
             type="info"
@@ -254,16 +262,16 @@ function create() {
           >
             {{ key }}
             {{ index + 1 }}
-          </el-button>
+          </ElButton>
         </template>
       </div>
-      <el-input
+      <ElInput
         v-model="testIn"
         :rows="4"
         type="textarea"
         placeholder="输入提示词"
       />
-      <el-input
+      <ElInput
         :model-value="testOut"
         :rows="9"
         type="textarea"
@@ -272,15 +280,15 @@ function create() {
     </div>
     <template #footer>
       <div>
-        <el-button @click="testShow = false">
+        <ElButton @click="testShow = false">
           返回
-        </el-button>
-        <el-button type="primary" @click="test">
+        </ElButton>
+        <ElButton type="primary" @click="test">
           请求
-        </el-button>
+        </ElButton>
       </div>
     </template>
-  </el-dialog>
+  </ElDialog>
 </template>
 
 <style>

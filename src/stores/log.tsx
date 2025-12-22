@@ -1,3 +1,6 @@
+import type { Column } from 'element-plus'
+import type { HeaderCellRendererParams } from 'element-plus/es/components/table-v2/src/types.mjs'
+import type { MyJobListData } from './jobs'
 import type {
   CompanyNameError,
   CompanySizeError,
@@ -8,14 +11,11 @@ import type {
   UnknownError,
 } from '@/types/deliverError'
 import type { amapDistance, amapGeocode } from '@/utils/amap'
-import type { Column } from 'element-plus'
-import type { HeaderCellRendererParams } from 'element-plus/es/components/table-v2/src/types.mjs'
-import type { MyJobListData } from './jobs'
 import { ElButton, ElCheckbox, ElCheckboxGroup, ElIcon, ElPopover, ElTag } from 'element-plus'
-import { ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 
-export type logErr =
-  | null
+export type logErr
+  = | null
   | undefined
   | PublishError
   | JobTitleError

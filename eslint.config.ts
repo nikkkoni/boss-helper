@@ -1,12 +1,9 @@
 import antfu from '@antfu/eslint-config'
 
 export default antfu({
-  ignores: ['.wxt/**', '.output/**'],
-  tsx: true,
+  ignores: ['.wxt/**', '.output/**', 'src/types/openapi.d.ts'],
   vue: true,
-  typescript: {
-    tsconfigPath: './tsconfig.json',
-  },
+  typescript: true,
   rules: {
     'ts/method-signature-style': 'off',
     'ts/no-redeclare': 'off',
@@ -20,5 +17,8 @@ export default antfu({
     'ts/no-unsafe-return': 'off',
     'ts/strict-boolean-expressions': 'off',
     'vue/component-definition-name-casing': ['error', 'PascalCase'],
+    'vue/component-name-in-template-casing': ['error', 'PascalCase'],
+    'vue/no-undef-components': 'error',
+    'vue/new-line-between-multi-line-property': 'warn',
   },
 })

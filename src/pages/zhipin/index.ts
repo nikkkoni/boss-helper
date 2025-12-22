@@ -1,8 +1,8 @@
-import elmGetter from '@/utils/elmGetter'
-import { logger } from '@/utils/logger'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
-import uiVue from './components/ui.vue'
+import elmGetter from '@/utils/elmGetter'
+import { logger } from '@/utils/logger'
+import Ui from './components/Ui.vue'
 import './index.scss'
 
 async function mountVue() {
@@ -10,8 +10,7 @@ async function mountVue() {
   if (document.querySelector('#boss-helper-job')) {
     return
   }
-  // eslint-disable-next-line ts/no-unsafe-argument
-  const app = createApp(uiVue)
+  const app = createApp(Ui)
   app.use(createPinia())
 
   const jobEl = document.createElement('div')
@@ -31,7 +30,7 @@ async function mountVue() {
       width: 85%;
       max-width: 870px;
       min-width: 320px;
-      margin: 40px auto;
+      margin: 40px auto 90px auto;
     `
     jobSearchWrapper.insertBefore(jobWarpEl, jobSearchWrapper.firstElementChild)
     jobWarpEl.appendChild(jobEl)

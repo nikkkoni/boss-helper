@@ -5,11 +5,11 @@ import type {
   PipelineCacheItem,
   ProcessorType,
 } from '@/types/pipelineCache'
+import { ElMessage } from 'element-plus'
+import { ref } from 'vue'
+import { counter } from '@/message'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
-import { getStorage, setStorage } from '@/utils/message/storage'
-import { ref } from 'vue'
-
 // 默认处理器配置
 const DEFAULT_PROCESSOR_CONFIGS: Record<ProcessorType, { expireTime: number }> = {
   aiFiltering: { expireTime: 7 * 24 * 60 * 60 * 1000 }, // 7天
@@ -45,7 +45,7 @@ export class PipelineCacheManager {
    */
   private async initCache() {
     try {
-      const cached = await getStorage<PipelineCache | null>(this.config.storageKey, null)
+      const cached = await counter.storageGet<PipelineCache>(this.config.storageKey)
       if (cached) {
         this.cache.value = cached
         logger.debug('缓存数据加载成功', {
@@ -173,7 +173,7 @@ export class PipelineCacheManager {
   private async saveCache(): Promise<void> {
     try {
       const cacheData = jsonClone(this.cache.value)
-      await setStorage(this.config.storageKey, cacheData)
+      await counter.storageSet(this.config.storageKey, cacheData)
     }
     catch (error) {
       logger.error('保存缓存到存储失败', error)
@@ -241,5 +241,6 @@ export class PipelineCacheManager {
   async clearCache(): Promise<void> {
     this.cache.value.data = {}
     await this.saveCache()
+    ElMessage.success('缓存已清空')
   }
 }

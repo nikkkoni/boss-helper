@@ -1,10 +1,11 @@
 import type { openaiLLMConf } from './openai'
 import type { llm, prompt } from './type'
-import { logger } from '@/utils/logger'
-import { getStorage, setStorage } from '@/utils/message/storage'
 import { ElMessage } from 'element-plus'
 import { defineStore } from 'pinia'
-import { ref, toRaw } from 'vue'
+import { computed, ref, toRaw } from 'vue'
+import { counter } from '@/message'
+import { jsonClone } from '@/utils/deepmerge'
+import { logger } from '@/utils/logger'
 import { openai } from './openai'
 import { SignedKeyLLM } from './signedKey'
 
@@ -45,7 +46,7 @@ export const useModel = defineStore('model', () => {
   })
 
   async function init() {
-    const data = await getStorage<modelData[]>(confModelKey, [])
+    const data = await counter.storageGet<modelData[]>(confModelKey, [])
     logger.debug('ai模型数据', data)
     modelData.value.push(...data)
   }
@@ -79,7 +80,7 @@ export const useModel = defineStore('model', () => {
   }
 
   async function save() {
-    await setStorage(confModelKey, toRaw(modelData.value).filter(item => item.vip == null))
+    await counter.storageSet(confModelKey, toRaw(modelData.value).filter(item => item.vip == null))
     ElMessage.success('保存成功')
   }
 

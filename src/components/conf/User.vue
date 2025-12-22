@@ -1,10 +1,22 @@
 <script lang="ts" setup>
-import type { CookieInfo } from '@/utils/message/cookie'
+import type { CookieInfo } from '@/message'
+import {
+  ElAlert,
+  ElAvatar,
+  ElButton,
+  ElDialog,
+  ElMessage,
+  ElMessageBox,
+  ElPopconfirm,
+  ElTable,
+  ElTableColumn,
+  ElTag,
+} from 'element-plus'
+
+import { ref } from 'vue'
+
 import { useUser } from '@/stores/user'
 import { logger } from '@/utils/logger'
-
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { ref } from 'vue'
 
 const user = useUser()
 
@@ -33,7 +45,7 @@ async function handleCreate() {
         return
       }
     }
-    const val = await user.saveUser({uid})
+    const val = await user.saveUser({ uid })
     if (uid && val) {
       user.cookieDatas.value[uid] = val
     }

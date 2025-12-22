@@ -1,13 +1,38 @@
 <script lang="ts" setup>
-import type { components } from '@/types/openapi'
 import type { FetchResponse } from 'openapi-fetch'
-import { useSignedKey } from '@/stores/signedKey'
-import { useUser } from '@/stores/user'
+
+import type { components } from '@/types/openapi'
+import { computed, onMounted, ref } from '#imports'
 import { useCountdown } from '@vueuse/core'
 import { useQRCode } from '@vueuse/integrations/useQRCode'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  ElAlert,
+  ElButton,
+  ElButtonGroup,
+  ElDialog,
+  ElForm,
+  ElFormItem,
+  ElImage,
+  ElImageViewer,
+  ElInput,
+  ElInputNumber,
+  ElMessage,
+  ElMessageBox,
+  ElPopover,
+  ElRadio,
+  ElRadioGroup,
+  ElSpace,
+  ElTable,
+  ElTableColumn,
+} from 'element-plus'
+
 import { events } from 'fetch-event-stream'
-import aiVue from './ai.vue'
+import { watch } from 'vue'
+import { useSignedKey } from '@/stores/signedKey'
+import { useUser } from '@/stores/user'
+import { jsonClone } from '@/utils/deepmerge'
+import { logger } from '@/utils/logger'
+import Ai from './Ai.vue'
 
 const signedKey = useSignedKey()
 const user = useUser()
@@ -54,7 +79,7 @@ async function bindKey() {
           body: {
             data: {
               user_id: userID,
-              backup_user_id: user.info?.encryptUserId,
+              backup_user_id: user.info?.value?.encryptUserId,
             },
             signed_key: keyValue.value,
           },
@@ -71,7 +96,7 @@ async function bindKey() {
             body: {
               data: {
                 user_id: userID,
-                backup_user_id: user.info?.encryptUserId,
+                backup_user_id: user.info?.value?.encryptUserId,
               },
               callback: 'force_unbind',
               signed_key: keyValue.value,
@@ -104,7 +129,7 @@ async function buy(responseFn: (userId: string, backupUserId?: string) => Promis
   try {
     buyDialogLoading.value = true
     const userId = user.getUserId()?.toString()
-    const backupUserId = user.info?.encryptUserId
+    const backupUserId = user.info?.value?.encryptUserId
     if (userId == null) {
       ElMessage.error('请先登录')
       return
@@ -423,14 +448,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-form>
+  <ElForm>
     <ElAlert
       style="margin-bottom: 10px" show-icon
       title="所有功能全免费使用，无任何限制包括AI功能。"
       description="但因脚本使用人数多维护难度大，也为了能照顾小白用户和脚本更好的维护推出密钥系统。并且代码整理完后也会继续开源供大家学习, 如购买出现问题可发邮件联系作者：boss-helper@ocyss.icu" type="success"
     />
-    <el-form-item class="bh-input-group">
-      <el-input
+    <ElFormItem class="bh-input-group">
+      <ElInput
         v-show="!signedKey"
         v-model="keyValue"
         style="max-width: 300px"
@@ -439,89 +464,89 @@ onMounted(() => {
       />
       <div v-if="!!signedKey" style="font-size: 17px;">
         <span>余额: {{ balance }}</span>
-        <el-popover
+        <ElPopover
           placement="right"
           :width="400"
           trigger="click"
         >
           <template #reference>
-            <el-button style="margin: 0 16px">
+            <ElButton style="margin: 0 16px">
               账号位: {{ userAccount }}
-            </el-button>
+            </ElButton>
           </template>
           <h3>账号列表</h3>
-          <el-table :data="signedKey.signedKeyInfo?.users">
-            <el-table-column width="150" property="user_id" label="用户ID" />
-            <el-table-column width="100" property="remark" label="备注" />
-            <el-table-column label="操作">
+          <ElTable :data="signedKey.signedKeyInfo?.users">
+            <ElTableColumn width="150" property="user_id" label="用户ID" />
+            <ElTableColumn width="100" property="remark" label="备注" />
+            <ElTableColumn label="操作">
               <template #default="scope">
-                <el-button
+                <ElButton
                   link
                   type="primary"
                   size="small"
                   @click.prevent="setRemark(scope.row)"
                 >
                   修改备注
-                </el-button>
+                </ElButton>
               </template>
-            </el-table-column>
-          </el-table>
-        </el-popover>
+            </ElTableColumn>
+          </ElTable>
+        </ElPopover>
       </div>
-      <el-button-group style="margin-left: 10px">
+      <ElButtonGroup style="margin-left: 10px">
         <template v-if="!signedKey.signedKey">
-          <el-button type="primary" :loading="loading" @click="bindKey">
+          <ElButton type="primary" :loading="loading" @click="bindKey">
             绑定密钥
-          </el-button>
-          <el-button type="success" :loading="loading" @click="buyKey">
+          </ElButton>
+          <ElButton type="success" :loading="loading" @click="buyKey">
             购买密钥 {{ signedKey.netConf?.price_info?.signedKey ?? 15 }}元
-          </el-button>
+          </ElButton>
         </template>
         <template v-else>
-          <el-button type="success" :loading="loading" @click="updateResume">
+          <ElButton type="success" :loading="loading" @click="updateResume">
             更新简历
-          </el-button>
-          <el-button type="success" :loading="loading" @click="openBalance">
+          </ElButton>
+          <ElButton type="success" :loading="loading" @click="openBalance">
             余额充值
-          </el-button>
-          <el-button type="success" :loading="loading" @click="buyAccount">
+          </ElButton>
+          <ElButton type="success" :loading="loading" @click="buyAccount">
             账号位 {{ signedKey.netConf?.price_info?.account ?? 5 }}元
-          </el-button>
-          <el-button type="success" :loading="loading" @click="contact">
+          </ElButton>
+          <ElButton type="success" :loading="loading" @click="contact">
             联系作者
-          </el-button>
-          <el-button type="warning" :loading="loading" @click="unbindKey">
+          </ElButton>
+          <ElButton type="warning" :loading="loading" @click="unbindKey">
             解绑
-          </el-button>
+          </ElButton>
         </template>
-      </el-button-group>
-    </el-form-item>
-    <el-image-viewer
+      </ElButtonGroup>
+    </ElFormItem>
+    <ElImageViewer
       v-if="showPreview"
       :url-list="srcList"
       teleported
       @close="showPreview = false"
     />
-    <aiVue />
-  </el-form>
+    <Ai />
+  </ElForm>
 
-  <el-dialog
+  <ElDialog
     v-model="buyDialogVisible"
     :title="buyDialogStatus === 'balanceSelect' ? '余额充值' : '支付'"
     width="500"
     :before-close="handleClose"
   >
     <div v-if="buyDialogStatus === 'balanceSelect'" class="bh-buy-dialog">
-      <el-radio-group v-model="balanceAmount" size="large">
-        <el-space wrap>
-          <el-radio v-for="item in [1, 3, 5, 10, 20, 30, 50, 100]" :key="item" border :label="item" :value="item">
+      <ElRadioGroup v-model="balanceAmount" size="large">
+        <ElSpace wrap>
+          <ElRadio v-for="item in [1, 3, 5, 10, 20, 30, 50, 100]" :key="item" border :label="item" :value="item">
             {{ item }}元
-          </el-radio>
-          <el-radio border label="自定义" :value="-1">
-            <el-input-number v-model="balanceAmountCustom" style="width: 80px;" :precision="2" :step="1" :min="1" :max="9999" size="small" :controls="false" />
-          </el-radio>
-        </el-space>
-      </el-radio-group>
+          </ElRadio>
+          <ElRadio border label="自定义" :value="-1">
+            <ElInputNumber v-model="balanceAmountCustom" style="width: 80px;" :precision="2" :step="1" :min="1" :max="9999" size="small" :controls="false" />
+          </ElRadio>
+        </ElSpace>
+      </ElRadioGroup>
     </div>
     <div v-else-if="buyResult == null" class="bh-buy-dialog">
       <div>
@@ -533,7 +558,7 @@ onMounted(() => {
       <div style="margin-top: 6px;font-size: 18px;">
         <b>剩余时间：</b>{{ Math.floor(buyExpireTime / 60).toString().padStart(2, '0') }}:{{ Math.floor(buyExpireTime % 60).toString().padStart(2, '0') }}
       </div>
-      <el-image
+      <ElImage
         style="width: 300px; height: 300px"
         :src="buyQrcode"
         :zoom-rate="1.2"
@@ -552,14 +577,14 @@ onMounted(() => {
       <div class="order-info">
         <b>商品名：</b>{{ buyOrderName }}
       </div>
-      <el-alert
+      <ElAlert
         title="请妥善保管密钥，丢失无法找回"
         type="warning"
         :closable="false"
         show-icon
         style="margin: 15px 0;"
       />
-      <el-input
+      <ElInput
         v-model="buyResult.key.signed_key"
         type="textarea"
         :rows="3"
@@ -570,36 +595,36 @@ onMounted(() => {
         <template #prepend>
           密钥
         </template>
-      </el-input>
+      </ElInput>
     </div>
 
     <template #footer>
       <div v-if="buyDialogStatus === 'balanceSelect'" class="dialog-footer">
-        <el-button type="primary" @click="buyDialogVisible = false;buyDialogLoading = false">
+        <ElButton type="primary" @click="buyDialogVisible = false;buyDialogLoading = false">
           取消
-        </el-button>
-        <el-button type="primary" @click="buyBalance()">
+        </ElButton>
+        <ElButton type="primary" @click="buyBalance()">
           生成订单
-        </el-button>
+        </ElButton>
       </div>
       <div v-else-if="buyResult == null" class="dialog-footer">
-        <el-button @click="handleClose()">
+        <ElButton @click="handleClose()">
           取消
-        </el-button>
-        <el-button type="primary" @click="queryOrder">
+        </ElButton>
+        <ElButton type="primary" @click="queryOrder">
           我已经支付
-        </el-button>
+        </ElButton>
       </div>
       <div v-else class="dialog-footer">
-        <el-button type="primary" @click="copyKey()">
+        <ElButton type="primary" @click="copyKey()">
           复制密钥
-        </el-button>
-        <el-button type="primary" @click="buyDialogVisible = false">
+        </ElButton>
+        <ElButton type="primary" @click="buyDialogVisible = false">
           我已经保存好密钥
-        </el-button>
+        </ElButton>
       </div>
     </template>
-  </el-dialog>
+  </ElDialog>
 </template>
 
 <style lang="scss" scoped>

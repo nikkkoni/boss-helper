@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ElImage, ElLink, ElSpace } from 'element-plus'
 </script>
 
 <template>
@@ -28,7 +29,7 @@
       </div>
     </div>
     <div data-help="记得来个Star或者好评吧" style="margin-top: 10px">
-      该脚本分为浏览器扩展和油猴脚本，油猴脚本已开源
+      该脚本分为浏览器扩展和油猴脚本，两版本皆已开源
       <br>
       Github地址:
       <ElLink href="https://github.com/ocyss/boos-helper" target="_blank">
@@ -44,7 +45,7 @@
       </ElLink>
       <br>
       <br>
-      <el-space wrap>
+      <ElSpace wrap>
         <ElLink
           href="https://gai06vrtbc0.feishu.cn/share/base/form/shrcnmEq2fxH9hM44hqEnoeaj8g"
           target="_blank"
@@ -65,7 +66,7 @@
         >
           飞书交流群(已满)
         </ElLink> -->
-      </el-space>
+      </ElSpace>
     </div>
     <div
       data-help=" "

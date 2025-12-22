@@ -1,7 +1,4 @@
 import vueJsx from '@vitejs/plugin-vue-jsx'
-import AutoImport from 'unplugin-auto-import/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
-import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'wxt'
 import { version } from './package.json'
 
@@ -9,7 +6,10 @@ const matches = ['*://zhipin.com/*', '*://*.zhipin.com/*']
 
 export default defineConfig({
   srcDir: 'src',
+  outDirTemplate: '{{browser}}-mv{{manifestVersion}}',
   modules: ['@wxt-dev/module-vue'],
+  imports: false,
+
   manifest: {
     default_locale: 'zh_CN',
     name: '__MSG_extName__',
@@ -36,14 +36,6 @@ export default defineConfig({
     },
     plugins: [
       vueJsx(),
-      AutoImport({
-        resolvers: [ElementPlusResolver()],
-      }),
-      Components({
-        resolvers: [ElementPlusResolver({
-          importStyle: 'sass',
-        })],
-      }),
     ],
     css: {
       preprocessorOptions: {

@@ -1,10 +1,15 @@
-import type { logData } from '@/stores/log'
 import type { StepFactory } from './type'
+import type { logData } from '@/stores/log'
+import { ElMessage } from 'element-plus'
+import { miTem } from 'mitem'
 import { useChat } from '@/composables/useChat'
 import { useModel } from '@/composables/useModel'
 import { useStatistics } from '@/composables/useStatistics'
 import { Message } from '@/composables/useWebSocket'
+import { counter } from '@/message'
+
 import { useConf } from '@/stores/conf'
+
 import { useUser } from '@/stores/user'
 import {
   ActivityError,
@@ -21,12 +26,7 @@ import {
   RepeatError,
   SalaryError,
 } from '@/types/deliverError'
-
 import { getCurDay, getCurTime } from '@/utils'
-
-import { getStorage, setStorage } from '@/utils/message/storage'
-import { ElMessage } from 'element-plus'
-import { miTem } from 'mitem'
 import { SignedKeyLLM } from '../useModel/signedKey'
 import { errorHandle, parseFiltering, rangeMatch, rangeMatchFormat, requestBossData, sameCompanyKey, sameHrKey } from './utils'
 
@@ -58,7 +58,7 @@ export function handles() {
       fn: async ({ data }) => {
         if (someSet == null) {
           someSet = new Set<string>()
-          const data = await getStorage<Record<string, string[]>>(sameCompanyKey, {})
+          const data = await counter.storageGet<Record<string, string[]>>(sameCompanyKey, {})
           for (const id of (data[uid] ?? [])) {
             someSet.add(id)
           }
@@ -72,8 +72,8 @@ export function handles() {
         someSet?.add(data.encryptBrandId)
         count++
         if (count > 3) {
-          const oldData = await getStorage<Record<string, string[]>>(sameCompanyKey, {})
-          await setStorage(sameCompanyKey, {
+          const oldData = await counter.storageGet<Record<string, string[]>>(sameCompanyKey, {})
+          await counter.storageSet(sameCompanyKey, {
             ...oldData,
             [uid]: Array.from(someSet ?? []),
           })
@@ -97,7 +97,7 @@ export function handles() {
       fn: async ({ data }) => {
         if (someSet == null) {
           someSet = new Set<string>()
-          const data = await getStorage<Record<string, string[]>>(sameHrKey, {})
+          const data = await counter.storageGet<Record<string, string[]>>(sameHrKey, {})
           for (const id of (data[uid] ?? [])) {
             someSet.add(id)
           }
@@ -111,8 +111,8 @@ export function handles() {
         someSet?.add(data.encryptBossId)
         count++
         if (count > 3) {
-          const oldData = await getStorage<Record<string, string[]>>(sameHrKey, {})
-          await setStorage(sameHrKey, {
+          const oldData = await counter.storageGet<Record<string, string[]>>(sameHrKey, {})
+          await counter.storageSet(sameHrKey, {
             ...oldData,
             [uid]: Array.from(someSet ?? []),
           })

@@ -1,9 +1,12 @@
 import type { Statistics } from '@/types/formData'
 
-import { getCurDay } from '@/utils'
-import { getStorage, setStorage } from '@/utils/message/storage'
+import { ref } from '#imports'
 import { reactiveComputed, watchThrottled } from '@vueuse/core'
 import { defineStore } from 'pinia'
+import { counter } from '@/message'
+import { getCurDay } from '@/utils'
+import deepmerge, { jsonClone } from '@/utils/deepmerge'
+import { logger } from '@/utils/logger'
 
 export const todayKey = 'local:web-geek-job-Today'
 export const statisticsKey = 'local:web-geek-job-Statistics'
@@ -42,14 +45,14 @@ export const useStatistics = defineStore('statistics', () => {
     const { t, s } = JSON.parse(data)
     deepmerge(todayData, t, { clone: false })
     statisticsData.value = s
-    await setStorage(todayKey, t)
-    await setStorage(statisticsKey, s)
+    await counter.storageSet(todayKey, t)
+    await counter.storageSet(statisticsKey, s)
   }
 
   watchThrottled(
     todayData,
     (v) => {
-      void setStorage(todayKey, jsonClone(v))
+      void counter.storageSet(todayKey, jsonClone(v))
     },
     { throttle: 200 },
   )
@@ -57,23 +60,25 @@ export const useStatistics = defineStore('statistics', () => {
   async function updateStatistics() {
     const curData = jsonClone(todayData)
 
-    void getStorage<Statistics[]>(statisticsKey, []).then((data) => {
+    void counter.storageGet<Statistics[]>(statisticsKey, []).then((data) => {
       statisticsData.value = data
     })
 
-    const g = (await getStorage(todayKey, curData))
+    const g = (await counter.storageGet(todayKey, curData))
     logger.debug('统计数据:', date, g)
     if (g.date === date) {
       deepmerge(todayData, g, { clone: false })
       return g
     }
 
-    const statistics = await getStorage(statisticsKey, [])
+    const statistics = await counter.storageGet(statisticsKey, [])
+
     const newStatistics = [g, ...statistics]
-    await setStorage(statisticsKey, newStatistics)
-    await setStorage(todayKey, curData)
+    await counter.storageSet(statisticsKey, newStatistics)
+    await counter.storageSet(todayKey, curData)
     statisticsData.value = newStatistics
   }
+
   return {
     todayData,
     statisticsData,

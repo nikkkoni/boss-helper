@@ -2,8 +2,20 @@
 import type {
   TableV2Instance,
 } from 'element-plus'
-import { useLog } from '@/stores/log'
+import {
+  ElAutoResizer,
+  ElButton,
+  ElCollapse,
+  ElCollapseItem,
+  ElDialog,
+  ElTableV2,
+  ElTabPane,
+  ElTabs,
+} from 'element-plus'
+
 import { ref } from 'vue'
+import JobCard from '@/components/JobCard.vue'
+import { useLog } from '@/stores/log'
 
 const tableRef = ref<TableV2Instance>()
 const { filterData, columns, dialogData } = useLog()
@@ -34,60 +46,60 @@ const aiGreetActiveNames = ref('response')
         <JobCard v-if="dialogData.data?.job" :job="dialogData.data.job" />
       </div>
       <div class="log-detail-right">
-        <el-tabs class="demo-tabs">
-          <el-tab-pane v-if="dialogData.data?.data?.aiFilteringQ" label="AI过滤" name="first">
-            <el-collapse v-model="aiFilterActiveNames" accordion>
-              <el-collapse-item title="Prompt" name="prompt">
+        <ElTabs class="demo-tabs">
+          <ElTabPane v-if="dialogData.data?.data?.aiFilteringQ" label="AI过滤" name="first">
+            <ElCollapse v-model="aiFilterActiveNames" accordion>
+              <ElCollapseItem title="Prompt" name="prompt">
                 <div class="ai-text">
                   {{ dialogData.data.data.aiFilteringQ }}
                 </div>
-              </el-collapse-item>
-              <el-collapse-item v-if="dialogData.data.data.aiFilteringR" title="思考过程" name="thinking">
+              </ElCollapseItem>
+              <ElCollapseItem v-if="dialogData.data.data.aiFilteringR" title="思考过程" name="thinking">
                 <div class="ai-text">
                   {{ dialogData.data.data.aiFilteringR }}
                 </div>
-              </el-collapse-item>
-              <el-collapse-item title="响应" name="response" class="active">
+              </ElCollapseItem>
+              <ElCollapseItem title="响应" name="response" class="active">
                 <div class="ai-text">
                   {{ dialogData.data.data.aiFilteringAtext }}
                 </div>
-              </el-collapse-item>
-            </el-collapse>
-          </el-tab-pane>
-          <el-tab-pane v-if="dialogData.data?.data?.aiGreetingQ" label="AI打招呼" name="second">
-            <el-collapse v-model="aiGreetActiveNames" accordion>
-              <el-collapse-item title="Prompt" name="prompt">
+              </ElCollapseItem>
+            </ElCollapse>
+          </ElTabPane>
+          <ElTabPane v-if="dialogData.data?.data?.aiGreetingQ" label="AI打招呼" name="second">
+            <ElCollapse v-model="aiGreetActiveNames" accordion>
+              <ElCollapseItem title="Prompt" name="prompt">
                 <div class="ai-text">
                   {{ dialogData.data.data.aiGreetingQ }}
                 </div>
-              </el-collapse-item>
-              <el-collapse-item v-if="dialogData.data.data.aiGreetingR" title="思考过程" name="thinking">
+              </ElCollapseItem>
+              <ElCollapseItem v-if="dialogData.data.data.aiGreetingR" title="思考过程" name="thinking">
                 <div class="ai-text">
                   {{ dialogData.data.data.aiGreetingR }}
                 </div>
-              </el-collapse-item>
-              <el-collapse-item title="响应" name="response" class="active">
+              </ElCollapseItem>
+              <ElCollapseItem title="响应" name="response" class="active">
                 <div class="ai-text">
                   {{ dialogData.data.data.aiGreetingA }}
                 </div>
-              </el-collapse-item>
-            </el-collapse>
-          </el-tab-pane>
-          <el-tab-pane v-if="dialogData.data?.data?.err" label="错误信息" name="fourth">
+              </ElCollapseItem>
+            </ElCollapse>
+          </ElTabPane>
+          <ElTabPane v-if="dialogData.data?.data?.err" label="错误信息" name="fourth">
             <div>
               {{ dialogData.data.data.err }}
             </div>
             <div v-if="dialogData.data?.data?.message">
               {{ dialogData.data.data.message }}
             </div>
-          </el-tab-pane>
-        </el-tabs>
+          </ElTabPane>
+        </ElTabs>
       </div>
     </div>
     <template #footer>
-      <el-button @click="dialogData.show = false">
+      <ElButton @click="dialogData.show = false">
         关闭
-      </el-button>
+      </ElButton>
     </template>
   </ElDialog>
 </template>

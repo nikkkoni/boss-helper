@@ -1,7 +1,8 @@
 import type { AlertProps } from 'element-plus'
-import { getStorage, setStorage } from '@/utils/message/storage'
+import type { VNode } from 'vue'
 import { alertProps, ElAlert } from 'element-plus'
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onMounted, ref } from 'vue'
+import { counter } from '@/message'
 
 export interface ExtendedAlertProps extends AlertProps {
   id: string
@@ -16,17 +17,18 @@ export default defineComponent({
       required: true,
     },
   },
+
   setup(props: ExtendedAlertProps, { slots }): () => VNode | null {
     const storageKey = computed(() => `local:alert:${props.id}`)
     const isVisible = ref(true)
 
     onMounted(async () => {
-      const shouldHide = await getStorage(storageKey.value, false)
+      const shouldHide = await counter.storageGet(storageKey.value, false)
       isVisible.value = !shouldHide
     })
 
     const handleClose = async () => {
-      await setStorage(storageKey.value, true)
+      await counter.storageSet(storageKey.value, true)
       isVisible.value = false
     }
 

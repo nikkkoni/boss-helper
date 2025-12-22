@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { MyJobListData } from '@/stores/jobs'
+import { ElSpace, ElTag } from 'element-plus'
+import { ref } from 'vue'
 
 const props = defineProps<{
   job: MyJobListData

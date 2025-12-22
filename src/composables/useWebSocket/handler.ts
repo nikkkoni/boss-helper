@@ -1,5 +1,5 @@
-import chatProto from '@/assets/chat.proto?raw'
 import protobuf from 'protobufjs'
+import chatProto from '@/assets/chat.proto?raw'
 
 // User 相关类型定义
 interface TechwolfUser {
@@ -124,8 +124,8 @@ interface CreateImageMessageData {
 }
 
 class ChatProtobufHandler {
-  build:any
-  chatProto?:protobuf.Root
+  build: any
+  chatProto?: protobuf.Root
 
   constructor() {
     this.build = {}
@@ -150,7 +150,7 @@ class ChatProtobufHandler {
     }
   }
 
-  createChatProtocol(type:number) {
+  createChatProtocol(type: number) {
     const protocol = this.build.chatProtocol.create()
     protocol.type = type
     return protocol
@@ -211,7 +211,6 @@ class ChatProtobufHandler {
 
     return protocol
   }
-
 }
 
 export default ChatProtobufHandler

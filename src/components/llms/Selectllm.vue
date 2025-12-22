@@ -1,8 +1,29 @@
 <script lang="tsx" setup>
+import type { CheckboxValueType } from 'element-plus'
 import type { prompt } from '@/composables/useModel/type'
 import type { MyJobListData } from '@/stores/jobs'
 import type { FormInfoAi } from '@/types/formData'
-import type { CheckboxValueType } from 'element-plus'
+import {
+  ElButton,
+  ElDialog,
+  ElForm,
+  ElFormItem,
+  ElInput,
+  ElInputNumber,
+  ElLink,
+  ElMessage,
+  ElMessageBox,
+  ElPopover,
+  ElRadioButton,
+  ElRadioGroup,
+  ElSelectV2,
+  ElSpace,
+  ElTable,
+  ElTableColumn,
+  ElText,
+
+} from 'element-plus'
+import { reactive, ref } from 'vue'
 import JobCard from '@/components/JobCard.vue'
 import { parseFiltering } from '@/composables/useApplying/utils'
 import { llmIcon, useModel } from '@/composables/useModel'
@@ -10,11 +31,8 @@ import { formInfoData, useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
-import {
-  ElMessage,
-  ElMessageBox,
-} from 'element-plus'
-import { ref } from 'vue'
+import { logger } from '@/utils/logger'
+import Alert from '../Alert'
 
 const props = defineProps<{
   data: 'aiGreeting' | 'aiFiltering' | 'aiReply'
@@ -228,14 +246,14 @@ async function copyOnlineResume() {
     title: '在线简历',
     message: () => {
       return (
-        <el-input
+        <ElInput
           style="width: 100%"
           model-value={resume}
           readonly={true}
           autosize={{ minRows: 4, maxRows: 8 }}
           type="textarea"
         >
-        </el-input>
+        </ElInput>
       )
     },
     customStyle: {
@@ -262,28 +280,28 @@ async function copyOnlineResume() {
     :z-index="20"
   >
     <div v-if="data === 'aiFiltering'">
-      <el-form-item label="过滤分数">
-        <el-input-number v-model="score" :precision="0" :min="-100" :max="100" size="small" placeholder="请输入分数" />
-      </el-form-item>
+      <ElFormItem label="过滤分数">
+        <ElInputNumber v-model="score" :precision="0" :min="-100" :max="100" size="small" placeholder="请输入分数" />
+      </ElFormItem>
     </div>
     <div class="select-form-box">
-      <el-radio-group
+      <ElRadioGroup
         v-model="singleMode"
         size="large"
         @update:model-value="changeMode"
       >
-        <el-radio-button :disabled="signedKey == null" label="会员模式(无需Prompt)" value="vip" />
-        <el-radio-button label="单对话模式" :value="true" />
-        <el-radio-button label="多对话模式" :value="false" />
-      </el-radio-group>
-      <el-space>
+        <ElRadioButton :disabled="signedKey == null" label="会员模式(无需Prompt)" value="vip" />
+        <ElRadioButton label="单对话模式" :value="true" />
+        <ElRadioButton label="多对话模式" :value="false" />
+      </ElRadioGroup>
+      <ElSpace>
         <ElButton v-if="singleMode !== 'vip'" @click="inputExample">
           填入示例值
         </ElButton>
         <ElButton @click="copyOnlineResume">
           复制在线简历
         </ElButton>
-      </el-space>
+      </ElSpace>
       <ElSelectV2
         v-if="singleMode !== 'vip'"
         v-model="currentModel"
@@ -312,13 +330,13 @@ async function copyOnlineResume() {
         会员模型暂时不支持输出 思考过程, 比如deepseekR1，但是不影响模型能力
       </Alert>
       使用
-      <el-link
+      <ElLink
         type="primary"
         href="https://ygorko.github.io/mitem/"
         target="_blank"
       >
         mitem
-      </el-link>
+      </ElLink>
       来渲染模板。在多对话模式下，只有最后的消息会使用模板。
       <ElLink type="primary" href="https://github.com/Ocyss/boos-helper/blob/master/src/types/bossData.d.ts" target="_blank">
         变量表
@@ -351,13 +369,13 @@ async function copyOnlineResume() {
       :autosize="{ minRows: 10, maxRows: 18 }"
       type="textarea"
     />
-    <el-form
+    <ElForm
       v-else
       v-model="message as string"
       label-width="auto"
       class="demo-dynamic"
     >
-      <el-form-item v-for="(item, index) in (message as prompt)" :key="index">
+      <ElFormItem v-for="(item, index) in (message as prompt)" :key="index">
         <template #label>
           <ElSelectV2
             v-model="item.role"
@@ -381,13 +399,13 @@ async function copyOnlineResume() {
             删除
           </ElButton>
         </div>
-      </el-form-item>
-      <el-form-item>
+      </ElFormItem>
+      <ElFormItem>
         <ElButton @click="addMessage">
           添加消息
         </ElButton>
-      </el-form-item>
-    </el-form>
+      </ElFormItem>
+    </ElForm>
     <template #footer>
       <ElButton @click="show = false">
         关闭
@@ -417,7 +435,7 @@ async function copyOnlineResume() {
     :close-on-click-modal="false"
     :modal="false"
   >
-    <el-space direction="horizontal" size="large">
+    <ElSpace direction="horizontal" size="large">
       <ElButton :loading="testJobLoading" @click="addTestJob(1)">
         添加1个
       </ElButton>
@@ -427,9 +445,9 @@ async function copyOnlineResume() {
       <ElButton type="primary" @click="testJob">
         {{ testJobStop ? '测试' : '停止' }}
       </ElButton>
-    </el-space>
-    <el-table :data="testData" style="width: 100%">
-      <el-table-column type="expand" row-key="key" :expand-row-keys="expandTestRowKeys" @expand-change="handleExpandChange">
+    </ElSpace>
+    <ElTable :data="testData" style="width: 100%">
+      <ElTableColumn type="expand" row-key="key" :expand-row-keys="expandTestRowKeys" @expand-change="handleExpandChange">
         <template #default="scope">
           <div class="test-content-wrapper">
             <div class="test-content-list">
@@ -450,10 +468,10 @@ async function copyOnlineResume() {
             </div>
           </div>
         </template>
-      </el-table-column>
-      <el-table-column prop="job.jobName" label="岗位名" width="180">
+      </ElTableColumn>
+      <ElTableColumn prop="job.jobName" label="岗位名" width="180">
         <template #default="scope">
-          <el-popover effect="light" trigger="hover" placement="top" popper-style="padding: 0;">
+          <ElPopover effect="light" trigger="hover" placement="top" popper-style="padding: 0;">
             <template #default>
               <JobCard :job="scope.row.job" :hover="false" style="width: 300px;" />
             </template>
@@ -463,17 +481,17 @@ async function copyOnlineResume() {
                 {{ scope.row.job.jobName }}
               </div>
             </template>
-          </el-popover>
+          </ElPopover>
         </template>
-      </el-table-column>
-      <el-table-column prop="job.card.postDescription" label="内容">
+      </ElTableColumn>
+      <ElTableColumn prop="job.card.postDescription" label="内容">
         <template #default="scope">
           <div :title="scope.row.job.card.postDescription" style="width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             {{ scope.row.job.card.postDescription }}
           </div>
         </template>
-      </el-table-column>
-    </el-table>
+      </ElTableColumn>
+    </ElTable>
     <template #footer>
       <div>
         <ElButton @click="testDialog = false">

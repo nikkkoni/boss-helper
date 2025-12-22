@@ -1,13 +1,16 @@
+import type { Middleware } from 'openapi-fetch'
 import type { modelData } from '@/composables/useModel'
 import type { components, paths } from '@/types/openapi'
-import type { Middleware } from 'openapi-fetch'
-import { useModel } from '@/composables/useModel'
-import { useUser } from '@/stores/user'
-import { getStorage, setStorage } from '@/utils/message/storage'
+import { ref, toRaw } from '#imports'
 import { watchThrottled } from '@vueuse/core'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import createClient from 'openapi-fetch'
 import { defineStore } from 'pinia'
+import { watch } from 'vue'
+import { useModel } from '@/composables/useModel'
+import { counter } from '@/message'
+import { useUser } from '@/stores/user'
+import { logger } from '@/utils/logger'
 
 type SignedKeyInfo = components['schemas']['KeyInfo']
 
@@ -126,7 +129,7 @@ export const useSignedKey = defineStore('signedKey', () => {
     if (v == null || v === '') {
       return
     }
-    void setStorage(signedKeyStorageKey, v).catch((e) => {
+    void counter.storageSet(signedKeyStorageKey, v).catch((e) => {
       logger.error('保存密钥失败', e)
       ElMessage.error('保存密钥失败')
     })
@@ -136,7 +139,7 @@ export const useSignedKey = defineStore('signedKey', () => {
     if (v == null) {
       return
     }
-    void setStorage(signedKeyInfoStorageKey, toRaw(v)).catch((e) => {
+    void counter.storageSet(signedKeyInfoStorageKey, toRaw(v)).catch((e) => {
       logger.error('保存密钥信息失败', e)
       ElMessage.error('保存密钥信息失败')
     })
@@ -146,7 +149,7 @@ export const useSignedKey = defineStore('signedKey', () => {
   | NotificationAlert
   | NotificationMessage
   | NotificationNotification, now: number = 0) {
-    if (now !== 0 && now < await getStorage(`local:netConf-${item.key}`, 0)) {
+    if (now !== 0 && now < await counter.storageGet(`local:netConf-${item.key}`, 0)) {
       return
     }
     if (netNotificationMap.has(item.key)) {
@@ -158,7 +161,7 @@ export const useSignedKey = defineStore('signedKey', () => {
         ...item.data,
         confirmButtonText: 'OK',
         callback: () => {
-          void setStorage(
+          void counter.storageSet(
             `local:netConf-${item.key}`,
             now + (item.data.duration ?? 86400) * 1000,
           )
@@ -170,7 +173,7 @@ export const useSignedKey = defineStore('signedKey', () => {
         ...item.data,
         duration: 0,
         onClose() {
-          void setStorage(
+          void counter.storageSet(
             `local:netConf-${item.key}`,
             now + (item.data.duration ?? 86400) * 1000,
           )
@@ -220,11 +223,11 @@ export const useSignedKey = defineStore('signedKey', () => {
   }
 
   async function initSignedKey() {
-    const key = await getStorage<string>(signedKeyStorageKey)
+    const key = await counter.storageGet<string>(signedKeyStorageKey)
     if (key == null) {
       return
     }
-    const info = await getStorage<SignedKeyInfo>(signedKeyInfoStorageKey)
+    const info = await counter.storageGet<SignedKeyInfo>(signedKeyInfoStorageKey)
     if (info != null) {
       signedKeyInfo.value = info
     }
