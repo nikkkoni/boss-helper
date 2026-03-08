@@ -80,15 +80,18 @@ async function startBatch() {
   try {
     logger.debug('start batch', page)
     let oldLen = 0
+    let oldFirstJobId = ''
     while (page.value.page <= 10 && !common.deliverStop) {
       await delay(conf.formData.delay.deliveryStarts)
       if (jobList._list.value.length === 0) {
         break
       }
-      else if ((location.href.includes('/web/geek/job-recommend') || location.href.includes('/web/geek/jobs')) && oldLen === jobList._list.value.length) {
+      const currentFirstJobId = jobList._list.value[0]?.encryptJobId ?? ''
+      if ((location.href.includes('/web/geek/job-recommend') || location.href.includes('/web/geek/jobs')) && oldLen === jobList._list.value.length && oldFirstJobId === currentFirstJobId) {
         break
       }
       oldLen = jobList._list.value.length
+      oldFirstJobId = currentFirstJobId
       await deliver.jobListHandle()
       if (common.deliverStop) {
         break
