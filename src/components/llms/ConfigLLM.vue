@@ -1,9 +1,18 @@
 <script lang="ts" setup>
-import type { modelData } from '@/composables/useModel'
-import { ElAvatar, ElButton, ElDialog, ElIcon, ElMessage, ElTable, ElTableColumn, ElText,
+import {
+  ElAvatar,
+  ElButton,
+  ElDialog,
+  ElIcon,
+  ElMessage,
+  ElTable,
+  ElTableColumn,
+  ElText,
 } from 'element-plus'
 import { ref } from 'vue'
+
 import Alert from '@/components/Alert'
+import type { modelData } from '@/composables/useModel'
 import { llmIcon, useModel } from '@/composables/useModel'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { exportJson, importJson } from '@/utils/jsonImportExport'
@@ -16,7 +25,7 @@ const modelStore = useModel()
 const createBoxShow = ref(false)
 
 function del(d: modelData) {
-  modelStore.modelData = modelStore.modelData.filter(v => d.key !== v.key)
+  modelStore.modelData = modelStore.modelData.filter((v) => d.key !== v.key)
   ElMessage.success('删除成功')
 }
 
@@ -42,16 +51,14 @@ function newllm() {
 
 function create(d: modelData) {
   if (d.key) {
-    const old = modelStore.modelData.find(v => v.key === d.key)
+    const old = modelStore.modelData.find((v) => v.key === d.key)
     if (old) {
       deepmerge(old, d, { clone: false })
-    }
-    else {
+    } else {
       d.key = new Date().getTime().toString()
       modelStore.modelData.push(d)
     }
-  }
-  else {
+  } else {
     d.key = new Date().getTime().toString()
     modelStore.modelData.push(d)
   }
@@ -91,10 +98,7 @@ function importllm() {
       <ElTableColumn label="模型">
         <template #default="scope">
           <div style="align-items: center; display: flex">
-            <ElAvatar
-              :size="30"
-              :style="{ '--el-avatar-bg-color': scope.row.color }"
-            >
+            <ElAvatar :size="30" :style="{ '--el-avatar-bg-color': scope.row.color }">
               <ElIcon v-html="scope.row.vip != null ? llmIcon.vip : llmIcon[scope.row.data.mode]" />
             </ElAvatar>
             <span style="margin-left: 8px">{{ scope.row.name }}</span>
@@ -110,29 +114,14 @@ function importllm() {
       </ElTableColumn>
       <ElTableColumn label="管理">
         <template #default="scope">
-          <div v-if="scope.row.vip == null" style="width: 200px;">
-            <ElButton
-              link
-              type="primary"
-              size="small"
-              @click="() => del(scope.row)"
-            >
+          <div v-if="scope.row.vip == null" style="width: 200px">
+            <ElButton link type="primary" size="small" @click="() => del(scope.row)">
               删除
             </ElButton>
-            <ElButton
-              link
-              type="primary"
-              size="small"
-              @click="() => copy(scope.row)"
-            >
+            <ElButton link type="primary" size="small" @click="() => copy(scope.row)">
               复制
             </ElButton>
-            <ElButton
-              link
-              type="primary"
-              size="small"
-              @click="() => edit(scope.row)"
-            >
+            <ElButton link type="primary" size="small" @click="() => edit(scope.row)">
               编辑
             </ElButton>
           </div>
@@ -148,21 +137,11 @@ function importllm() {
 
     <template #footer>
       <div>
-        <ElButton @click="close">
-          取消
-        </ElButton>
-        <ElButton type="success" @click="exportllm">
-          导出
-        </ElButton>
-        <ElButton type="success" @click="importllm">
-          导入
-        </ElButton>
-        <ElButton type="primary" @click="newllm">
-          新建
-        </ElButton>
-        <ElButton type="primary" @click="modelStore.saveModel">
-          保存
-        </ElButton>
+        <ElButton @click="close"> 取消 </ElButton>
+        <ElButton type="success" @click="exportllm"> 导出 </ElButton>
+        <ElButton type="success" @click="importllm"> 导入 </ElButton>
+        <ElButton type="primary" @click="newllm"> 新建 </ElButton>
+        <ElButton type="primary" @click="modelStore.saveModel"> 保存 </ElButton>
       </div>
     </template>
   </ElDialog>

@@ -7,8 +7,11 @@ export interface StepArgs {
 
 export type Pipeline = Array<Step | Pipeline>
 export type Handler = (args: StepArgs, ctx: logData) => Promise<void>
-export type Step = undefined | Handler | {
-  fn?: Handler
-  after?: Handler
-}
-export type StepFactory = () => (Step)
+export type Step =
+  | undefined
+  | Handler
+  | {
+      fn?: Handler
+      after?: Handler
+    }
+export type StepFactory = () => Step

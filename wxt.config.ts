@@ -1,5 +1,6 @@
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { defineConfig } from 'wxt'
+
 import { version } from './package.json'
 
 const matches = ['*://zhipin.com/*', '*://*.zhipin.com/*']
@@ -28,15 +29,9 @@ export default defineConfig({
       __APP_VERSION__: JSON.stringify(version),
     },
     ssr: {
-      noExternal: [
-        '@webext-core/storage',
-        '@webext-core/messaging',
-        '@webext-core/proxy-service',
-      ],
+      noExternal: ['@webext-core/storage', '@webext-core/messaging', '@webext-core/proxy-service'],
     },
-    plugins: [
-      vueJsx(),
-    ],
+    plugins: [vueJsx()],
     css: {
       preprocessorOptions: {
         scss: {

@@ -1,16 +1,13 @@
 <script lang="ts" setup>
-import type {
-  RecycleScrollerInstance,
-} from 'vue-virtual-scroller'
 import { watchIgnorable } from '@vueuse/core'
 import { ElAvatar, ElButton, ElIcon, ElInput } from 'element-plus'
 import { ref, watch } from 'vue'
-import {
-  DynamicScroller,
-  DynamicScrollerItem,
-} from 'vue-virtual-scroller'
+import type { RecycleScrollerInstance } from 'vue-virtual-scroller'
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
+
 import { useChat } from '@/composables/useChat'
 import { useUser } from '@/stores/user'
+
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
 const { chatMessages, chatInput } = useChat()
@@ -28,14 +25,12 @@ watch(
 // 创建可忽略的监听,在用户输入的时候不进行更改. TODO: 节流优化
 const { ignoreUpdates } = watchIgnorable(chatInput, () => {
   if (messageInput.value?.textarea?.scrollTop) {
-    messageInput.value.textarea.scrollTop
-      = messageInput.value?.textarea?.scrollHeight || 0
+    messageInput.value.textarea.scrollTop = messageInput.value?.textarea?.scrollHeight || 0
   }
 })
 
 function inputMsgUpdate(v: string) {
-  if (chatInput.input)
-    return
+  if (chatInput.input) return
   ignoreUpdates(() => {
     chatInput.content = v
   })
@@ -72,8 +67,7 @@ function inputMsgUpdate(v: string) {
             <ElAvatar
               :src="typeof item.avatar === 'string' ? item.avatar : undefined"
               :style="{
-                '--el-avatar-bg-color':
-                  typeof item.avatar !== 'string' && item.avatar?.color,
+                '--el-avatar-bg-color': typeof item.avatar !== 'string' && item.avatar?.color,
               }"
             >
               <ElIcon
@@ -109,15 +103,9 @@ function inputMsgUpdate(v: string) {
           "
           :style="{ '--el-avatar-bg-color': chatInput?.avatar?.color }"
         >
-          <ElIcon
-            v-if="chatInput.avatar"
-            size="large"
-            v-html="chatInput.avatar?.icon"
-          />
+          <ElIcon v-if="chatInput.avatar" size="large" v-html="chatInput.avatar?.icon" />
         </ElAvatar>
-        <ElButton type="primary" plain round>
-          发送
-        </ElButton>
+        <ElButton type="primary" plain round> 发送 </ElButton>
       </div>
     </div>
   </div>

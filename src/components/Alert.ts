@@ -1,7 +1,8 @@
 import type { AlertProps } from 'element-plus'
-import type { VNode } from 'vue'
 import { alertProps, ElAlert } from 'element-plus'
+import type { VNode } from 'vue'
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
+
 import { counter } from '@/message'
 
 export interface ExtendedAlertProps extends AlertProps {
@@ -32,11 +33,16 @@ export default defineComponent({
       isVisible.value = false
     }
 
-    return () => isVisible.value
-      ? h(ElAlert, {
-          ...props,
-          onClose: handleClose,
-        }, slots)
-      : null
+    return () =>
+      isVisible.value
+        ? h(
+            ElAlert,
+            {
+              ...props,
+              onClose: handleClose,
+            },
+            slots,
+          )
+        : null
   },
 })

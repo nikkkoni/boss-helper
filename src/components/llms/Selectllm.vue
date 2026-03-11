@@ -281,26 +281,25 @@ async function copyOnlineResume() {
   >
     <div v-if="data === 'aiFiltering'">
       <ElFormItem label="过滤分数">
-        <ElInputNumber v-model="score" :precision="0" :min="-100" :max="100" size="small" placeholder="请输入分数" />
+        <ElInputNumber
+          v-model="score"
+          :precision="0"
+          :min="-100"
+          :max="100"
+          size="small"
+          placeholder="请输入分数"
+        />
       </ElFormItem>
     </div>
     <div class="select-form-box">
-      <ElRadioGroup
-        v-model="singleMode"
-        size="large"
-        @update:model-value="changeMode"
-      >
+      <ElRadioGroup v-model="singleMode" size="large" @update:model-value="changeMode">
         <ElRadioButton :disabled="signedKey == null" label="会员模式(无需Prompt)" value="vip" />
         <ElRadioButton label="单对话模式" :value="true" />
         <ElRadioButton label="多对话模式" :value="false" />
       </ElRadioGroup>
       <ElSpace>
-        <ElButton v-if="singleMode !== 'vip'" @click="inputExample">
-          填入示例值
-        </ElButton>
-        <ElButton @click="copyOnlineResume">
-          复制在线简历
-        </ElButton>
+        <ElButton v-if="singleMode !== 'vip'" @click="inputExample"> 填入示例值 </ElButton>
+        <ElButton @click="copyOnlineResume"> 复制在线简历 </ElButton>
       </ElSpace>
       <ElSelectV2
         v-if="singleMode !== 'vip'"
@@ -311,14 +310,22 @@ async function copyOnlineResume() {
         style="width: 35%"
       >
         <template #default="{ item }">
-          <div style="display: flex;">
-            <span v-if="item.vip != null" style="align-items: center;display: inline-flex;margin-right: 6px;" v-html="llmIcon.vip" />
+          <div style="display: flex">
+            <span
+              v-if="item.vip != null"
+              style="align-items: center; display: inline-flex; margin-right: 6px"
+              v-html="llmIcon.vip"
+            />
             <span>{{ item.name }}</span>
           </div>
         </template>
         <template #label="{ label, value }">
-          <div style="display: flex;">
-            <span v-if="value.startsWith('vip-')" style="align-items: center;display: inline-flex;margin-right: 6px;" v-html="llmIcon.vip" />
+          <div style="display: flex">
+            <span
+              v-if="value.startsWith('vip-')"
+              style="align-items: center; display: inline-flex; margin-right: 6px"
+              v-html="llmIcon.vip"
+            />
             <span>{{ label }}</span>
           </div>
         </template>
@@ -330,18 +337,16 @@ async function copyOnlineResume() {
         会员模型暂时不支持输出 思考过程, 比如deepseekR1，但是不影响模型能力
       </Alert>
       使用
+      <ElLink type="primary" href="https://ygorko.github.io/mitem/" target="_blank"> mitem </ElLink>
+      来渲染模板。在多对话模式下，只有最后的消息会使用模板。
       <ElLink
         type="primary"
-        href="https://ygorko.github.io/mitem/"
+        href="https://github.com/Ocyss/boos-helper/blob/master/src/types/bossData.d.ts"
         target="_blank"
       >
-        mitem
-      </ElLink>
-      来渲染模板。在多对话模式下，只有最后的消息会使用模板。
-      <ElLink type="primary" href="https://github.com/Ocyss/boos-helper/blob/master/src/types/bossData.d.ts" target="_blank">
         变量表
       </ElLink>
-      <br>
+      <br />
       推荐阅读
       <ElLink
         type="primary"
@@ -353,13 +358,13 @@ async function copyOnlineResume() {
       的提示词文档学习 ( 示例提示词写的并不好,欢迎AI大佬来提pr )
     </ElText>
     <ElText v-else style="margin: 20px 0" tag="div">
-      !(暂时不开放了，已有key用户不受影响)! 仅需输入自然语言作为额外要求，其余Prompt将由后台全自动生成. 比如:
-      <br>
-      <template v-if="data === 'aiGreeting'">
-        使用“你好”作为开头, 稍微幽默风趣一些
-      </template>
+      !(暂时不开放了，已有key用户不受影响)!
+      仅需输入自然语言作为额外要求，其余Prompt将由后台全自动生成. 比如:
+      <br />
+      <template v-if="data === 'aiGreeting'"> 使用“你好”作为开头, 稍微幽默风趣一些 </template>
       <template v-else-if="data === 'aiFiltering'">
-        我喜好AI相关的岗位, 喜欢 Go，Rust，Python，TypeScript语言，不喜欢Java，C++，PHp，Nodejs,Javascript
+        我喜好AI相关的岗位, 喜欢
+        Go，Rust，Python，TypeScript语言，不喜欢Java，C++，PHp，Nodejs,Javascript
       </template>
     </ElText>
     <ElInput
@@ -369,58 +374,24 @@ async function copyOnlineResume() {
       :autosize="{ minRows: 10, maxRows: 18 }"
       type="textarea"
     />
-    <ElForm
-      v-else
-      v-model="message as string"
-      label-width="auto"
-      class="demo-dynamic"
-    >
+    <ElForm v-else v-model="message as string" label-width="auto" class="demo-dynamic">
       <ElFormItem v-for="(item, index) in (message as prompt)" :key="index">
         <template #label>
-          <ElSelectV2
-            v-model="item.role"
-            :options="role"
-            style="width: 140px"
-          />
+          <ElSelectV2 v-model="item.role" :options="role" style="width: 140px" />
         </template>
-        <div
-          class="select-form-box"
-          style="width: 100%; align-items: flex-start"
-        >
-          <ElInput
-            v-model="item.content"
-            type="textarea"
-            :autosize="{ minRows: 2, maxRows: 8 }"
-          />
-          <ElButton
-            style="margin-left: 10px"
-            @click.prevent="removeMessage(item)"
-          >
-            删除
-          </ElButton>
+        <div class="select-form-box" style="width: 100%; align-items: flex-start">
+          <ElInput v-model="item.content" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" />
+          <ElButton style="margin-left: 10px" @click.prevent="removeMessage(item)"> 删除 </ElButton>
         </div>
       </ElFormItem>
       <ElFormItem>
-        <ElButton @click="addMessage">
-          添加消息
-        </ElButton>
+        <ElButton @click="addMessage"> 添加消息 </ElButton>
       </ElFormItem>
     </ElForm>
     <template #footer>
-      <ElButton @click="show = false">
-        关闭
-      </ElButton>
-      <ElButton type="info" @click="test">
-        测试
-      </ElButton>
-      <ElButton
-        type="primary"
-        @click="
-          savePrompt
-        "
-      >
-        保存
-      </ElButton>
+      <ElButton @click="show = false"> 关闭 </ElButton>
+      <ElButton type="info" @click="test"> 测试 </ElButton>
+      <ElButton type="primary" @click="savePrompt"> 保存 </ElButton>
     </template>
   </ElDialog>
   <ElDialog
@@ -436,29 +407,38 @@ async function copyOnlineResume() {
     :modal="false"
   >
     <ElSpace direction="horizontal" size="large">
-      <ElButton :loading="testJobLoading" @click="addTestJob(1)">
-        添加1个
-      </ElButton>
-      <ElButton :loading="testJobLoading" @click="addTestJob(4)">
-        添加4个
-      </ElButton>
+      <ElButton :loading="testJobLoading" @click="addTestJob(1)"> 添加1个 </ElButton>
+      <ElButton :loading="testJobLoading" @click="addTestJob(4)"> 添加4个 </ElButton>
       <ElButton type="primary" @click="testJob">
         {{ testJobStop ? '测试' : '停止' }}
       </ElButton>
     </ElSpace>
     <ElTable :data="testData" style="width: 100%">
-      <ElTableColumn type="expand" row-key="key" :expand-row-keys="expandTestRowKeys" @expand-change="handleExpandChange">
+      <ElTableColumn
+        type="expand"
+        row-key="key"
+        :expand-row-keys="expandTestRowKeys"
+        @expand-change="handleExpandChange"
+      >
         <template #default="scope">
           <div class="test-content-wrapper">
             <div class="test-content-list">
-              <div v-for="item in testDataContent[scope.row.key].slice(-3)" :key="item.time" class="test-content-item">
+              <div
+                v-for="item in testDataContent[scope.row.key].slice(-3)"
+                :key="item.time"
+                class="test-content-item"
+              >
                 <div class="test-content-time">
                   {{ item.time }}
                 </div>
                 <div v-if="item.prompt" class="test-content-prompt" :title="item.prompt">
                   {{ item.prompt }}
                 </div>
-                <div v-if="item.reasoning_content" class="test-content-reasoning-content" :title="item.reasoning_content">
+                <div
+                  v-if="item.reasoning_content"
+                  class="test-content-reasoning-content"
+                  :title="item.reasoning_content"
+                >
                   {{ item.reasoning_content }}
                 </div>
                 <div class="test-content-content" :title="item.content">
@@ -473,11 +453,55 @@ async function copyOnlineResume() {
         <template #default="scope">
           <ElPopover effect="light" trigger="hover" placement="top" popper-style="padding: 0;">
             <template #default>
-              <JobCard :job="scope.row.job" :hover="false" style="width: 300px;" />
+              <JobCard :job="scope.row.job" :hover="false" style="width: 300px" />
             </template>
             <template #reference>
-              <div style="display: flex;align-items: center;">
-                <svg v-if="scope.row.loading" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><!-- Icon from All by undefined - undefined --><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path stroke-dasharray="16" stroke-dashoffset="16" d="M12 3c4.97 0 9 4.03 9 9"><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.3s" values="16;0" /><animateTransform attributeName="transform" dur="1.5s" repeatCount="indefinite" type="rotate" values="0 12 12;360 12 12" /></path><path stroke-dasharray="64" stroke-dashoffset="64" stroke-opacity=".3" d="M12 3c4.97 0 9 4.03 9 9c0 4.97 -4.03 9 -9 9c-4.97 0 -9 -4.03 -9 -9c0 -4.97 4.03 -9 9 -9Z"><animate fill="freeze" attributeName="stroke-dashoffset" dur="1.2s" values="64;0" /></path></g></svg>
+              <div style="display: flex; align-items: center">
+                <svg
+                  v-if="scope.row.loading"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                >
+                  <!-- Icon from All by undefined - undefined -->
+                  <g
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  >
+                    <path stroke-dasharray="16" stroke-dashoffset="16" d="M12 3c4.97 0 9 4.03 9 9">
+                      <animate
+                        fill="freeze"
+                        attributeName="stroke-dashoffset"
+                        dur="0.3s"
+                        values="16;0"
+                      />
+                      <animateTransform
+                        attributeName="transform"
+                        dur="1.5s"
+                        repeatCount="indefinite"
+                        type="rotate"
+                        values="0 12 12;360 12 12"
+                      />
+                    </path>
+                    <path
+                      stroke-dasharray="64"
+                      stroke-dashoffset="64"
+                      stroke-opacity=".3"
+                      d="M12 3c4.97 0 9 4.03 9 9c0 4.97 -4.03 9 -9 9c-4.97 0 -9 -4.03 -9 -9c0 -4.97 4.03 -9 9 -9Z"
+                    >
+                      <animate
+                        fill="freeze"
+                        attributeName="stroke-dashoffset"
+                        dur="1.2s"
+                        values="64;0"
+                      />
+                    </path>
+                  </g>
+                </svg>
                 {{ scope.row.job.jobName }}
               </div>
             </template>
@@ -486,7 +510,10 @@ async function copyOnlineResume() {
       </ElTableColumn>
       <ElTableColumn prop="job.card.postDescription" label="内容">
         <template #default="scope">
-          <div :title="scope.row.job.card.postDescription" style="width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <div
+            :title="scope.row.job.card.postDescription"
+            style="width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap"
+          >
             {{ scope.row.job.card.postDescription }}
           </div>
         </template>
@@ -494,9 +521,7 @@ async function copyOnlineResume() {
     </ElTable>
     <template #footer>
       <div>
-        <ElButton @click="testDialog = false">
-          取消
-        </ElButton>
+        <ElButton @click="testDialog = false"> 取消 </ElButton>
       </div>
     </template>
   </ElDialog>
@@ -536,7 +561,8 @@ async function copyOnlineResume() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.test-content-time,.test-content-prompt{
+.test-content-time,
+.test-content-prompt {
   width: 130px;
 }
 .test-content-reasoning-content {
@@ -559,7 +585,7 @@ async function copyOnlineResume() {
   white-space: nowrap;
 }
 
-.ehp-message-box__message{
+.ehp-message-box__message {
   width: 100%;
 }
 </style>

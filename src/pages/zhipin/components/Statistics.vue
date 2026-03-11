@@ -14,6 +14,7 @@ import {
   ElStatistic,
 } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
+
 import { useCommon } from '@/composables/useCommon'
 import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
@@ -21,6 +22,7 @@ import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
 import { delay, notification } from '@/utils'
 import { logger } from '@/utils/logger'
+
 import { useDeliver } from '../hooks/useDeliver'
 import { usePager } from '../hooks/usePager'
 
@@ -87,7 +89,12 @@ async function startBatch() {
         break
       }
       const currentFirstJobId = jobList._list.value[0]?.encryptJobId ?? ''
-      if ((location.href.includes('/web/geek/job-recommend') || location.href.includes('/web/geek/jobs')) && oldLen === jobList._list.value.length && oldFirstJobId === currentFirstJobId) {
+      if (
+        (location.href.includes('/web/geek/job-recommend') ||
+          location.href.includes('/web/geek/jobs')) &&
+        oldLen === jobList._list.value.length &&
+        oldFirstJobId === currentFirstJobId
+      ) {
         break
       }
       oldLen = jobList._list.value.length
@@ -101,12 +108,10 @@ async function startBatch() {
         break
       }
     }
-  }
-  catch (e) {
+  } catch (e) {
     logger.error('获取失败', e)
     ElMessage.error(`获取失败! - ${e}`)
-  }
-  finally {
+  } finally {
     logger.debug('日志信息', log.data)
     if (conf.formData.notification.value) {
       await notification('投递结束')
@@ -138,7 +143,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <ElAlert style="margin-bottom: 10px" title="数据并不完全准确，投递上限根据自身情况调整，过高的上限也许会适得其反" type="warning" />
+  <ElAlert
+    style="margin-bottom: 10px"
+    title="数据并不完全准确，投递上限根据自身情况调整，过高的上限也许会适得其反"
+    type="warning"
+  />
   <ElRow :gutter="20">
     <ElCol :span="5">
       <ElStatistic
@@ -151,7 +160,11 @@ onMounted(() => {
     <ElCol :span="5">
       <ElStatistic
         data-help="统计当天岗位过滤的比例,被过滤/总数"
-        :value="((statistics.todayData.total - statistics.todayData.success) / statistics.todayData.total) * deliveryLimit"
+        :value="
+          ((statistics.todayData.total - statistics.todayData.success) /
+            statistics.todayData.total) *
+          deliveryLimit
+        "
         title="过滤比例："
         suffix="%"
       />
@@ -183,7 +196,7 @@ onMounted(() => {
             trigger="click"
             @command="
               (arg) => {
-                statisticCycle = arg;
+                statisticCycle = arg
               }
             "
           >

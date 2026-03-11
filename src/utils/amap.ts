@@ -48,11 +48,13 @@ export interface AmapDistance {
   }>
 }
 
-export async function amapGeocode(address: string): Promise<AmapGeocode['geocodes'][number] | undefined> {
+export async function amapGeocode(
+  address: string,
+): Promise<AmapGeocode['geocodes'][number] | undefined> {
   const { formData } = useConf()
-  const res = await request.get({
+  const res = (await request.get({
     url: `https://restapi.amap.com/v3/geocode/geo?address=${address}&output=JSON&Key=${formData.amap.key}`,
-  }) as AmapGeocode | AmapError
+  })) as AmapGeocode | AmapError
   if (res.status !== '1' || !('geocodes' in res)) {
     throw new Error(res.info)
   }
@@ -61,17 +63,21 @@ export async function amapGeocode(address: string): Promise<AmapGeocode['geocode
 
 export async function amapDistance(destination: string) {
   const { formData } = useConf()
-  const res0 = await request.get({
+  const res0 = (await request.get({
     url: `https://restapi.amap.com/v3/distance?origins=${formData.amap.origins}&destination=${destination}&type=0&output=JSON&Key=${formData.amap.key}`,
-  }) as AmapDistance | AmapError
-  const res1 = await request.get({
+  })) as AmapDistance | AmapError
+  const res1 = (await request.get({
     url: `https://restapi.amap.com/v3/distance?origins=${formData.amap.origins}&destination=${destination}&type=1&output=JSON&Key=${formData.amap.key}`,
-  }) as AmapDistance | AmapError
-  const res3 = await request.get({
+  })) as AmapDistance | AmapError
+  const res3 = (await request.get({
     url: `https://restapi.amap.com/v3/distance?origins=${formData.amap.origins}&destination=${destination}&type=3&output=JSON&Key=${formData.amap.key}`,
-  }) as AmapDistance | AmapError
+  })) as AmapDistance | AmapError
 
-  const data = { straight: { ok: false, distance: 0, duration: 0 }, driving: { ok: false, distance: 0, duration: 0 }, walking: { ok: false, distance: 0, duration: 0 } }
+  const data = {
+    straight: { ok: false, distance: 0, duration: 0 },
+    driving: { ok: false, distance: 0, duration: 0 },
+    walking: { ok: false, distance: 0, duration: 0 },
+  }
 
   if (res0.status === '1' && 'results' in res0) {
     data.straight.ok = true

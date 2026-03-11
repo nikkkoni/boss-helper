@@ -27,10 +27,10 @@ declare module 'vue-virtual-scroller' {
   }
 
   interface RecycleScrollerEmitOptions extends ObjectEmitsOptions {
-    'resize': () => void
-    'visible': () => void
-    'hidden': () => void
-    'update': (
+    resize: () => void
+    visible: () => void
+    hidden: () => void
+    update: (
       startIndex: number,
       endIndex: number,
       visibleStartIndex: number,
@@ -54,7 +54,7 @@ declare module 'vue-virtual-scroller' {
   }
 
   export interface RecycleScrollerInstance {
-    getScroll(): { start: number, end: number }
+    getScroll(): { start: number; end: number }
     scrollToItem(index: number): void
     scrollToPosition(position: number): void
     scrollToBottom(): void
@@ -62,10 +62,7 @@ declare module 'vue-virtual-scroller' {
 
   export const RecycleScroller: <T>(
     props: RecycleScrollerProps<T> & PublicProps,
-    ctx?: SetupContext<
-      RecycleScrollerEmitOptions,
-      SlotsType<RecycleScrollerSlots<T>>
-    >,
+    ctx?: SetupContext<RecycleScrollerEmitOptions, SlotsType<RecycleScrollerSlots<T>>>,
     expose?: (exposed: RecycleScrollerInstance) => void,
   ) => VNode & {
     __ctx?: {
@@ -77,10 +74,7 @@ declare module 'vue-virtual-scroller' {
 
   export const DynamicScroller: <T>(
     props: DynamicScrollerProps<T> & PublicProps,
-    ctx?: SetupContext<
-      RecycleScrollerEmitOptions,
-      SlotsType<RecycleScrollerSlots<T>>
-    >,
+    ctx?: SetupContext<RecycleScrollerEmitOptions, SlotsType<RecycleScrollerSlots<T>>>,
     expose?: (exposed: RecycleScrollerInstance) => void,
   ) => VNode & {
     __ctx?: {
@@ -109,7 +103,5 @@ declare module 'vue-virtual-scroller' {
     ctx?: SetupContext<DynamicScrollerItemEmitOptions>,
   ) => VNode
 
-  export function IdState(options?: {
-    idProp?: (value: any) => unknown
-  }): ComponentOptionsMixin
+  export function IdState(options?: { idProp?: (value: any) => unknown }): ComponentOptionsMixin
 }

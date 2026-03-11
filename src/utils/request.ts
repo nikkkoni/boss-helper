@@ -1,5 +1,7 @@
 import type { events } from 'fetch-event-stream'
+
 import { counter } from '@/message'
+
 import { loader } from '.'
 
 export class RequestError extends Error {
@@ -8,13 +10,7 @@ export class RequestError extends Error {
     this.name = '请求错误'
   }
 }
-export type ResponseType
-  = | 'text'
-  | 'json'
-  | 'arraybuffer'
-  | 'blob'
-  | 'document'
-  | 'stream'
+export type ResponseType = 'text' | 'json' | 'arraybuffer' | 'blob' | 'document' | 'stream'
 
 export type OnStream = (reader: ReturnType<typeof events>) => Promise<void>
 
@@ -23,14 +19,7 @@ interface GmXhrRequest<TContext, TResponseType extends ResponseType> {
   url: string
   headers?: Record<string, string>
 
-  data?:
-    | string
-    | URLSearchParams
-    | FormData
-    | ArrayBuffer
-    | Blob
-    | DataView
-    | ReadableStream
+  data?: string | URLSearchParams | FormData | ArrayBuffer | Blob | DataView | ReadableStream
 
   /**
    * @available tampermonkey
@@ -112,7 +101,9 @@ export type RequestArgs<TContext, TResponseType extends ResponseType> = Partial<
   }
 >
 
-export async function request<TContext, TResponseType extends ResponseType = 'json'>(args: RequestArgs<TContext, TResponseType>) {
+export async function request<TContext, TResponseType extends ResponseType = 'json'>(
+  args: RequestArgs<TContext, TResponseType>,
+) {
   const {
     method = 'POST',
     url = '',
@@ -135,48 +126,51 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
     } as RequestInit
 
     if (isBackground) {
-      counter.request({ url, data: requestData, timeout, responseType }).then((res) => {
-        if (res instanceof Error) {
-          reject(res)
-        }
-        else {
-          resolve(res)
-        }
-      }).catch((e) => {
-        reject(e)
-      }).finally(() => {
-        axiosLoad()
-      })
-    }
-    else {
-      fetch(url, { ...requestData, signal }).then(async (response) => {
-        if (!response.body) {
-          reject(new RequestError('没有响应体'))
-          return
-        }
-        if (!response.ok || response.status >= 400) {
-          const errorText = await response.text()
-          reject(new RequestError(`状态码: ${response.status}: ${errorText} | ${response.statusText}`))
-          return
-        }
+      counter
+        .request({ url, data: requestData, timeout, responseType })
+        .then((res) => {
+          if (res instanceof Error) {
+            reject(res)
+          } else {
+            resolve(res)
+          }
+        })
+        .catch((e) => {
+          reject(e)
+        })
+        .finally(() => {
+          axiosLoad()
+        })
+    } else {
+      fetch(url, { ...requestData, signal })
+        .then(async (response) => {
+          if (!response.body) {
+            reject(new RequestError('没有响应体'))
+            return
+          }
+          if (!response.ok || response.status >= 400) {
+            const errorText = await response.text()
+            reject(
+              new RequestError(`状态码: ${response.status}: ${errorText} | ${response.statusText}`),
+            )
+            return
+          }
 
-        const result
-          = responseType === 'json'
-            ? await response.json()
-            : await response.text()
+          const result = responseType === 'json' ? await response.json() : await response.text()
 
-        resolve(result)
-      }).catch((e) => {
-        if (e.name === 'AbortError') {
-          reject(new RequestError('用户中止'))
-        }
-        else {
-          const msg = `${e.message}`
-          reject(new RequestError(msg))
-        }
-      }).finally(() => {
-        axiosLoad()
-      })
+          resolve(result)
+        })
+        .catch((e) => {
+          if (e.name === 'AbortError') {
+            reject(new RequestError('用户中止'))
+          } else {
+            const msg = `${e.message}`
+            reject(new RequestError(msg))
+          }
+        })
+        .finally(() => {
+          axiosLoad()
+        })
     }
   })
 }

@@ -1,7 +1,8 @@
-import { defineUnlistedScript } from '#imports'
 import axios from 'axios'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
+
+import { defineUnlistedScript } from '#imports'
 import App from '@/App.vue'
 import { getRootVue } from '@/composables/useVue'
 import { loader } from '@/utils'
@@ -34,10 +35,10 @@ async function main(router: any) {
 }
 
 async function start() {
-//   document.documentElement.classList.toggle(
-//     "dark",
-//     GM_getValue("theme-dark", false)
-//   );
+  //   document.documentElement.classList.toggle(
+  //     "dark",
+  //     GM_getValue("theme-dark", false)
+  //   );
 
   const v = await getRootVue()
   v.$router.afterHooks.push(main)

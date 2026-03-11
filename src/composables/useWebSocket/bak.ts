@@ -2,6 +2,7 @@
 // @ts-nocheck
 
 import protobuf from 'protobufjs'
+
 import chatProto from '@/assets/chat.proto'
 
 function mergeObjects(target, ...sources) {

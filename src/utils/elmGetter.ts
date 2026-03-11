@@ -14,27 +14,23 @@ const listeners = new WeakMap()
 
 const elProto = win.Element.prototype
 
-const matches
-  = elProto.matches
-    || elProto.matchesSelector
-    || elProto.webkitMatchesSelector
-    || elProto.mozMatchesSelector
-    || elProto.oMatchesSelector
-const MutationObs
-  = win.MutationObserver || win.WebkitMutationObserver || win.MozMutationObserver
+const matches =
+  elProto.matches ||
+  elProto.matchesSelector ||
+  elProto.webkitMatchesSelector ||
+  elProto.mozMatchesSelector ||
+  elProto.oMatchesSelector
+const MutationObs = win.MutationObserver || win.WebkitMutationObserver || win.MozMutationObserver
 function addObserver(target, callback) {
   const observer = new MutationObs((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === 'attributes') {
         callback(mutation.target)
-        if (observer.canceled)
-          return
+        if (observer.canceled) return
       }
       for (const node of mutation.addedNodes) {
-        if (node instanceof Element)
-          callback(node)
-        if (observer.canceled)
-          return
+        if (node instanceof Element) callback(node)
+        if (observer.canceled) return
       }
     }
   })
@@ -54,8 +50,7 @@ function addFilter(target, filter) {
   if (!listener) {
     listener = {
       filters: new Set(),
-      remove: addObserver(target, el =>
-        listener.filters.forEach(f => f(el))),
+      remove: addObserver(target, (el) => listener.filters.forEach((f) => f(el))),
     }
     listeners.set(target, listener)
   }
@@ -63,8 +58,7 @@ function addFilter(target, filter) {
 }
 function removeFilter(target, filter) {
   const listener = listeners.get(target)
-  if (!listener)
-    return
+  if (!listener) return
   listener.filters.delete(filter)
   if (!listener.filters.size) {
     listener.remove()
@@ -83,8 +77,7 @@ function query(all, selector, parent, includeParent) {
 function getOne(selector, parent, timeout) {
   return new Promise((resolve) => {
     const node = query(false, selector, parent, false)
-    if (node)
-      return resolve(node)
+    if (node) return resolve(node)
     let timer
     const filter = (el) => {
       const node = query(false, selector, el, true)
@@ -119,9 +112,7 @@ function get<E extends Element = Element>(
   const parent = (typeof args[0] !== 'number' && args.shift()) || doc
   const timeout = args[0] || 0
   if (Array.isArray(selector)) {
-    return Promise.all(
-      selector.map(s => getOne(s, parent, timeout)),
-    ) as Promise<E[]>
+    return Promise.all(selector.map((s) => getOne(s, parent, timeout))) as Promise<E[]>
   }
   return getOne(selector, parent, timeout) as Promise<E>
 }
@@ -139,14 +130,12 @@ function each(
   const refs = new WeakSet()
   for (const node of query(true, selector, parent, false)) {
     refs.add(node)
-    if (callback(node, false) === false)
-      return
+    if (callback(node, false) === false) return
   }
   const filter = (el: Element) => {
     for (const node of query(true, selector, el, true)) {
       const _el = node
-      if (refs.has(_el))
-        break
+      if (refs.has(_el)) break
       refs.add(_el)
       if (callback(node, true) === false) {
         return removeFilter(parent, filter)
@@ -163,12 +152,11 @@ async function rm(
   if (Array.isArray(selector)) {
     await Promise.all(
       selector.map((s) => {
-        get(s, ...args).then(e => e.remove())
+        get(s, ...args).then((e) => e.remove())
       }),
     )
-  }
-  else {
-    await get(selector, ...args).then(e => e.remove())
+  } else {
+    await get(selector, ...args).then((e) => e.remove())
   }
 }
 export default {

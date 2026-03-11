@@ -5,10 +5,7 @@ export function parseGptJson<T = any>(json: string): Partial<T> | null {
   if (match) {
     json = match[1]
   }
-  return parse(
-    json,
-    ALL,
-  )
+  return parse(json, ALL)
 }
 
 window.__q_parseGptJson = parseGptJson

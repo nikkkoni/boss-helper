@@ -1,5 +1,6 @@
 import { defineContentScript, injectScript } from '#imports'
 import { ProvideContentAdapter, provideContentCounter } from '@/message/contentScript'
+
 import '@/main.scss'
 import 'element-plus/theme-chalk/src/message-box.scss'
 import 'element-plus/theme-chalk/src/message.scss'

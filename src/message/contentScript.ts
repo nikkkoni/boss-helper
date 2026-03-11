@@ -1,8 +1,10 @@
-import type { StorageItemKey } from '#imports'
 import type { Adapter, Message, OnMessage, SendMessage } from 'comctx'
-import type { BackgroundCounter } from './background'
-import { browser, storage } from '#imports'
 import { defineProxy } from 'comctx'
+
+import type { StorageItemKey } from '#imports'
+import { browser, storage } from '#imports'
+
+import type { BackgroundCounter } from './background'
 
 export const [, injectBackgroundCounter] = defineProxy(() => ({}) as BackgroundCounter, {
   namespace: '__boss-helper-background__',
@@ -10,7 +12,7 @@ export const [, injectBackgroundCounter] = defineProxy(() => ({}) as BackgroundC
 
 function genKey(key: string): StorageItemKey {
   const prefixes = ['local:', 'session:', 'sync:', 'managed:'] as const
-  return prefixes.some(prefix => key.startsWith(prefix)) ? key as StorageItemKey : `sync:${key}`
+  return prefixes.some((prefix) => key.startsWith(prefix)) ? (key as StorageItemKey) : `sync:${key}`
 }
 
 export class ContentCounter implements BackgroundCounter {
@@ -81,7 +83,10 @@ interface MessageMeta {
 
 export class InjectBackgroundAdapter implements Adapter<MessageMeta> {
   sendMessage: SendMessage<MessageMeta> = async (message) => {
-    return browser.runtime.sendMessage(browser.runtime.id, { ...message, meta: { url: document.location.href } })
+    return browser.runtime.sendMessage(browser.runtime.id, {
+      ...message,
+      meta: { url: document.location.href },
+    })
   }
 
   onMessage: OnMessage<MessageMeta> = (callback) => {
@@ -93,9 +98,12 @@ export class InjectBackgroundAdapter implements Adapter<MessageMeta> {
   }
 }
 
-export const [provideContentCounter] = defineProxy(() => new ContentCounter(injectBackgroundCounter(new InjectBackgroundAdapter())), {
-  namespace: '__boss-helper-content__',
-})
+export const [provideContentCounter] = defineProxy(
+  () => new ContentCounter(injectBackgroundCounter(new InjectBackgroundAdapter())),
+  {
+    namespace: '__boss-helper-content__',
+  },
+)
 
 export class ProvideContentAdapter implements Adapter {
   sendMessage: SendMessage = (message) => {
@@ -103,7 +111,8 @@ export class ProvideContentAdapter implements Adapter {
   }
 
   onMessage: OnMessage = (callback) => {
-    const handler = (event: MessageEvent<Partial<Message<Record<string, any>>> | undefined>) => callback(event.data)
+    const handler = (event: MessageEvent<Partial<Message<Record<string, any>>> | undefined>) =>
+      callback(event.data)
     window.parent.addEventListener('message', handler)
     return () => window.parent.removeEventListener('message', handler)
   }

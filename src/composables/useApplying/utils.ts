@@ -1,16 +1,17 @@
-import type { FormDataRange } from '@/types/formData'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+
 import { GreetError, LimitError, PublishError } from '@/types/deliverError'
-import { parseGptJson } from '@/utils/parse'
+import type { FormDataRange } from '@/types/formData'
 import { logger } from '@/utils/logger'
+import { parseGptJson } from '@/utils/parse'
 
 // const { userInfo } = useStore()
 
 export const sameCompanyKey = 'local:sameCompany'
 export const sameHrKey = 'local:sameHr'
 
-export async function requestCard(params: { securityId: string, lid: string }) {
+export async function requestCard(params: { securityId: string; lid: string }) {
   return axios.get<{
     code: number
     message: string
@@ -23,7 +24,7 @@ export async function requestCard(params: { securityId: string, lid: string }) {
   })
 }
 
-export async function requestDetail(params: { securityId: string, lid: string }) {
+export async function requestDetail(params: { securityId: string; lid: string }) {
   const token = window?.Cookie.get('bst')
   if (!token) {
     ElMessage.error('没有获取到token,请刷新重试')
@@ -47,7 +48,7 @@ export async function sendPublishReq(
   data: bossZpJobItemData,
   errorMsg?: string,
   retries = 3,
-  _params={},
+  _params = {},
 ) {
   if (retries === 0) {
     throw new PublishError(errorMsg ?? '重试多次失败')
@@ -56,7 +57,7 @@ export async function sendPublishReq(
   const params = {
     securityId: data.securityId,
     jobId: data.encryptJobId,
-    ..._params
+    ..._params,
   }
   const token = window?.Cookie.get('bst')
   if (!token) {
@@ -70,41 +71,37 @@ export async function sendPublishReq(
       method: 'POST',
       headers: { Zp_token: token },
     })
-    
-    if (
-      res.data.code === 1
-    ) {
-      const content = String(res.data?.zpData?.bizData?.chatRemindDialog?.content || res.data.message || '未知错误')
-      // 命中限额弹窗 → 立刻发送确认请求
-      if (
 
-        content.includes("您今天已与120位BOSS沟通")
-      ) {
+    if (res.data.code === 1) {
+      const content = String(
+        res.data?.zpData?.bizData?.chatRemindDialog?.content || res.data.message || '未知错误',
+      )
+      // 命中限额弹窗 → 立刻发送确认请求
+      if (content.includes('您今天已与120位BOSS沟通')) {
         try {
-          const params = new URLSearchParams();
-          params.append('ba', res.data.zpData.bizData.chatRemindDialog.ba);
-          params.append('action', 'addf-limit-popup-c');
+          const params = new URLSearchParams()
+          params.append('ba', res.data.zpData.bizData.chatRemindDialog.ba)
+          params.append('action', 'addf-limit-popup-c')
           await axios({
             url: 'https://www.zhipin.com/wapi/zpCommon/actionLog/geek/chatremind.json',
             method: 'POST',
             headers: { Zp_token: token },
             data: params,
           })
-          return sendPublishReq(data, undefined, retries,{cid:1})
-        } catch(e) {
-          logger.error("尝试确认投递限制失败",e)
+          return sendPublishReq(data, undefined, retries, { cid: 1 })
+        } catch (e) {
+          logger.error('尝试确认投递限制失败', e)
           throw new PublishError(`投递限制确认失败]${content}`)
         }
-      }else if (content.includes("您今天已与150位BOSS沟通")){
+      } else if (content.includes('您今天已与150位BOSS沟通')) {
         throw new LimitError(content)
       }
       throw new PublishError(content)
-    }else if (res.data.code !== 0) {
+    } else if (res.data.code !== 0) {
       throw new PublishError(`未知错误状态:${res.data.message}`)
     }
     return res.data
-  }
-  catch (e: any) {
+  } catch (e: any) {
     if (e instanceof PublishError) {
       throw e
     }
@@ -149,8 +146,7 @@ export async function requestBossData(
       throw new GreetError(`状态错误:${res.data.message}`)
     }
     return res.data.zpData
-  }
-  catch (e: any) {
+  } catch (e: any) {
     if (e instanceof GreetError) {
       throw e
     }
@@ -158,45 +154,35 @@ export async function requestBossData(
   }
 }
 
-export function rangeMatchFormat(
-  v: FormDataRange,
-  unit: string,
-): string {
+export function rangeMatchFormat(v: FormDataRange, unit: string): string {
   return `${v[0]} - ${v[1]} ${unit} ${v[2] ? '严格' : '宽松'}`
 }
 
 // 匹配范围
-export function rangeMatch(
-  rangeStr: string,
-  form: FormDataRange,
-): boolean {
-  if (!rangeStr)
-    return false
+export function rangeMatch(rangeStr: string, form: FormDataRange): boolean {
+  if (!rangeStr) return false
   let [start, end, mode] = form // mode: true=严格(包含)，false=宽松(重叠)
   if (start > end) {
-    [start, end] = [end, start]
+    ;[start, end] = [end, start]
   }
   const re = /(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?/
   const m = String(rangeStr).match(re)
-  if (!m)
-    return false
+  if (!m) return false
 
   let inputStart = Number.parseFloat(m[1])
   let inputEnd = Number.parseFloat(m[2] != null ? m[2] : m[1])
-  if (!Number.isFinite(inputStart) || !Number.isFinite(inputEnd))
-    return false
+  if (!Number.isFinite(inputStart) || !Number.isFinite(inputEnd)) return false
 
   if (inputStart > inputEnd) {
-    [inputStart, inputEnd] = [inputEnd, inputStart]
+    ;[inputStart, inputEnd] = [inputEnd, inputStart]
   }
   // console.log({
   //     inputStart,inputEnd,start,end
   // })
   if (mode) {
     // 严格：职位范围(input) 完全覆盖 目标范围(form)
-    return (start <= inputStart) && (inputEnd <= end)
-  }
-  else {
+    return start <= inputStart && inputEnd <= end
+  } else {
     // 宽松：任意重叠（闭区间）
     return Math.max(inputStart, start) <= Math.min(inputEnd, end)
   }
@@ -212,7 +198,7 @@ export function parseFiltering(content: string) {
     positive: Item[]
   }>(content)
 
-  const hand = (acc: { score: number, reason: string }, curr: Item) => ({
+  const hand = (acc: { score: number; reason: string }, curr: Item) => ({
     score: acc.score + Math.abs(curr.score),
     reason: `${acc.reason}\n${curr.reason}/(${Math.abs(curr.score)}分)`,
   })

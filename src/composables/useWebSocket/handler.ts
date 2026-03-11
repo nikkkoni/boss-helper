@@ -1,4 +1,5 @@
 import protobuf from 'protobufjs'
+
 import chatProto from '@/assets/chat.proto?raw'
 
 // User 相关类型定义
@@ -156,7 +157,13 @@ class ChatProtobufHandler {
     return protocol
   }
 
-  createMessage(type: number, messageId: number, from: TechwolfUser, to: TechwolfUser, body: TechwolfMessageBody) {
+  createMessage(
+    type: number,
+    messageId: number,
+    from: TechwolfUser,
+    to: TechwolfUser,
+    body: TechwolfMessageBody,
+  ) {
     const message = this.build.message.create()
     message.type = type
     message.mid = messageId

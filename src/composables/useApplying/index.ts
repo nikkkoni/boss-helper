@@ -1,18 +1,22 @@
-import type { Handler, Pipeline, Step } from './type'
-import type { JobStatus } from '@/stores/jobs'
-import type { PipelineCacheItem, ProcessorType } from '@/types/pipelineCache'
 import { PipelineCacheManager } from '@/composables/usePipelineCache'
+import type { JobStatus } from '@/stores/jobs'
 import { JobAddressError, UnknownError } from '@/types/deliverError'
+import type { PipelineCacheItem, ProcessorType } from '@/types/pipelineCache'
 import { amapDistance, amapGeocode } from '@/utils/amap'
 import { logger } from '@/utils/logger'
+
 import { handles } from './handles'
+import type { Handler, Pipeline, Step } from './type'
 
 export * from './utils'
 
 // 全局缓存管理器实例
 let cacheManager: PipelineCacheManager | null = null
 
-function compilePipeline(pipeline: Pipeline, isNested = false): {
+function compilePipeline(
+  pipeline: Pipeline,
+  isNested = false,
+): {
   before: Handler[]
   after: Handler[]
 } {
@@ -39,11 +43,9 @@ function compilePipeline(pipeline: Pipeline, isNested = false): {
       const { before, after } = compilePipeline(h, true)
       result.before.push(...before)
       result.after.push(...after)
-    }
-    else if (typeof h === 'function') {
+    } else if (typeof h === 'function') {
       result.before.push(h)
-    }
-    else {
+    } else {
       h.fn && result.before.push(h.fn)
       h.after && result.after.push(h.after)
     }
@@ -51,8 +53,7 @@ function compilePipeline(pipeline: Pipeline, isNested = false): {
   if (guard) {
     if (typeof guard === 'function') {
       result.before.length > 0 && result.before.unshift(guard)
-    }
-    else {
+    } else {
       result.before.length > 0 && guard.fn && result.before.unshift(guard.fn)
       result.after.length > 0 && guard.after && result.after.unshift(guard.after)
     }
@@ -78,7 +79,7 @@ export async function createHandle(): Promise<{
       // Card卡片信息获取
       async (args) => {
         if (args.data.card == null) {
-          if (await args.data.getCard() == null) {
+          if ((await args.data.getCard()) == null) {
             throw new UnknownError('Card 信息获取失败')
           }
         }
@@ -93,13 +94,14 @@ export async function createHandle(): Promise<{
         async (args, ctx) => {
           ctx.amap ??= {}
           try {
-            ctx.amap.geocode = await amapGeocode(args.data.card?.address ?? args.data.card?.jobInfo.address ?? '') // TODO: 直接使用经纬度
+            ctx.amap.geocode = await amapGeocode(
+              args.data.card?.address ?? args.data.card?.jobInfo.address ?? '',
+            ) // TODO: 直接使用经纬度
             if (!ctx.amap.geocode?.location) {
               throw new JobAddressError('未获取到地址经纬度')
             }
             ctx.amap.distance = await amapDistance(ctx.amap.geocode.location)
-          }
-          catch (e) {
+          } catch (e) {
             logger.error('高德地图错误', e)
             throw new JobAddressError(`错误: ${e instanceof Error ? e.message : '未知'}`)
           }
@@ -135,7 +137,14 @@ export async function cachePipelineResult(
   processorType?: ProcessorType,
 ): Promise<void> {
   const cacheManager = getCacheManager()
-  await cacheManager.setCacheResult(encryptJobId, jobName, brandName, status, message, processorType)
+  await cacheManager.setCacheResult(
+    encryptJobId,
+    jobName,
+    brandName,
+    status,
+    message,
+    processorType,
+  )
 }
 
 /**

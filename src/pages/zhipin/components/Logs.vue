@@ -1,7 +1,5 @@
 <script lang="ts" setup>
-import type {
-  TableV2Instance,
-} from 'element-plus'
+import type { TableV2Instance } from 'element-plus'
 import {
   ElAutoResizer,
   ElButton,
@@ -12,8 +10,8 @@ import {
   ElTabPane,
   ElTabs,
 } from 'element-plus'
-
 import { ref } from 'vue'
+
 import JobCard from '@/components/JobCard.vue'
 import { useLog } from '@/stores/log'
 
@@ -31,13 +29,7 @@ const aiGreetActiveNames = ref('response')
 <template>
   <ElAutoResizer :disable-height="true">
     <template #default="{ width }">
-      <ElTableV2
-        ref="tableRef"
-        :columns="columns"
-        :data="filterData"
-        :height="360"
-        :width
-      />
+      <ElTableV2 ref="tableRef" :columns="columns" :data="filterData" :height="360" :width />
     </template>
   </ElAutoResizer>
   <ElDialog v-model="dialogData.show" title="日志详情" width="80%">
@@ -54,7 +46,11 @@ const aiGreetActiveNames = ref('response')
                   {{ dialogData.data.data.aiFilteringQ }}
                 </div>
               </ElCollapseItem>
-              <ElCollapseItem v-if="dialogData.data.data.aiFilteringR" title="思考过程" name="thinking">
+              <ElCollapseItem
+                v-if="dialogData.data.data.aiFilteringR"
+                title="思考过程"
+                name="thinking"
+              >
                 <div class="ai-text">
                   {{ dialogData.data.data.aiFilteringR }}
                 </div>
@@ -73,7 +69,11 @@ const aiGreetActiveNames = ref('response')
                   {{ dialogData.data.data.aiGreetingQ }}
                 </div>
               </ElCollapseItem>
-              <ElCollapseItem v-if="dialogData.data.data.aiGreetingR" title="思考过程" name="thinking">
+              <ElCollapseItem
+                v-if="dialogData.data.data.aiGreetingR"
+                title="思考过程"
+                name="thinking"
+              >
                 <div class="ai-text">
                   {{ dialogData.data.data.aiGreetingR }}
                 </div>
@@ -97,9 +97,7 @@ const aiGreetActiveNames = ref('response')
       </div>
     </div>
     <template #footer>
-      <ElButton @click="dialogData.show = false">
-        关闭
-      </ElButton>
+      <ElButton @click="dialogData.show = false"> 关闭 </ElButton>
     </template>
   </ElDialog>
 </template>
@@ -116,53 +114,53 @@ const aiGreetActiveNames = ref('response')
 }
 
 .log-detail {
-    display: flex;
-    gap: 20px;
-    min-height: 500px;
+  display: flex;
+  gap: 20px;
+  min-height: 500px;
 
-    &-left {
+  &-left {
     flex: 0 0 350px;
-    }
+  }
 
-    &-right {
+  &-right {
     flex: 1;
     overflow-y: auto;
-    }
-    }
+  }
+}
 
-    .log-section {
-    padding: 16px;
-    background: #f5f7fa;
-    border-radius: 8px;
-    margin-bottom: 16px;
+.log-section {
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  margin-bottom: 16px;
 
-    h4 {
+  h4 {
     margin: 0 0 12px;
     color: #606266;
-    }
-    }
+  }
+}
 
-    .ai-qa {
-    .ai-q {
+.ai-qa {
+  .ai-q {
     color: #606266;
     margin-bottom: 8px;
-    }
-    .ai-a {
+  }
+  .ai-a {
     color: #303133;
     white-space: pre-wrap;
-    }
-    }
+  }
+}
 
-    .ai-text {
-    white-space: pre-wrap;
-    user-select: text;
-    padding: 8px;
-    line-height: 1.5;
-    }
+.ai-text {
+  white-space: pre-wrap;
+  user-select: text;
+  padding: 8px;
+  line-height: 1.5;
+}
 
-    .ehp-collapse-item.active {
-    .ehp-collapse-item__header {
+.ehp-collapse-item.active {
+  .ehp-collapse-item__header {
     border-bottom-color: transparent;
-    }
-    }
+  }
+}
 </style>

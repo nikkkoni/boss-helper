@@ -1,9 +1,13 @@
-import type { messageReps } from './type'
 import type { Client } from '@/stores/signedKey'
-import type { components } from '@/types/openapi'
 import { signedKeyReqHandler, useSignedKey } from '@/stores/signedKey'
+import type { components } from '@/types/openapi'
 
-function transformMessageReps(res: components['schemas']['LLMResponse'], prompt: string): messageReps {
+import type { messageReps } from './type'
+
+function transformMessageReps(
+  res: components['schemas']['LLMResponse'],
+  prompt: string,
+): messageReps {
   const ans: messageReps = { prompt }
   ans.content = res.content
   ans.reasoning_content = res.reasoning_content
@@ -91,19 +95,21 @@ export class SignedKeyLLM {
     return transformMessageReps(res.data, `用户请求: \n${this.user_request}`)
   }
 
-  async message(data: {
-    test?: boolean
+  async message(
     data: {
-      data: bossZpJobItemData
-      boss?: bossZpBossData
-      card: bossZpCardData
-    }
-    amap?: string
-  }, type: 'aiGreeting' | 'aiFiltering' | 'aiReply'): Promise<messageReps> {
+      test?: boolean
+      data: {
+        data: bossZpJobItemData
+        boss?: bossZpBossData
+        card: bossZpCardData
+      }
+      amap?: string
+    },
+    type: 'aiGreeting' | 'aiFiltering' | 'aiReply',
+  ): Promise<messageReps> {
     if (type === 'aiGreeting') {
       return this.greetings(data)
-    }
-    else if (type === 'aiFiltering') {
+    } else if (type === 'aiFiltering') {
       return this.filter(data)
     }
     throw new Error('无效的类型')

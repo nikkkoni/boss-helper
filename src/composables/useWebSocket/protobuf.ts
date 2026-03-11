@@ -1,5 +1,6 @@
-import type { TechwolfChatProtocol } from './type'
 import { ElMessage } from 'element-plus'
+
+import type { TechwolfChatProtocol } from './type'
 import { AwesomeMessage } from './type'
 
 interface MessageArgs {
@@ -47,9 +48,7 @@ export class Message {
     }
 
     this.msg = AwesomeMessage.encode(data).finish().slice()
-    this.hex = [...this.msg]
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('')
+    this.hex = [...this.msg].map((b) => b.toString(16).padStart(2, '0')).join('')
   }
 
   toArrayBuffer(): ArrayBuffer {
@@ -60,8 +59,7 @@ export class Message {
     if ('GeekChatCore' in window && window.GeekChatCore != null) {
       const client = window.GeekChatCore.getInstance().getClient().client
       client.send(this)
-    }
-    else if ('ChatWebsocket' in window && window.ChatWebsocket != null) {
+    } else if ('ChatWebsocket' in window && window.ChatWebsocket != null) {
       window.ChatWebsocket.send(this)
     }
     // else if (window.EventBus != null) { // 2025-12-22 失效，疑似boss bug。暂时禁用

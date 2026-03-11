@@ -1,17 +1,11 @@
 export const errMap = new Map<string, boolean>()
 
-function createCustomError(
-  name: string,
-  state = 'warning' as 'warning' | 'danger',
-) {
+function createCustomError(name: string, state = 'warning' as 'warning' | 'danger') {
   errMap.set(name, true)
   return class CustomError extends Error {
     static message: any
     state: 'warning' | 'danger'
-    constructor(
-      message: string,
-      options?: ErrorOptions,
-    ) {
+    constructor(message: string, options?: ErrorOptions) {
       super(message, options)
       this.name = name
       this.state = state

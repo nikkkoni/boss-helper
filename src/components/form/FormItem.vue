@@ -25,7 +25,7 @@ const enable = defineModel<boolean>('enable', { required: true })
           :disabled
           @click.stop="include = !include"
         >
-          {{ include ? "包含" : "排除" }}
+          {{ include ? '包含' : '排除' }}
         </ElLink>
       </slot>
     </template>

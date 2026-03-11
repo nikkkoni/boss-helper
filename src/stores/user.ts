@@ -1,15 +1,15 @@
-import type { CookieInfo } from '@/message/background'
 import { ElMessage } from 'element-plus'
 import { computed, ref } from 'vue'
+
 import { useStatistics } from '@/composables/useStatistics'
 import { getRootVue } from '@/composables/useVue'
 import { counter } from '@/message'
+import type { CookieInfo } from '@/message/background'
 import { formDataKey, useConf } from '@/stores/conf'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
 
 export interface UserInfo {
-
   userId: number
   identity: number
   encryptUserId: string
@@ -37,7 +37,7 @@ export interface UserInfo {
 
 export const UserResumeStringOptions = {
   基本信息: false
-    ? false as const
+    ? (false as const)
     : {
         姓名: false,
         年龄: true,
@@ -63,9 +63,7 @@ const resume = ref<bossZpResumeData>()
 
 export function useUser() {
   function getUserId(): number | string | null {
-    return info.value?.userId
-      ?? window?._PAGE?.uid
-      ?? window?._PAGE?.userId
+    return info.value?.userId ?? window?._PAGE?.uid ?? window?._PAGE?.userId
   }
 
   async function initUser() {
@@ -96,8 +94,7 @@ export function useUser() {
       const res = (await counter.cookieInfo()) ?? {}
       logger.debug('账户数据', res)
       cookieDatas.value = res
-    }
-    catch (err) {
+    } catch (err) {
       logger.error('获取账户数据失败', err)
       // 仅影响账户切换, 暂时不用提醒
       // ElMessage.error(`获取账户数据失败, 可尝试刷新插件: ${err instanceof Error ? err.message : String(err)}`)
@@ -145,7 +142,7 @@ export function useUser() {
     const targetAccount = jsonClone(currentRow)
     const uid = useUser().getUserId()
     if (uid != null) {
-    // 保存当前账号状态
+      // 保存当前账号状态
       await saveUser({ uid })
     }
 
@@ -167,8 +164,7 @@ export function useUser() {
       await counter.cookieDelete(d.uid)
       delete cookieDatas.value[d.uid]
       ElMessage.success('账号删除成功')
-    }
-    catch (error) {
+    } catch (error) {
       logger.error('删除账号失败', error)
       ElMessage.error('删除账号失败，请重试')
     }
@@ -217,10 +213,10 @@ export function useUser() {
         template += `\n- 求职状态: ${genUserResumeStatus(data.applyStatus ?? 0)}`
       }
     }
-    const expectList = data.expectList?.filter(item => item?.positionType === 0)
+    const expectList = data.expectList?.filter((item) => item?.positionType === 0)
     if (options.期望职位 && expectList && expectList.length > 0) {
       template += `\n\n## 期望职位
-${expectList?.map(item => `- ${item?.positionName} ${item?.salaryDesc}`).join('\n')}`
+${expectList?.map((item) => `- ${item?.positionName} ${item?.salaryDesc}`).join('\n')}`
     }
     if (options.个人优势 && data.userDesc) {
       template += `\n\n## 个人优势
@@ -231,25 +227,35 @@ ${data.userDesc}
     }
     if (options.工作经历 && data.workExpList != null && data.workExpList.length > 0) {
       template += `\n\n## 工作经历
-${data.workExpList?.map(item => `
+${data.workExpList
+  ?.map(
+    (item) => `
 ### ${item?.companyName} (${item?.positionName}) ${item?.startDate}-${item?.endDate}
 
-相关技能: ${item?.emphasis?.map(e => `\`${e}\``).join(' ')}
-${item?.workContent
-  ? `<工作内容>
+相关技能: ${item?.emphasis?.map((e) => `\`${e}\``).join(' ')}
+${
+  item?.workContent
+    ? `<工作内容>
 ${item.workContent}
 </工作内容>`
-  : ''}
-${item?.workPerformance
-  ? `<工作业绩>
+    : ''
+}
+${
+  item?.workPerformance
+    ? `<工作业绩>
 ${item.workPerformance}
 </工作业绩>`
-  : ''}
-`).join('\n')}`
+    : ''
+}
+`,
+  )
+  .join('\n')}`
     }
     if (options.项目经历 && data.projectExpList && data.projectExpList.length > 0) {
       template += `\n\n## 项目经历
-${data.projectExpList?.map(item => `
+${data.projectExpList
+  ?.map(
+    (item) => `
 ### ${item?.name} (${item?.roleName}) ${item?.startDate}-${item?.endDate}
 <项目描述>
 ${item?.projectDesc}
@@ -257,22 +263,32 @@ ${item?.projectDesc}
 <项目业绩>
 ${item?.performance}
 </项目业绩>
-`).join('\n')}`
+`,
+  )
+  .join('\n')}`
     }
     if (options.教育经历 && data.educationExpList && data.educationExpList.length > 0) {
       template += `\n## 教育经历
-${data.educationExpList?.map(item => `- ${item?.school} ${item?.startYear}-${item?.endYear}
-    ${item?.degreeName}`).join('\n')}`
+${data.educationExpList
+  ?.map(
+    (item) => `- ${item?.school} ${item?.startYear}-${item?.endYear}
+    ${item?.degreeName}`,
+  )
+  .join('\n')}`
     }
     if (options.资格证书 && data.certificationList && data.certificationList.length > 0) {
       template += `\n## 资格证书:
-${data.certificationList?.map(item => `- ${item?.certName}`).join('\n')}
+${data.certificationList?.map((item) => `- ${item?.certName}`).join('\n')}
 `
     }
     if (options.志愿者经历 && data.volunteerExpList && data.volunteerExpList.length > 0) {
       template += `\n## 志愿者经历:
-${data.volunteerExpList?.map(item => `- ${item?.name} ${item?.serviceLength}
-    ${item?.volunteerDesc ?? item?.volunteerDescription}`).join('\n')}`
+${data.volunteerExpList
+  ?.map(
+    (item) => `- ${item?.name} ${item?.serviceLength}
+    ${item?.volunteerDesc ?? item?.volunteerDescription}`,
+  )
+  .join('\n')}`
     }
 
     template = template.replaceAll('undefined', '')
@@ -286,12 +302,15 @@ ${data.volunteerExpList?.map(item => `- ${item?.name} ${item?.serviceLength}
     }
 
     const token = window?.Cookie.get('bst')
-    const res = await fetch(`https://www.zhipin.com/wapi/zpgeek/resume/geek/preview/data.json?_=${Date.now()}`, {
-      headers: {
-        Zp_token: token,
+    const res = await fetch(
+      `https://www.zhipin.com/wapi/zpgeek/resume/geek/preview/data.json?_=${Date.now()}`,
+      {
+        headers: {
+          Zp_token: token,
+        },
       },
-    })
-    const data = await res.json() as {
+    )
+    const data = (await res.json()) as {
       code: number
       message: string
       zpData: bossZpResumeData
@@ -303,7 +322,21 @@ ${data.volunteerExpList?.map(item => `- ${item?.name} ${item?.serviceLength}
     resume.value = data.zpData
     return data.zpData
   }
-  return { info, resume, getUserResumeString, getUserResumeData, getUserId, initUser, saveUser, clearUser, changeUser, deleteUser, cookieDatas, cookieTableData, initCookie }
+  return {
+    info,
+    resume,
+    getUserResumeString,
+    getUserResumeData,
+    getUserId,
+    initUser,
+    saveUser,
+    clearUser,
+    changeUser,
+    deleteUser,
+    cookieDatas,
+    cookieTableData,
+    initCookie,
+  }
 }
 
 window.__q_useUser = useUser

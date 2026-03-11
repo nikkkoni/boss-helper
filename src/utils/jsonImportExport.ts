@@ -28,8 +28,7 @@ export async function importJson<T = any>(): Promise<T> {
             return alert('内容非合法 JSON')
           }
           resolve(jsonData)
-        }
-        catch (error: any) {
+        } catch (error: any) {
           return alert(`内容非合法 JSON, ${error.message}`)
         }
       }

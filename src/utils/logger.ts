@@ -21,7 +21,6 @@ enum LogLevel {
   INFO = 4,
   WARN = 2,
   ERROR = 1,
-
 }
 
 function getLogLevel() {
@@ -52,27 +51,30 @@ export const logger = {
     `%c${icons.info} log > `,
     `color:${Color.info}; padding-left:1.2em; line-height:1.5em;`,
   ),
-  debug: logLevel >= LogLevel.DEBUG
-    ? newConsole.log.bind(
-        newConsole,
-        `%c${icons.debug} debug > `,
-        `color:${Color.debug}; padding-left:1.2em; line-height:1.5em;`,
-      )
-    : () => {},
-  info: logLevel >= LogLevel.INFO
-    ? newConsole.info.bind(
-        newConsole,
-        `%c${icons.info} info > `,
-        `color:${Color.info}; padding-left:1.2em; line-height:1.5em;`,
-      )
-    : () => {},
-  warn: logLevel >= LogLevel.WARN
-    ? newConsole.warn.bind(
-        newConsole,
-        `%c${icons.warn} warn > `,
-        `color:${Color.warn}; padding-left:1.2em; line-height:1.5em;`,
-      )
-    : () => {},
+  debug:
+    logLevel >= LogLevel.DEBUG
+      ? newConsole.log.bind(
+          newConsole,
+          `%c${icons.debug} debug > `,
+          `color:${Color.debug}; padding-left:1.2em; line-height:1.5em;`,
+        )
+      : () => {},
+  info:
+    logLevel >= LogLevel.INFO
+      ? newConsole.info.bind(
+          newConsole,
+          `%c${icons.info} info > `,
+          `color:${Color.info}; padding-left:1.2em; line-height:1.5em;`,
+        )
+      : () => {},
+  warn:
+    logLevel >= LogLevel.WARN
+      ? newConsole.warn.bind(
+          newConsole,
+          `%c${icons.warn} warn > `,
+          `color:${Color.warn}; padding-left:1.2em; line-height:1.5em;`,
+        )
+      : () => {},
   error: newConsole.error.bind(
     newConsole,
     `%c${icons.error} error > `,

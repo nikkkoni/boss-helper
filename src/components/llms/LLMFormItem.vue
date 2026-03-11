@@ -1,8 +1,19 @@
 <script lang="ts" setup>
-import type { formElm, llmInfoVal } from '@/composables/useModel/type'
-import { ElAlert, ElFormItem, ElIcon, ElInput, ElInputNumber, ElSelectV2, ElSlider, ElSwitch, ElText, ElTooltip } from 'element-plus'
+import {
+  ElAlert,
+  ElFormItem,
+  ElIcon,
+  ElInput,
+  ElInputNumber,
+  ElSelectV2,
+  ElSlider,
+  ElSwitch,
+  ElText,
+  ElTooltip,
+} from 'element-plus'
 
 import Info from '@/components/icon/Info.vue'
+import type { formElm, llmInfoVal } from '@/composables/useModel/type'
 
 const props = defineProps<{
   value: llmInfoVal<unknown, { required: boolean }>
@@ -62,21 +73,13 @@ const { el, defaultConf } = getComponent(props.value.type)
       <ElText size="large">
         {{ value.label || label }}
       </ElText>
-      <ElTooltip
-        v-if="value.desc"
-        :content="`<span>${value.desc}</span>`"
-        raw-content
-      >
+      <ElTooltip v-if="value.desc" :content="`<span>${value.desc}</span>`" raw-content>
         <ElIcon style="margin-left: 8px">
           <Info />
         </ElIcon>
       </ElTooltip>
     </template>
-    <component
-      :is="el"
-      v-model="fromVal"
-      v-bind="{ ...defaultConf, ...value.config }"
-    />
+    <component :is="el" v-model="fromVal" v-bind="{ ...defaultConf, ...value.config }" />
   </ElFormItem>
 </template>
 

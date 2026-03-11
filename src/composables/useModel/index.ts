@@ -1,23 +1,27 @@
-import type { openaiLLMConf } from './openai'
-import type { llm, prompt } from './type'
 import { ElMessage } from 'element-plus'
 import { defineStore } from 'pinia'
 import { computed, ref, toRaw } from 'vue'
+
 import { counter } from '@/message'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
+
+import type { openaiLLMConf } from './openai'
 import { openai } from './openai'
 import { SignedKeyLLM } from './signedKey'
+import type { llm, prompt } from './type'
 
 export const confModelKey = 'conf-model'
 export const llms = [openai.info]
-export const llmIcon = llms.reduce((acc, cur) => {
-  if (cur.mode.icon != null)
-    acc[cur.mode.mode] = cur.mode.icon
-  return acc
-}, {
-  vip: `<svg t="1742123680044" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2637" width="22" height="22"><path d="M60.235294 361.411765l744.809412 425.622588A30.117647 30.117647 0 0 1 790.136471 843.294118H173.658353a60.235294 60.235294 0 0 1-59.783529-52.766118L60.235294 361.411765z" fill="#F5C164" p-id="2638" /><path d="M963.764706 361.411765l-53.63953 429.116235A60.235294 60.235294 0 0 1 850.341647 843.294118H233.893647a30.117647 30.117647 0 0 1-14.968471-56.259765L963.764706 361.411765z" fill="#F5C164" p-id="2639" /><path d="M512 240.941176l331.053176 509.289412A60.235294 60.235294 0 0 1 792.545882 843.294118H231.454118a60.235294 60.235294 0 0 1-50.507294-93.06353L512 240.941176z" fill="#FFE09E" p-id="2640" /><path d="M512 240.941176l331.053176 509.289412A60.235294 60.235294 0 0 1 792.545882 843.294118H512V240.941176z" fill="#F9CF7E" p-id="2641" /><path d="M512 210.823529m-60.235294 0a60.235294 60.235294 0 1 0 120.470588 0 60.235294 60.235294 0 1 0-120.470588 0Z" fill="#FFE19F" p-id="2642" /><path d="M963.764706 331.294118m-60.235294 0a60.235294 60.235294 0 1 0 120.470588 0 60.235294 60.235294 0 1 0-120.470588 0Z" fill="#FFE19F" p-id="2643" /><path d="M60.235294 331.294118m-60.235294 0a60.235294 60.235294 0 1 0 120.470588 0 60.235294 60.235294 0 1 0-120.470588 0Z" fill="#FFE19F" p-id="2644" /></svg>`,
-} as Record<string, string>)
+export const llmIcon = llms.reduce(
+  (acc, cur) => {
+    if (cur.mode.icon != null) acc[cur.mode.mode] = cur.mode.icon
+    return acc
+  },
+  {
+    vip: `<svg t="1742123680044" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2637" width="22" height="22"><path d="M60.235294 361.411765l744.809412 425.622588A30.117647 30.117647 0 0 1 790.136471 843.294118H173.658353a60.235294 60.235294 0 0 1-59.783529-52.766118L60.235294 361.411765z" fill="#F5C164" p-id="2638" /><path d="M963.764706 361.411765l-53.63953 429.116235A60.235294 60.235294 0 0 1 850.341647 843.294118H233.893647a30.117647 30.117647 0 0 1-14.968471-56.259765L963.764706 361.411765z" fill="#F5C164" p-id="2639" /><path d="M512 240.941176l331.053176 509.289412A60.235294 60.235294 0 0 1 792.545882 843.294118H231.454118a60.235294 60.235294 0 0 1-50.507294-93.06353L512 240.941176z" fill="#FFE09E" p-id="2640" /><path d="M512 240.941176l331.053176 509.289412A60.235294 60.235294 0 0 1 792.545882 843.294118H512V240.941176z" fill="#F9CF7E" p-id="2641" /><path d="M512 210.823529m-60.235294 0a60.235294 60.235294 0 1 0 120.470588 0 60.235294 60.235294 0 1 0-120.470588 0Z" fill="#FFE19F" p-id="2642" /><path d="M963.764706 331.294118m-60.235294 0a60.235294 60.235294 0 1 0 120.470588 0 60.235294 60.235294 0 1 0-120.470588 0Z" fill="#FFE19F" p-id="2643" /><path d="M60.235294 331.294118m-60.235294 0a60.235294 60.235294 0 1 0 120.470588 0 60.235294 60.235294 0 1 0-120.470588 0Z" fill="#FFE19F" p-id="2644" /></svg>`,
+  } as Record<string, string>,
+)
 
 export interface modelData {
   key: string
@@ -38,7 +42,7 @@ export const useModel = defineStore('model', () => {
 
   const modelData = computed({
     get() {
-      return _modelData.value.sort((a, b) => (a.vip == null && b.vip != null) ? 1 : -1)
+      return _modelData.value.sort((a, b) => (a.vip == null && b.vip != null ? 1 : -1))
     },
     set(value: modelData[]) {
       _modelData.value = value
@@ -51,14 +55,17 @@ export const useModel = defineStore('model', () => {
     modelData.value.push(...data)
   }
 
-  function getModel(model: modelData | undefined, template: string | prompt, vip = false): llm | SignedKeyLLM {
+  function getModel(
+    model: modelData | undefined,
+    template: string | prompt,
+    vip = false,
+  ): llm | SignedKeyLLM {
     if (vip) {
       if (typeof template === 'string') {
         const llm = new SignedKeyLLM(template)
         void llm.checkResume()
         return llm
-      }
-      else {
+      } else {
         throw new TypeError('VIP模型必须传入字符串')
       }
     }
@@ -73,14 +80,16 @@ export const useModel = defineStore('model', () => {
         return new openai.Gpt(model.data, template)
       }
       throw new Error('无GPT模型')
-    }
-    catch (e: any) {
+    } catch (e: any) {
       throw new Error(`GPT构建错误, ${e.message}`)
     }
   }
 
   async function save() {
-    await counter.storageSet(confModelKey, toRaw(modelData.value).filter(item => item.vip == null))
+    await counter.storageSet(
+      confModelKey,
+      toRaw(modelData.value).filter((item) => item.vip == null),
+    )
     ElMessage.success('保存成功')
   }
 

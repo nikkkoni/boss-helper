@@ -1,7 +1,10 @@
 import { counter } from '@/message'
 
 // 通知
-export async function notification(content: string, type: 'basic' | 'image' | 'list' | 'progress' = 'basic') {
+export async function notification(
+  content: string,
+  type: 'basic' | 'image' | 'list' | 'progress' = 'basic',
+) {
   return counter.notify({
     title: 'Boss直聘批量投简历',
     message: content,
@@ -30,8 +33,7 @@ export function animate({
   callId(
     requestAnimationFrame(function animate(time) {
       let timeFraction = (time - start) / duration
-      if (timeFraction > 1)
-        timeFraction = 1
+      if (timeFraction > 1) timeFraction = 1
 
       const progress = timing(timeFraction)
 
@@ -39,8 +41,7 @@ export function animate({
 
       if (timeFraction < 1) {
         callId(requestAnimationFrame(animate))
-      }
-      else if (end) {
+      } else if (end) {
         end()
       }
     }),
@@ -51,7 +52,7 @@ let delayLoadId: number | undefined
 // 延迟
 export async function delay(s: number) {
   loader({ ms: s * 1000 })
-  return new Promise(resolve => setTimeout(resolve, s * 1000))
+  return new Promise((resolve) => setTimeout(resolve, s * 1000))
 }
 
 // 加载进度条
@@ -91,8 +92,7 @@ export function loader({ ms = 10000, color = '#54f98d', onDone = () => {} }) {
       delayLoadId = undefined
     }
     const load = document.querySelector<HTMLDivElement>('#loader')
-    if (load)
-      load.style.width = '0%'
+    if (load) load.style.width = '0%'
   }
 }
 

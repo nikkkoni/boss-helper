@@ -1,9 +1,9 @@
-import type { Statistics } from '@/types/formData'
-
-import { ref } from '#imports'
 import { reactiveComputed, watchThrottled } from '@vueuse/core'
 import { defineStore } from 'pinia'
+
+import { ref } from '#imports'
 import { counter } from '@/message'
+import type { Statistics } from '@/types/formData'
 import { getCurDay } from '@/utils'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
@@ -57,12 +57,12 @@ export const useStatistics = defineStore('statistics', () => {
     { throttle: 200 },
   )
 
-  async function updateStatistics(curData=jsonClone(todayData)) {
+  async function updateStatistics(curData = jsonClone(todayData)) {
     void counter.storageGet<Statistics[]>(statisticsKey, []).then((data) => {
       statisticsData.value = data
     })
 
-    const g = (await counter.storageGet(todayKey, curData))
+    const g = await counter.storageGet(todayKey, curData)
     logger.debug('统计数据:', date, g)
     if (g.date === date) {
       deepmerge(todayData, g, { clone: false })

@@ -32,7 +32,12 @@ export async function getRootVue(): Promise<any> {
   return rootVue.value
 }
 
-export function useHookVueData<T = any>(selectors: string, key: string, data: Ref<T>, update?: (val: T) => void) {
+export function useHookVueData<T = any>(
+  selectors: string,
+  key: string,
+  data: Ref<T>,
+  update?: (val: T) => void,
+) {
   return async () => {
     const jobVue = await new Promise<any>((resolve, reject) => {
       const interval = setInterval(() => {
@@ -84,8 +89,7 @@ export function useHookVueFn(selectors: string, key: string | string[]) {
           return jobVue[k]
         }
       }
-    }
-    else {
+    } else {
       return jobVue[key]
     }
   }

@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { CookieInfo } from '@/message'
 import {
   ElAlert,
   ElAvatar,
@@ -12,9 +11,9 @@ import {
   ElTableColumn,
   ElTag,
 } from 'element-plus'
-
 import { ref } from 'vue'
 
+import type { CookieInfo } from '@/message'
 import { useUser } from '@/stores/user'
 import { logger } from '@/utils/logger'
 
@@ -40,8 +39,7 @@ async function handleCreate() {
             type: 'warning',
           },
         )
-      }
-      catch {
+      } catch {
         return
       }
     }
@@ -52,12 +50,10 @@ async function handleCreate() {
     ElMessage.success('账号已保存，正在清空Cookie并刷新页面')
     await user.clearUser()
     setTimeout(() => window.location.reload(), 1500)
-  }
-  catch (err) {
+  } catch (err) {
     logger.error('创建账号失败', err)
     ElMessage.error(`创建账号失败: ${err as string}`)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -72,29 +68,22 @@ async function handleChange() {
     const uid = user.getUserId()
     if (uid == null) {
       try {
-        await ElMessageBox.confirm(
-          '要是不登录进行切换，则当前的所有配置将丢失！',
-          '请先登录',
-          {
-            confirmButtonText: '强制切换',
-            cancelButtonText: '取消',
-            type: 'warning',
-          },
-        )
-      }
-      catch {
+        await ElMessageBox.confirm('要是不登录进行切换，则当前的所有配置将丢失！', '请先登录', {
+          confirmButtonText: '强制切换',
+          cancelButtonText: '取消',
+          type: 'warning',
+        })
+      } catch {
         return
       }
     }
     await user.changeUser(currentRow.value)
     ElMessage.success('账号切换成功，即将刷新页面')
     setTimeout(() => window.location.reload(), 1500)
-  }
-  catch (err) {
+  } catch (err) {
     logger.error('账号切换失败', err)
     ElMessage.error('账号切换失败，请重试')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -105,14 +94,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 </script>
 
 <template>
-  <ElDialog
-    v-model="show"
-    title="账户配置"
-    width="70%"
-    align-center
-    destroy-on-close
-    :z-index="20"
-  >
+  <ElDialog v-model="show" title="账户配置" width="70%" align-center destroy-on-close :z-index="20">
     <ElAlert
       title="使用该功能将会明文存储cookie信息,可能包含隐私信息"
       type="warning"
@@ -152,7 +134,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
             style="border-style: none"
             :color="scope.row.gender === 'man' ? '#9BC1FE' : '#FFBDEB'"
           >
-            {{ scope.row.gender === "man" ? "男" : "女" }}
+            {{ scope.row.gender === 'man' ? '男' : '女' }}
           </ElTag>
         </template>
       </ElTableColumn>
@@ -164,22 +146,15 @@ function handleCurrentChange(val: CookieInfo | undefined) {
             style="border-style: none"
             :type="scope.row.flag === 'student' ? 'success' : 'warning'"
           >
-            {{ scope.row.flag === "student" ? "学生" : "社畜" }}
+            {{ scope.row.flag === 'student' ? '学生' : '社畜' }}
           </ElTag>
         </template>
       </ElTableColumn>
       <ElTableColumn prop="date" label="上次登录" />
       <ElTableColumn fixed="right" label="操作">
         <template #default="scope">
-          <ElButton link type="primary" size="small" disabled>
-            导出
-          </ElButton>
-          <ElButton
-            link
-            type="primary"
-            size="small"
-            @click="() => user.deleteUser(scope.row)"
-          >
+          <ElButton link type="primary" size="small" disabled> 导出 </ElButton>
+          <ElButton link type="primary" size="small" @click="() => user.deleteUser(scope.row)">
             删除
           </ElButton>
         </template>
@@ -187,25 +162,13 @@ function handleCurrentChange(val: CookieInfo | undefined) {
     </ElTable>
     <template #footer>
       <div>
-        <ElButton @click="show = false">
-          取消
-        </ElButton>
-        <ElPopconfirm
-          title="确认后将保存数据退出账户并自动刷新"
-          @confirm="handleCreate"
-        >
+        <ElButton @click="show = false"> 取消 </ElButton>
+        <ElPopconfirm title="确认后将保存数据退出账户并自动刷新" @confirm="handleCreate">
           <template #reference>
-            <ElButton type="primary" :loading="loading">
-              新建&登出
-            </ElButton>
+            <ElButton type="primary" :loading="loading"> 新建&登出 </ElButton>
           </template>
         </ElPopconfirm>
-        <ElButton
-          type="primary"
-          :disabled="!currentRow"
-          :loading="loading"
-          @click="handleChange()"
-        >
+        <ElButton type="primary" :disabled="!currentRow" :loading="loading" @click="handleChange()">
           切换
         </ElButton>
       </div>

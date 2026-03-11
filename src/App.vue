@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { Action } from 'element-plus'
-import type { NetConf } from '@/stores/signedKey'
 import {
   ElAvatar,
   ElButton,
@@ -15,11 +14,13 @@ import {
   ElText,
 } from 'element-plus'
 import { onMounted, ref } from 'vue'
+
 import logVue from '@/components/conf/log.vue'
 import storeVue from '@/components/conf/store.vue'
 import userVue from '@/components/conf/user.vue'
 import { store } from '@/components/icon/store'
 import { counter } from '@/message'
+import type { NetConf } from '@/stores/signedKey'
 import { logger } from '@/utils/logger'
 
 const confBox = ref(false)
@@ -109,75 +110,63 @@ Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blan
 <template>
   <ElConfigProvider namespace="ehp">
     <ElDropdown trigger="click">
-      <ElAvatar
-        :size="30"
-        src="https://avatars.githubusercontent.com/u/68412205?v=4"
-      >
-        H
-      </ElAvatar>
+      <ElAvatar :size="30" src="https://avatars.githubusercontent.com/u/68412205?v=4"> H </ElAvatar>
       <template #dropdown>
         <ElDropdownMenu>
-          <ElDropdownItem disabled>
-            BossHelp配置项
-          </ElDropdownItem>
+          <ElDropdownItem disabled> BossHelp配置项 </ElDropdownItem>
           <ElDropdownItem divided disabled />
           <ElDropdownItem
             v-for="(v, k) in confs"
             :key="k"
             :disabled="v.disabled"
             @click="
-              confKey = k;
-              confBox = true;
+              confKey = k
+              confBox = true
             "
           >
             {{ v.name }}
           </ElDropdownItem>
           <ElDropdownItem disabled @click="themeChange">
-            暗黑模式（{{ dark ? "开" : "关" }}）
+            暗黑模式（{{ dark ? '开' : '关' }}）
           </ElDropdownItem>
-          <ElDropdownItem @click="storeShow = true">
-            版本信息
-          </ElDropdownItem>
+          <ElDropdownItem @click="storeShow = true"> 版本信息 </ElDropdownItem>
         </ElDropdownMenu>
       </template>
     </ElDropdown>
     <Teleport to="body">
       <component :is="confs[confKey].component" id="help-conf-box" v-model="confBox" />
     </Teleport>
-    <ElDialog
-      v-model="storeShow"
-      title="BossHelper扩展商店"
-      width="500"
-      @open="updateNetConf"
-    >
+    <ElDialog v-model="storeShow" title="BossHelper扩展商店" width="500" @open="updateNetConf">
       <div>
-        <div style="text-align: center;font-size: 14px;color: #606266;">
+        <div style="text-align: center; font-size: 14px; color: #606266">
           你的版本: {{ VITE_VERSION }}
         </div>
-        <div style="text-align: center;font-size: 14px;color: #606266;">
+        <div style="text-align: center; font-size: 14px; color: #606266">
           最新版本: {{ netConf?.version ?? '暂未获取到版本信息' }}
         </div>
-        <div style="text-align: center;font-size: 16px;color: #606266;">
-          更新内容：
-        </div>
-        <div style="text-align: center;font-size: 14px;color: #606266; white-space: pre-line;">
+        <div style="text-align: center; font-size: 16px; color: #606266">更新内容：</div>
+        <div style="text-align: center; font-size: 14px; color: #606266; white-space: pre-line">
           {{ netConf?.version_description ?? '暂未获取到更新日志' }}
         </div>
       </div>
       <ElSpace wrap>
-        <a v-for="(item, key) in store" :key="key" class="store-item-a" :href="netConf?.store?.[key]?.[1] ?? item[2]" target="_blank">
+        <a
+          v-for="(item, key) in store"
+          :key="key"
+          class="store-item-a"
+          :href="netConf?.store?.[key]?.[1] ?? item[2]"
+          target="_blank"
+        >
           <div class="store-item">
             <component :is="item[0]" />
-            <img :src="netConf?.store?.[key]?.[2] ?? item[3]" alt="store" style="height: 20px;">
+            <img :src="netConf?.store?.[key]?.[2] ?? item[3]" alt="store" style="height: 20px" />
             <ElText>{{ netConf?.store?.[key]?.[0] ?? item[1] }}</ElText>
           </div>
         </a>
       </ElSpace>
       <template #footer>
         <div class="dialog-footer">
-          <ElButton type="primary" @click="storeShow = false">
-            关闭
-          </ElButton>
+          <ElButton type="primary" @click="storeShow = false"> 关闭 </ElButton>
         </div>
       </template>
     </ElDialog>
@@ -185,12 +174,12 @@ Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blan
 </template>
 
 <style lang="scss">
-.store-item-a{
+.store-item-a {
   .store-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-direction: column;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-direction: column;
     width: 140px;
     height: 180px;
     background: aliceblue;
@@ -198,14 +187,18 @@ Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blan
     border: 1px solid #f6f6f7;
     border-radius: 12px;
     background-color: #f6f6f7;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 1px 2px rgba(0, 0, 0, .06);
-    transition: border-color .25s, background-color .25s;
-}
-&:hover{
-  .store-item{
-    background-color: #bbf8fa;
-    border-color: #2fffd9;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.04),
+      0 1px 2px rgba(0, 0, 0, 0.06);
+    transition:
+      border-color 0.25s,
+      background-color 0.25s;
   }
-}
+  &:hover {
+    .store-item {
+      background-color: #bbf8fa;
+      border-color: #2fffd9;
+    }
+  }
 }
 </style>

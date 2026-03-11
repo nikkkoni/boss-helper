@@ -1,21 +1,20 @@
 <script lang="ts" setup>
-import type { FormDataAi } from '@/types/formData'
 import { ElButton, ElSpace } from 'element-plus'
 import { ref } from 'vue'
+
 import formSwitch from '@/components/form/FormSwitch.vue'
 import configLLM from '@/components/llms/ConfigLLM.vue'
 import selectLLM from '@/components/llms/selectLLM.vue'
 import { useCommon } from '@/composables/useCommon'
 import { formInfoData, useConf } from '@/stores/conf'
+import type { FormDataAi } from '@/types/formData'
 
 const conf = useConf()
 const { deliverLock } = useCommon()
 // const useModelData = useModel()
 const aiBoxShow = ref(false)
 const aiConfBoxShow = ref(false)
-const aiBox = ref<'aiGreeting' | 'aiFiltering' | 'aiReply' | 'record'>(
-  'aiGreeting',
-)
+const aiBox = ref<'aiGreeting' | 'aiFiltering' | 'aiReply' | 'record'>('aiGreeting')
 function change(v: Partial<FormDataAi>) {
   v.enable = !v.enable
   conf.confSaving()
@@ -33,8 +32,8 @@ function change(v: Partial<FormDataAi>) {
       :data="conf.formData.aiGreeting"
       :lock="deliverLock"
       @show="
-        aiBox = 'aiGreeting';
-        aiBoxShow = true;
+        aiBox = 'aiGreeting'
+        aiBoxShow = true
       "
       @change="change"
     />
@@ -44,8 +43,8 @@ function change(v: Partial<FormDataAi>) {
       :data="conf.formData.aiFiltering"
       :lock="deliverLock"
       @show="
-        aiBox = 'aiFiltering';
-        aiBoxShow = true;
+        aiBox = 'aiFiltering'
+        aiBoxShow = true
       "
       @change="change"
     />
@@ -55,8 +54,8 @@ function change(v: Partial<FormDataAi>) {
       :data="conf.formData.aiReply"
       disabled
       @show="
-        aiBox = 'aiReply';
-        aiBoxShow = true;
+        aiBox = 'aiReply'
+        aiBoxShow = true
       "
       @change="change"
     />
@@ -71,11 +70,7 @@ function change(v: Partial<FormDataAi>) {
     /> -->
   </ElSpace>
   <div style="margin-top: 15px">
-    <ElButton
-      type="primary"
-      data-help="配置需要使用的LLM大模型"
-      @click="aiConfBoxShow = true"
-    >
+    <ElButton type="primary" data-help="配置需要使用的LLM大模型" @click="aiConfBoxShow = true">
       模型配置
     </ElButton>
   </div>

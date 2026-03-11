@@ -1,12 +1,17 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
+
 import elmGetter from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
+
 import Ui from './components/Ui.vue'
+
 import './index.scss'
 
 async function mountVue() {
-  const jobSearchWrapper = await elmGetter.get('.job-search-wrapper,.job-recommend-main,.page-jobs .page-jobs-main')
+  const jobSearchWrapper = await elmGetter.get(
+    '.job-search-wrapper,.job-recommend-main,.page-jobs .page-jobs-main',
+  )
   if (document.querySelector('#boss-helper-job')) {
     return
   }
@@ -18,7 +23,10 @@ async function mountVue() {
 
   jobSearchWrapper.setAttribute('help', '出界了哇!')
 
-  if (location.href.includes('/web/geek/job-recommend') || location.href.includes('/web/geek/jobs')) {
+  if (
+    location.href.includes('/web/geek/job-recommend') ||
+    location.href.includes('/web/geek/jobs')
+  ) {
     jobEl.style.cssText = `
       background: #fff;
       border-radius: 12px;
@@ -34,8 +42,7 @@ async function mountVue() {
     `
     jobSearchWrapper.insertBefore(jobWarpEl, jobSearchWrapper.firstElementChild)
     jobWarpEl.appendChild(jobEl)
-  }
-  else {
+  } else {
     jobSearchWrapper.insertBefore(jobEl, jobSearchWrapper.firstElementChild)
   }
   app.mount(jobEl)

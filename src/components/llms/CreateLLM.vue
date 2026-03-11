@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import type { modelData } from '@/composables/useModel'
-import type { llm } from '@/composables/useModel/type'
 import { reactiveComputed } from '@vueuse/core'
 import {
   ElButton,
@@ -13,9 +11,13 @@ import {
   ElScrollbar,
 } from 'element-plus'
 import { computed, ref } from 'vue'
+
+import type { modelData } from '@/composables/useModel'
 import { llms, useModel } from '@/composables/useModel'
+import type { llm } from '@/composables/useModel/type'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
+
 import LLMForm from './LLMForm.vue'
 
 const props = defineProps<{
@@ -45,7 +47,7 @@ const _llmsOptions = computed(() =>
 const selectLLM = ref(props.model?.data?.mode || llms[0].mode.mode)
 const formLLM = computed(() =>
   Math.max(
-    llms.findIndex(l => l.mode.mode === selectLLM.value),
+    llms.findIndex((l) => l.mode.mode === selectLLM.value),
     0,
   ),
 )
@@ -57,12 +59,10 @@ function dfs(res: r, data: r) {
     const v = data[key]
     if ('mode' in v) {
       continue
-    }
-    else if ('alert' in v) {
+    } else if ('alert' in v) {
       res[key] = {}
       dfs(res[key], v.value)
-    }
-    else {
+    } else {
       res[key] = v.value
     }
   }
@@ -138,9 +138,7 @@ interface UserInfo {
   ],
 }
 async function test() {
-  const data: modelData = JSON.parse(
-    JSON.stringify(props.model || { name: '', key: '' }),
-  )
+  const data: modelData = JSON.parse(JSON.stringify(props.model || { name: '', key: '' }))
   data.name = createName.value
   data.data = jsonClone(llmFormData) as modelData['data'] & {}
   data.data.mode = selectLLM.value
@@ -150,23 +148,24 @@ async function test() {
   testOut.value = ''
   try {
     logger.group('LLMTest')
-    const msg = await gpt.message({
-      data: {},
-      test: true,
-      onStream: (d: string) => {
-        logger.debug('TestResStream', d)
-        testOut.value += d
+    const msg = await gpt.message(
+      {
+        data: {},
+        test: true,
+        onStream: (d: string) => {
+          logger.debug('TestResStream', d)
+          testOut.value += d
+        },
       },
-    }, 'aiFiltering')
+      'aiFiltering',
+    )
     if (msg.reasoning_content) {
       testOut.value = `思考过程: ${msg.reasoning_content}\n\n${msg.content}`
-    }
-    else {
+    } else {
       testOut.value = msg.content || ''
     }
     logger.debug('TestRes', msg)
-  }
-  catch (err: any) {
+  } catch (err: any) {
     ElMessage.error(err.message)
   }
   logger.groupEnd()
@@ -193,13 +192,7 @@ function create() {
     :z-index="20"
   >
     <ElScrollbar height="60vh" style="padding: 20px">
-      <div
-        style="
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        "
-      >
+      <div style="display: flex; align-items: center; justify-content: space-between">
         <ElFormItem label="名称:" style="width: 70%">
           <ElInput v-model="createName" />
         </ElFormItem>
@@ -227,15 +220,9 @@ function create() {
     </ElScrollbar>
     <template #footer>
       <div>
-        <ElButton @click="show = false">
-          取消
-        </ElButton>
-        <ElButton type="info" @click="testShow = true">
-          测试
-        </ElButton>
-        <ElButton type="primary" @click="create">
-          保存
-        </ElButton>
+        <ElButton @click="show = false"> 取消 </ElButton>
+        <ElButton type="info" @click="testShow = true"> 测试 </ElButton>
+        <ElButton type="primary" @click="create"> 保存 </ElButton>
       </div>
     </template>
   </ElDialog>
@@ -265,27 +252,13 @@ function create() {
           </ElButton>
         </template>
       </div>
-      <ElInput
-        v-model="testIn"
-        :rows="4"
-        type="textarea"
-        placeholder="输入提示词"
-      />
-      <ElInput
-        :model-value="testOut"
-        :rows="9"
-        type="textarea"
-        placeholder="GPT响应"
-      />
+      <ElInput v-model="testIn" :rows="4" type="textarea" placeholder="输入提示词" />
+      <ElInput :model-value="testOut" :rows="9" type="textarea" placeholder="GPT响应" />
     </div>
     <template #footer>
       <div>
-        <ElButton @click="testShow = false">
-          返回
-        </ElButton>
-        <ElButton type="primary" @click="test">
-          请求
-        </ElButton>
+        <ElButton @click="testShow = false"> 返回 </ElButton>
+        <ElButton type="primary" @click="test"> 请求 </ElButton>
       </div>
     </template>
   </ElDialog>

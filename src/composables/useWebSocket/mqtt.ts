@@ -24,13 +24,9 @@ export interface UTF8Decoder {
 }
 export function encodeUTF8String(str: string, encoder: UTF8Encoder) {
   const bytes = encoder.encode(str)
-  return [bytes.length >> 8, bytes.length & 0xFF, ...bytes]
+  return [bytes.length >> 8, bytes.length & 0xff, ...bytes]
 }
-export function decodeUTF8String(
-  buffer: Uint8Array,
-  startIndex: number,
-  utf8Decoder: UTF8Decoder,
-) {
+export function decodeUTF8String(buffer: Uint8Array, startIndex: number, utf8Decoder: UTF8Decoder) {
   const bytes = decodeUint8Array(buffer, startIndex)
   if (bytes === undefined) {
     return undefined
@@ -51,7 +47,7 @@ export const mqtt = {
     const utf8 = new TextEncoder()
     const variableHeader = [...encodeUTF8String('chat', utf8)]
     if (packet.messageId != null) {
-      variableHeader.push(packet.messageId >> 8, packet.messageId & 0xFF)
+      variableHeader.push(packet.messageId >> 8, packet.messageId & 0xff)
     }
     let { payload } = packet
 
@@ -69,10 +65,7 @@ export const mqtt = {
   decode(buffer: Uint8Array, flags = 3) {
     const dup = !!(flags & 8)
     const qos = (flags & 6) >> 1
-    const { length: remainingLength, bytesUsedToEncodeLength } = decodeLength(
-      buffer,
-      1,
-    )
+    const { length: remainingLength, bytesUsedToEncodeLength } = decodeLength(buffer, 1)
     const retain = !!(flags & 1)
     const utf = new TextDecoder('utf-8')
     const topicStart = bytesUsedToEncodeLength + 1
@@ -89,8 +82,7 @@ export const mqtt = {
       const idStart = payloadStart
       try {
         id = parseMessageId(buffer, idStart)
-      }
-      catch {
+      } catch {
         logger.error(`错的id?: `, {
           payloadStart,
           topicStart,
@@ -144,10 +136,7 @@ export function parseMessageId(buffer: Uint8Array, startIndex: number): number {
   }
   return (buffer[startIndex] << 8) | buffer[startIndex + 1]
 }
-export function decodeUint8Array(
-  buffer: Uint8Array,
-  startIndex: number,
-): Uint8Array | undefined {
+export function decodeUint8Array(buffer: Uint8Array, startIndex: number): Uint8Array | undefined {
   if (startIndex >= buffer.length || startIndex + 2 > buffer.length) {
     return undefined
   }

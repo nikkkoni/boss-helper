@@ -1,16 +1,15 @@
-import type { FormData } from '@/types/formData'
 import { watchThrottled } from '@vueuse/core'
-
 import { ElMessage } from 'element-plus'
-
 import { defineStore } from 'pinia'
 import { reactive, ref, toRaw } from 'vue'
-import { counter } from '@/message'
 
+import { counter } from '@/message'
 import { useUser } from '@/stores/user'
+import type { FormData } from '@/types/formData'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { exportJson, importJson } from '@/utils/jsonImportExport'
 import { logger } from '@/utils/logger'
+
 import { defaultFormData } from './info'
 
 export * from './info'
@@ -22,17 +21,20 @@ export const useConf = defineStore('conf', () => {
   const isLoaded = ref(false)
 
   const FROM_VERSION: [string, (from: Partial<FormData>) => Partial<FormData>][] = [
-    ['20250826', (from) => {
-      if (from.salaryRange && typeof from.salaryRange.value === 'string') {
-        const [min, max] = (from.salaryRange.value as string).split('-').map(Number)
-        from.salaryRange.value = [min, max, false]
-      }
-      if (from.companySizeRange && typeof from.companySizeRange.value === 'string') {
-        const [min, max] = (from.companySizeRange.value as string).split('-').map(Number)
-        from.companySizeRange.value = [min, max, false]
-      }
-      return from
-    }],
+    [
+      '20250826',
+      (from) => {
+        if (from.salaryRange && typeof from.salaryRange.value === 'string') {
+          const [min, max] = (from.salaryRange.value as string).split('-').map(Number)
+          from.salaryRange.value = [min, max, false]
+        }
+        if (from.companySizeRange && typeof from.companySizeRange.value === 'string') {
+          const [min, max] = (from.companySizeRange.value as string).split('-').map(Number)
+          from.companySizeRange.value = [min, max, false]
+        }
+        return from
+      },
+    ],
   ]
 
   async function formDataHandler(from: Partial<FormData>) {
@@ -55,17 +57,14 @@ export const useConf = defineStore('conf', () => {
           ElMessage.success('匹配到账号配置 恢复中, 3s后刷新页面')
           setTimeout(() => window.location.reload(), 3000)
           return
-        }
-        else {
+        } else {
           ElMessage.success('登录新账号')
           from.userId = uid
         }
-      }
-      else if (uid != null && from.userId == null) {
+      } else if (uid != null && from.userId == null) {
         from.userId = uid
       }
-    }
-    catch (err) {
+    } catch (err) {
       logger.error('用户配置初始化失败', err)
       ElMessage.error(`用户配置初始化失败: ${String(err)}`)
     }
@@ -74,7 +73,7 @@ export const useConf = defineStore('conf', () => {
 
   async function init() {
     let from = await counter.storageGet<Partial<FormData>>(formDataKey, {})
-    from = await formDataHandler(from) ?? from
+    from = (await formDataHandler(from)) ?? from
     const data = deepmerge<FormData>(defaultFormData, from)
     Object.assign(formData, data)
     isLoaded.value = true
@@ -97,8 +96,7 @@ export const useConf = defineStore('conf', () => {
       setTimeout(() => {
         window.location.reload()
       }, 3000)
-    }
-    catch (error: any) {
+    } catch (error: any) {
       ElMessage.error(`保存失败: ${error.message}`)
     }
   }
@@ -111,10 +109,7 @@ export const useConf = defineStore('conf', () => {
   }
 
   async function confExport() {
-    const data = deepmerge<FormData>(
-      defaultFormData,
-      await counter.storageGet(formDataKey, {}),
-    )
+    const data = deepmerge<FormData>(defaultFormData, await counter.storageGet(formDataKey, {}))
     exportJson(data, '打招呼配置')
   }
 
@@ -122,7 +117,7 @@ export const useConf = defineStore('conf', () => {
     let jsonData = await importJson<Partial<FormData>>()
 
     jsonData.userId = undefined
-    jsonData = await formDataHandler(jsonData) ?? jsonData
+    jsonData = (await formDataHandler(jsonData)) ?? jsonData
     // await setStorage(formDataKey, jsonData)
     deepmerge(formData, jsonData, { clone: false })
     ElMessage.success('导入成功, 切记要手动保存哦')

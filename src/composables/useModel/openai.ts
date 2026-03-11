@@ -1,7 +1,8 @@
-import type { llmConf, llmInfo, messageReps, prompt } from './type'
 import type { OnStream } from '@/utils/request'
 import { request } from '@/utils/request'
+
 import { desc, other } from './common'
+import type { llmConf, llmInfo, messageReps, prompt } from './type'
 import { llm } from './type'
 
 export type openaiLLMConf = llmConf<
@@ -10,17 +11,16 @@ export type openaiLLMConf = llmConf<
     url: string
     model: string
     api_key: string
-  } & other
-  & {
-    advanced: {
-      json?: boolean
-      stream?: boolean
-      temperature?: number
-      top_p?: number
-      presence_penalty?: number
-      frequency_penalty?: number
+  } & other & {
+      advanced: {
+        json?: boolean
+        stream?: boolean
+        temperature?: number
+        top_p?: number
+        presence_penalty?: number
+        frequency_penalty?: number
+      }
     }
-  }
 >
 
 const info: llmInfo<openaiLLMConf> = {
@@ -48,12 +48,10 @@ const info: llmInfo<openaiLLMConf> = {
   model: {
     config: {
       placeholder: 'gpt-4o-mini',
-      options: ['gpt-4o-mini', 'gpt-4o', 'gpt-4', 'deepseek-chat'].map(
-        item => ({
-          label: item,
-          value: item,
-        }),
-      ),
+      options: ['gpt-4o-mini', 'gpt-4o', 'gpt-4', 'deepseek-chat'].map((item) => ({
+        label: item,
+        value: item,
+      })),
       allowCreate: true,
       filterable: true,
       defaultFirstOption: true,
@@ -138,11 +136,7 @@ class Gpt extends llm<openaiLLMConf> {
     return msg?.message?.content ?? ''
   }
 
-  async message({
-    data = {},
-    onPrompt = (_s: string) => {},
-    json = false,
-  }): Promise<messageReps> {
+  async message({ data = {}, onPrompt = (_s: string) => {}, json = false }): Promise<messageReps> {
     const prompts = this.buildPrompt(data)
     const prompt = prompts[prompts.length - 1].content
     onPrompt(prompt)
@@ -153,7 +147,7 @@ class Gpt extends llm<openaiLLMConf> {
       prompt: prompts,
       json,
       onStream: async (_reader) => {
-      // TODO: 处理 stream 输出
+        // TODO: 处理 stream 输出
       },
     })
 
@@ -166,8 +160,7 @@ class Gpt extends llm<openaiLLMConf> {
         output_tokens: res?.usage?.completion_tokens,
         total_tokens: res?.usage?.total_tokens,
       }
-    }
-    else {
+    } else {
       ans.content = stream
     }
     return ans
@@ -192,11 +185,10 @@ class Gpt extends llm<openaiLLMConf> {
         top_p: this.conf.advanced.top_p,
         presence_penalty: this.conf.advanced.presence_penalty,
         frequency_penalty: this.conf.advanced.frequency_penalty,
-        response_format:
-          this.conf.advanced.json && json ? { type: 'json_object' } : undefined,
+        response_format: this.conf.advanced.json && json ? { type: 'json_object' } : undefined,
       }),
       headers: {
-        'Authorization': `Bearer ${this.conf.api_key}`,
+        Authorization: `Bearer ${this.conf.api_key}`,
         'Content-Type': 'application/json',
       },
       timeout: this.conf.other.timeout,

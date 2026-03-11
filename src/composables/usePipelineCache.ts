@@ -1,3 +1,7 @@
+import { ElMessage } from 'element-plus'
+import { ref } from 'vue'
+
+import { counter } from '@/message'
 import type { JobStatus } from '@/stores/jobs'
 import type {
   PipelineCache,
@@ -5,9 +9,6 @@ import type {
   PipelineCacheItem,
   ProcessorType,
 } from '@/types/pipelineCache'
-import { ElMessage } from 'element-plus'
-import { ref } from 'vue'
-import { counter } from '@/message'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
 // 默认处理器配置
@@ -55,8 +56,7 @@ export class PipelineCacheManager {
       // 检查是否需要清理过期数据
       await this.cleanupIfNeeded()
       await this.evictLRUIfNeeded()
-    }
-    catch (error) {
+    } catch (error) {
       logger.error('初始化缓存失败', error)
     }
   }
@@ -79,8 +79,7 @@ export class PipelineCacheManager {
    */
   isValidCache(encryptJobId: string): boolean {
     const item = this.cache.value.data[encryptJobId]
-    if (!item)
-      return false
+    if (!item) return false
 
     // 检查是否过期
     if (Date.now() > item.expireAt) {
@@ -161,8 +160,7 @@ export class PipelineCacheManager {
 
       await this.evictLRUIfNeeded()
       await this.saveCache()
-    }
-    catch (error) {
+    } catch (error) {
       logger.error('保存缓存结果失败', error)
     }
   }
@@ -174,8 +172,7 @@ export class PipelineCacheManager {
     try {
       const cacheData = jsonClone(this.cache.value)
       await counter.storageSet(this.config.storageKey, cacheData)
-    }
-    catch (error) {
+    } catch (error) {
       logger.error('保存缓存到存储失败', error)
     }
   }

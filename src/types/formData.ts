@@ -48,7 +48,7 @@ export interface FormData {
     walkingDuration: number
     enable: boolean
   }
-  record: { model?: string[], enable: boolean }
+  record: { model?: string[]; enable: boolean }
   // animation?: "frame" | "card" | "together";
   delay: ConfDelay
   version: string
@@ -56,26 +56,29 @@ export interface FormData {
 }
 
 export type FormInfoData = {
-  [key in keyof Omit<FormData, 'aiGreeting' | 'aiFiltering' | 'delay' | 'userId' | 'version' | 'amap'>]: {
-    'label': string
+  [key in keyof Omit<
+    FormData,
+    'aiGreeting' | 'aiFiltering' | 'delay' | 'userId' | 'version' | 'amap'
+  >]: {
+    label: string
     'data-help'?: string
-  };
+  }
 } & {
   aiGreeting: FormInfoAi
   aiFiltering: FormInfoAi
   delay: ConfInfoDelay
   amap: {
     [key in keyof FormData['amap']]: {
-      'label': string
+      label: string
       'data-help'?: string
     }
   }
 }
 
 export interface FormInfoAi {
-  'label': string
+  label: string
   'data-help'?: string
-  'example': [string, prompt]
+  example: [string, prompt]
 }
 
 export interface FormDataSelect {
@@ -132,8 +135,8 @@ interface ConfDelay {
 
 type ConfInfoDelay = {
   [Key in keyof ConfDelay]: {
-    'label': string
+    label: string
     'data-help'?: string
-    'disable'?: boolean
-  };
+    disable?: boolean
+  }
 }

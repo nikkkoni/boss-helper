@@ -12,8 +12,8 @@ import {
   ElText,
   ElTooltip,
 } from 'element-plus'
-
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+
 import { useModel } from '@/composables/useModel'
 import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
@@ -22,9 +22,9 @@ import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
 import elmGetter from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
+
 import { useDeliver } from '../hooks/useDeliver'
 import { usePager } from '../hooks/usePager'
-
 import About from './About.vue'
 import Appearance from './Appearance.vue'
 import Card from './Card.vue'
@@ -84,8 +84,7 @@ const boxStyles = computed(() => {
 })
 
 function findHelp(dom: HTMLElement | null) {
-  if (!dom)
-    return
+  if (!dom) return
   const help = dom.dataset.help
   if (help) {
     helpContent.value = help
@@ -102,42 +101,38 @@ onMounted(async () => {
   void signedKey.initSignedKey()
   try {
     await jobList.initJobList(conf.formData)
-  }
-  catch (e) {
+  } catch (e) {
     logger.error('初始化职位列表失败', { error: e })
     ElMessage.error(`列表初始失败: ${e instanceof Error ? e.message : '未知错误'}`)
   }
 
   if (location.href.includes('/web/geek/job-recommend')) {
-    elmGetter
-      .get<HTMLDivElement>(
-        '.job-recommend-search',
-      )
-      .then((searchEl) => {
-        searchEl.style.position = 'unset'
-        searchRef.value.$el.appendChild(searchEl)
-      })
-  }
-  else if (location.href.includes('/web/geek/jobs')) {
+    elmGetter.get<HTMLDivElement>('.job-recommend-search').then((searchEl) => {
+      searchEl.style.position = 'unset'
+      searchRef.value.$el.appendChild(searchEl)
+    })
+  } else if (location.href.includes('/web/geek/jobs')) {
     const div = document.createElement('div')
     div.style.cssText = 'display: flex;flex-direction: column;gap: 15px;'
     searchRef.value.$el.appendChild(div)
     elmGetter
-      .get<HTMLDivElement>(
-        ['.page-jobs-main .expect-and-search', '.page-jobs-main .filter-condition'],
-      )
+      .get<HTMLDivElement>([
+        '.page-jobs-main .expect-and-search',
+        '.page-jobs-main .filter-condition',
+      ])
       .then(([searchEl, conditionEl]) => {
         searchEl.style.position = 'static'
         conditionEl.style.position = 'static'
         div.appendChild(conditionEl)
-        elmGetter.get(['.c-search-input', '.c-expect-select'], searchEl).then(([searchInputEl, expectSelectEl]) => {
-          div.insertBefore(searchInputEl, conditionEl)
-          div.insertBefore(expectSelectEl, conditionEl)
-          searchEl.style.display = 'none'
-        })
+        elmGetter
+          .get(['.c-search-input', '.c-expect-select'], searchEl)
+          .then(([searchInputEl, expectSelectEl]) => {
+            div.insertBefore(searchInputEl, conditionEl)
+            div.insertBefore(expectSelectEl, conditionEl)
+            searchEl.style.display = 'none'
+          })
       })
-  }
-  else {
+  } else {
     elmGetter
       .get([
         '.job-search-wrapper .job-search-box.clearfix',
@@ -156,9 +151,12 @@ onMounted(async () => {
     ElMessage.error(`分页器初始失败: ${e instanceof Error ? e.message : '未知错误'}`)
   })
 
-  const t = setInterval(() => {
-    void signedKey.refreshSignedKeyInfo()
-  }, 1000 * 60 * 20)
+  const t = setInterval(
+    () => {
+      void signedKey.refreshSignedKeyInfo()
+    },
+    1000 * 60 * 20,
+  )
   onUnmounted(() => {
     clearInterval(t)
   })
@@ -188,11 +186,9 @@ function openStore() {
         style="cursor: pointer; display: inline-flex; margin: 0 4px"
         @click="openStore"
       >
-        <ElTag type="primary">
-          v{{ VITE_VERSION }} {{ isDot ? ' 有更新' : '' }}
-        </ElTag>
+        <ElTag type="primary"> v{{ VITE_VERSION }} {{ isDot ? ' 有更新' : '' }} </ElTag>
       </ElBadge>
-      <ElText v-if="todayData.total > 0" style="margin-right: 15px;">
+      <ElText v-if="todayData.total > 0" style="margin-right: 15px">
         今日投递: {{ todayData.success }}/{{ conf.formData.deliveryLimit.value }}
       </ElText>
       <ElText v-if="deliver.total > 0">
@@ -200,22 +196,15 @@ function openStore() {
       </ElText>
     </h2>
     <div
-      style="
-      z-index: 999;
-      position: fixed;
-      pointer-events: none;
-      border-width: 1px;
-    "
+      style="z-index: 999; position: fixed; pointer-events: none; border-width: 1px"
       :style="boxStyles"
     />
     <div v-if="signedKey.netConf && signedKey.netConf.notification" class="netAlerts">
       <template
-        v-for="item in signedKey.netConf.notification.filter(
-          (item) => item.type === 'alert',
-        )"
+        v-for="item in signedKey.netConf.notification.filter((item) => item.type === 'alert')"
         :key="item.key ?? item.data.title"
       >
-      <!-- <ElAlert
+        <!-- <ElAlert
         v-if="now > GM_getValue(`netConf-${item.key}`, 0)"
         v-bind="item.data"
         @close="GM_setValue(`netConf-${item.key}`, now + 259200000)"
@@ -233,10 +222,7 @@ function openStore() {
       <ElTabPane label="统计" data-help="失败是成功她妈">
         <Statistics />
       </ElTabPane>
-      <ElTabPane
-        ref="searchRef"
-        label="筛选"
-      />
+      <ElTabPane ref="searchRef" label="筛选" />
       <ElTabPane label="配置" Alertdata-help="好好看，好好学">
         <Config />
       </ElTabPane>
@@ -269,19 +255,14 @@ function openStore() {
       </ElTabPane>
       <ElTabPane>
         <template #label>
-          <ElCheckbox
-            v-model="helpVisible"
-            label="帮助"
-            size="large"
-            @click.stop=""
-          />
+          <ElCheckbox v-model="helpVisible" label="帮助" size="large" @click.stop="" />
         </template>
       </ElTabPane>
     </ElTabs>
     <Teleport to="#boss-helper-job-warp,.page-job-inner .page-job-content">
       <Card />
     </Teleport>
-  <!-- <Teleport to=".page-job-wrapper">
+    <!-- <Teleport to=".page-job-wrapper">
     <chatVue
       style="
         position: fixed;

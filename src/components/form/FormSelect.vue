@@ -15,12 +15,7 @@ const options = defineModel<string[]>('options', { required: true })
     :reserve-keyword="false"
     placeholder=""
   >
-    <ElOption
-      v-for="item in options"
-      :key="item"
-      :label="item"
-      :value="item"
-    />
+    <ElOption v-for="item in options" :key="item" :label="item" :value="item" />
   </ElSelect>
 </template>
 

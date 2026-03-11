@@ -1,4 +1,4 @@
-@use "element-plus/theme-chalk/src/index.scss" as *;
+@use 'element-plus/theme-chalk/src/index.scss' as *;
 
 #wrap {
   min-width: unset !important;
@@ -261,15 +261,16 @@ html.dark {
     flex-wrap: wrap;
     gap: 10px;
   }
-  .page-jobs-main.is-scroll .filter-condition{
+  .page-jobs-main.is-scroll .filter-condition {
     background: transparent !important;
   }
-  .c-search-input, .c-expect-select{
+  .c-search-input,
+  .c-expect-select {
     width: 100% !important;
     z-index: 1000 !important;
     overflow: visible !important;
   }
-  .c-expect-select .expect-list{
+  .c-expect-select .expect-list {
     max-width: unset !important;
     .expect-item {
       flex: unset !important;

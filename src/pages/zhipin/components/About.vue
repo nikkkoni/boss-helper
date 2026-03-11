@@ -8,43 +8,34 @@ import { ElImage, ElLink, ElSpace } from 'element-plus'
       <div class="hp-about" data-help="谢谢你的关心">
         <div data-help="愿为理想执着行，前路漫漫自铸金。">
           作者:&#12288;
-          <ElLink href="https://github.com/Ocyss" target="_blank">
-            Ocyss_04
-          </ElLink>
+          <ElLink href="https://github.com/Ocyss" target="_blank"> Ocyss_04 </ElLink>
         </div>
         <div data-help="感谢每一个人的付出">
           <div>
             鸣谢:&#12288;
-            <ElLink href="https://github.com/yangfeng20" target="_blank">
-              yangfeng20
-            </ElLink>
+            <ElLink href="https://github.com/yangfeng20" target="_blank"> yangfeng20 </ElLink>
           </div>
           <div>
             感谢贡献:&#12288;
-            <ElLink href="https://github.com/engvuchen" target="_blank">
-              engvuchen
-            </ElLink>
+            <ElLink href="https://github.com/engvuchen" target="_blank"> engvuchen </ElLink>
           </div>
         </div>
       </div>
     </div>
     <div data-help="记得来个Star或者好评吧" style="margin-top: 10px">
       该脚本分为浏览器扩展和油猴脚本，两版本皆已开源
-      <br>
+      <br />
       Github地址:
       <ElLink href="https://github.com/ocyss/boos-helper" target="_blank">
         https://github.com/ocyss/boos-helper
       </ElLink>
-      <br>
+      <br />
       greasyfork地址:
-      <ElLink
-        href="https://greasyfork.org/zh-CN/scripts/491340"
-        target="_blank"
-      >
+      <ElLink href="https://greasyfork.org/zh-CN/scripts/491340" target="_blank">
         https://greasyfork.org/zh-CN/scripts/491340
       </ElLink>
-      <br>
-      <br>
+      <br />
+      <br />
       <ElSpace wrap>
         <ElLink
           href="https://gai06vrtbc0.feishu.cn/share/base/form/shrcnmEq2fxH9hM44hqEnoeaj8g"
@@ -68,12 +59,9 @@ import { ElImage, ElLink, ElSpace } from 'element-plus'
         </ElLink> -->
       </ElSpace>
     </div>
-    <div
-      data-help=" "
-      style="width: 60%; margin-top: 20px; user-select: text; color: #fff"
-    >
+    <div data-help=" " style="width: 60%; margin-top: 20px; user-select: text; color: #fff">
       除非不可抗因素，一般情况下不会停更，这个项目不止是帮助你们，也能帮到我
-      <br>
+      <br />
     </div>
   </div>
   <ElImage
@@ -81,9 +69,7 @@ import { ElImage, ElLink, ElSpace } from 'element-plus'
     style="width: 200px; height: 200px"
     src="https://qiu-config.oss-cn-beijing.aliyuncs.com/reward.png"
     fit="cover"
-    :preview-src-list="[
-      'https://qiu-config.oss-cn-beijing.aliyuncs.com/reward.png',
-    ]"
+    :preview-src-list="['https://qiu-config.oss-cn-beijing.aliyuncs.com/reward.png']"
     loading="lazy"
   />
 </template>

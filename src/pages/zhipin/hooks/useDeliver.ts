@@ -1,14 +1,14 @@
-import type { MyJobListData } from '@/stores/jobs'
-import type { logData, logErr } from '@/stores/log'
 import { ElMessage } from 'element-plus'
 import { defineStore } from 'pinia'
-
 import { ref } from 'vue'
+
 import { cachePipelineResult, createHandle, sendPublishReq } from '@/composables/useApplying'
 import { useCommon } from '@/composables/useCommon'
 import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
+import type { MyJobListData } from '@/stores/jobs'
 import { jobList } from '@/stores/jobs'
+import type { logData, logErr } from '@/stores/log'
 import { useLog } from '@/stores/log'
 import { errMap, LimitError, UnknownError } from '@/types/deliverError'
 import { delay, getCurDay, notification } from '@/utils'
@@ -46,8 +46,7 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
         log.info('暂停投递', `剩余 ${jobList._list.value.length - index} 个未处理`)
         return
       }
-      if (data.status.status !== 'wait')
-        continue
+      if (data.status.status !== 'wait') continue
 
       try {
         data.status.setStatus('running', '处理中')
@@ -68,13 +67,13 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
           ctx.state = '成功'
           if (statistics.todayData.success >= conf.formData.deliveryLimit.value) {
             const msg = `投递到达上限 ${conf.formData.deliveryLimit.value}，已暂停投递`
-            conf.formData.notification.value && await notification(msg)
+            conf.formData.notification.value && (await notification(msg))
             ElMessage.info(msg)
             common.deliverStop = true
             return
           }
           const date = getCurDay()
-          if (statistics.todayData.date !== date){
+          if (statistics.todayData.date !== date) {
             await statistics.updateStatistics({
               date,
               success: 0,
@@ -92,35 +91,35 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
               amap: 0,
             })
           }
-        }
-        catch (e: any) {
+        } catch (e: any) {
           if (!errMap.has(e?.name as string)) {
-          // eslint-disable-next-line no-ex-assign
+            // eslint-disable-next-line no-ex-assign
             e = new UnknownError(`预期外:${e.message}`, { cause: e })
-          } 
-          data.status.setStatus(e.state === 'warning' ? 'warn' : 'error', e.name as string ?? '没有消息')
+          }
+          data.status.setStatus(
+            e.state === 'warning' ? 'warn' : 'error',
+            (e.name as string) ?? '没有消息',
+          )
           log.add(data, e as logErr, ctx)
           logger.warn('投递过滤', ctx)
           ctx.state = '过滤'
           ctx.err = e.message ?? ''
-          if(e instanceof LimitError){
+          if (e instanceof LimitError) {
             const msg = `投递到达boss上限 ${e.message}，已暂停投递`
-            conf.formData.notification.value && await notification(msg)
+            conf.formData.notification.value && (await notification(msg))
             ElMessage.info()
             common.deliverStop = true
             return
           }
         }
-      }
-      catch (e) {
+      } catch (e) {
         data.status.setStatus('error', '未知报错')
         logger.error('未知报错', e, data)
         if (conf.formData.notification.value) {
           await notification('未知报错')
         }
         ElMessage.error('未知报错')
-      }
-      finally {
+      } finally {
         // 缓存Pipeline处理结果
         try {
           await cachePipelineResult(
@@ -130,8 +129,7 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
             data.status.status,
             data.status.msg || '处理完成',
           )
-        }
-        catch (cacheError) {
+        } catch (cacheError) {
           logger.warn('缓存Pipeline结果失败', cacheError)
         }
 

@@ -1,15 +1,16 @@
-import type { Middleware } from 'openapi-fetch'
-import type { modelData } from '@/composables/useModel'
-import type { components, paths } from '@/types/openapi'
-import { ref, toRaw } from '#imports'
 import { watchThrottled } from '@vueuse/core'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
+import type { Middleware } from 'openapi-fetch'
 import createClient from 'openapi-fetch'
 import { defineStore } from 'pinia'
 import { watch } from 'vue'
+
+import { ref, toRaw } from '#imports'
+import type { modelData } from '@/composables/useModel'
 import { useModel } from '@/composables/useModel'
 import { counter } from '@/message'
 import { useUser } from '@/stores/user'
+import type { components, paths } from '@/types/openapi'
 import { logger } from '@/utils/logger'
 
 type SignedKeyInfo = components['schemas']['KeyInfo']
@@ -17,11 +18,7 @@ type SignedKeyInfo = components['schemas']['KeyInfo']
 export interface NetConf {
   version: string
   version_description?: string
-  notification: (
-    | NotificationAlert
-    | NotificationMessage
-    | NotificationNotification
-  )[]
+  notification: (NotificationAlert | NotificationMessage | NotificationNotification)[]
   store?: Record<string, [string, string, string]>
   price_info?: {
     signedKey: number
@@ -40,7 +37,7 @@ export interface NotificationAlert {
 export interface NotificationMessage {
   key: string
   type: 'message'
-  data: { title?: string, content: string, duration?: number }
+  data: { title?: string; content: string; duration?: number }
 }
 
 export interface NotificationNotification {
@@ -70,18 +67,14 @@ export function signedKeyReqHandler(data: any, message = true): string | undefin
     let errMsg = '未知错误'
     if (error instanceof Error) {
       errMsg = error.message
-    }
-    else if (error instanceof Response) {
+    } else if (error instanceof Response) {
       errMsg = error.statusText
-    }
-    else if (typeof error === 'string') {
+    } else if (typeof error === 'string') {
       errMsg = error
-    }
-    else if (error != null && typeof error === 'object') {
+    } else if (error != null && typeof error === 'object') {
       if ('detail' in error) {
         errMsg = JSON.stringify(error.detail)
-      }
-      else if ('message' in error) {
+      } else if ('message' in error) {
         errMsg = JSON.stringify(error.message)
       }
     }
@@ -93,7 +86,10 @@ export function signedKeyReqHandler(data: any, message = true): string | undefin
 }
 
 export type Client = ReturnType<typeof createClient<paths>>
-const baseUrl = (true || import.meta.env.PROD || import.meta.env.TEST || import.meta.env.WXT_TEST) ? 'https://boss-helper.ocyss.icu' : 'http://localhost:8002'
+const baseUrl =
+  true || import.meta.env.PROD || import.meta.env.TEST || import.meta.env.WXT_TEST
+    ? 'https://boss-helper.ocyss.icu'
+    : 'http://localhost:8002'
 
 export const useSignedKey = defineStore('signedKey', () => {
   const signedKey = ref<string | null>(null)
@@ -135,21 +131,25 @@ export const useSignedKey = defineStore('signedKey', () => {
     })
   })
 
-  watchThrottled(signedKeyInfo, (v) => {
-    if (v == null) {
-      return
-    }
-    void counter.storageSet(signedKeyInfoStorageKey, toRaw(v)).catch((e) => {
-      logger.error('保存密钥信息失败', e)
-      ElMessage.error('保存密钥信息失败')
-    })
-  }, { throttle: 2000 })
+  watchThrottled(
+    signedKeyInfo,
+    (v) => {
+      if (v == null) {
+        return
+      }
+      void counter.storageSet(signedKeyInfoStorageKey, toRaw(v)).catch((e) => {
+        logger.error('保存密钥信息失败', e)
+        ElMessage.error('保存密钥信息失败')
+      })
+    },
+    { throttle: 2000 },
+  )
 
-  async function netNotification(item:
-  | NotificationAlert
-  | NotificationMessage
-  | NotificationNotification, now: number = 0) {
-    if (now !== 0 && now < await counter.storageGet(`local:netConf-${item.key}`, 0)) {
+  async function netNotification(
+    item: NotificationAlert | NotificationMessage | NotificationNotification,
+    now: number = 0,
+  ) {
+    if (now !== 0 && now < (await counter.storageGet(`local:netConf-${item.key}`, 0))) {
       return
     }
     if (netNotificationMap.has(item.key)) {
@@ -167,8 +167,7 @@ export const useSignedKey = defineStore('signedKey', () => {
           )
         },
       })
-    }
-    else if (item.type === 'notification') {
+    } else if (item.type === 'notification') {
       void ElNotification({
         ...item.data,
         duration: 0,
@@ -201,21 +200,26 @@ export const useSignedKey = defineStore('signedKey', () => {
   }
 
   async function refreshSignedKeyInfo(token?: string) {
-    void client.GET('/config')
-      .then(async ({ data }) => {
-        netConf.value = data as NetConf
-        window.__q_netConf = () => netConf.value
-        const now = new Date().getTime()
-        return Promise.all(netConf.value?.notification.map(async item => netNotification(item, now)) ?? [])
-      })
+    void client.GET('/config').then(async ({ data }) => {
+      netConf.value = data as NetConf
+      window.__q_netConf = () => netConf.value
+      const now = new Date().getTime()
+      return Promise.all(
+        netConf.value?.notification.map(async (item) => netNotification(item, now)) ?? [],
+      )
+    })
     if (token == null && (signedKey.value == null || signedKey.value === '')) {
       return false
     }
     const model = useModel()
-    void client.GET('/v1/llm/model_list')
-      .then(async ({ data }) => {
-        model.modelData = [...model.modelData, ...(data as modelData[] ?? []).filter(item => !model.modelData.some(m => m.key === item.key))]
-      })
+    void client.GET('/v1/llm/model_list').then(async ({ data }) => {
+      model.modelData = [
+        ...model.modelData,
+        ...((data as modelData[]) ?? []).filter(
+          (item) => !model.modelData.some((m) => m.key === item.key),
+        ),
+      ]
+    })
 
     const data = await getSignedKeyInfo(token)
     signedKeyInfo.value = data
@@ -234,17 +238,20 @@ export const useSignedKey = defineStore('signedKey', () => {
 
     if (await refreshSignedKeyInfo(key)) {
       const userId = user.getUserId()?.toString()
-      const matchedUser = signedKeyInfo.value?.users.find(item => item.user_id === userId)
+      const matchedUser = signedKeyInfo.value?.users.find((item) => item.user_id === userId)
       if (matchedUser == null) {
         signedKeyBak.value = key
-      }
-      else {
+      } else {
         signedKey.value = key
-        void client.GET('/v1/llm/model_list')
-          .then(async ({ data }) => {
-            const model = useModel()
-            model.modelData = [...model.modelData, ...(data as modelData[] ?? []).filter(item => !model.modelData.some(m => m.key === item.key))]
-          })
+        void client.GET('/v1/llm/model_list').then(async ({ data }) => {
+          const model = useModel()
+          model.modelData = [
+            ...model.modelData,
+            ...((data as modelData[]) ?? []).filter(
+              (item) => !model.modelData.some((m) => m.key === item.key),
+            ),
+          ]
+        })
       }
     }
   }
@@ -273,7 +280,20 @@ export const useSignedKey = defineStore('signedKey', () => {
     }
   }
 
-  return { signedKey, signedKeyBak, client, netConf, signedKeyReqHandler, initSignedKey, sdbmCode, updateResume, getSignedKeyInfo, refreshSignedKeyInfo, signedKeyInfo, netNotification }
+  return {
+    signedKey,
+    signedKeyBak,
+    client,
+    netConf,
+    signedKeyReqHandler,
+    initSignedKey,
+    sdbmCode,
+    updateResume,
+    getSignedKeyInfo,
+    refreshSignedKeyInfo,
+    signedKeyInfo,
+    netNotification,
+  }
 })
 
 window.__q_useSignedKey = useSignedKey

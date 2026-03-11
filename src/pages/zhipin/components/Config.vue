@@ -136,131 +136,246 @@ const SalaryRangeComponent = defineComponent({
 
 <template>
   <Alert
-    id="config-alert-1" style="margin-bottom: 10px" show-icon title="进行配置前都请先阅读完整的帮助文档，再进行配置，如有bug请反馈"
+    id="config-alert-1"
+    style="margin-bottom: 10px"
+    show-icon
+    title="进行配置前都请先阅读完整的帮助文档，再进行配置，如有bug请反馈"
     type="success"
     description="滚动到底部，差不多150个岗位左右，也会自动停止, 刷新或者变更期望重新获取新的岗位即可。"
   />
   <Alert id="config-alert-2" style="margin-bottom: 10px" type="success" show-icon>
     <template #title>
       使用自定义招呼语前 推荐禁用boss直聘自带招呼语
-      <ElLink href="https://www.zhipin.com/web/geek/notify-set?type=greetSet" target="_blank" type="warning">
+      <ElLink
+        href="https://www.zhipin.com/web/geek/notify-set?type=greetSet"
+        target="_blank"
+        type="warning"
+      >
         点我前往设置
       </ElLink>
     </template>
   </Alert>
   <Alert
-    id="config-alert-3" style="margin-bottom: 10px"
+    id="config-alert-3"
+    style="margin-bottom: 10px"
     type="success"
     description="所有配置选项皆有帮助提示，不懂用法请进入帮助模式进行查看，若是对帮助说明有疑问请反馈最好能给出改进意见。"
   />
-  <ElForm inline label-position="left" label-width="auto" :model="conf.formData" :disabled="deliverLock">
+  <ElForm
+    inline
+    label-position="left"
+    label-width="auto"
+    :model="conf.formData"
+    :disabled="deliverLock"
+  >
     <ElCollapse accordion>
       <ElCollapseItem title="筛选配置" name="1">
         <Alert
-          id="filter-config-alert-enable" title="复选框打钩才会启用，别忘记打钩启用哦。保存也别忘了" type="success" show-icon
-          style="margin: 10px 0;"
+          id="filter-config-alert-enable"
+          title="复选框打钩才会启用，别忘记打钩启用哦。保存也别忘了"
+          type="success"
+          show-icon
+          style="margin: 10px 0"
         />
         <Alert
-          id="filter-config-alert-mode" title="排除和包含可点击切换，混合模式适用性过低不会考虑开发" type="success" show-icon
-          style="margin: 10px 0;"
+          id="filter-config-alert-mode"
+          title="排除和包含可点击切换，混合模式适用性过低不会考虑开发"
+          type="success"
+          show-icon
+          style="margin: 10px 0"
         />
 
         <ElSpace class="config-input" wrap style="width: 100%">
           <form-item
-            v-bind="formInfoData.company" v-model:enable="conf.formData.company.enable"
-            v-model:include="conf.formData.company.include" :disabled="deliverLock"
+            v-bind="formInfoData.company"
+            v-model:enable="conf.formData.company.enable"
+            v-model:include="conf.formData.company.include"
+            :disabled="deliverLock"
           >
-            <formSelect v-model:value="conf.formData.company.value" v-model:options="conf.formData.company.options" />
+            <formSelect
+              v-model:value="conf.formData.company.value"
+              v-model:options="conf.formData.company.options"
+            />
           </form-item>
           <form-item
-            v-bind="formInfoData.jobTitle" v-model:enable="conf.formData.jobTitle.enable"
-            v-model:include="conf.formData.jobTitle.include" :disabled="deliverLock"
+            v-bind="formInfoData.jobTitle"
+            v-model:enable="conf.formData.jobTitle.enable"
+            v-model:include="conf.formData.jobTitle.include"
+            :disabled="deliverLock"
           >
-            <form-select v-model:value="conf.formData.jobTitle.value" v-model:options="conf.formData.jobTitle.options" />
+            <form-select
+              v-model:value="conf.formData.jobTitle.value"
+              v-model:options="conf.formData.jobTitle.options"
+            />
           </form-item>
           <form-item
-            v-bind="formInfoData.jobContent" v-model:enable="conf.formData.jobContent.enable"
-            v-model:include="conf.formData.jobContent.include" :disabled="deliverLock"
+            v-bind="formInfoData.jobContent"
+            v-model:enable="conf.formData.jobContent.enable"
+            v-model:include="conf.formData.jobContent.include"
+            :disabled="deliverLock"
           >
-            <form-select v-model:value="conf.formData.jobContent.value" v-model:options="conf.formData.jobContent.options" />
+            <form-select
+              v-model:value="conf.formData.jobContent.value"
+              v-model:options="conf.formData.jobContent.options"
+            />
           </form-item>
           <form-item
-            v-bind="formInfoData.hrPosition" v-model:enable="conf.formData.hrPosition.enable"
-            v-model:include="conf.formData.hrPosition.include" :disabled="deliverLock"
+            v-bind="formInfoData.hrPosition"
+            v-model:enable="conf.formData.hrPosition.enable"
+            v-model:include="conf.formData.hrPosition.include"
+            :disabled="deliverLock"
           >
-            <form-select v-model:value="conf.formData.hrPosition.value" v-model:options="conf.formData.hrPosition.options" />
+            <form-select
+              v-model:value="conf.formData.hrPosition.value"
+              v-model:options="conf.formData.hrPosition.options"
+            />
           </form-item>
           <form-item
-            v-bind="formInfoData.jobAddress" v-model:enable="conf.formData.jobAddress.enable"
+            v-bind="formInfoData.jobAddress"
+            v-model:enable="conf.formData.jobAddress.enable"
             :disabled="deliverLock"
           >
             <template #include>
-              <ElLink
-                type="primary"
-                size="small"
-              >
-                包含
-              </ElLink>
+              <ElLink type="primary" size="small"> 包含 </ElLink>
             </template>
-            <form-select v-model:value="conf.formData.jobAddress.value" v-model:options="conf.formData.jobAddress.options" />
+            <form-select
+              v-model:value="conf.formData.jobAddress.value"
+              v-model:options="conf.formData.jobAddress.options"
+            />
           </form-item>
-          <form-item v-bind="formInfoData.salaryRange" v-model:enable="conf.formData.salaryRange.enable">
-            <SalaryRangeComponent :value="conf.formData.salaryRange.value" width="80px" unit="K" :show="false" />
+          <form-item
+            v-bind="formInfoData.salaryRange"
+            v-model:enable="conf.formData.salaryRange.enable"
+          >
+            <SalaryRangeComponent
+              :value="conf.formData.salaryRange.value"
+              width="80px"
+              unit="K"
+              :show="false"
+            />
             <ElPopover placement="top" :width="400" trigger="click">
               <template #reference>
-                <ElButton style="margin-left: 5px">
-                  高级
-                </ElButton>
+                <ElButton style="margin-left: 5px"> 高级 </ElButton>
               </template>
-              <div style="display: flex;flex-direction: column;gap: 10px;">
-                <ElAlert title="宽松匹配: 薪资范围有任何重叠即匹配, 如10-20K: 15-20K, 15-21k, 20-26k 都满足, 21-22k 不满足" type="info" show-icon :closable="false" />
-                <ElAlert title="严格匹配: 目标薪资需完全在职位范围内, 如10-20K: 10-15K 和15-20K 满足, 15-21k 不满足" type="info" show-icon :closable="false" />
-                <SalaryRangeComponent :value="conf.formData.salaryRange.value" unit="K" :show="true" />
-                <ElAlert title="计算值进行同步，算法固定. 日薪: /21.75, 时薪: /21.75/8" type="info" show-icon :closable="false" />
-                <ElButton @click="syncSalaryRange">
-                  同步
-                </ElButton>
-                <SalaryRangeComponent :value="conf.formData.salaryRange.advancedValue.H" unit="元/时" :show="true" :step="5" />
-                <SalaryRangeComponent :value="conf.formData.salaryRange.advancedValue.D" unit="元/天" :show="true" :step="10" />
-                <SalaryRangeComponent :value="conf.formData.salaryRange.advancedValue.M" unit="元/月" :show="true" :step="200" />
+              <div style="display: flex; flex-direction: column; gap: 10px">
+                <ElAlert
+                  title="宽松匹配: 薪资范围有任何重叠即匹配, 如10-20K: 15-20K, 15-21k, 20-26k 都满足, 21-22k 不满足"
+                  type="info"
+                  show-icon
+                  :closable="false"
+                />
+                <ElAlert
+                  title="严格匹配: 目标薪资需完全在职位范围内, 如10-20K: 10-15K 和15-20K 满足, 15-21k 不满足"
+                  type="info"
+                  show-icon
+                  :closable="false"
+                />
+                <SalaryRangeComponent
+                  :value="conf.formData.salaryRange.value"
+                  unit="K"
+                  :show="true"
+                />
+                <ElAlert
+                  title="计算值进行同步，算法固定. 日薪: /21.75, 时薪: /21.75/8"
+                  type="info"
+                  show-icon
+                  :closable="false"
+                />
+                <ElButton @click="syncSalaryRange"> 同步 </ElButton>
+                <SalaryRangeComponent
+                  :value="conf.formData.salaryRange.advancedValue.H"
+                  unit="元/时"
+                  :show="true"
+                  :step="5"
+                />
+                <SalaryRangeComponent
+                  :value="conf.formData.salaryRange.advancedValue.D"
+                  unit="元/天"
+                  :show="true"
+                  :step="10"
+                />
+                <SalaryRangeComponent
+                  :value="conf.formData.salaryRange.advancedValue.M"
+                  unit="元/月"
+                  :show="true"
+                  :step="200"
+                />
               </div>
             </ElPopover>
           </form-item>
-          <form-item v-bind="formInfoData.companySizeRange" v-model:enable="conf.formData.companySizeRange.enable">
-            <SalaryRangeComponent :controls="false" :value="conf.formData.companySizeRange.value" width="90px" unit="人" :show="true" />
+          <form-item
+            v-bind="formInfoData.companySizeRange"
+            v-model:enable="conf.formData.companySizeRange.enable"
+          >
+            <SalaryRangeComponent
+              :controls="false"
+              :value="conf.formData.companySizeRange.value"
+              width="90px"
+              unit="人"
+              :show="true"
+            />
           </form-item>
 
-          <form-item v-bind="formInfoData.customGreeting" v-model:enable="conf.formData.customGreeting.enable">
+          <form-item
+            v-bind="formInfoData.customGreeting"
+            v-model:enable="conf.formData.customGreeting.enable"
+          >
             <ElInput v-model.lazy="conf.formData.customGreeting.value" type="textarea" />
-            <ElButton style="margin-left: 5px">
-              高级
-            </ElButton>
+            <ElButton style="margin-left: 5px"> 高级 </ElButton>
           </form-item>
         </ElSpace>
         <ElSpace wrap>
-          <ElCheckbox v-bind="formInfoData.greetingVariable" v-model="conf.formData.greetingVariable.value" border />
-          <ElCheckbox v-bind="formInfoData.activityFilter" v-model="conf.formData.activityFilter.value" border />
-          <ElCheckbox v-bind="formInfoData.goldHunterFilter" v-model="conf.formData.goldHunterFilter.value" border />
-          <ElCheckbox v-bind="formInfoData.friendStatus" v-model="conf.formData.friendStatus.value" border />
-          <ElCheckbox v-bind="formInfoData.sameCompanyFilter" v-model="conf.formData.sameCompanyFilter.value" border />
-          <ElCheckbox v-bind="formInfoData.sameHrFilter" v-model="conf.formData.sameHrFilter.value" border />
+          <ElCheckbox
+            v-bind="formInfoData.greetingVariable"
+            v-model="conf.formData.greetingVariable.value"
+            border
+          />
+          <ElCheckbox
+            v-bind="formInfoData.activityFilter"
+            v-model="conf.formData.activityFilter.value"
+            border
+          />
+          <ElCheckbox
+            v-bind="formInfoData.goldHunterFilter"
+            v-model="conf.formData.goldHunterFilter.value"
+            border
+          />
+          <ElCheckbox
+            v-bind="formInfoData.friendStatus"
+            v-model="conf.formData.friendStatus.value"
+            border
+          />
+          <ElCheckbox
+            v-bind="formInfoData.sameCompanyFilter"
+            v-model="conf.formData.sameCompanyFilter.value"
+            border
+          />
+          <ElCheckbox
+            v-bind="formInfoData.sameHrFilter"
+            v-model="conf.formData.sameHrFilter.value"
+            border
+          />
         </ElSpace>
       </ElCollapseItem>
       <ElCollapseItem title="地址配置" name="4">
         <Alert id="config-amap-2" style="margin-bottom: 10px" show-icon type="info">
           <template #title>
             使用高德地图前 推荐结合工作地址包含使用, 需自行申请key,
-            <br>
+            <br />
             <ElLink href="https://lbs.amap.com/dev/" target="_blank" type="warning">
               https://lbs.amap.com/dev/
             </ElLink>
             创建应用 -> 添加key -> Web服务
-            <br>
+            <br />
             每日免费配额足够使用
           </template>
         </Alert>
         <Alert
-          id="config-amap-ai" style="margin-bottom: 10px" :closable="false" type="info" description="AI Prompt 参考如下语法(仅筛选可用):
+          id="config-amap-ai"
+          style="margin-bottom: 10px"
+          :closable="false"
+          type="info"
+          description="AI Prompt 参考如下语法(仅筛选可用):
             直线距离: {{ amap.straightDistance }}km
             驾车距离: {{ amap.drivingDistance }}km
             驾车时间: {{ amap.drivingDuration }}分钟
@@ -269,20 +384,24 @@ const SalaryRangeComponent = defineComponent({
             "
         />
         <ElCheckbox
-          v-bind="formInfoData.amap.enable" v-model="conf.formData.amap.enable" border
-          style="margin-right: 10px;"
+          v-bind="formInfoData.amap.enable"
+          v-model="conf.formData.amap.enable"
+          border
+          style="margin-right: 10px"
         />
         <ElFormItem v-bind="formInfoData.amap.key">
           <ElInput v-model.lazy="conf.formData.amap.key" />
         </ElFormItem>
-        <br>
+        <br />
         <ElFormItem v-bind="formInfoData.amap.origins">
           <ElInput v-model.lazy="conf.formData.amap.origins" :disabled="amapGeocodeLoading">
             <template #append>
-              <ElTooltip
-                content="根据完整地址获取经纬度" placement="top"
-              >
-                <ElButton type="primary" :loading="amapGeocodeLoading" @click="amapGeocodeHandler()">
+              <ElTooltip content="根据完整地址获取经纬度" placement="top">
+                <ElButton
+                  type="primary"
+                  :loading="amapGeocodeLoading"
+                  @click="amapGeocodeHandler()"
+                >
                   🤖
                 </ElButton>
               </ElTooltip>
@@ -290,37 +409,67 @@ const SalaryRangeComponent = defineComponent({
           </ElInput>
         </ElFormItem>
         <ElFormItem v-bind="formInfoData.amap.straightDistance">
-          <ElInputNumber v-model.lazy="conf.formData.amap.straightDistance" :precision="1" :max="1000" :min="0" :step="1">
+          <ElInputNumber
+            v-model.lazy="conf.formData.amap.straightDistance"
+            :precision="1"
+            :max="1000"
+            :min="0"
+            :step="1"
+          >
             <template #suffix>
               <span>km</span>
             </template>
           </ElInputNumber>
         </ElFormItem>
-        <br>
+        <br />
         <ElFormItem v-bind="formInfoData.amap.drivingDistance">
-          <ElInputNumber v-model.lazy="conf.formData.amap.drivingDistance" :precision="1" :max="1000" :min="0" :step="1">
+          <ElInputNumber
+            v-model.lazy="conf.formData.amap.drivingDistance"
+            :precision="1"
+            :max="1000"
+            :min="0"
+            :step="1"
+          >
             <template #suffix>
               <span>km</span>
             </template>
           </ElInputNumber>
         </ElFormItem>
         <ElFormItem v-bind="formInfoData.amap.drivingDuration">
-          <ElInputNumber v-model.lazy="conf.formData.amap.drivingDuration" :precision="2" :max="1440" :min="0" :step="30">
+          <ElInputNumber
+            v-model.lazy="conf.formData.amap.drivingDuration"
+            :precision="2"
+            :max="1440"
+            :min="0"
+            :step="30"
+          >
             <template #suffix>
               <span>分钟</span>
             </template>
           </ElInputNumber>
         </ElFormItem>
-        <br>
+        <br />
         <ElFormItem v-bind="formInfoData.amap.walkingDistance">
-          <ElInputNumber v-model.lazy="conf.formData.amap.walkingDistance" :precision="1" :max="1000" :min="0" :step="1">
+          <ElInputNumber
+            v-model.lazy="conf.formData.amap.walkingDistance"
+            :precision="1"
+            :max="1000"
+            :min="0"
+            :step="1"
+          >
             <template #suffix>
               <span>km</span>
             </template>
           </ElInputNumber>
         </ElFormItem>
         <ElFormItem v-bind="formInfoData.amap.walkingDuration">
-          <ElInputNumber v-model.lazy="conf.formData.amap.walkingDuration" :precision="2" :max="1440" :min="0" :step="30">
+          <ElInputNumber
+            v-model.lazy="conf.formData.amap.walkingDuration"
+            :precision="2"
+            :max="1440"
+            :min="0"
+            :step="30"
+          >
             <template #suffix>
               <span>分钟</span>
             </template>
@@ -331,21 +480,42 @@ const SalaryRangeComponent = defineComponent({
         <Ai />
       </ElCollapseItem>
       <ElCollapseItem title="延迟配置" name="3">
-        <ElFormItem v-for="(item, key) in formInfoData.delay" :key :label="item.label" :data-help="item['data-help']">
-          <ElInputNumber v-model="conf.formData.delay[key]" :min="1" :max="99999" :disabled="item.disable" />
+        <ElFormItem
+          v-for="(item, key) in formInfoData.delay"
+          :key
+          :label="item.label"
+          :data-help="item['data-help']"
+        >
+          <ElInputNumber
+            v-model="conf.formData.delay[key]"
+            :min="1"
+            :max="99999"
+            :disabled="item.disable"
+          />
         </ElFormItem>
       </ElCollapseItem>
     </ElCollapse>
 
-    <div style="margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap;">
-      <ElCheckbox v-bind="formInfoData.notification" v-model="conf.formData.notification.value" border />
+    <div style="margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap">
+      <ElCheckbox
+        v-bind="formInfoData.notification"
+        v-model="conf.formData.notification.value"
+        border
+      />
       <ElCheckbox v-bind="formInfoData.useCache" v-model="conf.formData.useCache.value" border />
-      <ElButton v-if="conf.formData.useCache.value" type="warning" @click="() => getCacheManager().clearCache()">
+      <ElButton
+        v-if="conf.formData.useCache.value"
+        type="warning"
+        @click="() => getCacheManager().clearCache()"
+      >
         清空缓存
       </ElButton>
       <ElFormItem :label="formInfoData.deliveryLimit.label">
         <ElInputNumber
-          v-bind="formInfoData.deliveryLimit" v-model="conf.formData.deliveryLimit.value" :min="1" :max="155"
+          v-bind="formInfoData.deliveryLimit"
+          v-model="conf.formData.deliveryLimit.value"
+          :min="1"
+          :max="155"
           :step="10"
         />
       </ElFormItem>

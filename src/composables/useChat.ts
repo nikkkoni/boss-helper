@@ -1,6 +1,8 @@
-import type { modelData } from './useModel'
 import { reactive, ref, toRaw } from 'vue'
+
 import { getCurDay, getCurTime } from '@/utils'
+
+import type { modelData } from './useModel'
 import { llmIcon } from './useModel'
 
 export type ChatMessages = ChatMessage[]
@@ -51,8 +53,7 @@ function chatInputInit(model: modelData) {
       chatInput.content += s
     },
     end: (s: string) => {
-      if (end)
-        return
+      if (end) return
       end = true
       chatInput.input = false
       chatInput.content = s
