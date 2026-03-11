@@ -193,7 +193,7 @@ class Gpt extends llm<openaiLLMConf> {
       },
       timeout: this.conf.other.timeout,
       // TODO: 暂时禁用 stream 输出
-      responseType: false && this.conf.advanced.stream ? 'stream' : 'json',
+      responseType: 'json', // this.conf.advanced.stream ? 'stream' : 'json',
       onStream,
       isBackground: this.conf.other.background,
     })

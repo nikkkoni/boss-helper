@@ -36,16 +36,14 @@ export interface UserInfo {
 }
 
 export const UserResumeStringOptions = {
-  基本信息: false
-    ? (false as const)
-    : {
-        姓名: false,
-        年龄: true,
-        性别: true,
-        学历: true,
-        求职状态: true,
-        工作年限: true,
-      },
+  基本信息: {
+    姓名: false,
+    年龄: true,
+    性别: true,
+    学历: true,
+    求职状态: true,
+    工作年限: true,
+  }, // ?? false,
   期望职位: true,
   个人优势: true,
   工作经历: true,

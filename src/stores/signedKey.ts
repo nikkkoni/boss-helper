@@ -86,10 +86,11 @@ export function signedKeyReqHandler(data: any, message = true): string | undefin
 }
 
 export type Client = ReturnType<typeof createClient<paths>>
-const baseUrl =
-  true || import.meta.env.PROD || import.meta.env.TEST || import.meta.env.WXT_TEST
-    ? 'https://boss-helper.ocyss.icu'
-    : 'http://localhost:8002'
+const baseUrl = 'https://boss-helper.ocyss.icu'
+// const baseUrl =
+//   import.meta.env.PROD || import.meta.env.TEST || import.meta.env.WXT_TEST
+//     ? 'https://boss-helper.ocyss.icu'
+//     : 'http://localhost:8002'
 
 export const useSignedKey = defineStore('signedKey', () => {
   const signedKey = ref<string | null>(null)
