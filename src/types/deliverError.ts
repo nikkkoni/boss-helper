@@ -50,3 +50,5 @@ export const PublishError = createCustomError('投递出错', 'danger')
 export type PublishError = InstanceType<typeof PublishError>
 export const GreetError = createCustomError('打招呼出错', 'danger')
 export type GreetError = InstanceType<typeof GreetError>
+export const LimitError = createCustomError('达到限制', 'danger')
+export type LimitError = InstanceType<typeof LimitError>

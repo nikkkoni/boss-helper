@@ -10,8 +10,8 @@ import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
-import { errMap, UnknownError } from '@/types/deliverError'
-import { delay, notification } from '@/utils'
+import { errMap, LimitError, UnknownError } from '@/types/deliverError'
+import { delay, getCurDay, notification } from '@/utils'
 import { logger } from '@/utils/logger'
 
 export const useDeliver = defineStore('zhipin/deliver', () => {
@@ -67,24 +67,49 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
           logger.debug('投递成功', ctx)
           ctx.state = '成功'
           if (statistics.todayData.success >= conf.formData.deliveryLimit.value) {
-            if (conf.formData.notification.value) {
-              await notification(`投递到达上限 ${conf.formData.deliveryLimit.value}，已暂停投递`)
-            }
-            ElMessage.info(`投递到达上限 ${conf.formData.deliveryLimit.value}，已暂停投递`)
+            const msg = `投递到达上限 ${conf.formData.deliveryLimit.value}，已暂停投递`
+            conf.formData.notification.value && await notification(msg)
+            ElMessage.info(msg)
             common.deliverStop = true
             return
+          }
+          const date = getCurDay()
+          if (statistics.todayData.date !== date){
+            await statistics.updateStatistics({
+              date,
+              success: 0,
+              total: 0,
+              company: 0,
+              jobTitle: 0,
+              jobContent: 0,
+              hrPosition: 0,
+              salaryRange: 0,
+              companySizeRange: 0,
+              activityFilter: 0,
+              goldHunterFilter: 0,
+              repeat: 0,
+              jobAddress: 0,
+              amap: 0,
+            })
           }
         }
         catch (e: any) {
           if (!errMap.has(e?.name as string)) {
           // eslint-disable-next-line no-ex-assign
             e = new UnknownError(`预期外:${e.message}`, { cause: e })
-          }
+          } 
           data.status.setStatus(e.state === 'warning' ? 'warn' : 'error', e.name as string ?? '没有消息')
           log.add(data, e as logErr, ctx)
           logger.warn('投递过滤', ctx)
           ctx.state = '过滤'
           ctx.err = e.message ?? ''
+          if(e instanceof LimitError){
+            const msg = `投递到达boss上限 ${e.message}，已暂停投递`
+            conf.formData.notification.value && await notification(msg)
+            ElMessage.info()
+            common.deliverStop = true
+            return
+          }
         }
       }
       catch (e) {

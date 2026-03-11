@@ -1,8 +1,9 @@
 import type { FormDataRange } from '@/types/formData'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { GreetError, PublishError } from '@/types/deliverError'
+import { GreetError, LimitError, PublishError } from '@/types/deliverError'
 import { parseGptJson } from '@/utils/parse'
+import { logger } from '@/utils/logger'
 
 // const { userInfo } = useStore()
 
@@ -46,6 +47,7 @@ export async function sendPublishReq(
   data: bossZpJobItemData,
   errorMsg?: string,
   retries = 3,
+  _params={},
 ) {
   if (retries === 0) {
     throw new PublishError(errorMsg ?? '重试多次失败')
@@ -54,7 +56,7 @@ export async function sendPublishReq(
   const params = {
     securityId: data.securityId,
     jobId: data.encryptJobId,
-    lid: data.lid,
+    ..._params
   }
   const token = window?.Cookie.get('bst')
   if (!token) {
@@ -68,16 +70,37 @@ export async function sendPublishReq(
       method: 'POST',
       headers: { Zp_token: token },
     })
+    
     if (
       res.data.code === 1
-      && (Boolean((res.data?.zpData?.bizData?.chatRemindDialog?.content)))
     ) {
-      throw new PublishError(
-        res.data?.zpData?.bizData?.chatRemindDialog?.content as string,
-      )
-    }
-    if (res.data.code !== 0) {
-      throw new PublishError(`状态错误:${res.data.message}`)
+      const content = String(res.data?.zpData?.bizData?.chatRemindDialog?.content || res.data.message || '未知错误')
+      // 命中限额弹窗 → 立刻发送确认请求
+      if (
+
+        content.includes("您今天已与120位BOSS沟通")
+      ) {
+        try {
+          const params = new URLSearchParams();
+          params.append('ba', res.data.zpData.bizData.chatRemindDialog.ba);
+          params.append('action', 'addf-limit-popup-c');
+          await axios({
+            url: 'https://www.zhipin.com/wapi/zpCommon/actionLog/geek/chatremind.json',
+            method: 'POST',
+            headers: { Zp_token: token },
+            data: params,
+          })
+          return sendPublishReq(data, undefined, retries,{cid:1})
+        } catch(e) {
+          logger.error("尝试确认投递限制失败",e)
+          throw new PublishError(`投递限制确认失败]${content}`)
+        }
+      }else if (content.includes("您今天已与150位BOSS沟通")){
+        throw new LimitError(content)
+      }
+      throw new PublishError(content)
+    }else if (res.data.code !== 0) {
+      throw new PublishError(`未知错误状态:${res.data.message}`)
     }
     return res.data
   }
