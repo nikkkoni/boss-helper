@@ -57,9 +57,7 @@ export const useStatistics = defineStore('statistics', () => {
     { throttle: 200 },
   )
 
-  async function updateStatistics() {
-    const curData = jsonClone(todayData)
-
+  async function updateStatistics(curData=jsonClone(todayData)) {
     void counter.storageGet<Statistics[]>(statisticsKey, []).then((data) => {
       statisticsData.value = data
     })
