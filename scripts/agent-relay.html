@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boss Helper Agent Relay</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "SF Mono", "IBM Plex Mono", monospace;
+        background: #f4efe6;
+        color: #1f1a17;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top right, rgba(244, 165, 96, 0.22), transparent 30%),
+          linear-gradient(180deg, #f6f2ea 0%, #efe4d3 100%);
+      }
+
+      .page {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 40px 20px 80px;
+      }
+
+      .hero {
+        background: rgba(255, 251, 245, 0.84);
+        border: 1px solid rgba(77, 53, 34, 0.18);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 18px 60px rgba(77, 53, 34, 0.12);
+        backdrop-filter: blur(14px);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 32px;
+        letter-spacing: -0.04em;
+      }
+
+      p {
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+      }
+
+      .panel {
+        background: rgba(255, 249, 240, 0.92);
+        border: 1px solid rgba(77, 53, 34, 0.12);
+        border-radius: 18px;
+        padding: 18px;
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+      }
+
+      input,
+      button,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 12px;
+        border: 1px solid rgba(77, 53, 34, 0.22);
+        padding: 12px 14px;
+        font: inherit;
+        background: rgba(255, 255, 255, 0.88);
+      }
+
+      button {
+        cursor: pointer;
+        background: #1f1a17;
+        color: #fff7ef;
+        transition: transform 0.15s ease, opacity 0.15s ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      .status {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+
+      .badge {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(31, 26, 23, 0.08);
+        font-size: 13px;
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .logs {
+        max-height: 320px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <section class="hero">
+        <h1>Boss Helper Agent Relay</h1>
+        <p>
+          这个页面负责把本地 companion 服务收到的命令转发给浏览器扩展。请使用 Chromium
+          浏览器打开，并填写已安装扩展的 ID。
+        </p>
+        <div class="grid">
+          <div class="panel">
+            <label for="extensionId">Extension ID</label>
+            <input id="extensionId" placeholder="例如 abcdefghijklmnopabcdefghijklmnop" />
+            <div style="height: 10px"></div>
+            <button id="saveButton" type="button">保存并重连</button>
+            <div class="status">
+              <div class="badge" id="bridgeState">bridge: connecting</div>
+              <div class="badge" id="relayState">relay: idle</div>
+              <div class="badge" id="extensionEventsState">events: idle</div>
+            </div>
+          </div>
+          <div class="panel">
+            <label>说明</label>
+            <pre>1. 先运行 node ./scripts/agent-bridge.mjs
+2. 在当前浏览器打开这个页面
+3. 填写扩展 ID 并保持页面常驻
+4. 外部 agent 通过 companion HTTP 端口发命令</pre>
+          </div>
+        </div>
+        <div class="grid" style="margin-top: 16px">
+          <div class="panel logs">
+            <label>事件日志</label>
+            <pre id="logs"></pre>
+          </div>
+          <div class="panel logs">
+            <label>最近响应</label>
+            <pre id="response"></pre>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const EXTENSION_ID_KEY = 'boss-helper-agent-extension-id'
+      const RELAY_CLIENT_ID_KEY = 'boss-helper-agent-relay-client-id'
+      const bridgeState = document.getElementById('bridgeState')
+      const relayState = document.getElementById('relayState')
+      const extensionEventsState = document.getElementById('extensionEventsState')
+      const extensionIdInput = document.getElementById('extensionId')
+      const logsEl = document.getElementById('logs')
+      const responseEl = document.getElementById('response')
+      const saveButton = document.getElementById('saveButton')
+      const relayClientId = localStorage.getItem(RELAY_CLIENT_ID_KEY) || crypto.randomUUID()
+      const urlExtensionId = new URLSearchParams(location.search).get('extensionId') || ''
+
+      localStorage.setItem(RELAY_CLIENT_ID_KEY, relayClientId)
+      extensionIdInput.value = urlExtensionId || localStorage.getItem(EXTENSION_ID_KEY) || ''
+
+      if (urlExtensionId) {
+        localStorage.setItem(EXTENSION_ID_KEY, urlExtensionId)
+      }
+
+      function log(message, data) {
+        const line = `[${new Date().toLocaleTimeString()}] ${message}`
+        const body = data ? `\n${JSON.stringify(data, null, 2)}` : ''
+        logsEl.textContent = `${line}${body}\n\n${logsEl.textContent}`.trim()
+      }
+
+      function setBridgeState(text) {
+        bridgeState.textContent = `bridge: ${text}`
+      }
+
+      function setRelayState(text) {
+        relayState.textContent = `relay: ${text}`
+      }
+
+      function setExtensionEventsState(text) {
+        extensionEventsState.textContent = `events: ${text}`
+      }
+
+      function getExtensionId() {
+        return extensionIdInput.value.trim()
+      }
+
+      async function postJson(path, payload) {
+        return fetch(path, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        })
+      }
+
+      async function sendExtensionMessage(commandEnvelope) {
+        const extensionId = getExtensionId()
+        if (!extensionId) {
+          return {
+            ok: false,
+            code: 'missing-extension-id',
+            message: '请先填写扩展 ID',
+          }
+        }
+        if (!window.chrome?.runtime?.sendMessage) {
+          return {
+            ok: false,
+            code: 'runtime-unavailable',
+            message: '当前页面无法访问 chrome.runtime.sendMessage，请使用 Chromium 浏览器打开',
+          }
+        }
+
+        return new Promise((resolve) => {
+          window.chrome.runtime.sendMessage(extensionId, commandEnvelope.request, (reply) => {
+            const error = window.chrome.runtime.lastError
+            if (error) {
+              resolve({
+                ok: false,
+                code: 'extension-runtime-error',
+                message: error.message,
+              })
+              return
+            }
+
+            resolve(
+              reply || {
+                ok: false,
+                code: 'empty-extension-response',
+                message: '扩展没有返回任何结果',
+              },
+            )
+          })
+        })
+      }
+
+      async function handleCommand(commandEnvelope) {
+        setRelayState(`running ${commandEnvelope.request.command}`)
+        log(`收到命令 ${commandEnvelope.request.command}`, commandEnvelope.request)
+        const response = await sendExtensionMessage(commandEnvelope)
+        responseEl.textContent = JSON.stringify(response, null, 2)
+        await postJson('/responses', {
+          requestId: commandEnvelope.requestId,
+          response,
+        })
+        setRelayState(`idle`)
+      }
+
+      async function announceRelay() {
+        await postJson('/relay/announce', {
+          clientId: relayClientId,
+          extensionId: getExtensionId(),
+          browser: navigator.userAgent,
+        })
+      }
+
+      let eventSource
+      let extensionPort
+
+      function connectExtensionEventPort() {
+        extensionPort?.disconnect()
+        extensionPort = undefined
+
+        const extensionId = getExtensionId()
+        if (!extensionId) {
+          setExtensionEventsState('missing extension id')
+          return
+        }
+
+        if (!window.chrome?.runtime?.connect) {
+          setExtensionEventsState('runtime unavailable')
+          return
+        }
+
+        try {
+          extensionPort = window.chrome.runtime.connect(extensionId, {
+            name: '__boss_helper_agent_event_port__',
+          })
+          setExtensionEventsState('connected')
+
+          extensionPort.onMessage.addListener((event) => {
+            log(`收到实时事件 ${event.type}`, event)
+            void postJson('/agent-events', {
+              clientId: relayClientId,
+              event,
+            })
+          })
+
+          extensionPort.onDisconnect.addListener(() => {
+            const error = window.chrome.runtime.lastError
+            setExtensionEventsState('disconnected')
+            log('扩展事件连接断开', {
+              message: error?.message ?? 'unknown',
+            })
+          })
+        } catch (error) {
+          setExtensionEventsState('connect failed')
+          log('连接扩展事件端口失败', { message: String(error) })
+        }
+      }
+
+      function connectEventSource() {
+        eventSource?.close()
+        const extensionId = encodeURIComponent(getExtensionId())
+        const clientId = encodeURIComponent(relayClientId)
+        eventSource = new EventSource(`/events?extensionId=${extensionId}&clientId=${clientId}`)
+
+        eventSource.onopen = () => {
+          setBridgeState('connected')
+          setRelayState('idle')
+          void announceRelay()
+          log('已连接 companion 服务')
+        }
+
+        eventSource.onerror = () => {
+          setBridgeState('reconnecting')
+          log('SSE 连接断开，3s 后重试')
+        }
+
+        eventSource.addEventListener('status', (event) => {
+          try {
+            const status = JSON.parse(event.data)
+            log('bridge 状态更新', status)
+          } catch (error) {
+            log('status 解析失败', { message: String(error) })
+          }
+        })
+
+        eventSource.addEventListener('command', (event) => {
+          try {
+            const commandEnvelope = JSON.parse(event.data)
+            void handleCommand(commandEnvelope)
+          } catch (error) {
+            log('command 解析失败', { message: String(error) })
+          }
+        })
+      }
+
+      saveButton.addEventListener('click', () => {
+        localStorage.setItem(EXTENSION_ID_KEY, getExtensionId())
+        log('已保存扩展 ID，正在重连')
+        connectEventSource()
+        connectExtensionEventPort()
+      })
+
+      connectEventSource()
+      connectExtensionEventPort()
+    </script>
+  </body>
+</html>

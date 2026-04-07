@@ -1,50 +1,66 @@
+import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { useHookVueData, useHookVueFn } from '@/composables/useVue'
 import { logger } from '@/utils/logger'
 
-const page = ref({ page: 1, pageSize: 15 })
-const pageChange = ref((_v: number) => {})
+export const usePager = defineStore('zhipin/pager', () => {
+  const page = ref({ page: 1, pageSize: 15 })
+  const pageChange = ref<((value: number) => void) | null>(null)
 
-const initPage = useHookVueData(
-  '#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main',
-  'pageVo',
-  page,
-)
+  const initPage = useHookVueData(
+    '#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main',
+    'pageVo',
+    page,
+  )
 
-const initChange = useHookVueFn('#wrap .page-job-wrapper', 'pageChangeAction')
-const initSearch = useHookVueFn('#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main', [
-  'searchJobAction',
-  'onSearch',
-])
+  const initChange = useHookVueFn('#wrap .page-job-wrapper', 'pageChangeAction')
+  const initSearch = useHookVueFn('#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main', [
+    'searchJobAction',
+    'onSearch',
+  ])
 
-function next() {
-  try {
-    pageChange.value(page.value.page + 1)
-  } catch (err) {
-    logger.error('翻页: 下一页错误', err)
-    throw err
+  function getPageChange() {
+    if (!pageChange.value) {
+      throw new Error('pageChange is undefined')
+    }
+    return pageChange.value
   }
 
-  return true
-}
-
-function prev() {
-  try {
-    pageChange.value(page.value.page - 1)
-  } catch (err) {
-    logger.error('翻页: 上一页错误', err)
-    throw err
+  function next() {
+    try {
+      getPageChange()(page.value.page + 1)
+      return true
+    } catch (err) {
+      logger.error('翻页: 下一页错误', err)
+      return false
+    }
   }
-  return true
-}
 
-export function usePager() {
+  function prev() {
+    if (page.value.page <= 1) {
+      return false
+    }
+    try {
+      getPageChange()(page.value.page - 1)
+      return true
+    } catch (err) {
+      logger.error('翻页: 上一页错误', err)
+      return false
+    }
+  }
+
+  function reset() {
+    page.value = { page: 1, pageSize: 15 }
+    pageChange.value = null
+  }
+
   return {
     page,
     pageChange,
     next,
     prev,
+    reset,
     initPager: async () => {
       await initPage()
       pageChange.value =
@@ -52,9 +68,7 @@ export function usePager() {
         location.href.includes('/web/geek/jobs')
           ? await initSearch()
           : await initChange()
-      if (!pageChange.value) {
-        throw new Error('pageChange is undefined')
-      }
+      getPageChange()
     },
   }
-}
+})

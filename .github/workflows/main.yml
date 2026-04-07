@@ -12,15 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [21]
+        node-version: [20.19.0]
     outputs:
       current_time: ${{ steps.current_time.outputs.current_time }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -28,7 +28,16 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type Check
+        run: pnpm check
+
+      - name: Test
+        run: pnpm test
 
       - name: Get current time
         id: current_time
@@ -50,7 +59,7 @@ jobs:
         run: echo "version=$VITE_VERSION,mode=$VITE_RELEASE_MODE"
 
       - name: Build
-        run: pnpm run build:noTsc
+        run: pnpm build
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

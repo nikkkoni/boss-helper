@@ -106,8 +106,8 @@ export function getCurDay(currentDate = new Date()) {
 
 // 获取当前时间
 export function getCurTime(currentDate = new Date()) {
-  const hours = String(currentDate.getHours() + 1).padStart(2, '0')
-  const minutes = String(currentDate.getMinutes() + 1).padStart(2, '0')
+  const hours = String(currentDate.getHours()).padStart(2, '0')
+  const minutes = String(currentDate.getMinutes()).padStart(2, '0')
   const seconds = String(currentDate.getSeconds()).padStart(2, '0')
   return `${hours}:${minutes}:${seconds}`
 }

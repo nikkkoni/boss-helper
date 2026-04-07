@@ -68,21 +68,35 @@ export function useUser() {
     const v = await getRootVue()
     const now = Date.now()
     await new Promise((resolve) => {
+      let settled = false
+
+      const cleanup = () => {
+        clearInterval(interval)
+        clearTimeout(timeout)
+      }
+
+      const finish = (value: UserInfo | null | undefined) => {
+        if (settled) {
+          return
+        }
+        settled = true
+        cleanup()
+        resolve(value)
+      }
+
       const interval = setInterval(() => {
         const userInfo = v?.$store?.state?.userInfo
         if (userInfo) {
           info.value = userInfo
           logger.debug('用户信息获取成功: ', now, userInfo)
-          resolve(info.value)
-          clearInterval(interval)
+          finish(info.value)
         }
       }, 400)
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         if (!info.value) {
           logger.error('获取用户信息失败', now, { root: v, info })
         }
-        resolve(null)
-        clearInterval(interval)
+        finish(null)
       }, 25000)
     })
   }

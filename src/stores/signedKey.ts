@@ -179,7 +179,9 @@ export const useSignedKey = defineStore('signedKey', () => {
           )
         },
         onClick() {
-          item.data.url ?? window.open(item.data.url)
+          if (item.data.url) {
+            window.open(item.data.url)
+          }
         },
       })
     }

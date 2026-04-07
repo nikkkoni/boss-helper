@@ -7,7 +7,11 @@ import { counter } from '@/message'
 import { useUser } from '@/stores/user'
 import type { ConfigLevel, FormData } from '@/types/formData'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
-import { exportJson, importJson } from '@/utils/jsonImportExport'
+import {
+  exportJson,
+  ImportJsonCancelledError,
+  importJson,
+} from '@/utils/jsonImportExport'
 import { logger } from '@/utils/logger'
 
 import { defaultFormData } from './info'
@@ -15,10 +19,14 @@ import { defaultFormData } from './info'
 export * from './info'
 
 export const formDataKey = 'local:web-geek-job-FormData'
+export const formDataTemplatesKey = 'local:web-geek-job-FormDataTemplates'
+
+type FormDataTemplates = Record<string, Partial<FormData>>
 
 export const useConf = defineStore('conf', () => {
   const formData: FormData = reactive(defaultFormData)
   const isLoaded = ref(false)
+  const templateNames = ref<string[]>([])
 
   const FROM_VERSION: [string, (from: Partial<FormData>) => Partial<FormData>][] = [
     [
@@ -76,7 +84,20 @@ export const useConf = defineStore('conf', () => {
     from = (await formDataHandler(from)) ?? from
     const data = deepmerge<FormData>(defaultFormData, from)
     Object.assign(formData, data)
+    await loadTemplates()
     isLoaded.value = true
+  }
+
+  function sanitizeTemplateData(data: Partial<FormData>) {
+    const snapshot = jsonClone(data)
+    delete snapshot.userId
+    return snapshot
+  }
+
+  async function loadTemplates() {
+    const templates = await counter.storageGet<FormDataTemplates>(formDataTemplatesKey, {})
+    templateNames.value = Object.keys(templates).sort((left, right) => left.localeCompare(right))
+    return templates
   }
 
   watchThrottled(
@@ -92,13 +113,72 @@ export const useConf = defineStore('conf', () => {
     try {
       await counter.storageSet(formDataKey, v)
       logger.debug('formData保存', v)
-      ElMessage.success('保存成功, 3s 之后自动刷新')
-      setTimeout(() => {
-        window.location.reload()
-      }, 3000)
-    } catch (error: any) {
-      ElMessage.error(`保存失败: ${error.message}`)
+      ElMessage.success('保存成功，配置已热更新')
+    } catch (error: unknown) {
+      ElMessage.error(`保存失败: ${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+
+  async function saveTemplate(name: string) {
+    const templateName = name.trim()
+    if (!templateName) {
+      throw new Error('模板名称不能为空')
+    }
+
+    const templates = await loadTemplates()
+    templates[templateName] = sanitizeTemplateData(formData)
+    await counter.storageSet(formDataTemplatesKey, templates)
+    templateNames.value = Object.keys(templates).sort((left, right) => left.localeCompare(right))
+    logger.debug('formData模板已保存', templateName)
+    ElMessage.success(`模板已保存: ${templateName}`)
+  }
+
+  async function applyTemplate(name: string) {
+    const templates = await counter.storageGet<FormDataTemplates>(formDataTemplatesKey, {})
+    const template = templates[name]
+    if (!template) {
+      throw new Error('模板不存在')
+    }
+
+    deepmerge(formData, sanitizeTemplateData(template), { clone: false })
+    logger.debug('formData模板已应用', name)
+    ElMessage.success(`模板已应用: ${name}，请按需保存`)
+  }
+
+  async function deleteTemplate(name: string) {
+    const templates = await counter.storageGet<FormDataTemplates>(formDataTemplatesKey, {})
+    if (!(name in templates)) {
+      throw new Error('模板不存在')
+    }
+
+    delete templates[name]
+    await counter.storageSet(formDataTemplatesKey, templates)
+    templateNames.value = Object.keys(templates).sort((left, right) => left.localeCompare(right))
+    logger.debug('formData模板已删除', name)
+    ElMessage.success(`模板已删除: ${name}`)
+  }
+
+  async function applyRuntimeConfigPatch(
+    patch: Partial<FormData>,
+    options: { persist?: boolean } = {},
+  ) {
+    const sanitizedPatch = jsonClone(patch)
+    delete sanitizedPatch.userId
+    delete sanitizedPatch.version
+
+    deepmerge(formData, sanitizedPatch, { clone: false })
+    logger.debug('formData运行时更新', sanitizedPatch)
+
+    if (options.persist) {
+      await counter.storageSet(formDataKey, jsonClone(formData))
+      logger.debug('formData运行时更新已持久化')
+    }
+
+    return jsonClone(formData)
+  }
+
+  function getRuntimeConfigSnapshot() {
+    return jsonClone(formData)
   }
 
   async function confReload() {
@@ -114,13 +194,20 @@ export const useConf = defineStore('conf', () => {
   }
 
   async function confImport() {
-    let jsonData = await importJson<Partial<FormData>>()
+    try {
+      let jsonData = await importJson<Partial<FormData>>()
 
-    jsonData.userId = undefined
-    jsonData = (await formDataHandler(jsonData)) ?? jsonData
-    // await setStorage(formDataKey, jsonData)
-    deepmerge(formData, jsonData, { clone: false })
-    ElMessage.success('导入成功, 切记要手动保存哦')
+      jsonData.userId = undefined
+      jsonData = (await formDataHandler(jsonData)) ?? jsonData
+      // await setStorage(formDataKey, jsonData)
+      deepmerge(formData, jsonData, { clone: false })
+      ElMessage.success('导入成功, 切记要手动保存哦')
+    } catch (error) {
+      if (error instanceof ImportJsonCancelledError) {
+        return
+      }
+      ElMessage.error(error instanceof Error ? error.message : '导入失败')
+    }
   }
 
   function confRecommend() {
@@ -178,10 +265,18 @@ export const useConf = defineStore('conf', () => {
     confImport,
     confDelete,
     confRecommend,
+    saveTemplate,
+    applyTemplate,
+    deleteTemplate,
+    loadTemplates,
+    applyRuntimeConfigPatch,
+    getRuntimeConfigSnapshot,
     formDataKey,
+    formDataTemplatesKey,
     defaultFormData,
     formData,
     isLoaded,
+    templateNames,
     config_level,
   }
 })

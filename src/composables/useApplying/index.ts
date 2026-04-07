@@ -1,5 +1,6 @@
 import { PipelineCacheManager } from '@/composables/usePipelineCache'
 import type { JobStatus } from '@/stores/jobs'
+import { useUser } from '@/stores/user'
 import { JobAddressError, UnknownError } from '@/types/deliverError'
 import type { PipelineCacheItem, ProcessorType } from '@/types/pipelineCache'
 import { amapDistance, amapGeocode } from '@/utils/amap'
@@ -10,8 +11,19 @@ import type { Handler, Pipeline, Step } from './type'
 
 export * from './utils'
 
-// 全局缓存管理器实例
-let cacheManager: PipelineCacheManager | null = null
+const cacheManagers = new Map<string, PipelineCacheManager>()
+
+function getCurrentUserId() {
+  try {
+    return useUser().getUserId()
+  } catch {
+    return null
+  }
+}
+
+function resolveCacheManagerKey(userId?: string | number | null): string {
+  return userId == null ? 'anonymous' : String(userId)
+}
 
 function compilePipeline(
   pipeline: Pipeline,
@@ -27,15 +39,16 @@ function compilePipeline(
     before: [],
     after: [],
   }
+  const pipelineQueue = [...pipeline]
   let guard: Step | undefined
   if (isNested) {
-    const first = pipeline.shift()
+    const first = pipelineQueue.shift()
     if (Array.isArray(first)) {
       throw new TypeError('PipelineGroup 第一项不能是数组')
     }
     guard = first
   }
-  for (const h of pipeline) {
+  for (const h of pipelineQueue) {
     if (h == null) {
       continue
     }
@@ -118,11 +131,12 @@ export async function createHandle(): Promise<{
 /**
  * 创建缓存实例
  */
-export function getCacheManager(): PipelineCacheManager {
-  if (!cacheManager) {
-    cacheManager = new PipelineCacheManager()
+export function getCacheManager(userId = getCurrentUserId()): PipelineCacheManager {
+  const cacheKey = resolveCacheManagerKey(userId)
+  if (!cacheManagers.has(cacheKey)) {
+    cacheManagers.set(cacheKey, new PipelineCacheManager())
   }
-  return cacheManager
+  return cacheManagers.get(cacheKey)!
 }
 
 /**

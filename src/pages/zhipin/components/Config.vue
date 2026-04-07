@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { reactiveComputed } from '@vueuse/core'
 import {
   ElAlert,
   ElButton,
@@ -12,11 +11,12 @@ import {
   ElInputNumber,
   ElLink,
   ElMessage,
+  ElMessageBox,
   ElPopover,
+  ElOption,
+  ElSelect,
   ElSpace,
   ElTooltip,
-  ElSelect,
-  ElOption,
 } from 'element-plus'
 
 import { ref } from '#imports'
@@ -27,7 +27,6 @@ import SalaryRangeComponent from '@/components/form/SalaryRange.vue'
 import { getCacheManager } from '@/composables/useApplying'
 import { useCommon } from '@/composables/useCommon'
 import { formInfoData, useConf } from '@/stores/conf'
-import { ConfigLevel } from '@/types/formData'
 import { amapGeocode } from '@/utils/amap'
 import { logger } from '@/utils/logger'
 
@@ -38,6 +37,12 @@ const conf = useConf()
 
 const { deliverLock } = useCommon()
 const amapGeocodeLoading = ref(false)
+const selectedTemplate = ref('')
+
+function isMessageBoxCancel(error: unknown) {
+  return error === 'cancel' || error === 'close'
+}
+
 async function amapGeocodeHandler() {
   amapGeocodeLoading.value = true
   try {
@@ -47,11 +52,63 @@ async function amapGeocodeHandler() {
     } else {
       ElMessage.error('获取地址失败')
     }
-  } catch (error) {
+  } catch (error: unknown) {
     ElMessage.error('获取地址失败')
     logger.error(error)
   } finally {
     amapGeocodeLoading.value = false
+  }
+}
+
+async function saveConfigTemplate() {
+  try {
+    const { value } = await ElMessageBox.prompt('请输入模板名称', '保存配置模板', {
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+      inputPattern: /\S+/,
+      inputErrorMessage: '模板名称不能为空',
+    })
+    const templateName = value.trim()
+    await conf.saveTemplate(templateName)
+    selectedTemplate.value = templateName
+  } catch (error: unknown) {
+    if (!isMessageBoxCancel(error)) {
+      ElMessage.error(error instanceof Error ? error.message : String(error))
+    }
+  }
+}
+
+async function applyConfigTemplate() {
+  if (!selectedTemplate.value) {
+    ElMessage.warning('请先选择配置模板')
+    return
+  }
+
+  try {
+    await conf.applyTemplate(selectedTemplate.value)
+  } catch (error: unknown) {
+    ElMessage.error(error instanceof Error ? error.message : String(error))
+  }
+}
+
+async function deleteConfigTemplate() {
+  if (!selectedTemplate.value) {
+    ElMessage.warning('请先选择配置模板')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(`确认删除模板「${selectedTemplate.value}」吗？`, '删除配置模板', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    await conf.deleteTemplate(selectedTemplate.value)
+    selectedTemplate.value = ''
+  } catch (error: unknown) {
+    if (!isMessageBoxCancel(error)) {
+      ElMessage.error(error instanceof Error ? error.message : String(error))
+    }
   }
 }
 
@@ -493,6 +550,41 @@ function syncSalaryRange() {
           :step="10"
         />
       </ElFormItem>
+      <ElFormItem
+        v-if="conf.config_level.intermediate"
+        label="配置模板"
+        data-help="保存多套配置方案，应用模板不会自动保存当前配置"
+      >
+        <ElSelect
+          v-model="selectedTemplate"
+          clearable
+          filterable
+          placeholder="选择模板"
+          style="width: 180px"
+        >
+          <ElOption v-for="name in conf.templateNames" :key="name" :label="name" :value="name" />
+        </ElSelect>
+      </ElFormItem>
+      <ElButton v-if="conf.config_level.intermediate" type="primary" @click="saveConfigTemplate">
+        保存为模板
+      </ElButton>
+      <ElButton
+        v-if="conf.config_level.intermediate"
+        type="success"
+        :disabled="!selectedTemplate"
+        @click="applyConfigTemplate"
+      >
+        应用模板
+      </ElButton>
+      <ElButton
+        v-if="conf.config_level.intermediate"
+        type="danger"
+        plain
+        :disabled="!selectedTemplate"
+        @click="deleteConfigTemplate"
+      >
+        删除模板
+      </ElButton>
     </div>
   </ElForm>
   <div style="margin-top: 15px">

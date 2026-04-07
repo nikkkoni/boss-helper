@@ -376,6 +376,8 @@ export const defaultFormData: FormData = {
     enable: false,
     prompt: '',
     score: 10,
+    externalMode: false,
+    externalTimeoutMs: 120000,
   },
   aiReply: {
     enable: false,

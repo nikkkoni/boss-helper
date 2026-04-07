@@ -63,15 +63,16 @@ export async function amapGeocode(
 
 export async function amapDistance(destination: string) {
   const { formData } = useConf()
-  const res0 = (await request.get({
-    url: `https://restapi.amap.com/v3/distance?origins=${formData.amap.origins}&destination=${destination}&type=0&output=JSON&Key=${formData.amap.key}`,
-  })) as AmapDistance | AmapError
-  const res1 = (await request.get({
-    url: `https://restapi.amap.com/v3/distance?origins=${formData.amap.origins}&destination=${destination}&type=1&output=JSON&Key=${formData.amap.key}`,
-  })) as AmapDistance | AmapError
-  const res3 = (await request.get({
-    url: `https://restapi.amap.com/v3/distance?origins=${formData.amap.origins}&destination=${destination}&type=3&output=JSON&Key=${formData.amap.key}`,
-  })) as AmapDistance | AmapError
+  const createDistanceRequest = async (type: 0 | 1 | 3) =>
+    (await request.get({
+      url: `https://restapi.amap.com/v3/distance?origins=${formData.amap.origins}&destination=${destination}&type=${type}&output=JSON&Key=${formData.amap.key}`,
+    })) as AmapDistance | AmapError
+
+  const [res0, res1, res3] = await Promise.all([
+    createDistanceRequest(0),
+    createDistanceRequest(1),
+    createDistanceRequest(3),
+  ])
 
   const data = {
     straight: { ok: false, distance: 0, duration: 0 },

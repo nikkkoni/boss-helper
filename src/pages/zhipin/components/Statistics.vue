@@ -8,7 +8,6 @@ import {
   ElDropdownItem,
   ElDropdownMenu,
   ElIcon,
-  ElMessage,
   ElProgress,
   ElRow,
   ElStatistic,
@@ -21,18 +20,17 @@ import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
-import { delay, notification } from '@/utils'
 import { logger } from '@/utils/logger'
 
 import { useDeliver } from '../hooks/useDeliver'
-import { usePager } from '../hooks/usePager'
+import { useDeliveryControl } from '../hooks/useDeliveryControl'
 
 const log = useLog()
 const statistics = useStatistics()
 const common = useCommon()
 const deliver = useDeliver()
-const { next, page } = usePager()
 const conf = useConf()
+const { pauseBatch, resetFilter, resumeBatch, startBatch } = useDeliveryControl()
 const statisticCycle = ref(1)
 const statisticCycleData = [
   {
@@ -74,71 +72,7 @@ const cycle = computed(() => {
 const deliveryLimit = computed(() => {
   return conf.formData.deliveryLimit.value
 })
-function stopDeliver() {
-  common.deliverStop = true
-}
-async function startBatch() {
-  common.deliverLock = true
-  common.deliverStop = false
-  let stepMsg = '投递结束'
-  try {
-    logger.debug('start batch', page)
-    let oldLen = 0
-    let oldFirstJobId = ''
-    while (!common.deliverStop) {
-      await delay(conf.formData.delay.deliveryStarts)
-      if (jobList._list.value.length === 0) {
-        stepMsg = '投递结束, job列表为空'
-        break
-      }
-      const currentFirstJobId = jobList._list.value[0]?.encryptJobId ?? ''
-      if (
-        (location.href.includes('/web/geek/job-recommend') ||
-          location.href.includes('/web/geek/jobs')) &&
-        oldLen === jobList._list.value.length &&
-        oldFirstJobId === currentFirstJobId
-      ) {
-        stepMsg = '投递结束, 未能获取更多岗位(job列表无变化)'
-        break
-      }
-      oldLen = jobList._list.value.length
-      oldFirstJobId = currentFirstJobId
-      await deliver.jobListHandle()
-      if (common.deliverStop) {
-        break
-      }
-      await delay(conf.formData.delay.deliveryPageNext)
-      if (!next()) {
-        stepMsg = '投递结束, 无法继续下一页'
-        break
-      }
-    }
-  } catch (e) {
-    logger.error('获取失败', e)
-    stepMsg = `获取失败! - ${e}`
-  } finally {
-    logger.debug('日志信息', log.data)
-    conf.formData.notification.value && (await notification(stepMsg))
-    ElMessage.info(stepMsg)
-    common.deliverLock = false
-  }
-}
-
-function resetFilter() {
-  jobList._list.value.forEach((v) => {
-    switch (v.status.status) {
-      case 'success':
-        break
-      case 'pending':
-      case 'wait':
-      case 'running':
-      case 'error':
-      case 'warn':
-      default:
-        v.status.setStatus('wait', '等待中')
-    }
-  })
-}
+const isPaused = computed(() => common.deliverState === 'paused' && !common.deliverLock)
 
 onMounted(() => {
   statistics.updateStatistics()
@@ -237,9 +171,9 @@ onMounted(() => {
         type="primary"
         data-help="点击开始就会开始投递"
         :loading="common.deliverLock"
-        @click="startBatch"
+        @click="isPaused ? resumeBatch() : startBatch()"
       >
-        开始
+        {{ isPaused ? '继续' : '开始' }}
       </ElButton>
       <ElButton
         v-if="!common.deliverLock && common.deliverStop"
@@ -253,7 +187,7 @@ onMounted(() => {
         v-if="common.deliverLock && !common.deliverStop"
         type="warning"
         data-help="暂停后应该能继续"
-        @click="stopDeliver()"
+        @click="pauseBatch()"
       >
         暂停
       </ElButton>

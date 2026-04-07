@@ -4,6 +4,7 @@ import { defineConfig } from 'wxt'
 import { version } from './package.json'
 
 const matches = ['*://zhipin.com/*', '*://*.zhipin.com/*']
+const hostPermissions = ['*://zhipin.com/*', '*://*.zhipin.com/*']
 
 export default defineConfig({
   srcDir: 'src',
@@ -16,13 +17,21 @@ export default defineConfig({
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
     permissions: ['storage', 'cookies', 'notifications'],
+    externally_connectable: {
+      matches: [
+        'http://localhost/*',
+        'http://127.0.0.1/*',
+        'https://localhost/*',
+        'https://127.0.0.1/*',
+      ],
+    },
     web_accessible_resources: [
       {
         resources: ['main-world.js'],
         matches,
       },
     ],
-    host_permissions: ['http://*/*', 'https://*/*'],
+    host_permissions: hostPermissions,
   },
   vite: () => ({
     define: {
@@ -44,7 +53,7 @@ export default defineConfig({
     },
   }),
   hooks: {
-    'build:manifestGenerated': (wxt, manifest) => {
+    'build:manifestGenerated': (_wxt, manifest) => {
       manifest.content_scripts ??= []
       manifest.content_scripts.push({
         // Build extension once to see where your CSS get's written to

@@ -6,6 +6,7 @@ import { useModel } from '@/composables/useModel'
 import { useStatistics } from '@/composables/useStatistics'
 import { Message } from '@/composables/useWebSocket'
 import { counter } from '@/message'
+import { requestExternalAIFilterReview } from '@/pages/zhipin/hooks/agentReview'
 import { useConf } from '@/stores/conf'
 import type { logData } from '@/stores/log'
 import { useUser } from '@/stores/user'
@@ -27,7 +28,7 @@ import {
 import { getCurDay, getCurTime } from '@/utils'
 
 import { SignedKeyLLM } from '../useModel/signedKey'
-import type { StepFactory } from './type'
+import type { StepArgs, StepFactory } from './type'
 import {
   errorHandle,
   parseFiltering,
@@ -43,92 +44,81 @@ export function handles() {
   const model = useModel()
   const conf = useConf()
   const statistics = useStatistics()
-  const now = Date.now()
+
   const communicated: StepFactory = () => {
     return async ({ data }) => {
       if (data.contact) {
+        statistics.todayData.repeat++
         throw new RepeatError(`已经沟通过`)
       }
     }
   }
 
-  const SameCompanyFilter: StepFactory = () => {
-    if (!conf.formData.sameCompanyFilter.value) {
-      return
-    }
-    let someSet: Set<string> | null = null
-    let count = 0
-    const uid = useUser().getUserId()
-    if (uid == null) {
-      throw new RepeatError('没有获取到uid')
-    }
-    return {
-      fn: async ({ data }) => {
-        if (someSet == null) {
-          someSet = new Set<string>()
-          const data = await counter.storageGet<Record<string, string[]>>(sameCompanyKey, {})
-          for (const id of data[uid] ?? []) {
-            someSet.add(id)
+  function createDuplicateFilter(
+    enabled: () => boolean,
+    storageKey: string,
+    getId: (data: bossZpJobItemData) => string | null | undefined,
+    errorMessage: string,
+  ): StepFactory {
+    return () => {
+      if (!enabled()) {
+        return
+      }
+      let someSet: Set<string> | null = null
+      let count = 0
+      const uid = useUser().getUserId()
+      if (uid == null) {
+        throw new RepeatError('没有获取到uid')
+      }
+
+      return {
+        fn: async ({ data }) => {
+          if (someSet == null) {
+            someSet = new Set<string>()
+            const stored = await counter.storageGet<Record<string, string[]>>(storageKey, {})
+            for (const id of stored[uid] ?? []) {
+              someSet.add(id)
+            }
           }
-        }
-        const id = data.encryptBrandId
-        if (id != null && someSet.has(id)) {
-          throw new RepeatError('相同公司已投递')
-        }
-      },
-      after: async ({ data }) => {
-        someSet?.add(data.encryptBrandId)
-        count++
-        if (count > 3) {
-          const oldData = await counter.storageGet<Record<string, string[]>>(sameCompanyKey, {})
-          await counter.storageSet(sameCompanyKey, {
-            ...oldData,
-            [uid]: Array.from(someSet ?? []),
-          })
-          count = 0
-        }
-      },
+
+          const id = getId(data)
+          if (id != null && someSet.has(id)) {
+            statistics.todayData.repeat++
+            throw new RepeatError(errorMessage)
+          }
+        },
+        after: async ({ data }) => {
+          const id = getId(data)
+          if (id != null) {
+            someSet?.add(id)
+          }
+          count++
+          if (count > 3) {
+            const oldData = await counter.storageGet<Record<string, string[]>>(storageKey, {})
+            await counter.storageSet(storageKey, {
+              ...oldData,
+              [uid]: Array.from(someSet ?? []),
+            })
+            count = 0
+          }
+        },
+      }
     }
   }
 
-  const SameHrFilter: StepFactory = () => {
-    if (!conf.formData.sameHrFilter.value) {
-      return
-    }
-    let someSet: Set<string> | null = null
-    let count = 0
-    const uid = useUser().getUserId()
-    if (uid == null) {
-      throw new RepeatError('没有获取到uid')
-    }
-    return {
-      fn: async ({ data }) => {
-        if (someSet == null) {
-          someSet = new Set<string>()
-          const data = await counter.storageGet<Record<string, string[]>>(sameHrKey, {})
-          for (const id of data[uid] ?? []) {
-            someSet.add(id)
-          }
-        }
-        const id = data.encryptBossId
-        if (id != null && someSet.has(id)) {
-          throw new RepeatError('相同hr已投递')
-        }
-      },
-      after: async ({ data }) => {
-        someSet?.add(data.encryptBossId)
-        count++
-        if (count > 3) {
-          const oldData = await counter.storageGet<Record<string, string[]>>(sameHrKey, {})
-          await counter.storageSet(sameHrKey, {
-            ...oldData,
-            [uid]: Array.from(someSet ?? []),
-          })
-          count = 0
-        }
-      },
-    }
-  }
+  const SameCompanyFilter = createDuplicateFilter(
+    () => conf.formData.sameCompanyFilter.value,
+    sameCompanyKey,
+    (data) => data.encryptBrandId,
+    '相同公司已投递',
+  )
+
+  const SameHrFilter = createDuplicateFilter(
+    () => conf.formData.sameHrFilter.value,
+    sameHrKey,
+    (data) => data.encryptBossId,
+    '相同hr已投递',
+  )
 
   const jobTitle: StepFactory = () => {
     if (!conf.formData.jobTitle.enable) {
@@ -356,6 +346,55 @@ export function handles() {
     return async (_, ctx) => {
       // const chatInput = chatInputInit(model)
       try {
+        const threshold = conf.formData.aiFiltering.score ?? 10
+        if (conf.formData.aiFiltering.externalMode) {
+          const review = await requestExternalAIFilterReview(
+            ctx,
+            threshold,
+            conf.formData.aiFiltering.externalTimeoutMs ?? 120000,
+          )
+          const rating = typeof review.rating === 'number' ? review.rating : undefined
+          const reason = review.reason?.trim() || (review.accepted ? '外部审核通过' : '外部审核未通过')
+
+          ctx.aiFilteringAjson = {
+            positive: review.positive ?? [],
+            negative: review.negative ?? [],
+            accepted: review.accepted,
+            source: 'external',
+            reason,
+          }
+          ctx.aiFilteringAtext = `分数${rating ?? '未提供'}\n结论:${reason}\n阈值:${threshold}`
+          ctx.aiFilteringScore = {
+            accepted: review.accepted,
+            greeting: review.greeting,
+            negative: review.negative ?? [],
+            positive: review.positive ?? [],
+            rating,
+            reason,
+            source: 'external',
+            threshold,
+          }
+          if (review.greeting) {
+            ctx.externalGreeting = review.greeting
+            ctx.message = review.greeting
+          }
+
+          if (!review.accepted) {
+            throw new AIFilteringError(reason, {
+              accepted: false,
+              greeting: review.greeting,
+              negative: review.negative ?? [],
+              positive: review.positive ?? [],
+              rating,
+              reason,
+              source: 'external',
+              threshold,
+            })
+          }
+
+          return
+        }
+
         const { content, prompt, reasoning_content } = await gpt.message(
           {
             data: {
@@ -393,15 +432,66 @@ export function handles() {
         ctx.aiFilteringAjson = res || {}
         ctx.aiFilteringAtext = message
         ctx.aiFilteringR = reasoning_content
+        ctx.aiFilteringScore = {
+          accepted: rating >= threshold,
+          negative: res?.negative ?? [],
+          positive: res?.positive ?? [],
+          rating,
+          reason: message,
+          source: 'internal',
+          threshold,
+        }
 
         // chatInput.end(message)
-        if (rating < (conf.formData.aiFiltering.score ?? 10)) {
-          throw new AIFilteringError(message)
+        if (rating < threshold) {
+          throw new AIFilteringError(message, {
+            accepted: false,
+            negative: res?.negative ?? [],
+            positive: res?.positive ?? [],
+            rating,
+            reason: message,
+            source: 'internal',
+            threshold,
+          })
         }
       } catch (e) {
-        statistics.todayData.jobContent++
+        statistics.todayData.aiFiltering++
         // chatInput.end('Err~')
-        throw new AIFilteringError(errorHandle(e))
+        if (e instanceof AIFilteringError) {
+          throw e
+        }
+        throw new AIFilteringError(errorHandle(e), ctx.aiFilteringScore as any)
+      }
+    }
+  }
+
+  function createExternalGreetingStep() {
+    const uid = useUser().getUserId()
+    if (uid == null) {
+      ElMessage.error('没有获取到uid,请刷新重试')
+      throw new GreetError('没有获取到uid')
+    }
+
+    return async (_args: StepArgs, ctx: logData) => {
+      if (!ctx.externalGreeting) {
+        return
+      }
+
+      try {
+        if (ctx.bossData == null) {
+          const bossData = await requestBossData(ctx.listData.card!)
+          ctx.bossData = bossData
+        }
+        const buf = new Message({
+          form_uid: uid.toString(),
+          to_uid: ctx.bossData.data.bossId.toString(),
+          to_name: ctx.bossData.data.encryptBossId,
+          content: ctx.externalGreeting,
+        })
+        ctx.aiGreetingA = ctx.externalGreeting
+        buf.send()
+      } catch (e) {
+        throw new GreetError(errorHandle(e))
       }
     }
   }
@@ -418,12 +508,10 @@ export function handles() {
         if (!activeText && !activeTime) {
           throw new ActivityError(`无活跃内容,如果全失败请反馈`)
         } else if (!activeText && activeTime) {
-          if (now - activeTime >= 7 * 24 * 60 * 60 * 1000) {
+          if (Date.now() - activeTime >= 7 * 24 * 60 * 60 * 1000) {
             throw new ActivityError(`不活跃 [${new Date(activeTime).toLocaleString()}]`)
           }
-        } else if (!activeText) {
-          throw new ActivityError(`无活跃信息,如果全失败请反馈`)
-        } else if (activeText.includes('月') || activeText.includes('年'))
+        } else if (activeText != null && (activeText.includes('月') || activeText.includes('年')))
           throw new ActivityError(`不活跃, [${activeText}]`)
       } catch (e) {
         statistics.todayData.activityFilter++
@@ -555,12 +643,28 @@ export function handles() {
   }
 
   const greeting: StepFactory = () => {
-    if (conf.formData.aiGreeting.enable) {
-      // AI招呼语
-      return aiGreeting()
-    } else if (conf.formData.customGreeting.enable) {
-      // 自定义招呼语
-      return customGreeting()
+    const externalGreetingAfter = createExternalGreetingStep()
+    const base = conf.formData.aiGreeting.enable
+      ? aiGreeting()
+      : conf.formData.customGreeting.enable
+        ? customGreeting()
+        : undefined
+
+    const baseAfter = typeof base === 'object' && base != null ? base.after : undefined
+
+    if (!baseAfter) {
+      return {
+        after: externalGreetingAfter,
+      }
+    }
+
+    return {
+      after: async (args, ctx) => {
+        if (ctx.externalGreeting) {
+          return externalGreetingAfter(args, ctx)
+        }
+        return baseAfter(args, ctx)
+      },
     }
   }
 

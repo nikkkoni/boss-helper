@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import elmGetter from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
 
+import { initBossChatStream } from './hooks/useChatStream'
 import Ui from './components/Ui.vue'
 
 import './index.scss'
@@ -72,6 +73,7 @@ function removeAd() {
 
 export async function run() {
   logger.info('加载/web/geek/job页面Hook')
+  initBossChatStream()
   removeAd()
   return mountVue()
 }

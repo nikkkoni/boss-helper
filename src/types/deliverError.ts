@@ -10,6 +10,17 @@ export class BoosHelperError extends Error {
   }
 }
 
+export interface AIFilteringScoreDetail {
+  accepted?: boolean
+  greeting?: string
+  negative?: Array<{ reason: string; score: number }>
+  positive?: Array<{ reason: string; score: number }>
+  rating?: number
+  reason?: string
+  source?: 'internal' | 'external'
+  threshold?: number
+}
+
 export class RepeatError extends BoosHelperError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, 'warning', options)
@@ -67,9 +78,12 @@ export class JobAddressError extends BoosHelperError {
 }
 
 export class AIFilteringError extends BoosHelperError {
-  constructor(message: string, options?: ErrorOptions) {
+  aiScore?: AIFilteringScoreDetail
+
+  constructor(message: string, aiScore?: AIFilteringScoreDetail, options?: ErrorOptions) {
     super(message, 'warning', options)
     this.name = 'AI筛选'
+    this.aiScore = aiScore
   }
 }
 

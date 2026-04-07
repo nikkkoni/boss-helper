@@ -1,6 +1,6 @@
 import type { Column } from 'element-plus'
 import { ElButton, ElCheckbox, ElCheckboxGroup, ElIcon, ElPopover, ElTag } from 'element-plus'
-import type { HeaderCellRendererParams } from 'element-plus/es/components/table-v2/src/types.mjs'
+import type { HeaderCellRenderer } from 'element-plus/es/components/table-v2/src/types'
 import { computed, reactive, ref } from 'vue'
 
 import type {
@@ -40,16 +40,19 @@ export interface logData {
   err?: string
   aiFilteringQ?: string
   aiFilteringR?: string | null
-  aiFilteringAjson?: object
+  aiFilteringAjson?: Record<string, unknown>
   aiFilteringAtext?: string
+  aiFilteringScore?: Record<string, unknown>
   aiGreetingQ?: string
   aiGreetingR?: string | null
   aiGreetingA?: string
+  externalGreeting?: string
 }
 
 type logState = 'info' | 'success' | 'warning' | 'danger'
 
-interface log {
+export interface LogEntry {
+  createdAt: string
   job?: MyJobListData
   title: string // 标题
   state: logState // 信息,成功,过滤,出错
@@ -58,9 +61,17 @@ interface log {
   data?: logData
 }
 
-const dialogData = reactive<{ show: boolean; data?: log }>({ show: false })
+export interface LogQueryOptions {
+  from?: string
+  limit?: number
+  offset?: number
+  status?: string[]
+  to?: string
+}
 
-const data = ref<log[]>([])
+const dialogData = reactive<{ show: boolean; data?: LogEntry }>({ show: false })
+
+const data = ref<LogEntry[]>([])
 
 const stateNames: [logState, string][] = [
   ['info', '消息'],
@@ -90,7 +101,7 @@ const filterData = computed(() => {
   return data.value
 })
 
-const columns: Column<log>[] = [
+const columns: Column<LogEntry>[] = [
   {
     key: 'title',
     title: '标题',
@@ -115,7 +126,7 @@ const columns: Column<log>[] = [
     cellRenderer: ({ rowData }) => (
       <ElTag type={rowData.state ?? 'primary'}>{rowData.state_name}</ElTag>
     ),
-    headerCellRenderer: (props: HeaderCellRendererParams<log>) => {
+    headerCellRenderer: (props: Parameters<HeaderCellRenderer<LogEntry>>[0]) => {
       return (
         <div class="flex items-center justify-center">
           <span class="mr-2 text-xs">{props.column.title}</span>
@@ -180,11 +191,44 @@ const columns: Column<log>[] = [
 ]
 
 export function useLog() {
+  const query = (options: LogQueryOptions = {}) => {
+    const limit = Number.isInteger(options.limit) && (options.limit ?? 0) > 0 ? options.limit! : 50
+    const offset = Number.isInteger(options.offset) && (options.offset ?? 0) >= 0 ? options.offset! : 0
+    const statusFilter = options.status?.length ? new Set(options.status) : null
+    const fromTs = options.from ? Date.parse(options.from) : null
+    const toTs = options.to ? Date.parse(options.to) : null
+
+    const filtered = data.value.filter((item) => {
+      if (statusFilter && !statusFilter.has(item.state_name) && !statusFilter.has(item.state)) {
+        return false
+      }
+
+      const createdAt = Date.parse(item.createdAt)
+      if (fromTs != null && !Number.isNaN(fromTs) && createdAt < fromTs) {
+        return false
+      }
+      if (toTs != null && !Number.isNaN(toTs) && createdAt > toTs) {
+        return false
+      }
+
+      return true
+    })
+
+    const ordered = [...filtered].reverse()
+    return {
+      items: ordered.slice(offset, offset + limit),
+      limit,
+      offset,
+      total: ordered.length,
+    }
+  }
+
   const add = (job: MyJobListData, err: logErr, logdata?: logData, msg?: string) => {
     const state = !err ? 'success' : err.state
     const message = msg ?? (err ? err.message : undefined)
 
     data.value.push({
+      createdAt: new Date().toISOString(),
       job,
       title: job.jobName,
       state,
@@ -195,6 +239,7 @@ export function useLog() {
   }
   const info = (title: string, message: string) => {
     data.value.push({
+      createdAt: new Date().toISOString(),
       title,
       state: 'info',
       state_name: '消息',
@@ -213,6 +258,7 @@ export function useLog() {
     clear,
     add,
     info,
+    query,
     dialogData,
   }
 }

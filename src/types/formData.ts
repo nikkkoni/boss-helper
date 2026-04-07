@@ -7,6 +7,7 @@ export interface Statistics {
   company: number
   jobTitle: number
   jobContent: number
+  aiFiltering: number
   hrPosition: number
   jobAddress: number
   salaryRange: number
@@ -39,7 +40,7 @@ export interface FormData {
   notification: FormDataCheckbox
   useCache: FormDataCheckbox
   aiGreeting: FormDataAi
-  aiFiltering: FormDataAi & { score: number }
+  aiFiltering: FormDataAi & { score: number; externalMode?: boolean; externalTimeoutMs?: number }
   aiReply: FormDataAi
   amap: {
     key: string

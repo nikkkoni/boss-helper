@@ -22,6 +22,7 @@ export const useStatistics = defineStore('statistics', () => {
       company: 0,
       jobTitle: 0,
       jobContent: 0,
+      aiFiltering: 0,
       hrPosition: 0,
       salaryRange: 0,
       companySizeRange: 0,

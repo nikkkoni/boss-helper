@@ -24,6 +24,7 @@ import elmGetter from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
 
 import { useDeliver } from '../hooks/useDeliver'
+import { useDeliveryControl } from '../hooks/useDeliveryControl'
 import { usePager } from '../hooks/usePager'
 import About from './About.vue'
 import Card from './Card.vue'
@@ -36,10 +37,13 @@ const user = useUser()
 const model = useModel()
 const signedKey = useSignedKey()
 const { initPager } = usePager()
+const { registerWindowAgentBridge } = useDeliveryControl()
 const { x, y } = useMouse({ type: 'client' })
 const deliver = useDeliver()
 const { todayData } = useStatistics()
 const conf = useConf()
+let refreshSignedKeyTimer: ReturnType<typeof setInterval> | undefined
+let unregisterAgentBridge: (() => void) | undefined
 
 const helpVisible = ref(false)
 const searchRef = ref()
@@ -93,6 +97,7 @@ function findHelp(dom: HTMLElement | null) {
 }
 
 onMounted(async () => {
+  unregisterAgentBridge = registerWindowAgentBridge()
   void conf.confInit()
   void user.initUser()
   void user.initCookie()
@@ -150,15 +155,19 @@ onMounted(async () => {
     ElMessage.error(`分页器初始失败: ${e instanceof Error ? e.message : '未知错误'}`)
   })
 
-  const t = setInterval(
+  refreshSignedKeyTimer = setInterval(
     () => {
       void signedKey.refreshSignedKeyInfo()
     },
     1000 * 60 * 20,
   )
-  onUnmounted(() => {
-    clearInterval(t)
-  })
+})
+
+onUnmounted(() => {
+  if (refreshSignedKeyTimer) {
+    clearInterval(refreshSignedKeyTimer)
+  }
+  unregisterAgentBridge?.()
 })
 
 function tagOpen(url: string) {

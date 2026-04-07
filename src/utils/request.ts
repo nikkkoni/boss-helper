@@ -11,8 +11,45 @@ export class RequestError extends Error {
   }
 }
 export type ResponseType = 'text' | 'json' | 'arraybuffer' | 'blob' | 'document' | 'stream'
+export type ResponseData<TResponseType extends ResponseType> = TResponseType extends 'text'
+  ? string
+  : TResponseType extends 'arraybuffer'
+    ? ArrayBuffer
+    : TResponseType extends 'blob'
+      ? Blob
+      : TResponseType extends 'document'
+        ? Document
+        : TResponseType extends 'stream'
+          ? ReadableStream<Uint8Array>
+          : any
 
 export type OnStream = (reader: ReturnType<typeof events>) => Promise<void>
+
+async function parseResponse<TResponseType extends ResponseType>(
+  response: Response,
+  responseType: TResponseType,
+): Promise<ResponseData<TResponseType>> {
+  switch (responseType) {
+    case 'text':
+      return (await response.text()) as ResponseData<TResponseType>
+    case 'arraybuffer':
+      return (await response.arrayBuffer()) as ResponseData<TResponseType>
+    case 'blob':
+      return (await response.blob()) as ResponseData<TResponseType>
+    case 'document': {
+      const html = await response.text()
+      return new DOMParser().parseFromString(html, 'text/html') as ResponseData<TResponseType>
+    }
+    case 'stream':
+      if (!response.body) {
+        throw new RequestError('没有响应流')
+      }
+      return response.body as ResponseData<TResponseType>
+    case 'json':
+    default:
+      return (await response.json()) as ResponseData<TResponseType>
+  }
+}
 
 interface GmXhrRequest<TContext, TResponseType extends ResponseType> {
   method?: string
@@ -103,7 +140,7 @@ export type RequestArgs<TContext, TResponseType extends ResponseType> = Partial<
 
 export async function request<TContext, TResponseType extends ResponseType = 'json'>(
   args: RequestArgs<TContext, TResponseType>,
-) {
+): Promise<ResponseData<TResponseType>> {
   const {
     method = 'POST',
     url = '',
@@ -115,7 +152,7 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
   } = args
 
   const signal = AbortSignal.timeout(timeout * 1000)
-  return new Promise((resolve, reject) => {
+  return new Promise<ResponseData<TResponseType>>((resolve, reject) => {
     const axiosLoad = loader({ ms: timeout * 1000, color: '#F79E63' })
 
     const requestData = {
@@ -144,7 +181,7 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
     } else {
       fetch(url, { ...requestData, signal })
         .then(async (response) => {
-          if (!response.body) {
+          if (responseType === 'stream' && !response.body) {
             reject(new RequestError('没有响应体'))
             return
           }
@@ -156,9 +193,7 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
             return
           }
 
-          const result = responseType === 'json' ? await response.json() : await response.text()
-
-          resolve(result)
+          resolve(await parseResponse(response, responseType))
         })
         .catch((e) => {
           if (e.name === 'AbortError') {
@@ -177,7 +212,7 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
 
 request.post = async <TContext, TResponseType extends ResponseType = 'json'>(
   args: Omit<RequestArgs<TContext, TResponseType>, 'method'>,
-) => {
+): Promise<ResponseData<TResponseType>> => {
   return request<TContext, TResponseType>({
     method: 'POST',
     ...args,
@@ -186,7 +221,7 @@ request.post = async <TContext, TResponseType extends ResponseType = 'json'>(
 
 request.get = async <TContext, TResponseType extends ResponseType = 'json'>(
   args: Omit<RequestArgs<TContext, TResponseType>, 'method'>,
-) => {
+): Promise<ResponseData<TResponseType>> => {
   return request<TContext, TResponseType>({
     method: 'GET',
     ...args,

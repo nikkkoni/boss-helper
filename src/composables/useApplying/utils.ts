@@ -1,12 +1,14 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+import { browser } from '#imports'
 import {
-  GreetError,
   BoosHelperError,
+  GreetError,
   LimitError,
   PublishError,
   RateLimitError,
+  UnknownError,
 } from '@/types/deliverError'
 import type { FormDataRange } from '@/types/formData'
 import { logger } from '@/utils/logger'
@@ -17,37 +19,63 @@ import { parseGptJson } from '@/utils/parse'
 export const sameCompanyKey = 'local:sameCompany'
 export const sameHrKey = 'local:sameHr'
 
-export async function requestCard(params: { securityId: string; lid: string }) {
-  return axios.get<{
-    code: number
-    message: string
-    zpData: {
-      jobCard: bossZpCardData
+interface BossApiResponse<T> {
+  code: number
+  message: string
+  zpData: T
+}
+
+async function getBossToken() {
+  for (const url of ['https://www.zhipin.com', 'https://zhipin.com']) {
+    const token = await browser.cookies.get({
+      url,
+      name: 'bst',
+    })
+    if (token?.value) {
+      return token.value
     }
-  }>('https://www.zhipin.com/wapi/zpgeek/job/card.json', {
+  }
+
+  ElMessage.error('没有获取到token,请刷新重试')
+  throw new PublishError('没有获取到token')
+}
+
+function ensureBossApiSuccess<T>(response: BossApiResponse<T>, action: string): T {
+  if (response.code !== 0) {
+    throw new UnknownError(`${action}: ${response.message || '未知错误'}`)
+  }
+
+  return response.zpData
+}
+
+export async function requestCard(params: { securityId: string; lid: string }) {
+  const res = await axios.get<
+    BossApiResponse<{
+      jobCard: bossZpCardData
+    }>
+  >('https://www.zhipin.com/wapi/zpgeek/job/card.json', {
     params,
     timeout: 5000,
   })
+
+  return ensureBossApiSuccess(res.data, '获取职位卡片失败').jobCard
 }
 
 export async function requestDetail(params: { securityId: string; lid: string }) {
-  const token = window?.Cookie.get('bst')
-  if (!token) {
-    ElMessage.error('没有获取到token,请刷新重试')
-    throw new PublishError('没有获取到token')
-  }
-  return axios.get<{
-    code: number
-    message: string
-    zpData: bossZpDetailData
-  }>('https://www.zhipin.com/wapi/zpgeek/job/detail.json', {
+  const token = await getBossToken()
+  const res = await axios.get<BossApiResponse<bossZpDetailData>>(
+    'https://www.zhipin.com/wapi/zpgeek/job/detail.json',
+    {
     params: {
       ...params,
       _: Date.now(),
     },
     headers: { Zp_token: token },
     timeout: 5000,
-  })
+    },
+  )
+
+  return ensureBossApiSuccess(res.data, '获取职位详情失败')
 }
 
 export async function sendPublishReq(
@@ -65,11 +93,7 @@ export async function sendPublishReq(
     jobId: data.encryptJobId,
     ..._params,
   }
-  const token = window?.Cookie.get('bst')
-  if (!token) {
-    ElMessage.error('没有获取到token,请刷新重试')
-    throw new PublishError('没有获取到token')
-  }
+  const token = await getBossToken()
   try {
     const res = await axios({
       url,
@@ -112,11 +136,12 @@ export async function sendPublishReq(
       throw new PublishError(`未知错误状态:${res.data.message}`)
     }
     return res.data
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e instanceof BoosHelperError) {
       throw e
     }
-    return sendPublishReq(data, e?.message as string, retries - 1)
+    logger.warn(`sendPublishReq 重试, 剩余 ${retries - 1} 次`, e)
+    return sendPublishReq(data, errorHandle(e), retries - 1)
   }
 }
 
@@ -130,11 +155,7 @@ export async function requestBossData(
   }
   const url = 'https://www.zhipin.com/wapi/zpchat/geek/getBossData'
   // userInfo.value?.token 不相等！
-  const token = window?.Cookie.get('bst')
-  if (!token) {
-    ElMessage.error('没有获取到token,请刷新重试')
-    throw new GreetError('没有获取到token')
-  }
+  const token = await getBossToken()
   try {
     const data = new FormData()
     data.append('bossId', card.encryptUserId)
@@ -157,11 +178,11 @@ export async function requestBossData(
       throw new GreetError(`状态错误:${res.data.message}`)
     }
     return res.data.zpData
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e instanceof GreetError) {
       throw e
     }
-    return requestBossData(card, e?.message as string, retries - 1)
+    return requestBossData(card, errorHandle(e), retries - 1)
   }
 }
 
@@ -225,7 +246,7 @@ export function parseFiltering(content: string) {
   return { res, message, rating, data }
 }
 
-export function errorHandle(e: any): string {
+export function errorHandle(e: unknown): string {
   if (e instanceof Error) {
     return e.message
   }

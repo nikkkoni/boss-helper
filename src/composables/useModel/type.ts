@@ -43,7 +43,7 @@ export abstract class llm<C = any> {
         },
       ]
     } else if (Array.isArray(this.template)) {
-      const temp = this.template
+      const temp = this.template.map((item) => ({ ...item }))
       temp[temp.length - 1].content = this.tem(data)
       return temp
     } else {

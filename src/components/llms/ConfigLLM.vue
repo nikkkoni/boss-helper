@@ -15,7 +15,11 @@ import Alert from '@/components/Alert'
 import type { modelData } from '@/composables/useModel'
 import { llmIcon, useModel } from '@/composables/useModel'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
-import { exportJson, importJson } from '@/utils/jsonImportExport'
+import {
+  exportJson,
+  ImportJsonCancelledError,
+  importJson,
+} from '@/utils/jsonImportExport'
 
 import CreateLLM from './CreateLLM.vue'
 
@@ -75,10 +79,17 @@ function exportllm() {
 }
 
 function importllm() {
-  importJson<modelData[]>().then((data) => {
-    modelStore.modelData = data
-    ElMessage.success('导入成功, 请手动保存')
-  })
+  importJson<modelData[]>()
+    .then((data) => {
+      modelStore.modelData = data
+      ElMessage.success('导入成功, 请手动保存')
+    })
+    .catch((error) => {
+      if (error instanceof ImportJsonCancelledError) {
+        return
+      }
+      ElMessage.error(error instanceof Error ? error.message : '导入失败')
+    })
 }
 </script>
 

@@ -4,6 +4,20 @@ import { defineProxy } from 'comctx'
 import type { StorageItemKey } from '#imports'
 import { browser, storage } from '#imports'
 
+import {
+  BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+  BOSS_HELPER_AGENT_EVENT_FORWARD,
+  BOSS_HELPER_AGENT_VERSION,
+  createBossHelperAgentResponse,
+  isBossHelperAgentEventBridgeMessage,
+  isBossHelperAgentBridgeResponse,
+  isBossHelperAgentRequest,
+  type BossHelperAgentCommand,
+  type BossHelperAgentBridgeRequest,
+  type BossHelperAgentRequest,
+  type BossHelperAgentResponse,
+} from '@/message/agent'
+
 import type { BackgroundCounter } from './background'
 
 export const [, injectBackgroundCounter] = defineProxy(() => ({}) as BackgroundCounter, {
@@ -116,4 +130,94 @@ export class ProvideContentAdapter implements Adapter {
     window.parent.addEventListener('message', handler)
     return () => window.parent.removeEventListener('message', handler)
   }
+}
+
+async function forwardAgentRequestToPage(
+  request: BossHelperAgentRequest,
+): Promise<BossHelperAgentResponse> {
+  const requestId = request.requestId ?? crypto.randomUUID()
+
+  return new Promise((resolve) => {
+    const handleResponse = (event: MessageEvent) => {
+      if (event.source !== window || !isBossHelperAgentBridgeResponse(event.data)) {
+        return
+      }
+      if (event.data.requestId !== requestId) {
+        return
+      }
+
+      cleanup()
+      resolve(event.data.payload)
+    }
+
+    const timeout = window.setTimeout(() => {
+      cleanup()
+      resolve(
+        createBossHelperAgentResponse(
+          false,
+          'page-timeout',
+          '投递页面未响应，请确认 Boss 页面已完成初始化',
+        ),
+      )
+    }, getCommandTimeout(request.command))
+
+    const cleanup = () => {
+      window.clearTimeout(timeout)
+      window.removeEventListener('message', handleResponse)
+    }
+
+    const payload: BossHelperAgentBridgeRequest = {
+      type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+      requestId,
+      payload: {
+        ...request,
+        requestId,
+        version: request.version ?? BOSS_HELPER_AGENT_VERSION,
+      },
+    }
+
+    window.addEventListener('message', handleResponse)
+    window.postMessage(payload, '*')
+  })
+}
+
+function getCommandTimeout(command: BossHelperAgentCommand) {
+  switch (command) {
+    case 'start':
+    case 'jobs.list':
+    case 'navigate':
+    case 'chat.list':
+    case 'chat.history':
+    case 'chat.send':
+    case 'resume.get':
+      return 10_000
+    case 'stop':
+    case 'jobs.detail':
+      return 65_000
+    default:
+      return 5_000
+  }
+}
+
+export function registerAgentMessageBridge() {
+  const forwardPageEventToBackground = (event: MessageEvent) => {
+    if (event.source !== window || !isBossHelperAgentEventBridgeMessage(event.data)) {
+      return
+    }
+
+    void browser.runtime.sendMessage({
+      type: BOSS_HELPER_AGENT_EVENT_FORWARD,
+      payload: event.data.payload,
+    })
+  }
+
+  window.addEventListener('message', forwardPageEventToBackground)
+
+  browser.runtime.onMessage.addListener((message) => {
+    if (!isBossHelperAgentRequest(message)) {
+      return
+    }
+
+    return forwardAgentRequestToPage(message)
+  })
 }
