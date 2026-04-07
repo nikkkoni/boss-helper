@@ -1,0 +1,339 @@
+import { ElMessage } from 'element-plus'
+
+import { useCommon } from '@/composables/useCommon'
+import { useStatistics } from '@/composables/useStatistics'
+import {
+  createBossHelperAgentResponse,
+  type BossHelperAgentCurrentJob,
+  type BossHelperAgentResponse,
+  type BossHelperAgentStartPayload,
+  type BossHelperAgentStatsData,
+} from '@/message/agent'
+import { useAgentRuntime } from '@/stores/agent'
+import { useConf } from '@/stores/conf'
+import { jobList } from '@/stores/jobs'
+import { useLog } from '@/stores/log'
+import { delay, notification } from '@/utils'
+import { jsonClone } from '@/utils/deepmerge'
+import { logger } from '@/utils/logger'
+
+import { abortAllPendingAIFilterReviews } from './agentReview'
+import { executeAgentBatchLoop } from './agentBatchLoop'
+import { useAgentBatchEvents } from './useAgentBatchEvents'
+import { useDeliver } from './useDeliver'
+import { usePager } from './usePager'
+
+interface UseAgentBatchRunnerOptions {
+  ensureStoresLoaded: () => Promise<void>
+  ensureSupportedPage: () => boolean
+}
+
+function normalizeTargetJobIds(jobIds?: string[]) {
+  if (!jobIds?.length) {
+    return []
+  }
+
+  return [...new Set(jobIds.map((id) => id.trim()).filter(Boolean))]
+}
+
+function currentJobSnapshot(currentData: ReturnType<typeof useDeliver>['currentData']): BossHelperAgentCurrentJob | null {
+  if (!currentData) {
+    return null
+  }
+
+  return {
+    encryptJobId: currentData.encryptJobId,
+    jobName: currentData.jobName ?? '',
+    brandName: currentData.brandName ?? '',
+    status: currentData.status.status,
+    message: currentData.status.msg ?? '',
+  }
+}
+
+export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
+  const agentRuntime = useAgentRuntime()
+  const common = useCommon()
+  const conf = useConf()
+  const deliver = useDeliver()
+  const log = useLog()
+  const { next, page } = usePager()
+  const statistics = useStatistics()
+
+  function currentProgressSnapshot() {
+    return {
+      activeTargetJobIds: [...agentRuntime.activeTargetJobIds],
+      current: deliver.total > 0 ? Math.min(deliver.current + 1, deliver.total) : 0,
+      currentJob: currentJobSnapshot(deliver.currentData),
+      locked: common.deliverLock,
+      message: common.deliverStatusMessage,
+      page: page.page,
+      pageSize: page.pageSize,
+      remainingTargetJobIds: [...agentRuntime.remainingTargetJobIds],
+      state: common.deliverState,
+      stopRequested: common.deliverStop,
+      total: deliver.total,
+    }
+  }
+
+  const batchEvents = useAgentBatchEvents({
+    common,
+    currentProgressSnapshot,
+  })
+
+  function clearTargetJobState() {
+    agentRuntime.clearTargetJobState()
+  }
+
+  async function applyStartPayload(payload?: BossHelperAgentStartPayload) {
+    const targetJobIds = normalizeTargetJobIds(payload?.jobIds)
+    agentRuntime.setTargetJobIds(targetJobIds)
+
+    if (payload?.configPatch && Object.keys(payload.configPatch).length > 0) {
+      await conf.applyRuntimeConfigPatch(payload.configPatch, {
+        persist: payload.persistConfig,
+      })
+    }
+
+    if (payload?.resetFiltered && targetJobIds.length === 0) {
+      resetFilter()
+    }
+  }
+
+  async function getStatsData(): Promise<BossHelperAgentStatsData> {
+    await statistics.updateStatistics()
+
+    return {
+      progress: {
+        activeTargetJobIds: [...agentRuntime.activeTargetJobIds],
+        state: common.deliverState,
+        locked: common.deliverLock,
+        stopRequested: common.deliverStop,
+        page: page.page,
+        pageSize: page.pageSize,
+        total: deliver.total,
+        current: deliver.total > 0 ? Math.min(deliver.current + 1, deliver.total) : 0,
+        message: common.deliverStatusMessage,
+        currentJob: currentJobSnapshot(deliver.currentData),
+        remainingTargetJobIds: [...agentRuntime.remainingTargetJobIds],
+      },
+      todayData: jsonClone(statistics.todayData),
+      historyData: jsonClone(statistics.statisticsData),
+    }
+  }
+
+  async function ok(code: string, message: string): Promise<BossHelperAgentResponse> {
+    return createBossHelperAgentResponse(true, code, message, await getStatsData())
+  }
+
+  async function fail(code: string, message: string): Promise<BossHelperAgentResponse> {
+    return createBossHelperAgentResponse(false, code, message, await getStatsData())
+  }
+
+  async function runBatch(mode: 'start' | 'resume', options?: BossHelperAgentStartPayload) {
+    common.deliverLock = true
+    common.deliverStop = false
+    agentRuntime.setStopRequestedByCommand(false)
+    batchEvents.setDeliverState(
+      'running',
+      mode === 'resume'
+        ? '投递已恢复'
+        : agentRuntime.activeTargetJobIds.length > 0
+          ? `定向投递进行中，目标 ${agentRuntime.activeTargetJobIds.length} 个岗位`
+          : '投递进行中',
+    )
+    batchEvents.emitBatchStarted(mode, agentRuntime.activeTargetJobIds.length)
+
+    let stepMsg = mode === 'resume' ? '投递已恢复' : '投递结束'
+    let failed = false
+
+    try {
+      logger.debug(`${mode} batch`, page)
+      const result = await executeAgentBatchLoop({
+        activeTargetJobIds: [...agentRuntime.activeTargetJobIds],
+        consumeSeenJobIds: (seenJobIds) => agentRuntime.consumeSeenJobIds(seenJobIds),
+        delayDeliveryPageNextMs: conf.formData.delay.deliveryPageNext,
+        delayDeliveryStartsMs: conf.formData.delay.deliveryStarts,
+        getJobList: () => jobList._list.value,
+        getLocationHref: () => location.href,
+        getRemainingTargetJobIds: () => [...agentRuntime.remainingTargetJobIds],
+        goNextPage: () => next(),
+        handleJobList: (loopOptions) => deliver.jobListHandle(loopOptions),
+        logDebug: (...args) => logger.debug(...args),
+        resetSelectionStatuses: Boolean(options?.resetFiltered),
+        shouldStop: () => common.deliverStop,
+        wait: async (ms) => {
+          await delay(ms)
+        },
+      })
+      stepMsg = result.stepMsg
+    } catch (error) {
+      failed = true
+      logger.error('获取失败', error)
+      stepMsg = `获取失败! - ${error instanceof Error ? error.message : String(error)}`
+    } finally {
+      logger.debug('日志信息', log.data)
+      conf.formData.notification.value && (await notification(stepMsg))
+      ElMessage.info(stepMsg)
+      common.deliverLock = false
+
+      if (failed) {
+        agentRuntime.setStopRequestedByCommand(false)
+        batchEvents.setDeliverState('error', stepMsg)
+        batchEvents.emitBatchError(stepMsg)
+        clearTargetJobState()
+      } else if (common.deliverStop) {
+        if (agentRuntime.stopRequestedByCommand) {
+          agentRuntime.setStopRequestedByCommand(false)
+          common.deliverStop = false
+          clearTargetJobState()
+          batchEvents.setDeliverState('idle', '投递任务已停止')
+          batchEvents.emitBatchStopped()
+        } else {
+          batchEvents.setDeliverState('paused', stepMsg)
+          batchEvents.emitBatchPaused(stepMsg)
+        }
+      } else {
+        agentRuntime.setStopRequestedByCommand(false)
+        batchEvents.setDeliverState('completed', stepMsg)
+        batchEvents.emitBatchCompleted(stepMsg)
+        clearTargetJobState()
+      }
+    }
+  }
+
+  function resetFilter() {
+    jobList._list.value.forEach((v) => {
+      switch (v.status.status) {
+        case 'success':
+          break
+        case 'pending':
+        case 'wait':
+        case 'running':
+        case 'error':
+        case 'warn':
+        default:
+          v.status.setStatus('wait', '等待中')
+      }
+    })
+  }
+
+  async function startBatch(payload?: BossHelperAgentStartPayload) {
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+      return fail('unsupported-page', '当前页面不支持自动投递')
+    }
+    if (common.deliverLock || agentRuntime.hasPendingBatch) {
+      return fail('already-running', '当前已有进行中的投递任务')
+    }
+    if (common.deliverState === 'paused') {
+      return fail('paused', '当前任务已暂停，请调用 resume 继续执行')
+    }
+
+    await applyStartPayload(payload)
+
+    agentRuntime.setBatchPromise(
+      runBatch('start', payload).finally(() => {
+        agentRuntime.setBatchPromise(null)
+      }),
+    )
+    return ok(
+      'started',
+      agentRuntime.activeTargetJobIds.length > 0
+        ? `定向投递任务已启动，目标 ${agentRuntime.activeTargetJobIds.length} 个岗位`
+        : '投递任务已启动',
+    )
+  }
+
+  async function pauseBatch() {
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+      return fail('unsupported-page', '当前页面不支持自动投递')
+    }
+    if (common.deliverState === 'paused') {
+      return ok('already-paused', '当前任务已经暂停')
+    }
+    if (!common.deliverLock) {
+      return fail('not-running', '当前没有进行中的投递任务')
+    }
+
+    common.deliverStop = true
+    batchEvents.setDeliverState('pausing', '正在暂停，等待当前岗位处理完成')
+    batchEvents.emitBatchPausing('正在暂停，等待当前岗位处理完成')
+    return ok('pause-requested', '已发出暂停指令')
+  }
+
+  async function resumeBatch() {
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+      return fail('unsupported-page', '当前页面不支持自动投递')
+    }
+    if (common.deliverLock || agentRuntime.hasPendingBatch) {
+      return fail('already-running', '当前已有进行中的投递任务')
+    }
+    if (common.deliverState !== 'paused') {
+      return fail('not-paused', '当前任务不处于暂停状态')
+    }
+
+    agentRuntime.setBatchPromise(
+      runBatch('resume').finally(() => {
+        agentRuntime.setBatchPromise(null)
+      }),
+    )
+    return ok('resumed', '投递任务已恢复')
+  }
+
+  async function stopBatch() {
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+      return fail('unsupported-page', '当前页面不支持自动投递')
+    }
+
+    if (common.deliverState === 'idle' && !common.deliverLock && !agentRuntime.hasPendingBatch) {
+      clearTargetJobState()
+      common.deliverStop = false
+      agentRuntime.setStopRequestedByCommand(false)
+      return ok('already-stopped', '当前没有进行中的投递任务')
+    }
+
+    if (common.deliverState === 'paused' && !common.deliverLock && !agentRuntime.hasPendingBatch) {
+      clearTargetJobState()
+      common.deliverStop = false
+      agentRuntime.setStopRequestedByCommand(false)
+      batchEvents.setDeliverState('idle', '投递任务已停止')
+      batchEvents.emitBatchStopped()
+      return ok('stopped', '投递任务已停止')
+    }
+
+    agentRuntime.setStopRequestedByCommand(true)
+    common.deliverStop = true
+    abortAllPendingAIFilterReviews('任务已停止')
+    batchEvents.setDeliverState('pausing', '正在停止，等待当前岗位处理完成')
+    batchEvents.emitBatchPausing('正在停止，等待当前岗位处理完成', 'stop-command')
+
+    if (agentRuntime.batchPromise) {
+      await agentRuntime.batchPromise
+    }
+
+    return ok('stopped', '投递任务已停止')
+  }
+
+  async function stats() {
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+      return fail('unsupported-page', '当前页面不支持自动投递')
+    }
+
+    return ok('stats', '已返回当前状态')
+  }
+
+  return {
+    currentProgressSnapshot,
+    getStatsData,
+    resetFilter,
+    startBatch,
+    pauseBatch,
+    resumeBatch,
+    stopBatch,
+    stats,
+  }
+}

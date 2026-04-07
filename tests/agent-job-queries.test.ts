@@ -1,0 +1,236 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const { mockJobList, mockLogStore } = vi.hoisted(() => {
+  const entries: Array<Record<string, unknown>> = []
+
+  const mockLogStore = {
+    add(job: { jobName?: string }, _err: unknown, logdata?: Record<string, unknown>, msg?: string) {
+      entries.push({
+        createdAt: new Date().toISOString(),
+        job,
+        title: job.jobName ?? '',
+        state: 'success',
+        state_name: '投递成功',
+        message: msg,
+        data: logdata,
+      })
+    },
+    clear() {
+      entries.length = 0
+    },
+    query(options: { limit?: number; offset?: number } = {}) {
+      const limit = Number.isInteger(options.limit) && (options.limit ?? 0) > 0 ? options.limit! : 50
+      const offset = Number.isInteger(options.offset) && (options.offset ?? 0) >= 0 ? options.offset! : 0
+      const ordered = [...entries].reverse()
+      return {
+        items: ordered.slice(offset, offset + limit),
+        limit,
+        offset,
+        total: ordered.length,
+      }
+    },
+  }
+
+  const mockJobList = {
+    _list: { value: [] as Array<Record<string, unknown>> },
+    _map: {} as Record<string, Record<string, unknown>>,
+    get(encryptJobId: string) {
+      return this._map[encryptJobId]
+    },
+    set(encryptJobId: string, val: Record<string, unknown>) {
+      this._map[encryptJobId] = val
+    },
+  }
+
+  return { mockJobList, mockLogStore }
+})
+
+vi.mock('@/utils/logger', () => ({
+  logger: {
+    log: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    group: vi.fn(),
+    groupEnd: vi.fn(),
+  },
+}))
+
+vi.mock('@/stores/jobs', () => ({
+  jobList: mockJobList,
+}))
+
+vi.mock('@/stores/log', () => ({
+  useLog: () => mockLogStore,
+}))
+
+vi.mock('@/pages/zhipin/hooks/agentReview', () => ({
+  submitExternalAIFilterReview: vi.fn(() => true),
+}))
+
+import type { UseAgentQueriesOptions } from '@/pages/zhipin/hooks/agentQueryShared'
+import { useAgentJobQueries } from '@/pages/zhipin/hooks/useAgentJobQueries'
+import { jobList, type MyJobListData } from '@/stores/jobs'
+import { useLog } from '@/stores/log'
+
+function createQueryOptions(overrides: Partial<UseAgentQueriesOptions> = {}): UseAgentQueriesOptions {
+  return {
+    currentProgressSnapshot: () => ({}),
+    ensureStoresLoaded: async () => {},
+    ensureSupportedPage: () => true,
+    fail: async (code, message) => ({ ok: false, code, message }),
+    ok: async (code, message) => ({ ok: true, code, message }),
+    ...overrides,
+  }
+}
+
+function createJob(overrides: Partial<MyJobListData> = {}): MyJobListData {
+  const job = {
+    encryptJobId: 'job-1',
+    jobName: 'Frontend Engineer',
+    brandName: 'Acme',
+    brandScaleName: '100-499人',
+    salaryDesc: '20-30K',
+    cityName: '上海',
+    areaDistrict: '浦东',
+    skills: ['Vue', 'TypeScript'],
+    jobLabels: ['双休'],
+    bossName: 'Alice',
+    bossTitle: 'HRD',
+    goldHunter: 0,
+    contact: true,
+    welfareList: ['五险一金'],
+    brandIndustry: '互联网',
+    jobDegree: '本科',
+    jobExperience: '3-5年',
+    gps: null,
+    card: undefined,
+    status: {
+      status: 'wait',
+      msg: '等待中',
+      setStatus(status: MyJobListData['status']['status'], msg = '') {
+        job.status.status = status
+        job.status.msg = msg
+      },
+    },
+    getCard: async () => {
+      throw new Error('not implemented')
+    },
+    ...overrides,
+  } as MyJobListData
+
+  return job
+}
+
+describe('useAgentJobQueries', () => {
+  beforeEach(() => {
+    jobList._list.value = []
+    Object.keys(jobList._map).forEach((key) => {
+      delete jobList._map[key]
+    })
+    useLog().clear()
+  })
+
+  it('filters jobs.list by pipeline status', async () => {
+    const waitJob = createJob({ encryptJobId: 'job-wait' })
+    const successJob = createJob({
+      encryptJobId: 'job-success',
+      status: {
+        status: 'success',
+        msg: '投递成功',
+        setStatus(status, msg = '') {
+          successJob.status.status = status
+          successJob.status.msg = msg
+        },
+      },
+    })
+
+    jobList._list.value = [waitJob, successJob]
+    jobList.set(waitJob.encryptJobId, waitJob)
+    jobList.set(successJob.encryptJobId, successJob)
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.jobsList({ statusFilter: ['success'] })
+
+    expect(response.ok).toBe(true)
+    expect(response.code).toBe('jobs-list')
+    expect(response.data?.total).toBe(1)
+    expect(response.data?.totalOnPage).toBe(2)
+    expect(response.data?.jobs.map((item) => item.encryptJobId)).toEqual(['job-success'])
+  })
+
+  it('loads missing card data in jobs.detail and maps detail fields', async () => {
+    const job = createJob({ encryptJobId: 'job-detail' })
+    job.getCard = async () => {
+      job.card = {
+        postDescription: '负责页面开发',
+        salaryDesc: '30-40K',
+        degreeName: '本科',
+        experienceName: '5-10年',
+        address: '张江高科',
+        jobLabels: ['React', '架构'],
+        bossName: 'Bob',
+        bossTitle: '招聘经理',
+        activeTimeDesc: '刚刚活跃',
+        friendStatus: 1,
+        brandName: 'Detail Corp',
+        brandComInfo: { brandName: 'Detail Corp', industryName: '软件服务' },
+        jobInfo: {
+          postDescription: '负责页面开发',
+          salaryDesc: '30-40K',
+          degreeName: '本科',
+          experienceName: '5-10年',
+          address: '张江高科',
+          showSkills: ['React', '架构'],
+          longitude: 121.6,
+          latitude: 31.2,
+        },
+        bossInfo: {
+          name: 'Bob',
+          title: '招聘经理',
+          activeTimeDesc: '刚刚活跃',
+        },
+        relationInfo: {
+          beFriend: true,
+        },
+      } as NonNullable<MyJobListData['card']>
+      return job.card
+    }
+
+    jobList._list.value = [job]
+    jobList.set(job.encryptJobId, job)
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.jobsDetail({ encryptJobId: 'job-detail' })
+
+    expect(response.ok).toBe(true)
+    expect(response.code).toBe('job-detail')
+    expect(response.data?.job.postDescription).toBe('负责页面开发')
+    expect(response.data?.job.salaryDesc).toBe('30-40K')
+    expect(response.data?.job.brandName).toBe('Detail Corp')
+    expect(response.data?.job.friendStatus).toBe(1)
+    expect(response.data?.job.gps).toEqual({ longitude: 121.6, latitude: 31.2 })
+    expect(response.data?.job.hasCard).toBe(true)
+  })
+
+  it('returns normalized logs from logs.query in reverse chronological order', async () => {
+    const olderJob = createJob({ encryptJobId: 'job-old', jobName: 'Old Job' })
+    const newerJob = createJob({ encryptJobId: 'job-new', jobName: 'New Job' })
+    const log = useLog()
+
+    log.add(olderJob, null, { listData: olderJob, aiGreetingA: '你好' }, 'older message')
+    log.add(newerJob, null, { listData: newerJob, aiFilteringAjson: { score: 92 } }, 'newer message')
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.logsQuery({ limit: 10, offset: 0 })
+
+    expect(response.ok).toBe(true)
+    expect(response.code).toBe('logs-query')
+    expect(response.data?.total).toBe(2)
+    expect(response.data?.items[0]?.encryptJobId).toBe('job-new')
+    expect(response.data?.items[0]?.aiScore).toEqual({ score: 92 })
+    expect(response.data?.items[1]?.encryptJobId).toBe('job-old')
+    expect(response.data?.items[1]?.greeting).toBe('你好')
+  })
+})

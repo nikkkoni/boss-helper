@@ -1,0 +1,94 @@
+interface AgentBatchListItem {
+  encryptJobId?: string
+}
+
+interface AgentBatchHandleResult {
+  seenJobIds: string[]
+}
+
+interface AgentBatchLoopOptions {
+  activeTargetJobIds: string[]
+  consumeSeenJobIds: (seenJobIds: string[]) => number
+  delayDeliveryPageNextMs: number
+  delayDeliveryStartsMs: number
+  getJobList: () => AgentBatchListItem[]
+  getLocationHref: () => string
+  getRemainingTargetJobIds: () => string[]
+  goNextPage: () => boolean
+  handleJobList: (options: {
+    resetSelectionStatuses: boolean
+    selectedJobIds?: string[]
+  }) => Promise<AgentBatchHandleResult>
+  logDebug: (...args: unknown[]) => void
+  resetSelectionStatuses: boolean
+  shouldStop: () => boolean
+  wait: (ms: number) => Promise<void>
+}
+
+export async function executeAgentBatchLoop(options: AgentBatchLoopOptions) {
+  let stepMsg = '投递结束'
+  let resetSelectionStatuses = options.resetSelectionStatuses
+  let oldLen = 0
+  let oldFirstJobId = ''
+
+  options.logDebug('batch loop start')
+
+  while (!options.shouldStop()) {
+    const remainingTargetJobIds = options.getRemainingTargetJobIds()
+    if (remainingTargetJobIds.length === 0 && options.activeTargetJobIds.length > 0) {
+      stepMsg = `定向投递完成，共处理 ${options.activeTargetJobIds.length} 个目标岗位`
+      break
+    }
+
+    await options.wait(options.delayDeliveryStartsMs)
+    const jobs = options.getJobList()
+    if (jobs.length === 0) {
+      stepMsg = '投递结束, job列表为空'
+      break
+    }
+
+    const currentFirstJobId = jobs[0]?.encryptJobId ?? ''
+    const locationHref = options.getLocationHref()
+    if (
+      (locationHref.includes('/web/geek/job-recommend') || locationHref.includes('/web/geek/jobs'))
+      && oldLen === jobs.length
+      && oldFirstJobId === currentFirstJobId
+    ) {
+      stepMsg = '投递结束, 未能获取更多岗位(job列表无变化)'
+      break
+    }
+
+    oldLen = jobs.length
+    oldFirstJobId = currentFirstJobId
+
+    const result = await options.handleJobList({
+      selectedJobIds: remainingTargetJobIds.length > 0 ? remainingTargetJobIds : undefined,
+      resetSelectionStatuses,
+    })
+    resetSelectionStatuses = false
+
+    if (remainingTargetJobIds.length > 0 && result.seenJobIds.length > 0) {
+      const remainingCount = options.consumeSeenJobIds(result.seenJobIds)
+      if (remainingCount === 0) {
+        stepMsg = `定向投递完成，共处理 ${options.activeTargetJobIds.length} 个目标岗位`
+        break
+      }
+    }
+
+    if (options.shouldStop()) {
+      stepMsg = '投递已暂停'
+      break
+    }
+
+    await options.wait(options.delayDeliveryPageNextMs)
+    if (!options.goNextPage()) {
+      stepMsg =
+        options.getRemainingTargetJobIds().length > 0
+          ? `定向投递结束，仍有 ${options.getRemainingTargetJobIds().length} 个目标岗位未命中`
+          : '投递结束, 无法继续下一页'
+      break
+    }
+  }
+
+  return { stepMsg }
+}
