@@ -5,10 +5,34 @@ import { counter } from '@/message'
 import { loader } from '.'
 
 export class RequestError extends Error {
+  statusCode?: number
+
   constructor(message: string) {
     super(message)
     this.name = '请求错误'
   }
+}
+
+function extractStatusCode(message: string) {
+  const match = message.match(/状态码:\s*(\d{3})/)
+  if (!match) {
+    return undefined
+  }
+  return Number(match[1])
+}
+
+function toRequestError(error: unknown) {
+  if (error instanceof RequestError) {
+    return error
+  }
+
+  const message = error instanceof Error ? error.message : String(error)
+  const requestError = new RequestError(message)
+  const statusCode = extractStatusCode(message)
+  if (statusCode != null) {
+    requestError.statusCode = statusCode
+  }
+  return requestError
 }
 export type ResponseType = 'text' | 'json' | 'arraybuffer' | 'blob' | 'document' | 'stream'
 export type ResponseData<TResponseType extends ResponseType> = TResponseType extends 'text'
@@ -167,13 +191,13 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
         .request({ url, data: requestData, timeout, responseType })
         .then((res) => {
           if (res instanceof Error) {
-            reject(res)
+            reject(toRequestError(res))
           } else {
             resolve(res)
           }
         })
         .catch((e) => {
-          reject(e)
+          reject(toRequestError(e))
         })
         .finally(() => {
           axiosLoad()
@@ -187,9 +211,11 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
           }
           if (!response.ok || response.status >= 400) {
             const errorText = await response.text()
-            reject(
-              new RequestError(`状态码: ${response.status}: ${errorText} | ${response.statusText}`),
+            const error = new RequestError(
+              `状态码: ${response.status}: ${errorText} | ${response.statusText}`,
             )
+            error.statusCode = response.status
+            reject(error)
             return
           }
 
@@ -197,10 +223,9 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
         })
         .catch((e) => {
           if (e.name === 'AbortError') {
-            reject(new RequestError('用户中止'))
+            reject(new RequestError('请求超时'))
           } else {
-            const msg = `${e.message}`
-            reject(new RequestError(msg))
+            reject(toRequestError(e))
           }
         })
         .finally(() => {

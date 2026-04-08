@@ -13,8 +13,9 @@ import {
   ElSpace,
   ElText,
 } from 'element-plus'
-import { onMounted, ref } from 'vue'
+import { h, onMounted, ref } from 'vue'
 
+import SafeHtml from '@/components/SafeHtml.vue'
 import logVue from '@/components/conf/Log.vue'
 import storeVue from '@/components/conf/Store.vue'
 import userVue from '@/components/conf/User.vue'
@@ -55,6 +56,22 @@ async function themeChange() {
 
 const VITE_VERSION = __APP_VERSION__
 const storeShow = ref(false)
+const protocolNotice = `1. 使用前先好好了解项目，阅读每一个标签和帮助,
+2.暂时不维护文档，如果帮助还无法理解可以提交反馈, 优化文案
+3. 遇到bug即时反馈，不再维护交流群，遇到问题飞书表格或者GitHub反馈
+4. 帮助复选框 能随时进入和退出帮助模式, 配置内容较多, 好好观看
+5. 配置最前面需要打钩启用，启用后需要保存配置
+6. 配置项 包含/排除 能点击切换模式
+7. 投递在达到上限，或者页面无法滚动时会结束投递，反馈相关问题检查是否滚动到底了，无法刷出新岗位!
+8. 使用插件时尽量少打开devtools，否则容易导致获取不到Boss的职位列表
+
+本项目仅供学习交流，禁止用于商业用途
+使用该脚本有一定风险(如黑号,封号,权重降低等)，本项目不承担任何责任
+<img style="width: 200px; height: 200px;" src="https://qiu-config.oss-cn-beijing.aliyuncs.com/reward.png" style="object-fit: cover;"/>
+Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blank" rel="noreferrer">https://github.com/ocyss/boos-helper</a>
+反馈结果会在对应记录中评论回复， 一般3-7天回复
+飞书反馈问卷(匿名): <a href="https://gai06vrtbc0.feishu.cn/share/base/form/shrcnmEq2fxH9hM44hqEnoeaj8g" target="_blank" rel="noreferrer">https://gai06vrtbc0.feishu.cn/share/base/form/shrcnmEq2fxH9hM44hqEnoeaj8g</a>
+飞书问卷结果: <a href="https://gai06vrtbc0.feishu.cn/share/base/view/shrcnrg8D0cbLQc89d7Jj7AZgMc" target="_blank" rel="noreferrer">https://gai06vrtbc0.feishu.cn/share/base/view/shrcnrg8D0cbLQc89d7Jj7AZgMc</a>`
 
 window.__q_openStore = () => {
   storeShow.value = true
@@ -73,37 +90,19 @@ onMounted(async () => {
   const protocol_val = '2025/06/14'
   const protocol_date = await counter.storageGet<string>(protocol)
   if (protocol_date !== protocol_val) {
-    ElMessageBox.alert(
-      `1. 使用前先好好了解项目，阅读每一个标签和帮助,
-2.暂时不维护文档，如果帮助还无法理解可以提交反馈, 优化文案
-3. 遇到bug即时反馈，不再维护交流群，遇到问题飞书表格或者GitHub反馈
-4. 帮助复选框 能随时进入和退出帮助模式, 配置内容较多, 好好观看
-5. 配置最前面需要打钩启用，启用后需要保存配置
-6. 配置项 包含/排除 能点击切换模式
-7. 投递在达到上限，或者页面无法滚动时会结束投递，反馈相关问题检查是否滚动到底了，无法刷出新岗位!
-8. 使用插件时尽量少打开devtools，否则容易导致获取不到Boss的职位列表
-
-本项目仅供学习交流，禁止用于商业用途
-使用该脚本有一定风险(如黑号,封号,权重降低等)，本项目不承担任何责任
-<img style="width: 200px; height: 200px;" src="https://qiu-config.oss-cn-beijing.aliyuncs.com/reward.png" style="object-fit: cover;"/>
-Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blank">https://github.com/ocyss/boos-helper</a>
-反馈结果会在对应记录中评论回复， 一般3-7天回复
-飞书反馈问卷(匿名): <a href="https://gai06vrtbc0.feishu.cn/share/base/form/shrcnmEq2fxH9hM44hqEnoeaj8g" target="_blank">https://gai06vrtbc0.feishu.cn/share/base/form/shrcnmEq2fxH9hM44hqEnoeaj8g</a>
-飞书问卷结果: <a href="https://gai06vrtbc0.feishu.cn/share/base/view/shrcnrg8D0cbLQc89d7Jj7AZgMc" target="_blank">https://gai06vrtbc0.feishu.cn/share/base/view/shrcnrg8D0cbLQc89d7Jj7AZgMc</a>`,
-      '注意事项',
-      {
-        autofocus: true,
-        confirmButtonText: '了解并同意!',
-        dangerouslyUseHTMLString: true,
-        customStyle:
-          '--el-messagebox-width: unset; white-space: pre-wrap; width: unset;max-width: unset;' as never,
-        callback: (action: Action) => {
-          if (action === 'confirm') {
-            counter.storageSet(protocol, protocol_val)
-          }
-        },
+    ElMessageBox({
+      title: '注意事项',
+      autofocus: true,
+      confirmButtonText: '了解并同意!',
+      message: () => h(SafeHtml, { class: 'protocol-notice', tag: 'div', html: protocolNotice }),
+      customStyle:
+        '--el-messagebox-width: unset; white-space: pre-wrap; width: unset;max-width: unset;' as never,
+      callback: (action: Action) => {
+        if (action === 'confirm') {
+          counter.storageSet(protocol, protocol_val)
+        }
       },
-    )
+    })
   }
 })
 </script>
@@ -203,5 +202,9 @@ Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blan
       border-color: #2fffd9;
     }
   }
+}
+
+.protocol-notice {
+  white-space: pre-wrap;
 }
 </style>

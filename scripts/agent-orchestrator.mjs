@@ -1,3 +1,8 @@
+import {
+  createAgentBridgeAuthHeaders,
+  getAgentBridgeRuntime,
+} from './agent-security.mjs'
+
 function printUsage() {
   console.log(`boss-helper agent orchestrator
 
@@ -170,8 +175,19 @@ function buildBaseUrl() {
   return `http://${options.host}:${options.port}`
 }
 
+function getBridgeRuntime() {
+  return getAgentBridgeRuntime({
+    ...process.env,
+    BOSS_HELPER_AGENT_HOST: options.host,
+    BOSS_HELPER_AGENT_PORT: String(options.port),
+  })
+}
+
 async function requestJson(path, init = undefined) {
-  const response = await fetch(`${buildBaseUrl()}${path}`, init)
+  const response = await fetch(`${buildBaseUrl()}${path}`, {
+    ...init,
+    headers: createAgentBridgeAuthHeaders(getBridgeRuntime().token, init?.headers ?? {}),
+  })
   const data = await response.json()
   return { response, data }
 }
@@ -312,6 +328,7 @@ async function streamAgentEvents(onEvent) {
   const response = await fetch(`${buildBaseUrl()}/agent-events?types=${encodeURIComponent(types)}`, {
     headers: {
       Accept: 'text/event-stream',
+      ...createAgentBridgeAuthHeaders(getBridgeRuntime().token),
     },
     signal: controller.signal,
   })

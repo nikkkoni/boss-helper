@@ -1,9 +1,10 @@
 import type { Browser } from '#imports'
 import { browser, defineBackground } from '#imports'
 import {
-  BOSS_HELPER_AGENT_EVENT_PORT,
   BOSS_HELPER_AGENT_VERSION,
   createBossHelperAgentResponse,
+  hasValidBossHelperAgentBridgeToken,
+  hasValidBossHelperAgentEventPort,
   isBossHelperAgentEventForwardMessage,
   isBossHelperAgentRequest,
   isBossHelperSupportedJobUrl,
@@ -15,6 +16,20 @@ import { ProvideBackgroundAdapter, provideBackgroundCounter } from '@/message/ba
 
 const zhipinMatches = ['*://zhipin.com/*', '*://*.zhipin.com/*']
 const eventPorts = new Set<Browser.runtime.Port>()
+const trustedAgentRelayHosts = new Set(['localhost', '127.0.0.1'])
+
+function isTrustedAgentRelaySender(url?: string | null) {
+  if (!url) {
+    return false
+  }
+
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && trustedAgentRelayHosts.has(parsed.hostname)
+  } catch {
+    return false
+  }
+}
 
 async function findAgentTargetTab() {
   const tabs = await browser.tabs.query({ url: zhipinMatches })
@@ -69,7 +84,10 @@ export default defineBackground({
     provideBackgroundCounter(new ProvideBackgroundAdapter())
 
     browser.runtime.onConnectExternal.addListener((port) => {
-      if (port.name !== BOSS_HELPER_AGENT_EVENT_PORT) {
+      if (
+        !hasValidBossHelperAgentEventPort(port.name) ||
+        !isTrustedAgentRelaySender(port.sender?.url)
+      ) {
         return
       }
 
@@ -88,12 +106,17 @@ export default defineBackground({
       return true
     })
 
-    browser.runtime.onMessageExternal.addListener((message) => {
-      if (!isBossHelperAgentRequest(message)) {
-        return
+    browser.runtime.onMessageExternal.addListener((message, sender) => {
+      if (!isTrustedAgentRelaySender(sender.url)) {
+        return createBossHelperAgentResponse(false, 'unauthorized-bridge', 'relay 来源不可信')
       }
 
-      return forwardAgentRequest(message)
+      if (!hasValidBossHelperAgentBridgeToken(message) || !isBossHelperAgentRequest(message)) {
+        return createBossHelperAgentResponse(false, 'unauthorized-bridge', 'relay 认证失败')
+      }
+
+      const { bridgeToken: _bridgeToken, ...request } = message
+      return forwardAgentRequest(request)
     })
   },
 })

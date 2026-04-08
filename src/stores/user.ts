@@ -5,7 +5,7 @@ import { useStatistics } from '@/composables/useStatistics'
 import { getRootVue } from '@/composables/useVue'
 import { counter } from '@/message'
 import type { CookieInfo } from '@/message'
-import { formDataKey, useConf } from '@/stores/conf'
+import { amapKeyStorageKey, formDataKey, sanitizeSensitiveFormData, useConf } from '@/stores/conf'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
 
@@ -133,7 +133,7 @@ export function useUser() {
       gender: info.value?.gender === 0 ? 'man' : 'woman',
       flag: info.value?.studentFlag ? 'student' : 'staff',
       date: new Date().toLocaleString(),
-      form: jsonClone(formData),
+      form: sanitizeSensitiveFormData(formData),
       statistics: await useStatistics().getStatistics(),
     }
     logger.debug('开始创建账户', info.value, val)
@@ -160,7 +160,10 @@ export function useUser() {
 
     // 恢复目标账号的配置
     if (targetAccount.form) {
-      await counter.storageSet(formDataKey, targetAccount.form)
+      if (typeof targetAccount.form.amap?.key === 'string' && targetAccount.form.amap.key.trim()) {
+        await counter.storageSet(amapKeyStorageKey, targetAccount.form.amap.key.trim())
+      }
+      await counter.storageSet(formDataKey, sanitizeSensitiveFormData(targetAccount.form))
     }
 
     if (targetAccount.statistics != null) {

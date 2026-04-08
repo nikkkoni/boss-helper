@@ -7,6 +7,10 @@ export const BOSS_HELPER_AGENT_BRIDGE_RESPONSE = '__boss_helper_agent_bridge_res
 export const BOSS_HELPER_AGENT_EVENT_BRIDGE = '__boss_helper_agent_event_bridge__'
 export const BOSS_HELPER_AGENT_EVENT_FORWARD = '__boss_helper_agent_event_forward__'
 export const BOSS_HELPER_AGENT_EVENT_PORT = '__boss_helper_agent_event_port__'
+export const BOSS_HELPER_AGENT_BRIDGE_TOKEN =
+  typeof __BOSS_HELPER_AGENT_BRIDGE_TOKEN__ === 'string'
+    ? __BOSS_HELPER_AGENT_BRIDGE_TOKEN__
+    : 'boss-helper-dev-bridge-token'
 export const BOSS_HELPER_AGENT_VERSION = 1
 
 export const bossHelperAgentCommands = [
@@ -81,6 +85,12 @@ export interface BossHelperAgentRequest<T extends BossHelperAgentCommand = BossH
   payload?: BossHelperAgentRequestPayloadMap[T]
   requestId?: string
   version?: number
+}
+
+export interface BossHelperAgentExternalRequest<
+  T extends BossHelperAgentCommand = BossHelperAgentCommand,
+> extends BossHelperAgentRequest<T> {
+  bridgeToken: string
 }
 
 export interface BossHelperAgentStartPayload {
@@ -253,6 +263,7 @@ export interface BossHelperAgentLogEntry {
   greeting?: string
   jobName: string
   message?: string
+  pipelineError?: Record<string, unknown>
   status: string
   timestamp: string
 }
@@ -426,6 +437,20 @@ export function isBossHelperAgentRequest(value: unknown): value is BossHelperAge
     typeof request.command === 'string' &&
     bossHelperAgentCommands.includes(request.command as BossHelperAgentCommand)
   )
+}
+
+export function hasValidBossHelperAgentBridgeToken(value: unknown): value is BossHelperAgentExternalRequest {
+  if (!value || typeof value !== 'object') return false
+  const request = value as Partial<BossHelperAgentExternalRequest>
+  return request.bridgeToken === BOSS_HELPER_AGENT_BRIDGE_TOKEN
+}
+
+export function getBossHelperAgentEventPortName(token = BOSS_HELPER_AGENT_BRIDGE_TOKEN) {
+  return `${BOSS_HELPER_AGENT_EVENT_PORT}:${token}`
+}
+
+export function hasValidBossHelperAgentEventPort(portName?: string | null) {
+  return typeof portName === 'string' && portName === getBossHelperAgentEventPortName()
 }
 
 export function isBossHelperAgentBridgeRequest(

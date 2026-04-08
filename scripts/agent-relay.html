@@ -138,12 +138,13 @@
               <div class="badge" id="extensionEventsState">events: idle</div>
             </div>
           </div>
-          <div class="panel">
-            <label>说明</label>
-            <pre>1. 先运行 node ./scripts/agent-bridge.mjs
-2. 在当前浏览器打开这个页面
-3. 填写扩展 ID 并保持页面常驻
-4. 外部 agent 通过 companion HTTP 端口发命令</pre>
+        <div class="panel">
+          <label>说明</label>
+          <pre>1. 先运行 node ./scripts/agent-bridge.mjs
+2. 首次打开 https 页面时接受本地自签名证书
+3. 在当前浏览器打开这个页面
+4. 填写扩展 ID 并保持页面常驻
+5. 外部 agent 通过 companion HTTP 端口发命令</pre>
           </div>
         </div>
         <div class="grid" style="margin-top: 16px">
@@ -160,6 +161,9 @@
     </div>
 
     <script>
+      const BRIDGE_BASE_URL = '__BOSS_HELPER_AGENT_BRIDGE_BASE_URL__'
+      const BRIDGE_TOKEN = '__BOSS_HELPER_AGENT_BRIDGE_TOKEN__'
+      const EXTENSION_EVENT_PORT_NAME = '__BOSS_HELPER_AGENT_EVENT_PORT_NAME__'
       const EXTENSION_ID_KEY = 'boss-helper-agent-extension-id'
       const RELAY_CLIENT_ID_KEY = 'boss-helper-agent-relay-client-id'
       const bridgeState = document.getElementById('bridgeState')
@@ -202,10 +206,11 @@
       }
 
       async function postJson(path, payload) {
-        return fetch(path, {
+        return fetch(`${BRIDGE_BASE_URL}${path}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'x-boss-helper-agent-token': BRIDGE_TOKEN,
           },
           body: JSON.stringify(payload),
         })
@@ -229,25 +234,32 @@
         }
 
         return new Promise((resolve) => {
-          window.chrome.runtime.sendMessage(extensionId, commandEnvelope.request, (reply) => {
-            const error = window.chrome.runtime.lastError
-            if (error) {
-              resolve({
-                ok: false,
-                code: 'extension-runtime-error',
-                message: error.message,
-              })
-              return
-            }
+          window.chrome.runtime.sendMessage(
+            extensionId,
+            {
+              ...commandEnvelope.request,
+              bridgeToken: BRIDGE_TOKEN,
+            },
+            (reply) => {
+              const error = window.chrome.runtime.lastError
+              if (error) {
+                resolve({
+                  ok: false,
+                  code: 'extension-runtime-error',
+                  message: error.message,
+                })
+                return
+              }
 
-            resolve(
-              reply || {
-                ok: false,
-                code: 'empty-extension-response',
-                message: '扩展没有返回任何结果',
-              },
-            )
-          })
+              resolve(
+                reply || {
+                  ok: false,
+                  code: 'empty-extension-response',
+                  message: '扩展没有返回任何结果',
+                },
+              )
+            },
+          )
         })
       }
 
@@ -291,7 +303,7 @@
 
         try {
           extensionPort = window.chrome.runtime.connect(extensionId, {
-            name: '__boss_helper_agent_event_port__',
+            name: EXTENSION_EVENT_PORT_NAME,
           })
           setExtensionEventsState('connected')
 
@@ -320,7 +332,10 @@
         eventSource?.close()
         const extensionId = encodeURIComponent(getExtensionId())
         const clientId = encodeURIComponent(relayClientId)
-        eventSource = new EventSource(`/events?extensionId=${extensionId}&clientId=${clientId}`)
+        const token = encodeURIComponent(BRIDGE_TOKEN)
+        eventSource = new EventSource(
+          `${BRIDGE_BASE_URL}/events?extensionId=${extensionId}&clientId=${clientId}&token=${token}`,
+        )
 
         eventSource.onopen = () => {
           setBridgeState('connected')

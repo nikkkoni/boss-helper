@@ -20,8 +20,18 @@ export * from './info'
 
 export const formDataKey = 'local:web-geek-job-FormData'
 export const formDataTemplatesKey = 'local:web-geek-job-FormDataTemplates'
+export const amapKeyStorageKey = 'session:web-geek-job-AmapKey'
 
 type FormDataTemplates = Record<string, Partial<FormData>>
+
+export function sanitizeSensitiveFormData(data: Partial<FormData>) {
+  const snapshot = jsonClone(data)
+  delete snapshot.userId
+  if (snapshot.amap) {
+    snapshot.amap.key = ''
+  }
+  return snapshot
+}
 
 export const useConf = defineStore('conf', () => {
   const formData: FormData = reactive(defaultFormData)
@@ -81,17 +91,37 @@ export const useConf = defineStore('conf', () => {
 
   async function init() {
     let from = await counter.storageGet<Partial<FormData>>(formDataKey, {})
+    const legacyAmapKey = typeof from.amap?.key === 'string' ? from.amap.key.trim() : ''
+    let sessionAmapKey = await counter.storageGet<string>(amapKeyStorageKey)
+
+    if (legacyAmapKey) {
+      if (!sessionAmapKey) {
+        sessionAmapKey = legacyAmapKey
+        await counter.storageSet(amapKeyStorageKey, sessionAmapKey)
+      }
+      from = sanitizeSensitiveFormData(from)
+      await counter.storageSet(formDataKey, from)
+    }
+
     from = (await formDataHandler(from)) ?? from
     const data = deepmerge<FormData>(defaultFormData, from)
+    data.amap.key = sessionAmapKey ?? ''
     Object.assign(formData, data)
     await loadTemplates()
     isLoaded.value = true
   }
 
   function sanitizeTemplateData(data: Partial<FormData>) {
-    const snapshot = jsonClone(data)
-    delete snapshot.userId
-    return snapshot
+    return sanitizeSensitiveFormData(data)
+  }
+
+  async function persistSensitiveFields(data: Pick<FormData, 'amap'>) {
+    const amapKey = data.amap.key.trim()
+    if (amapKey) {
+      await counter.storageSet(amapKeyStorageKey, amapKey)
+      return
+    }
+    await counter.storageRm(amapKeyStorageKey)
   }
 
   async function loadTemplates() {
@@ -109,8 +139,9 @@ export const useConf = defineStore('conf', () => {
   )
 
   async function confSaving() {
-    const v = jsonClone(formData)
+    const v = sanitizeSensitiveFormData(formData)
     try {
+      await persistSensitiveFields(formData)
       await counter.storageSet(formDataKey, v)
       logger.debug('formData保存', v)
       ElMessage.success('保存成功，配置已热更新')
@@ -170,7 +201,8 @@ export const useConf = defineStore('conf', () => {
     logger.debug('formData运行时更新', sanitizedPatch)
 
     if (options.persist) {
-      await counter.storageSet(formDataKey, jsonClone(formData))
+      await persistSensitiveFields(formData)
+      await counter.storageSet(formDataKey, sanitizeSensitiveFormData(formData))
       logger.debug('formData运行时更新已持久化')
     }
 
@@ -183,6 +215,7 @@ export const useConf = defineStore('conf', () => {
 
   async function confReload() {
     const v = deepmerge<FormData>(defaultFormData, await counter.storageGet(formDataKey, {}))
+    v.amap.key = (await counter.storageGet<string>(amapKeyStorageKey)) ?? ''
     deepmerge(formData, v, { clone: false })
     logger.debug('formData已重置')
     ElMessage.success('重置成功')
@@ -190,6 +223,7 @@ export const useConf = defineStore('conf', () => {
 
   async function confExport() {
     const data = deepmerge<FormData>(defaultFormData, await counter.storageGet(formDataKey, {}))
+    data.amap.key = ''
     exportJson(data, '打招呼配置')
   }
 
@@ -198,6 +232,9 @@ export const useConf = defineStore('conf', () => {
       let jsonData = await importJson<Partial<FormData>>()
 
       jsonData.userId = undefined
+      if (typeof jsonData.amap?.key === 'string' && jsonData.amap.key.trim()) {
+        await counter.storageSet(amapKeyStorageKey, jsonData.amap.key.trim())
+      }
       jsonData = (await formDataHandler(jsonData)) ?? jsonData
       // await setStorage(formDataKey, jsonData)
       deepmerge(formData, jsonData, { clone: false })

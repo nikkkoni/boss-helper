@@ -209,7 +209,9 @@ function create() {
       >
         <template #default="{ item }">
           <div v-if="typeof item === 'object'" class="llms-select">
-            <ElIcon size="20" v-html="item.icon" />
+            <ElIcon size="20">
+              <SafeHtml tag="span" variant="svg" :html="item.icon" />
+            </ElIcon>
             <div>{{ item.label || item.mode }}</div>
           </div>
         </template>

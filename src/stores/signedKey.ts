@@ -96,8 +96,10 @@ export const useSignedKey = defineStore('signedKey', () => {
   const signedKey = ref<string | null>(null)
   const signedKeyBak = ref<string | null>(null)
   const signedKeyInfo = ref<SignedKeyInfo>()
-  const signedKeyStorageKey = 'sync:signedKey'
-  const signedKeyInfoStorageKey = 'sync:signedKeyInfo'
+  const signedKeyStorageKey = 'session:signedKey'
+  const signedKeyInfoStorageKey = 'session:signedKeyInfo'
+  const legacySignedKeyStorageKey = 'sync:signedKey'
+  const legacySignedKeyInfoStorageKey = 'sync:signedKeyInfo'
   const user = useUser()
   const netConf = ref<NetConf>()
 
@@ -124,6 +126,7 @@ export const useSignedKey = defineStore('signedKey', () => {
 
   watch(signedKey, (v) => {
     if (v == null || v === '') {
+      void counter.storageRm(signedKeyStorageKey)
       return
     }
     void counter.storageSet(signedKeyStorageKey, v).catch((e) => {
@@ -136,6 +139,7 @@ export const useSignedKey = defineStore('signedKey', () => {
     signedKeyInfo,
     (v) => {
       if (v == null) {
+        void counter.storageRm(signedKeyInfoStorageKey)
         return
       }
       void counter.storageSet(signedKeyInfoStorageKey, toRaw(v)).catch((e) => {
@@ -230,11 +234,25 @@ export const useSignedKey = defineStore('signedKey', () => {
   }
 
   async function initSignedKey() {
-    const key = await counter.storageGet<string>(signedKeyStorageKey)
+    let key = await counter.storageGet<string>(signedKeyStorageKey)
+    if (key == null) {
+      key = await counter.storageGet<string>(legacySignedKeyStorageKey)
+      if (key != null) {
+        await counter.storageSet(signedKeyStorageKey, key)
+        await counter.storageRm(legacySignedKeyStorageKey)
+      }
+    }
     if (key == null) {
       return
     }
-    const info = await counter.storageGet<SignedKeyInfo>(signedKeyInfoStorageKey)
+    let info = await counter.storageGet<SignedKeyInfo>(signedKeyInfoStorageKey)
+    if (info == null) {
+      info = await counter.storageGet<SignedKeyInfo>(legacySignedKeyInfoStorageKey)
+      if (info != null) {
+        await counter.storageSet(signedKeyInfoStorageKey, info)
+        await counter.storageRm(legacySignedKeyInfoStorageKey)
+      }
+    }
     if (info != null) {
       signedKeyInfo.value = info
     }

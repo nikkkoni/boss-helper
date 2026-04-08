@@ -20,6 +20,7 @@ const { filterData, columns, dialogData } = useLog()
 
 const aiFilterActiveNames = ref('response')
 const aiGreetActiveNames = ref('response')
+const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
 
 // watchEffect(() => {
 //   tableRef.value?.scrollToRow(data.value.length - 1);
@@ -91,6 +92,9 @@ const aiGreetActiveNames = ref('response')
             </div>
             <div v-if="dialogData.data?.data?.message">
               {{ dialogData.data.data.message }}
+            </div>
+            <div v-if="dialogData.data?.data?.pipelineError" class="ai-text">
+              {{ formatJson(dialogData.data.data.pipelineError) }}
             </div>
           </ElTabPane>
         </ElTabs>

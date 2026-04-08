@@ -23,9 +23,10 @@ import {
 } from 'element-plus'
 import { events } from 'fetch-event-stream'
 import type { FetchResponse } from 'openapi-fetch'
-import { watch } from 'vue'
+import { h, watch } from 'vue'
 
 import { computed, onMounted, ref } from '#imports'
+import SafeHtml from '@/components/SafeHtml.vue'
 import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
 import type { components } from '@/types/openapi'
@@ -54,6 +55,25 @@ const balanceAmount = ref(10)
 const balanceAmountCustom = ref(0)
 const buyOrderName = ref('')
 let buySignal: AbortController | null = null
+const buyNotice = `<h2 id="-">须知</h2>
+<p>密钥购买需要充值使用，首次购买赠送5元余额</p>
+<p>密钥模型价格携带服务器/开发等成本，价格会高一些</p>
+<p>密钥购买后将自动绑定当前账号，未登录不可购买</p>
+<p>密钥购买后需要自行保管，绑定后会保存到浏览器会话存储中，关闭浏览器后需要重新绑定</p>
+<p>不要将密钥公布和发到其他平台，造成余额盗刷概不负责</p>
+<h2 id="-">服务</h2>
+<ol>
+<li>可直接使用各大模型，无需二次配置</li>
+<li>可使用特别优化Prompt</li>
+<li>优先技术支持</li>
+<li>专属微信群</li>
+</ol>
+<h2 id="-">隐私收集</h2>
+<ul>
+<li>购买后将和账号id进行匹配，除此之外不再收集其他信息</li>
+<li>仅使用模型，仅会记录 Prompt 和 Output</li>
+<li>使用优化Prompt，才需要上传当前简历信息和岗位信息，进行Prompt优化</li>
+</ul>`
 
 async function bindKey() {
   loading.value = true
@@ -211,33 +231,13 @@ async function queryOrder() {
 
 async function buyKey() {
   try {
-    await ElMessageBox.confirm(
-      `<h2 id="-">须知</h2>
-<p>密钥购买需要充值使用，首次购买赠送5元余额</p>
-<p>密钥模型价格携带服务器/开发等成本，价格会高一些</p>
-<p>密钥购买后将自动绑定当前账号，未登录不可购买</p>
-<p>密钥购买后需要自行保管，绑定后会保存到sync存储中跟随浏览器账号同步，但丢失概不负责</p>
-<p>不要将密钥公布和发到其他平台，造成余额盗刷概不负责</p>
-<h2 id="-">服务</h2>
-<ol>
-<li>可直接使用各大模型，无需二次配置</li>
-<li>可使用特别优化Prompt</li>
-<li>优先技术支持</li>
-<li>专属微信群</li>
-</ol>
-<h2 id="-">隐私收集</h2>
-<ul>
-<li>购买后将和账号id进行匹配，除此之外不再收集其他信息</li>
-<li>仅使用模型，仅会记录 Prompt 和 Output</li>
-<li>使用优化Prompt，才需要上传当前简历信息和岗位信息，进行Prompt优化</li>
-</ul>`,
-      '购前须知',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        dangerouslyUseHTMLString: true,
-      },
-    )
+    await ElMessageBox({
+      title: '购前须知',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      showCancelButton: true,
+      message: () => h(SafeHtml, { tag: 'div', html: buyNotice }),
+    })
   } catch {
     return
   }
@@ -330,6 +330,7 @@ function openBalance() {
 function unbindKey() {
   keyValue.value = signedKey.signedKey
   signedKey.signedKey = ''
+  signedKey.signedKeyInfo = undefined
 }
 
 function handleClose(done?: () => void) {

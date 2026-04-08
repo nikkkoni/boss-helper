@@ -68,4 +68,5 @@ declare global {
   }
 
   const __APP_VERSION__: string
+  const __BOSS_HELPER_AGENT_BRIDGE_TOKEN__: string
 }

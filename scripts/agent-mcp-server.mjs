@@ -3,9 +3,13 @@
 import { Buffer } from 'node:buffer'
 import { stdin, stdout, stderr, env } from 'node:process'
 
-const BRIDGE_HOST = env.BOSS_HELPER_AGENT_HOST ?? '127.0.0.1'
-const BRIDGE_PORT = Number.parseInt(env.BOSS_HELPER_AGENT_PORT ?? '4317', 10)
-const BRIDGE_BASE_URL = `http://${BRIDGE_HOST}:${BRIDGE_PORT}`
+import {
+  createAgentBridgeAuthHeaders,
+  getAgentBridgeRuntime,
+} from './agent-security.mjs'
+
+const bridgeRuntime = getAgentBridgeRuntime(env)
+const BRIDGE_BASE_URL = bridgeRuntime.httpBaseUrl
 const MCP_PROTOCOL_VERSION = '2024-11-05'
 
 const TOOL_DEFINITIONS = [
@@ -341,7 +345,10 @@ function logError(...args) {
 }
 
 async function httpJson(path, init = undefined) {
-  const response = await fetch(`${BRIDGE_BASE_URL}${path}`, init)
+  const response = await fetch(`${BRIDGE_BASE_URL}${path}`, {
+    ...init,
+    headers: createAgentBridgeAuthHeaders(bridgeRuntime.token, init?.headers ?? {}),
+  })
   const text = await response.text()
   let data
   try {
@@ -416,7 +423,7 @@ async function openEventStream(types, timeoutMs = 10_000) {
 
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   const response = await fetch(url, {
-    headers: { Accept: 'text/event-stream' },
+    headers: createAgentBridgeAuthHeaders(bridgeRuntime.token, { Accept: 'text/event-stream' }),
     signal: controller.signal,
   })
 

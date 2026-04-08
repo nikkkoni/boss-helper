@@ -1,5 +1,8 @@
 import type { OnStream } from '@/utils/request'
-import { request } from '@/utils/request'
+import { RequestError, request } from '@/utils/request'
+import { runLimitedAIRequest } from '@/utils/concurrency'
+import { isLikelyNetworkError, retryAsync } from '@/utils/retry'
+import { logger } from '@/utils/logger'
 
 import { desc, other } from './common'
 import type { llmConf, llmInfo, messageReps, prompt } from './type'
@@ -175,29 +178,61 @@ class Gpt extends llm<openaiLLMConf> {
     onStream?: OnStream
     json?: boolean
   }): Promise<any> {
-    const res = await request.post({
-      url: this.conf.url,
-      data: JSON.stringify({
-        messages: prompt,
-        model: this.conf.model,
-        stream: this.conf.advanced.stream,
-        temperature: this.conf.advanced.temperature,
-        top_p: this.conf.advanced.top_p,
-        presence_penalty: this.conf.advanced.presence_penalty,
-        frequency_penalty: this.conf.advanced.frequency_penalty,
-        response_format: this.conf.advanced.json && json ? { type: 'json_object' } : undefined,
-      }),
-      headers: {
-        Authorization: `Bearer ${this.conf.api_key}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: this.conf.other.timeout,
-      // TODO: 暂时禁用 stream 输出
-      responseType: 'json', // this.conf.advanced.stream ? 'stream' : 'json',
-      onStream,
-      isBackground: this.conf.other.background,
-    })
-    return res
+    return runLimitedAIRequest(() =>
+      retryAsync(
+        async () => {
+          const res = await request.post({
+            url: this.conf.url,
+            data: JSON.stringify({
+              messages: prompt,
+              model: this.conf.model,
+              stream: this.conf.advanced.stream,
+              temperature: this.conf.advanced.temperature,
+              top_p: this.conf.advanced.top_p,
+              presence_penalty: this.conf.advanced.presence_penalty,
+              frequency_penalty: this.conf.advanced.frequency_penalty,
+              response_format: this.conf.advanced.json && json ? { type: 'json_object' } : undefined,
+            }),
+            headers: {
+              Authorization: `Bearer ${this.conf.api_key}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: this.conf.other.timeout,
+            // TODO: 暂时禁用 stream 输出
+            responseType: 'json', // this.conf.advanced.stream ? 'stream' : 'json',
+            onStream,
+            isBackground: this.conf.other.background,
+          })
+          return res
+        },
+        {
+          retries: 2,
+          baseDelayMs: 800,
+          factor: 2,
+          maxDelayMs: 5000,
+          shouldRetry: (error) => {
+            if (error instanceof RequestError) {
+              return (
+                error.statusCode === 429
+                || (error.statusCode != null && error.statusCode >= 500)
+                || isLikelyNetworkError(error)
+              )
+            }
+            return isLikelyNetworkError(error)
+          },
+          onRetry: (error, context) => {
+            logger.warn('AI请求重试', {
+              attempt: context.attempt,
+              nextAttempt: context.nextAttempt,
+              delayMs: context.delayMs,
+              error: error instanceof Error ? error.message : String(error),
+              model: this.conf.model,
+              url: this.conf.url,
+            })
+          },
+        },
+      ),
+    )
   }
 }
 

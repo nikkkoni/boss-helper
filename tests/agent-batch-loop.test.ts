@@ -68,4 +68,51 @@ describe('executeAgentBatchLoop', () => {
 
     expect(result.stepMsg).toBe('定向投递结束，仍有 1 个目标岗位未命中')
   })
+
+  it('stops when max iterations is reached', async () => {
+    const result = await executeAgentBatchLoop({
+      activeTargetJobIds: [],
+      consumeSeenJobIds: vi.fn(),
+      delayDeliveryPageNextMs: 0,
+      delayDeliveryStartsMs: 0,
+      getJobList: () => [{ encryptJobId: 'job-1' }],
+      getLocationHref: () => 'https://www.zhipin.com/web/geek/job',
+      getRemainingTargetJobIds: () => [],
+      goNextPage: () => true,
+      handleJobList: async () => ({ seenJobIds: [] }),
+      logDebug: vi.fn(),
+      maxIterations: 2,
+      resetSelectionStatuses: false,
+      shouldStop: () => false,
+      wait: async () => {},
+    })
+
+    expect(result.stepMsg).toBe('投递结束, 达到最大循环次数 2')
+  })
+
+  it('stops when max runtime is reached', async () => {
+    let now = 0
+    const result = await executeAgentBatchLoop({
+      activeTargetJobIds: [],
+      consumeSeenJobIds: vi.fn(),
+      delayDeliveryPageNextMs: 0,
+      delayDeliveryStartsMs: 0,
+      getNow: () => now,
+      getJobList: () => [{ encryptJobId: 'job-1' }],
+      getLocationHref: () => 'https://www.zhipin.com/web/geek/jobs',
+      getRemainingTargetJobIds: () => [],
+      goNextPage: () => {
+        now = 2000
+        return true
+      },
+      handleJobList: async () => ({ seenJobIds: [] }),
+      logDebug: vi.fn(),
+      maxRuntimeMs: 1000,
+      resetSelectionStatuses: false,
+      shouldStop: () => false,
+      wait: async () => {},
+    })
+
+    expect(result.stepMsg).toBe('投递结束, 达到最大运行时长 1 秒')
+  })
 })

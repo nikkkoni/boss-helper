@@ -5,6 +5,7 @@ import { ref, watch } from 'vue'
 import type { RecycleScrollerInstance } from 'vue-virtual-scroller'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 
+import SafeHtml from '@/components/SafeHtml.vue'
 import { useChat } from '@/composables/useChat'
 import { useUser } from '@/stores/user'
 
@@ -70,11 +71,9 @@ function inputMsgUpdate(v: string) {
                 '--el-avatar-bg-color': typeof item.avatar !== 'string' && item.avatar?.color,
               }"
             >
-              <ElIcon
-                v-if="item.avatar && typeof item.avatar !== 'string'"
-                size="large"
-                v-html="item.avatar.icon"
-              />
+              <ElIcon v-if="item.avatar && typeof item.avatar !== 'string'" size="large">
+                <SafeHtml tag="span" variant="svg" :html="item.avatar.icon" />
+              </ElIcon>
             </ElAvatar>
             <span class="message-date">
               <span class="date">{{ item.date[0] }}&nbsp;&nbsp;</span>
@@ -103,7 +102,9 @@ function inputMsgUpdate(v: string) {
           "
           :style="{ '--el-avatar-bg-color': chatInput?.avatar?.color }"
         >
-          <ElIcon v-if="chatInput.avatar" size="large" v-html="chatInput.avatar?.icon" />
+          <ElIcon v-if="chatInput.avatar" size="large">
+            <SafeHtml tag="span" variant="svg" :html="chatInput.avatar?.icon" />
+          </ElIcon>
         </ElAvatar>
         <ElButton type="primary" plain round> 发送 </ElButton>
       </div>

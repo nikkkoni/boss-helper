@@ -1,3 +1,5 @@
+import { runLimitedDOMBatch } from '@/utils/concurrency'
+
 interface AgentBatchListItem {
   encryptJobId?: string
 }
@@ -11,8 +13,11 @@ interface AgentBatchLoopOptions {
   consumeSeenJobIds: (seenJobIds: string[]) => number
   delayDeliveryPageNextMs: number
   delayDeliveryStartsMs: number
+  getNow?: () => number
   getJobList: () => AgentBatchListItem[]
   getLocationHref: () => string
+  maxIterations?: number
+  maxRuntimeMs?: number
   getRemainingTargetJobIds: () => string[]
   goNextPage: () => boolean
   handleJobList: (options: {
@@ -30,10 +35,26 @@ export async function executeAgentBatchLoop(options: AgentBatchLoopOptions) {
   let resetSelectionStatuses = options.resetSelectionStatuses
   let oldLen = 0
   let oldFirstJobId = ''
+  let iteration = 0
+  const getNow = options.getNow ?? (() => Date.now())
+  const startAt = getNow()
+  const maxIterations = Math.max(options.maxIterations ?? 100, 1)
+  const maxRuntimeMs = Math.max(options.maxRuntimeMs ?? 30 * 60 * 1000, 1000)
 
   options.logDebug('batch loop start')
 
   while (!options.shouldStop()) {
+    iteration++
+    if (iteration > maxIterations) {
+      stepMsg = `投递结束, 达到最大循环次数 ${maxIterations}`
+      break
+    }
+
+    if (getNow() - startAt >= maxRuntimeMs) {
+      stepMsg = `投递结束, 达到最大运行时长 ${Math.floor(maxRuntimeMs / 1000)} 秒`
+      break
+    }
+
     const remainingTargetJobIds = options.getRemainingTargetJobIds()
     if (remainingTargetJobIds.length === 0 && options.activeTargetJobIds.length > 0) {
       stepMsg = `定向投递完成，共处理 ${options.activeTargetJobIds.length} 个目标岗位`
@@ -61,10 +82,12 @@ export async function executeAgentBatchLoop(options: AgentBatchLoopOptions) {
     oldLen = jobs.length
     oldFirstJobId = currentFirstJobId
 
-    const result = await options.handleJobList({
-      selectedJobIds: remainingTargetJobIds.length > 0 ? remainingTargetJobIds : undefined,
-      resetSelectionStatuses,
-    })
+    const result = await runLimitedDOMBatch(() =>
+      options.handleJobList({
+        selectedJobIds: remainingTargetJobIds.length > 0 ? remainingTargetJobIds : undefined,
+        resetSelectionStatuses,
+      }),
+    )
     resetSelectionStatuses = false
 
     if (remainingTargetJobIds.length > 0 && result.seenJobIds.length > 0) {
@@ -81,7 +104,8 @@ export async function executeAgentBatchLoop(options: AgentBatchLoopOptions) {
     }
 
     await options.wait(options.delayDeliveryPageNextMs)
-    if (!options.goNextPage()) {
+    const hasNextPage = await runLimitedDOMBatch(async () => options.goNextPage())
+    if (!hasNextPage) {
       stepMsg =
         options.getRemainingTargetJobIds().length > 0
           ? `定向投递结束，仍有 ${options.getRemainingTargetJobIds().length} 个目标岗位未命中`

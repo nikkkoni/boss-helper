@@ -1,11 +1,23 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
+import { createServer as createHttpsServer } from 'node:https'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const HOST = process.env.BOSS_HELPER_AGENT_HOST ?? '127.0.0.1'
-const PORT = Number.parseInt(process.env.BOSS_HELPER_AGENT_PORT ?? '4317', 10)
+import {
+  AGENT_BRIDGE_AUTH_HEADER,
+  AGENT_BRIDGE_TOKEN_QUERY,
+  getAgentBridgeCertificate,
+  getAgentBridgeEventPortName,
+  getAgentBridgeRuntime,
+} from './agent-security.mjs'
+
+const runtime = getAgentBridgeRuntime()
+const HOST = runtime.host
+const PORT = runtime.port
+const HTTPS_PORT = runtime.httpsPort
+const BRIDGE_TOKEN = runtime.token
 const COMMAND_TIMEOUT_MS = Number.parseInt(process.env.BOSS_HELPER_AGENT_TIMEOUT ?? '30000', 10)
 const relayFile = join(dirname(fileURLToPath(import.meta.url)), 'agent-relay.html')
 
@@ -61,7 +73,30 @@ function normalizeRelayClientId(value) {
 function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Headers', `Content-Type,${AGENT_BRIDGE_AUTH_HEADER}`)
+}
+
+function getRequestToken(req, url) {
+  const authHeader = req.headers[AGENT_BRIDGE_AUTH_HEADER]
+  if (typeof authHeader === 'string' && authHeader.trim()) {
+    return authHeader.trim()
+  }
+  return url.searchParams.get(AGENT_BRIDGE_TOKEN_QUERY)?.trim() ?? ''
+}
+
+function isAuthorizedRequest(req, url) {
+  return getRequestToken(req, url) === BRIDGE_TOKEN
+}
+
+function shouldSkipAuth(req, url) {
+  return req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')
+}
+
+function getRelayPageHtml(relayHtml) {
+  return relayHtml
+    .replaceAll('__BOSS_HELPER_AGENT_BRIDGE_BASE_URL__', runtime.httpsBaseUrl)
+    .replaceAll('__BOSS_HELPER_AGENT_BRIDGE_TOKEN__', BRIDGE_TOKEN)
+    .replaceAll('__BOSS_HELPER_AGENT_EVENT_PORT_NAME__', getAgentBridgeEventPortName(BRIDGE_TOKEN))
 }
 
 function sendJson(res, statusCode, body) {
@@ -284,6 +319,7 @@ function updateRelayMeta(clientId, patch) {
 
 async function createAppServer() {
   const relayHtml = await readFile(relayFile, 'utf8')
+  const relayPageHtml = getRelayPageHtml(relayHtml)
 
   return createServer(async (req, res) => {
     try {
@@ -292,7 +328,9 @@ async function createAppServer() {
         return
       }
 
-      const url = new URL(req.url, `http://${req.headers.host ?? `${HOST}:${PORT}`}`)
+      const protocol = req.socket.encrypted ? 'https' : 'http'
+      const fallbackPort = req.socket.encrypted ? HTTPS_PORT : PORT
+      const url = new URL(req.url, `${protocol}://${req.headers.host ?? `${HOST}:${fallbackPort}`}`)
 
       if (req.method === 'OPTIONS') {
         setCorsHeaders(res)
@@ -301,8 +339,23 @@ async function createAppServer() {
         return
       }
 
+      if (!req.socket.encrypted && req.method === 'GET' && url.pathname === '/') {
+        res.writeHead(307, { Location: `${runtime.httpsBaseUrl}/` })
+        res.end()
+        return
+      }
+
+      if (!shouldSkipAuth(req, url) && !isAuthorizedRequest(req, url)) {
+        sendJson(res, 401, {
+          ok: false,
+          code: 'unauthorized-bridge-token',
+          message: '缺少或错误的 bridge token',
+        })
+        return
+      }
+
       if (req.method === 'GET' && url.pathname === '/') {
-        sendHtml(res, relayHtml)
+        sendHtml(res, relayPageHtml)
         return
       }
 
@@ -311,6 +364,7 @@ async function createAppServer() {
           ok: true,
           host: HOST,
           port: PORT,
+          httpsPort: HTTPS_PORT,
           relayConnected: relayClients.size > 0,
           eventSubscribers: eventClients.size,
           queued: commandQueue.length,
@@ -328,6 +382,7 @@ async function createAppServer() {
           relays: getRelaySnapshot(),
           queued: commandQueue.length,
           pendingResponses: pendingResponses.size,
+          bridgeBaseUrl: runtime.httpsBaseUrl,
         })
         return
       }
@@ -514,8 +569,23 @@ async function createAppServer() {
 }
 
 const server = await createAppServer()
+const certificate = await getAgentBridgeCertificate()
+const httpsServer = createHttpsServer(
+  {
+    cert: certificate.cert,
+    key: certificate.key,
+  },
+  server.listeners('request')[0],
+)
 
 server.listen(PORT, HOST, () => {
   console.log(`[boss-helper-agent-bridge] listening on http://${HOST}:${PORT}`)
-  console.log(`[boss-helper-agent-bridge] open http://${HOST}:${PORT}/ in a Chromium browser and connect the extension relay`)
+  console.log(`[boss-helper-agent-bridge] open https://${HOST}:${HTTPS_PORT}/ in a Chromium browser and connect the extension relay`)
+  console.log(
+    `[boss-helper-agent-bridge] bridge token header ${AGENT_BRIDGE_AUTH_HEADER}: ${BRIDGE_TOKEN}`,
+  )
+})
+
+httpsServer.listen(HTTPS_PORT, HOST, () => {
+  console.log(`[boss-helper-agent-bridge] listening on https://${HOST}:${HTTPS_PORT}`)
 })

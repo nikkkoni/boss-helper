@@ -14,6 +14,7 @@ import {
 
 import Info from '@/components/icon/Info.vue'
 import type { formElm, llmInfoVal } from '@/composables/useModel/type'
+import { htmlToText } from '@/utils/safeHtml'
 
 const props = defineProps<{
   value: llmInfoVal<unknown, { required: boolean }>
@@ -49,7 +50,7 @@ const { el, defaultConf } = getComponent(props.value.type)
   <template v-if="value && 'alert' in value">
     <ElAlert
       :title="value.label || label.toString()"
-      :description="value.desc"
+      :description="htmlToText(value.desc)"
       :type="value.alert as any"
       :closable="false"
       show-icon
@@ -73,7 +74,10 @@ const { el, defaultConf } = getComponent(props.value.type)
       <ElText size="large">
         {{ value.label || label }}
       </ElText>
-      <ElTooltip v-if="value.desc" :content="`<span>${value.desc}</span>`" raw-content>
+      <ElTooltip v-if="value.desc">
+        <template #content>
+          <div class="llm-form-tooltip">{{ htmlToText(value.desc) }}</div>
+        </template>
         <ElIcon style="margin-left: 8px">
           <Info />
         </ElIcon>
@@ -90,5 +94,10 @@ const { el, defaultConf } = getComponent(props.value.type)
 
 .ehp-slider .ehp-slider__input {
   width: 200px !important;
+}
+
+.llm-form-tooltip {
+  max-width: 320px;
+  white-space: pre-line;
 }
 </style>

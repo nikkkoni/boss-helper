@@ -27,6 +27,18 @@ export type logErr =
   | JobDescriptionError
   | UnknownError
 
+export interface PipelineErrorContext {
+  errorMessage: string
+  errorName: string
+  errorStack?: string
+  jobId: string
+  rawErrorMessage?: string
+  rawErrorName?: string
+  rawErrorStack?: string
+  stage: 'before' | 'after'
+  step: string
+}
+
 export interface logData {
   listData: MyJobListData
   el?: Element
@@ -47,6 +59,7 @@ export interface logData {
   aiGreetingR?: string | null
   aiGreetingA?: string
   externalGreeting?: string
+  pipelineError?: PipelineErrorContext
 }
 
 type logState = 'info' | 'success' | 'warning' | 'danger'

@@ -1,6 +1,7 @@
 import type { Client } from '@/stores/signedKey'
 import { signedKeyReqHandler, useSignedKey } from '@/stores/signedKey'
 import type { components } from '@/types/openapi'
+import { runLimitedAIRequest } from '@/utils/concurrency'
 
 import type { messageReps } from './type'
 
@@ -44,17 +45,19 @@ export class SignedKeyLLM {
       card: bossZpCardData
     }
   }): Promise<messageReps> {
-    const res = await this.client.POST('/v1/llm/invoke/greetings', {
-      body: {
-        test_mode: data.test ?? false,
-        user_request: this.user_request,
-        jd: {
-          data: data.data.data as any,
-          card: data.data.card as any,
-          boss: data.data.boss as any,
+    const res = await runLimitedAIRequest(() =>
+      this.client.POST('/v1/llm/invoke/greetings', {
+        body: {
+          test_mode: data.test ?? false,
+          user_request: this.user_request,
+          jd: {
+            data: data.data.data as any,
+            card: data.data.card as any,
+            boss: data.data.boss as any,
+          },
         },
-      },
-    })
+      }),
+    )
     const errMsg = signedKeyReqHandler(res, false)
     if (errMsg != null) {
       throw new Error(errMsg)
@@ -74,17 +77,19 @@ export class SignedKeyLLM {
     }
     amap?: string
   }): Promise<messageReps> {
-    const res = await this.client.POST('/v1/llm/invoke/filter', {
-      body: {
-        test_mode: data.test ?? false,
-        user_request: this.user_request + data.amap,
-        jd: {
-          data: data.data.data as any,
-          card: data.data.card as any,
-          boss: data.data.boss as any,
+    const res = await runLimitedAIRequest(() =>
+      this.client.POST('/v1/llm/invoke/filter', {
+        body: {
+          test_mode: data.test ?? false,
+          user_request: this.user_request + data.amap,
+          jd: {
+            data: data.data.data as any,
+            card: data.data.card as any,
+            boss: data.data.boss as any,
+          },
         },
-      },
-    })
+      }),
+    )
     const errMsg = signedKeyReqHandler(res, false)
     if (errMsg != null) {
       throw new Error(errMsg)

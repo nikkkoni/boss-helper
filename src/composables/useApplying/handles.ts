@@ -40,6 +40,7 @@ import {
 } from './utils'
 
 export function handles() {
+  const toCause = (error: unknown) => (error instanceof Error ? { cause: error } : undefined)
   const { chatMessages } = useChat()
   const model = useModel()
   const conf = useConf()
@@ -141,7 +142,7 @@ export function handles() {
         }
       } catch (e) {
         statistics.todayData.jobTitle++
-        throw new JobTitleError(errorHandle(e))
+        throw new JobTitleError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -178,7 +179,7 @@ export function handles() {
         }
       } catch (e) {
         statistics.todayData.company++
-        throw new CompanyNameError(errorHandle(e))
+        throw new CompanyNameError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -207,7 +208,7 @@ export function handles() {
         }
       } catch (e) {
         statistics.todayData.salaryRange++
-        throw new SalaryError(errorHandle(e))
+        throw new SalaryError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -226,7 +227,7 @@ export function handles() {
         }
       } catch (e) {
         statistics.todayData.companySizeRange++
-        throw new CompanySizeError(errorHandle(e))
+        throw new CompanySizeError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -255,7 +256,7 @@ export function handles() {
         }
       } catch (e) {
         statistics.todayData.jobContent++
-        throw new JobDescriptionError(errorHandle(e))
+        throw new JobDescriptionError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -283,7 +284,7 @@ export function handles() {
         }
       } catch (e) {
         statistics.todayData.hrPosition++
-        throw new HrPositionError(errorHandle(e))
+        throw new HrPositionError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -309,7 +310,7 @@ export function handles() {
         throw new JobAddressError(`工作地址不包含关键词: ${content}`)
       } catch (e) {
         statistics.todayData.jobAddress++
-        throw new JobAddressError(errorHandle(e))
+        throw new JobAddressError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -460,7 +461,7 @@ export function handles() {
         if (e instanceof AIFilteringError) {
           throw e
         }
-        throw new AIFilteringError(errorHandle(e), ctx.aiFilteringScore as any)
+        throw new AIFilteringError(errorHandle(e), ctx.aiFilteringScore as any, toCause(e))
       }
     }
   }
@@ -491,7 +492,7 @@ export function handles() {
         ctx.aiGreetingA = ctx.externalGreeting
         buf.send()
       } catch (e) {
-        throw new GreetError(errorHandle(e))
+        throw new GreetError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -515,7 +516,7 @@ export function handles() {
           throw new ActivityError(`不活跃, [${activeText}]`)
       } catch (e) {
         statistics.todayData.activityFilter++
-        throw new ActivityError(errorHandle(e))
+        throw new ActivityError(errorHandle(e), toCause(e))
       }
     }
   }
@@ -561,7 +562,7 @@ export function handles() {
 
           buf.send()
         } catch (e) {
-          throw new GreetError(errorHandle(e))
+          throw new GreetError(errorHandle(e), toCause(e))
         }
       },
     }
@@ -636,7 +637,7 @@ export function handles() {
           buf.send()
         } catch (e) {
           // chatInput.end('Err~')
-          throw new GreetError(errorHandle(e))
+          throw new GreetError(errorHandle(e), toCause(e))
         }
       },
     }

@@ -96,6 +96,7 @@ function toAgentLogEntry(item: ReturnType<ReturnType<typeof useLog>['query']>['i
     error: item.data?.err,
     greeting: item.data?.aiGreetingA ?? item.data?.message,
     aiScore: aiFiltering,
+    pipelineError: item.data?.pipelineError,
     timestamp: item.createdAt,
   }
 }

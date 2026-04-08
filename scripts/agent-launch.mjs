@@ -4,6 +4,8 @@ import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
+import { getAgentBridgeRuntime } from './agent-security.mjs'
+
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = dirname(scriptDir)
 const bridgeScript = join(scriptDir, 'agent-bridge.mjs')
@@ -111,7 +113,12 @@ async function ensureBridge() {
 }
 
 function buildRelayUrl() {
-  const url = new URL(`http://${options.host}:${options.port}/`)
+  const runtime = getAgentBridgeRuntime({
+    ...process.env,
+    BOSS_HELPER_AGENT_HOST: options.host,
+    BOSS_HELPER_AGENT_PORT: String(options.port),
+  })
+  const url = new URL(`${runtime.httpsBaseUrl}/`)
   if (options.extensionId) {
     url.searchParams.set('extensionId', options.extensionId)
   }
@@ -158,7 +165,7 @@ async function main() {
     ),
   )
 
-  console.error('\nNext: 在 Chromium 浏览器中保持 relay 页面打开；如果 URL 里带了 extensionId，页面会自动预填。')
+  console.error('\nNext: 在 Chromium 浏览器中先信任本地证书，再保持 relay 页面打开；如果 URL 里带了 extensionId，页面会自动预填。')
 }
 
 main().catch((error) => {

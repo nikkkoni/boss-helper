@@ -39,3 +39,6 @@ logapi.zhipin.*.pem
 .wxt
 
 /temp
+
+.boss-helper-agent-token
+.boss-helper-agent-cert.json

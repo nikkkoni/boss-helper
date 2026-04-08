@@ -12,6 +12,8 @@ import { SignedKeyLLM } from './signedKey'
 import type { llm, prompt } from './type'
 
 export const confModelKey = 'conf-model'
+const sessionConfModelKey = 'session:conf-model'
+const legacyConfModelKey = 'sync:conf-model'
 export const llms = [openai.info]
 export const llmIcon = llms.reduce(
   (acc, cur) => {
@@ -50,9 +52,16 @@ export const useModel = defineStore('model', () => {
   })
 
   async function init() {
-    const data = await counter.storageGet<modelData[]>(confModelKey, [])
+    let data = await counter.storageGet<modelData[]>(sessionConfModelKey)
+    if (data == null) {
+      data = await counter.storageGet<modelData[]>(legacyConfModelKey)
+      if (data != null) {
+        await counter.storageSet(sessionConfModelKey, data)
+        await counter.storageRm(legacyConfModelKey)
+      }
+    }
     logger.debug('ai模型数据', data)
-    modelData.value.push(...data)
+    modelData.value.push(...(data ?? []))
   }
 
   function getModel(
@@ -87,7 +96,7 @@ export const useModel = defineStore('model', () => {
 
   async function save() {
     await counter.storageSet(
-      confModelKey,
+      sessionConfModelKey,
       toRaw(modelData.value).filter((item) => item.vip == null),
     )
     ElMessage.success('保存成功')

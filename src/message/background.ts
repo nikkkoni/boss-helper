@@ -16,7 +16,7 @@ export interface CookieInfo {
   gender: 'man' | 'woman'
   flag: 'student' | 'staff'
   date: string
-  form?: FormData
+  form?: Partial<FormData>
   statistics?: string
 }
 

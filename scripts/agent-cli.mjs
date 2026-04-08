@@ -1,3 +1,8 @@
+import {
+  createAgentBridgeAuthHeaders,
+  getAgentBridgeRuntime,
+} from './agent-security.mjs'
+
 const args = process.argv.slice(2)
 
 function printUsage() {
@@ -79,8 +84,19 @@ function buildBaseUrl() {
   return `http://${options.host}:${options.port}`
 }
 
+function getBridgeRuntime() {
+  return getAgentBridgeRuntime({
+    ...process.env,
+    BOSS_HELPER_AGENT_HOST: options.host,
+    BOSS_HELPER_AGENT_PORT: String(options.port),
+  })
+}
+
 async function requestJson(path, init = undefined) {
-  const response = await fetch(`${buildBaseUrl()}${path}`, init)
+  const response = await fetch(`${buildBaseUrl()}${path}`, {
+    ...init,
+    headers: createAgentBridgeAuthHeaders(getBridgeRuntime().token, init?.headers ?? {}),
+  })
   const data = await response.json()
   return { response, data }
 }
@@ -95,7 +111,9 @@ function printHint(data) {
   }
 
   if (data.code === 'relay-not-connected') {
-    console.error('\nHint: 先运行 node ./scripts/agent-bridge.mjs，然后在 Chromium 浏览器打开 http://127.0.0.1:4317/，填写扩展 ID 并保持 relay 页面常驻。')
+    console.error(
+      `\nHint: 先运行 node ./scripts/agent-bridge.mjs，然后在 Chromium 浏览器打开 ${getBridgeRuntime().httpsBaseUrl}/，填写扩展 ID 并保持 relay 页面常驻。`,
+    )
   }
 
   if (data.code === 'target-tab-not-found') {
@@ -123,7 +141,7 @@ async function runDoctor() {
       result.nextSteps.push('运行 node ./scripts/agent-bridge.mjs 启动本地 companion 服务。')
     }
     if (!result.checks.relayConnected) {
-      result.nextSteps.push('在 Chromium 浏览器打开 http://127.0.0.1:4317/ 并保持页面打开。')
+      result.nextSteps.push(`在 Chromium 浏览器打开 ${getBridgeRuntime().httpsBaseUrl}/ 并保持页面打开。`)
     }
     if (!result.checks.knownExtensionId) {
       result.nextSteps.push('在 relay 页面填写扩展 ID，然后点击“保存并重连”。')

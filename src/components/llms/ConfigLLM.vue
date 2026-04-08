@@ -12,6 +12,7 @@ import {
 import { ref } from 'vue'
 
 import Alert from '@/components/Alert'
+import SafeHtml from '@/components/SafeHtml.vue'
 import type { modelData } from '@/composables/useModel'
 import { llmIcon, useModel } from '@/composables/useModel'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
@@ -110,7 +111,13 @@ function importllm() {
         <template #default="scope">
           <div style="align-items: center; display: flex">
             <ElAvatar :size="30" :style="{ '--el-avatar-bg-color': scope.row.color }">
-              <ElIcon v-html="scope.row.vip != null ? llmIcon.vip : llmIcon[scope.row.data.mode]" />
+              <ElIcon>
+                <SafeHtml
+                  tag="span"
+                  variant="svg"
+                  :html="scope.row.vip != null ? llmIcon.vip : llmIcon[scope.row.data.mode]"
+                />
+              </ElIcon>
             </ElAvatar>
             <span style="margin-left: 8px">{{ scope.row.name }}</span>
           </div>

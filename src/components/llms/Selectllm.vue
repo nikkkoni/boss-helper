@@ -22,6 +22,7 @@ import {
 import { h, reactive, ref } from 'vue'
 
 import JobCard from '@/components/Jobcard.vue'
+import SafeHtml from '@/components/SafeHtml.vue'
 import { parseFiltering } from '@/composables/useApplying/utils'
 import { llmIcon, useModel } from '@/composables/useModel'
 import type { prompt } from '@/composables/useModel/type'
@@ -307,8 +308,9 @@ async function copyOnlineResume() {
             <span
               v-if="item.vip != null"
               style="align-items: center; display: inline-flex; margin-right: 6px"
-              v-html="llmIcon.vip"
-            />
+            >
+              <SafeHtml tag="span" variant="svg" :html="llmIcon.vip" />
+            </span>
             <span>{{ item.name }}</span>
           </div>
         </template>
@@ -317,8 +319,9 @@ async function copyOnlineResume() {
             <span
               v-if="value.startsWith('vip-')"
               style="align-items: center; display: inline-flex; margin-right: 6px"
-              v-html="llmIcon.vip"
-            />
+            >
+              <SafeHtml tag="span" variant="svg" :html="llmIcon.vip" />
+            </span>
             <span>{{ label }}</span>
           </div>
         </template>

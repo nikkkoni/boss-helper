@@ -1,7 +1,7 @@
 # BossHelper 构建计划
 
 > 基于 [review.md](review.md) 生成，按优先级和依赖关系分阶段执行。  
-> 当前状态：Lint 0 errors / 21 tests passing / Coverage Stmts 68.75% Branches 50.64% Funcs 70.90% Lines 70.76% / v0.4.4
+> 当前状态：Lint 0 errors / 23 tests passing / Coverage Stmts 68.75% Branches 50.64% Funcs 70.90% Lines 70.76% / v0.4.4
 
 ---
 
@@ -30,18 +30,18 @@
 
 ### 1.2 安全加固
 
-- [ ] **P1-5** 收窄 `externally_connectable`：限定为 `https://localhost:*` 和 `https://127.0.0.1:*`，拒绝 HTTP
-- [ ] **P1-6** Agent bridge 通信签名：在 `scripts/agent-bridge.mjs` 和扩展端加入共享密钥验证（HMAC 或 token）
-- [ ] **P1-7** AI 响应渲染 XSS 防护：审计所有 `v-html` / `innerHTML` 使用，改用 DOMPurify 或纯文本渲染
-- [ ] **P1-8** 敏感数据存储审计：API key 迁移到 `session:` 或使用 `chrome.storage.session`，减少持久化存储风险
-- [ ] **P1-9** WXT manifest 添加 `content_security_policy`，限制 script-src / connect-src
+- [x] **P1-5** 收窄 `externally_connectable`：限定为 `https://localhost:*` 和 `https://127.0.0.1:*`，拒绝 HTTP（实际使用 Chrome 合法 match pattern：`https://localhost/*` / `https://127.0.0.1/*`）
+- [x] **P1-6** Agent bridge 通信签名：在 `scripts/agent-bridge.mjs` 和扩展端加入共享密钥验证（HMAC 或 token）
+- [x] **P1-7** AI 响应渲染 XSS 防护：审计所有 `v-html` / `innerHTML` 使用，改用 DOMPurify 或纯文本渲染
+- [x] **P1-8** 敏感数据存储审计：API key 迁移到 `session:` 或使用 `chrome.storage.session`，减少持久化存储风险
+- [x] **P1-9** WXT manifest 添加 `content_security_policy`，限制 script-src / connect-src
 
 ### 1.3 限流 & 容错
 
-- [ ] **P1-10** 引入 `p-limit` 或自定义并发控制器，用于 AI 调用和 DOM 批量操作
-- [ ] **P1-11** AI 调用增加指数退避重试（OpenAI 429 / 5xx / 网络错误）
-- [ ] **P1-12** `agentBatchLoop.ts` 增加最大循环次数 / 超时硬上限，防止无限循环
-- [ ] **P1-13** 管线错误处理改进：捕获后记录完整上下文（job ID + 管线步骤 + 原始错误），替代现有的宽泛 catch
+- [x] **P1-10** 引入 `p-limit` 或自定义并发控制器，用于 AI 调用和 DOM 批量操作
+- [x] **P1-11** AI 调用增加指数退避重试（OpenAI 429 / 5xx / 网络错误）
+- [x] **P1-12** `agentBatchLoop.ts` 增加最大循环次数 / 超时硬上限，防止无限循环
+- [x] **P1-13** 管线错误处理改进：捕获后记录完整上下文（job ID + 管线步骤 + 原始错误），替代现有的宽泛 catch
 
 ---
 
