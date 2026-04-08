@@ -7,8 +7,32 @@ import App from '@/App.vue'
 import { getRootVue } from '@/composables/useVue'
 import { loader } from '@/utils'
 import { logger } from '@/utils/logger'
+import {
+  DOM_READY_TIMEOUT_MS,
+  collectSelectorHealth,
+  formatSelectorHealth,
+  isSupportedZhipinRoute,
+  waitForDocumentReady,
+  zhipinSelectors,
+} from '@/utils/selectors'
+
+function reportSelectorHealth(stage: string, pathname = location.pathname) {
+  if (!isSupportedZhipinRoute(pathname)) {
+    return
+  }
+
+  const results = collectSelectorHealth(pathname)
+  if (results.some((result) => !result.ok)) {
+    logger.warn('BossHelper DOM 健康检查失败', {
+      pathname,
+      stage,
+      summary: formatSelectorHealth(results),
+    })
+  }
+}
 
 async function main(router: any) {
+  reportSelectorHealth('route-enter', router.path)
   let module = {
     run() {
       logger.info('BossHelper加载成功')
@@ -22,13 +46,15 @@ async function main(router: any) {
       module = await import('@/pages/zhipin')
       break
   }
-  module.run()
-  const helper = document.querySelector('#boss-helper')
+  await Promise.resolve(module.run()).catch((error) => {
+    logger.error('页面模块运行失败', { error, path: router.path })
+  })
+  const helper = document.querySelector(zhipinSelectors.extension.appRoot)
   if (!helper) {
     const app = createApp(App)
     app.use(createPinia())
     const appEl = document.createElement('div')
-    appEl.id = 'boss-helper'
+    appEl.id = zhipinSelectors.extension.appRootId
     document.body.append(appEl)
     app.mount(appEl)
   }
@@ -39,6 +65,9 @@ async function start() {
   //     "dark",
   //     GM_getValue("theme-dark", false)
   //   );
+
+  await waitForDocumentReady(DOM_READY_TIMEOUT_MS)
+  reportSelectorHealth('main-world-start')
 
   const v = await getRootVue()
   v.$router.afterHooks.push(main)
@@ -70,6 +99,10 @@ async function start() {
 
 export default defineUnlistedScript(() => {
   start().catch((e) => {
-    logger.error(e)
+    logger.error('main-world 启动失败', {
+      error: e,
+      pathname: location.pathname,
+      summary: formatSelectorHealth(collectSelectorHealth(location.pathname)),
+    })
   })
 })

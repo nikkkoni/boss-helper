@@ -3,6 +3,13 @@ import { createApp } from 'vue'
 
 import elmGetter from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
+import {
+  SELECTOR_TIMEOUT_MS,
+  getMountContainerSelectors,
+  getZhipinRouteKind,
+  joinSelectors,
+  zhipinSelectors,
+} from '@/utils/selectors'
 
 import { initBossChatStream } from './hooks/useChatStream'
 import Ui from './components/Ui.vue'
@@ -11,30 +18,30 @@ import './index.scss'
 
 async function mountVue() {
   const jobSearchWrapper = await elmGetter.get(
-    '.job-search-wrapper,.job-recommend-main,.page-jobs .page-jobs-main',
+    joinSelectors(getMountContainerSelectors(location.pathname)),
+    { timeoutMs: SELECTOR_TIMEOUT_MS },
   )
-  if (document.querySelector('#boss-helper-job')) {
+  if (document.querySelector(zhipinSelectors.extension.jobPanel)) {
     return
   }
   const app = createApp(Ui)
   app.use(createPinia())
 
+  const routeKind = getZhipinRouteKind(location.pathname)
+
   const jobEl = document.createElement('div')
-  jobEl.id = 'boss-helper-job'
+  jobEl.id = zhipinSelectors.extension.jobPanelId
 
   jobSearchWrapper.setAttribute('help', '出界了哇!')
 
-  if (
-    location.href.includes('/web/geek/job-recommend') ||
-    location.href.includes('/web/geek/jobs')
-  ) {
+  if (routeKind === 'job-recommend' || routeKind === 'jobs') {
     jobEl.style.cssText = `
       background: #fff;
       border-radius: 12px;
       padding: 24px 24px 16px;
     `
     const jobWarpEl = document.createElement('div')
-    jobWarpEl.id = 'boss-helper-job-warp'
+    jobWarpEl.id = zhipinSelectors.extension.jobPanelWrapId
     jobWarpEl.style.cssText = `
       width: 85%;
       max-width: 870px;
@@ -50,25 +57,9 @@ async function mountVue() {
 }
 
 function removeAd() {
-  // 新职位发布时通知我
-  void elmGetter.rm('.job-list-wrapper .subscribe-weixin-wrapper')
-  // 侧栏
-  void elmGetter.rm('.job-side-wrapper')
-  // 侧边悬浮框
-  void elmGetter.rm('.side-bar-box')
-  // 搜索栏登录框
-  void elmGetter.rm('.go-login-btn')
-  // 底部页脚
-  // elmGetter.rm("#footer-wrapper");
-
-  // 新版: 微信扫码
-  void elmGetter.rm('.c-subscribe-weixin')
-  // 新版: 求职工具
-  void elmGetter.rm('.c-job-tools.job-tools')
-  // 新版: 热门职位
-  void elmGetter.rm('.c-hot-link.hot-link')
-  // 新版: 面包屑
-  void elmGetter.rm('.c-breadcrumb')
+  for (const selector of zhipinSelectors.cleanup) {
+    void elmGetter.rm(selector, { timeoutMs: SELECTOR_TIMEOUT_MS })
+  }
 }
 
 export async function run() {

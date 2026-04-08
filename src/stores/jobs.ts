@@ -4,6 +4,7 @@ import { checkJobCache } from '@/composables/useApplying'
 import { useHookVueData, useHookVueFn } from '@/composables/useVue'
 import type { FormData } from '@/types/formData'
 import { logger } from '@/utils/logger'
+import { joinSelectors, zhipinSelectors } from '@/utils/selectors'
 
 export type EncryptJobId = bossZpJobItemData['encryptJobId']
 export type JobStatus = 'pending' | 'wait' | 'running' | 'success' | 'error' | 'warn'
@@ -17,6 +18,8 @@ export type MyJobListData = bossZpJobItemData & {
   getCard: () => Promise<bossZpCardData>
 }
 
+const vueContainerQuery = joinSelectors(zhipinSelectors.vueContainers.all)
+
 export class JobList {
   private _vue_jobList = ref<bossZpJobItemData[]>([])
   private _vue_jobDetail = ref<bossZpDetailData>()
@@ -27,18 +30,18 @@ export class JobList {
   _use_cache = ref<boolean>(true)
 
   private hookJobDetail = useHookVueData(
-    '#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main',
+    vueContainerQuery,
     'jobDetail',
     this._vue_jobDetail,
   )
   private hookClickJobCardAction = useHookVueFn(
-    '#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main',
+    vueContainerQuery,
     'clickJobCardAction',
   )
   private clickJobCardAction = async (_: bossZpJobItemData) => {}
 
   private hookJobList = useHookVueData(
-    '#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main',
+    vueContainerQuery,
     'jobList',
     this._vue_jobList,
     (v) => {

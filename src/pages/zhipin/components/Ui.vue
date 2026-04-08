@@ -22,6 +22,7 @@ import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
 import elmGetter from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
+import { SELECTOR_TIMEOUT_MS, getZhipinRouteKind, zhipinSelectors } from '@/utils/selectors'
 
 import { useDeliver } from '../hooks/useDeliver'
 import { useDeliveryControl } from '../hooks/useDeliveryControl'
@@ -110,43 +111,68 @@ onMounted(async () => {
     ElMessage.error(`列表初始失败: ${e instanceof Error ? e.message : '未知错误'}`)
   }
 
-  if (location.href.includes('/web/geek/job-recommend')) {
-    elmGetter.get<HTMLDivElement>('.job-recommend-search').then((searchEl) => {
-      searchEl.style.position = 'unset'
-      searchRef.value.$el.appendChild(searchEl)
-    })
-  } else if (location.href.includes('/web/geek/jobs')) {
+  const routeKind = getZhipinRouteKind(location.pathname)
+  const searchMount = searchRef.value?.$el as HTMLElement | undefined
+
+  if (!searchMount) {
+    logger.warn('未找到搜索栏挂载节点')
+  } else if (routeKind === 'job-recommend') {
+    void elmGetter
+      .get<HTMLDivElement>(zhipinSelectors.searchLayout.recommendSearch, {
+        timeoutMs: SELECTOR_TIMEOUT_MS,
+      })
+      .then((searchEl) => {
+        searchEl.style.position = 'unset'
+        searchMount.appendChild(searchEl)
+      })
+      .catch((error) => {
+        logger.warn('初始化推荐页搜索栏失败', { error })
+      })
+  } else if (routeKind === 'jobs') {
     const div = document.createElement('div')
     div.style.cssText = 'display: flex;flex-direction: column;gap: 15px;'
-    searchRef.value.$el.appendChild(div)
-    elmGetter
-      .get<HTMLDivElement>([
-        '.page-jobs-main .expect-and-search',
-        '.page-jobs-main .filter-condition',
-      ])
+    searchMount.appendChild(div)
+    void elmGetter
+      .get<HTMLDivElement>(zhipinSelectors.searchLayout.jobsBlocks, {
+        timeoutMs: SELECTOR_TIMEOUT_MS,
+      })
       .then(([searchEl, conditionEl]) => {
         searchEl.style.position = 'static'
         conditionEl.style.position = 'static'
         div.appendChild(conditionEl)
-        elmGetter
-          .get(['.c-search-input', '.c-expect-select'], searchEl)
+        void elmGetter
+          .get(zhipinSelectors.searchLayout.jobsInputs, {
+            parent: searchEl,
+            timeoutMs: SELECTOR_TIMEOUT_MS,
+          })
           .then(([searchInputEl, expectSelectEl]) => {
             div.insertBefore(searchInputEl, conditionEl)
             div.insertBefore(expectSelectEl, conditionEl)
             searchEl.style.display = 'none'
           })
+          .catch((error) => {
+            logger.warn('初始化新版职位页搜索输入失败', { error })
+          })
+      })
+      .catch((error) => {
+        logger.warn('初始化新版职位页搜索布局失败', { error })
       })
   } else {
-    elmGetter
-      .get([
-        '.job-search-wrapper .job-search-box.clearfix',
-        '.job-search-wrapper .search-condition-wrapper.clearfix',
-      ])
+    void elmGetter
+      .get(zhipinSelectors.searchLayout.legacyBlocks, {
+        timeoutMs: SELECTOR_TIMEOUT_MS,
+      })
       .then(([searchEl, conditionEl]) => {
-        searchRef.value.$el.appendChild(searchEl)
-        searchRef.value.$el.appendChild(conditionEl)
+        searchMount.appendChild(searchEl)
+        searchMount.appendChild(conditionEl)
         // 搜索栏去APP
-        elmGetter.rm('.job-search-scan', searchEl)
+        void elmGetter.rm(zhipinSelectors.searchLayout.legacyScan, {
+          parent: searchEl,
+          timeoutMs: SELECTOR_TIMEOUT_MS,
+        })
+      })
+      .catch((error) => {
+        logger.warn('初始化经典职位页搜索布局失败', { error })
       })
   }
 

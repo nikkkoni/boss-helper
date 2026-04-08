@@ -908,6 +908,16 @@ pnpm dev:firefox
 pnpm check
 ```
 
+## 测试
+
+```bash
+pnpm test
+pnpm test:watch
+pnpm test:coverage
+```
+
+`pnpm test:coverage` 会在本地生成 `coverage/` HTML 报告和 `coverage-summary.json`，用于记录当前基线覆盖率。
+
 ## 构建
 
 ```bash
@@ -959,7 +969,7 @@ GreasyFork 地址（0.2 旧版本）：<https://greasyfork.org/zh-CN/scripts/491
 
 1. Fork 本仓库并克隆到本地。
 2. 新建分支并提交修改。
-3. 运行必要的构建和检查命令。
+3. 至少运行 `pnpm lint`、`pnpm check`、`pnpm test`，必要时补充 `pnpm test:coverage` 和构建命令。
 4. 提交 Pull Request。
 
 ## 鸣谢

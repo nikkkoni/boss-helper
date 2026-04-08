@@ -3,19 +3,23 @@ import { ref } from 'vue'
 
 import { useHookVueData, useHookVueFn } from '@/composables/useVue'
 import { logger } from '@/utils/logger'
+import { joinSelectors, zhipinSelectors } from '@/utils/selectors'
+
+const legacyVueContainerQuery = joinSelectors(zhipinSelectors.vueContainers.job)
+const vueContainerQuery = joinSelectors(zhipinSelectors.vueContainers.all)
 
 export const usePager = defineStore('zhipin/pager', () => {
   const page = ref({ page: 1, pageSize: 15 })
   const pageChange = ref<((value: number) => void) | null>(null)
 
   const initPage = useHookVueData(
-    '#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main',
+    vueContainerQuery,
     'pageVo',
     page,
   )
 
-  const initChange = useHookVueFn('#wrap .page-job-wrapper', 'pageChangeAction')
-  const initSearch = useHookVueFn('#wrap .page-job-wrapper,.job-recommend-main,.page-jobs-main', [
+  const initChange = useHookVueFn(legacyVueContainerQuery, 'pageChangeAction')
+  const initSearch = useHookVueFn(vueContainerQuery, [
     'searchJobAction',
     'onSearch',
   ])

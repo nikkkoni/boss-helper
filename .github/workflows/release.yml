@@ -1,11 +1,7 @@
-name: Main
+name: Release
+
 on:
-  # push:
-  #   tags:
-  #     - '*'
   workflow_dispatch:
-  # schedule:
-  #  - cron: "30 0 * * *"
 
 jobs:
   build:

@@ -1,166 +1,282 @@
-// ==UserScript==
-// @name         ElementGetter
-// @author       cxxjackie
-// @version      2.0.0
-// @supportURL   https://bbs.tampermonkey.net.cn/thread-2726-1-1.html
-// ==/UserScript==
+import { SELECTOR_RETRY_INTERVAL_MS, SELECTOR_TIMEOUT_MS, splitSelectors } from '@/utils/selectors'
 
-/* eslint-disable */
-// @ts-nocheck
+type QueryParent = ParentNode & Node
 
-const win = document.defaultView || window
+export type ElmGetterOptions = {
+  parent?: QueryParent
+  retryIntervalMs?: number
+  timeoutMs?: number
+}
+
+type EachCallback = (elm: Element, isInserted: boolean) => boolean | void
+
+const win = document.defaultView ?? window
 const doc = win.document
-const listeners = new WeakMap()
+const MutationObs = win.MutationObserver ?? win.WebkitMutationObserver ?? win.MozMutationObserver
 
-const elProto = win.Element.prototype
+function matches(element: Element, selector: string) {
+  return element.matches(selector)
+}
 
-const matches =
-  elProto.matches ||
-  elProto.matchesSelector ||
-  elProto.webkitMatchesSelector ||
-  elProto.mozMatchesSelector ||
-  elProto.oMatchesSelector
-const MutationObs = win.MutationObserver || win.WebkitMutationObserver || win.MozMutationObserver
-function addObserver(target, callback) {
+class SelectorTimeoutError extends Error {
+  constructor(
+    public selector: string,
+    public timeoutMs: number,
+    parent: QueryParent,
+  ) {
+    super(`等待选择器超时: ${selector} (${timeoutMs}ms, parent=${describeParent(parent)})`)
+    this.name = 'SelectorTimeoutError'
+  }
+}
+
+function isElement(value: unknown): value is Element {
+  return value instanceof win.Element
+}
+
+function isQueryParent(value: unknown): value is QueryParent {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'nodeType' in value &&
+      'querySelector' in value &&
+      typeof (value as QueryParent).querySelector === 'function',
+  )
+}
+
+function isOptions(value: unknown): value is ElmGetterOptions {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && !isQueryParent(value))
+}
+
+function describeParent(parent: QueryParent) {
+  if (parent === doc) {
+    return 'document'
+  }
+  if (isElement(parent)) {
+    const id = parent.id ? `#${parent.id}` : ''
+    return `${parent.tagName.toLowerCase()}${id}`
+  }
+  return parent.nodeName.toLowerCase()
+}
+
+function queryOne<E extends Element = Element>(
+  selector: string,
+  parent: QueryParent,
+  includeParent: boolean,
+) {
+  const checkParent = includeParent && isElement(parent) && matches(parent, selector)
+  if (checkParent) {
+    return parent as E
+  }
+  return parent.querySelector<E>(selector)
+}
+
+function queryAll(selector: string, parent: QueryParent, includeParent: boolean) {
+  const nodes = [...parent.querySelectorAll<Element>(selector)]
+  if (includeParent && isElement(parent) && matches(parent, selector)) {
+    return [parent, ...nodes]
+  }
+  return nodes
+}
+
+function observeTarget(target: QueryParent, callback: (el: Element) => void) {
+  if (!MutationObs) {
+    return () => {}
+  }
+
   const observer = new MutationObs((mutations) => {
     for (const mutation of mutations) {
-      if (mutation.type === 'attributes') {
+      if (mutation.type === 'attributes' && isElement(mutation.target)) {
         callback(mutation.target)
-        if (observer.canceled) return
       }
+
       for (const node of mutation.addedNodes) {
-        if (node instanceof Element) callback(node)
-        if (observer.canceled) return
+        if (isElement(node)) {
+          callback(node)
+        }
       }
     }
   })
-  observer.canceled = false
+
   observer.observe(target, {
     childList: true,
     subtree: true,
     attributes: true,
   })
+
   return () => {
-    observer.canceled = true
     observer.disconnect()
   }
 }
-function addFilter(target, filter) {
-  let listener = listeners.get(target)
-  if (!listener) {
-    listener = {
-      filters: new Set(),
-      remove: addObserver(target, (el) => listener.filters.forEach((f) => f(el))),
+
+function normalizeOptions(args: unknown[]) {
+  if (isOptions(args[0])) {
+    return {
+      parent: args[0].parent ?? doc,
+      retryIntervalMs: args[0].retryIntervalMs ?? SELECTOR_RETRY_INTERVAL_MS,
+      timeoutMs: args[0].timeoutMs ?? SELECTOR_TIMEOUT_MS,
     }
-    listeners.set(target, listener)
   }
-  listener.filters.add(filter)
-}
-function removeFilter(target, filter) {
-  const listener = listeners.get(target)
-  if (!listener) return
-  listener.filters.delete(filter)
-  if (!listener.filters.size) {
-    listener.remove()
-    listeners.delete(target)
+
+  const parent = isQueryParent(args[0]) ? args[0] : doc
+  const timeoutMs =
+    typeof args[0] === 'number'
+      ? args[0]
+      : typeof args[1] === 'number'
+        ? args[1]
+        : SELECTOR_TIMEOUT_MS
+
+  return {
+    parent,
+    retryIntervalMs: SELECTOR_RETRY_INTERVAL_MS,
+    timeoutMs,
   }
-}
-function query(all, selector, parent, includeParent) {
-  const checkParent = includeParent && matches.call(parent, selector)
-  if (all) {
-    const queryAll = parent.querySelectorAll(selector)
-    return checkParent ? [parent, ...queryAll] : [...queryAll]
-  }
-  return checkParent ? parent : parent.querySelector(selector)
 }
 
-function getOne(selector, parent, timeout) {
-  return new Promise((resolve) => {
-    const node = query(false, selector, parent, false)
-    if (node) return resolve(node)
-    let timer
-    const filter = (el) => {
-      const node = query(false, selector, el, true)
-      if (node) {
-        removeFilter(parent, filter)
-        timer && clearTimeout(timer)
-        resolve(node)
+function waitForSelector<E extends Element = Element>(selector: string, options: Required<ElmGetterOptions>) {
+  return new Promise<E>((resolve, reject) => {
+    let settled = false
+    const cleanups: Array<() => void> = []
+
+    const finish = (callback: () => void) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      for (const cleanup of cleanups) {
+        cleanup()
+      }
+      callback()
+    }
+
+    const lookup = (target: QueryParent, includeParent = false) => {
+      try {
+        const found = queryOne<E>(selector, target, includeParent)
+        if (found) {
+          finish(() => resolve(found))
+        }
+      } catch (error) {
+        finish(() => reject(error))
       }
     }
-    addFilter(parent, filter)
-    if (timeout > 0) {
-      timer = setTimeout(() => {
-        removeFilter(parent, filter)
-        resolve(null)
-      }, timeout)
+
+    lookup(options.parent)
+
+    if (settled) {
+      return
+    }
+
+    cleanups.push(observeTarget(options.parent, (element) => lookup(element, true)))
+
+    if (options.retryIntervalMs > 0) {
+      const retryId = window.setInterval(() => {
+        lookup(options.parent)
+      }, options.retryIntervalMs)
+      cleanups.push(() => clearInterval(retryId))
+    }
+
+    if (options.timeoutMs > 0) {
+      const timeoutId = window.setTimeout(() => {
+        finish(() => reject(new SelectorTimeoutError(selector, options.timeoutMs, options.parent)))
+      }, options.timeoutMs)
+      cleanups.push(() => clearTimeout(timeoutId))
     }
   })
 }
 
+function get<E extends Element = Element>(selector: readonly string[], options?: ElmGetterOptions): Promise<E[]>
+function get<E extends Element = Element>(selector: string, options?: ElmGetterOptions): Promise<E>
 function get<E extends Element = Element>(
-  selector: string[],
-  ...args: [Element, number] | [number] | [Element] | []
+  selector: readonly string[],
+  ...args: [QueryParent, number] | [number] | [QueryParent] | []
 ): Promise<E[]>
 function get<E extends Element = Element>(
   selector: string,
-  ...args: [Element, number] | [number] | [Element] | []
+  ...args: [QueryParent, number] | [number] | [QueryParent] | []
 ): Promise<E>
 function get<E extends Element = Element>(
-  selector: string | string[],
-  ...args: [Element, number] | [number] | [Element] | []
+  selector: string | readonly string[],
+  ...args: unknown[]
 ): Promise<E | E[]> {
-  const parent = (typeof args[0] !== 'number' && args.shift()) || doc
-  const timeout = args[0] || 0
-  if (Array.isArray(selector)) {
-    return Promise.all(selector.map((s) => getOne(s, parent, timeout))) as Promise<E[]>
+  const options = normalizeOptions(args) as Required<ElmGetterOptions>
+  if (typeof selector !== 'string') {
+    return Promise.all(selector.map((item) => waitForSelector<E>(item, options)))
   }
-  return getOne(selector, parent, timeout) as Promise<E>
+  return waitForSelector<E>(selector, options)
 }
 
 function each(
   selector: string,
   ...args:
-    | [Element, (elm: Element, isInserted: boolean) => boolean]
-    | [(elm: Element, isInserted: boolean) => boolean]
+    | [QueryParent, EachCallback]
+    | [EachCallback]
 ) {
-  const parent = (typeof args[0] !== 'function' && args.shift()) || doc
+  const parent = isQueryParent(args[0]) ? args[0] : doc
+  const callback = (isQueryParent(args[0]) ? args[1] : args[0]) as EachCallback
 
-  const callback = args[0] as (elm: Element, isInserted: boolean) => boolean
-
-  const refs = new WeakSet()
-  for (const node of query(true, selector, parent, false)) {
-    refs.add(node)
-    if (callback(node, false) === false) return
+  if (typeof callback !== 'function') {
+    throw new TypeError('elmGetter.each requires a callback')
   }
-  const filter = (el: Element) => {
-    for (const node of query(true, selector, el, true)) {
-      const _el = node
-      if (refs.has(_el)) break
-      refs.add(_el)
-      if (callback(node, true) === false) {
-        return removeFilter(parent, filter)
-      }
+
+  const refs = new WeakSet<Element>()
+  const handleNode = (node: Element, isInserted: boolean) => {
+    if (refs.has(node)) {
+      return true
+    }
+    refs.add(node)
+    return callback(node, isInserted) !== false
+  }
+
+  for (const node of queryAll(selector, parent, false)) {
+    if (!handleNode(node, false)) {
+      return
     }
   }
-  addFilter(parent, filter)
+
+  const stopObserving = observeTarget(parent, (element) => {
+    try {
+      for (const node of queryAll(selector, element, true)) {
+        if (!handleNode(node, true)) {
+          stopObserving()
+          return
+        }
+      }
+    } catch (error) {
+      stopObserving()
+      console.error('[BossHelper] elmGetter.each callback failed', error)
+    }
+  })
+}
+
+function validateSelectors(selector: string | readonly string[], parent: QueryParent = doc) {
+  return splitSelectors(selector).map((item: string) => ({
+    selector: item,
+    found: Boolean(queryOne(item, parent, false)),
+  }))
 }
 
 async function rm(
-  selector: string | string[],
-  ...args: [Element, number] | [number] | [Element] | []
+  selector: string | readonly string[],
+  ...args: [QueryParent, number] | [number] | [QueryParent] | [ElmGetterOptions] | []
 ) {
-  if (Array.isArray(selector)) {
-    await Promise.all(
-      selector.map((s) => {
-        get(s, ...args).then((e) => e.remove())
-      }),
-    )
-  } else {
-    await get(selector, ...args).then((e) => e.remove())
+  try {
+    if (typeof selector !== 'string') {
+      const targets = await get(selector, ...(args as [QueryParent, number] | [number] | [QueryParent] | []))
+      targets.forEach((target) => target.remove())
+      return
+    }
+    const targets = await get(selector, ...(args as [QueryParent, number] | [number] | [QueryParent] | []))
+    targets.remove()
+  } catch (error) {
+    if (error instanceof SelectorTimeoutError) {
+      return
+    }
+    console.warn('[BossHelper] elmGetter.rm failed', { selector, error })
   }
 }
+
 export default {
-  get,
   each,
+  get,
   rm,
+  validateSelectors,
 }

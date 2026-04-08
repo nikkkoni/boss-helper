@@ -8,6 +8,9 @@
   - Edge: `pnpm dev:edge`
   - Firefox: `pnpm dev:firefox`
 - Type-check: `pnpm check`
+- Test: `pnpm test`
+- Test watch: `pnpm test:watch`
+- Test coverage: `pnpm test:coverage`
 - Lint: `pnpm lint`
 - Auto-fix lint issues: `pnpm lint:fix`
 - Format: `pnpm fmt`
@@ -24,9 +27,7 @@
   - Inspect bridge / relay state: `pnpm agent:doctor`
   - Send a command through the CLI wrapper: `pnpm agent:cli -- stats`
 
-There is currently **no automated test script or single-test runner** in `package.json`. Do not invent `pnpm test` or single-file test commands for this repository.
-
-Prefer `package.json` over `.github/workflows/main.yml` when looking for build commands. The workflow still references `pnpm run build:noTsc`, but that script does not exist.
+  Prefer `package.json` over GitHub workflow files when looking for build commands. The current CI workflow is `.github/workflows/ci.yml`; the release packaging workflow is `.github/workflows/release.yml`.
 
 ## High-level architecture
 
