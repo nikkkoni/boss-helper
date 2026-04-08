@@ -1,4 +1,5 @@
 import { useChat } from '@/composables/useChat'
+import { jsonClone } from '@/utils/deepmerge'
 import {
   BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
   BOSS_HELPER_AGENT_EVENT_BRIDGE,
@@ -124,10 +125,11 @@ export function useDeliveryControl() {
     registerWindowAgentBridge() {
       window.__bossHelperAgent = controller
       const stopAgentEventBridge = onBossHelperAgentEvent((payload) => {
+        const plainPayload = jsonClone(payload)
         window.postMessage(
           {
             type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
-            payload,
+            payload: plainPayload,
           },
           '*',
         )
@@ -148,11 +150,12 @@ export function useDeliveryControl() {
             )
           })
           .then((payload) => {
+            const plainPayload = jsonClone(payload)
             window.postMessage(
               {
                 type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
                 requestId: event.data.requestId,
-                payload,
+                payload: plainPayload,
               },
               '*',
             )

@@ -51,29 +51,29 @@
 
 ### 2.1 单元测试扩展
 
-- [ ] **P2-1** `useApplying/` 管线测试：每个 handle 的正常/异常/边界路径
-- [ ] **P2-2** `usePipelineCache.ts` 测试：缓存命中/失效/用户切换场景
-- [ ] **P2-3** `useModel/` 测试：OpenAI 调用 mock、签名密钥逻辑、错误恢复
-- [ ] **P2-4** `useWebSocket/` 测试：protobuf 编解码、连接断开重连、消息乱序
-- [ ] **P2-5** `elmGetter.ts` 测试：jsdom 环境模拟 MutationObserver + 选择器匹配
-- [ ] **P2-6** `utils/` 工具函数测试：`parse.ts`、`amap.ts`、`deepmerge.ts`、`request.ts`
-- [ ] **P2-7** `stores/conf/validation.ts` 边界测试：无效 patch、类型不匹配、嵌套合并
+- [x] **P2-1** `useApplying/` 管线测试：每个 handle 的正常/异常/边界路径
+- [x] **P2-2** `usePipelineCache.ts` 测试：缓存命中/失效/用户切换场景
+- [x] **P2-3** `useModel/` 测试：OpenAI 调用 mock、签名密钥逻辑、错误恢复
+- [x] **P2-4** `useWebSocket/` 测试：protobuf 编解码、连接断开重连、消息乱序
+- [x] **P2-5** `elmGetter.ts` 测试：jsdom 环境模拟 MutationObserver + 选择器匹配
+- [x] **P2-6** `utils/` 工具函数测试：`parse.ts`、`amap.ts`、`deepmerge.ts`、`request.ts`
+- [x] **P2-7** `stores/conf/validation.ts` 边界测试：无效 patch、类型不匹配、嵌套合并
 
 ### 2.2 组件 & 集成测试
 
-- [ ] **P2-8** Vue 组件测试：`Ui.vue`、`Jobcard.vue`、`ConfigLLM.vue` 关键交互路径（vitest + @vue/test-utils）
-- [ ] **P2-9** 消息层集成测试：模拟 background ↔ content ↔ agent 消息流
+- [x] **P2-8** Vue 组件测试：`Ui.vue`、`Jobcard.vue`、`ConfigLLM.vue` 关键交互路径（vitest + @vue/test-utils）
+- [x] **P2-9** 消息层集成测试：模拟 background ↔ content ↔ agent 消息流
 
 ### 2.3 E2E 测试
 
-- [ ] **P2-10** Playwright E2E 框架搭建：配置 WXT 测试模式 + 测试用 fixture 页面
-- [ ] **P2-11** 核心 E2E 用例：扩展加载 → 页面注入 → 职位列表解析 → 单个投递流程模拟
-- [ ] **P2-12** Agent bridge E2E：CLI 命令 → relay → 扩展 → 页面控制器全链路
+- [x] **P2-10** Playwright E2E 框架搭建：配置 WXT 测试模式 + 测试用 fixture 页面
+- [x] **P2-11** 核心 E2E 用例：扩展加载 → 页面注入 → 职位列表解析 → 单个投递流程模拟
+- [x] **P2-12** Agent bridge E2E：CLI 命令 → relay → 扩展 → 页面控制器全链路
 
 ### 2.4 CI 集成
 
-- [ ] **P2-13** 统一 `.github/workflows/ci.yml`：lint → type-check → test → build（所有浏览器）→ coverage 上传
-- [ ] **P2-14** PR 卡控：coverage 低于阈值或测试失败则 block merge
+- [x] **P2-13** 统一 `.github/workflows/ci.yml`：lint → type-check → test → build（所有浏览器）→ coverage 上传
+- [x] **P2-14** PR 卡控：coverage 低于阈值或测试失败则 block merge
 
 ---
 

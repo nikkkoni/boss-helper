@@ -34,7 +34,7 @@ export function sanitizeSensitiveFormData(data: Partial<FormData>) {
 }
 
 export const useConf = defineStore('conf', () => {
-  const formData: FormData = reactive(defaultFormData)
+  const formData: FormData = reactive(jsonClone(defaultFormData))
   const isLoaded = ref(false)
   const templateNames = ref<string[]>([])
 

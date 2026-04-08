@@ -24,20 +24,24 @@ enum LogLevel {
 }
 
 function getLogLevel() {
-  if ('localStorage' in window) {
-    const temp = localStorage.getItem('__BH_LOG_LEVEL__')
-    if (temp) {
-      switch (temp.toLowerCase()) {
-        case 'debug':
-          return LogLevel.DEBUG
-        case 'info':
-          return LogLevel.INFO
-        case 'warn':
-          return LogLevel.WARN
-        case 'error':
-          return LogLevel.ERROR
+  try {
+    if ('localStorage' in window) {
+      const temp = window.localStorage.getItem('__BH_LOG_LEVEL__')
+      if (temp) {
+        switch (temp.toLowerCase()) {
+          case 'debug':
+            return LogLevel.DEBUG
+          case 'info':
+            return LogLevel.INFO
+          case 'warn':
+            return LogLevel.WARN
+          case 'error':
+            return LogLevel.ERROR
+        }
       }
     }
+  } catch {
+    // main-world execution can deny direct storage access on some page contexts
   }
   return LogLevel.INFO
 }

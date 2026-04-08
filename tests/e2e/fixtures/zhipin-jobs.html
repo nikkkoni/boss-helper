@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boss Helper E2E Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #f7f8fa;
+        color: #1f2328;
+      }
+
+      #header {
+        height: 8px;
+      }
+
+      .page-jobs-main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      .fixture-shell {
+        display: grid;
+        gap: 16px;
+      }
+
+      .expect-and-search,
+      .filter-condition,
+      .c-search-input,
+      .c-expect-select {
+        border-radius: 12px;
+        background: #fff;
+        border: 1px solid #d0d7de;
+        padding: 16px;
+      }
+
+      .fixture-job-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .fixture-job-card {
+        border-radius: 16px;
+        background: #fff;
+        border: 1px solid #d0d7de;
+        padding: 16px;
+      }
+
+      .fixture-job-card h3,
+      .fixture-job-card p {
+        margin: 0;
+      }
+
+      .fixture-job-card p {
+        margin-top: 8px;
+        color: #59636e;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="header"></div>
+    <div id="wrap">
+      <div class="page-jobs">
+        <div class="page-jobs-main">
+          <div class="fixture-shell">
+            <div class="expect-and-search">Boss 搜索栏</div>
+            <div class="filter-condition">Boss 筛选区</div>
+            <div class="c-search-input">关键词输入框</div>
+            <div class="c-expect-select">期望选择器</div>
+            <div class="fixture-job-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script id="boss-helper-e2e-fixture" type="application/json">
+      __BOSS_HELPER_E2E_FIXTURE__
+    </script>
+    <script>
+      (() => {
+        const fixture = JSON.parse(
+          document.getElementById('boss-helper-e2e-fixture').textContent,
+        )
+        const wrap = document.getElementById('wrap')
+        const pageJobsMain = document.querySelector('.page-jobs-main')
+        const listRoot = document.querySelector('.fixture-job-list')
+        const search = new URLSearchParams(location.search)
+
+        listRoot.innerHTML = fixture.jobList
+          .map(
+            (job) => `
+              <article class="fixture-job-card" data-job-id="${job.encryptJobId}">
+                <h3>${job.jobName}</h3>
+                <p>${job.brandName} / ${job.salaryDesc}</p>
+              </article>
+            `,
+          )
+          .join('')
+
+        const pageState = {
+          pageVo: {
+            page: Number(search.get('page') || '1'),
+            pageSize: fixture.jobList.length,
+          },
+          jobList: fixture.jobList,
+          jobDetail: undefined,
+          clickJobCardAction(job) {
+            const detail = fixture.jobDetails[job.encryptJobId]
+            window.setTimeout(() => {
+              pageState.jobDetail = detail
+            }, 20)
+          },
+          onSearch(page) {
+            pageState.pageVo = {
+              ...pageState.pageVo,
+              page: typeof page === 'number' ? page : pageState.pageVo.page,
+            }
+            return true
+          },
+          searchJobAction(page) {
+            return pageState.onSearch(page)
+          },
+        }
+
+        const route = {
+          path: location.pathname,
+        }
+
+        const router = {
+          afterHooks: [],
+          push(nextPath) {
+            route.path = typeof nextPath === 'string' ? nextPath : nextPath?.path || route.path
+            for (const hook of router.afterHooks) {
+              hook(route)
+            }
+          },
+        }
+
+        const rootVue = {
+          $route: route,
+          $router: router,
+          $store: {
+            state: {
+              userInfo: fixture.userInfo,
+            },
+          },
+        }
+
+        Object.defineProperty(wrap, '__vue__', {
+          configurable: true,
+          value: rootVue,
+          writable: true,
+        })
+
+        Object.defineProperty(pageJobsMain, '__vue__', {
+          configurable: true,
+          value: pageState,
+          writable: true,
+        })
+
+        window._PAGE = {
+          uid: fixture.userInfo.userId,
+          userId: fixture.userInfo.userId,
+        }
+
+        window.Cookie = {
+          get(name) {
+            return name === 'bst' ? 'fixture-bst-token' : ''
+          },
+        }
+
+        window.__BOSS_HELPER_E2E_FIXTURE__ = fixture
+      })()
+    </script>
+  </body>
+</html>

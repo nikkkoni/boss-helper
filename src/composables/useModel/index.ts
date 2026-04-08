@@ -44,7 +44,15 @@ export const useModel = defineStore('model', () => {
 
   const modelData = computed({
     get() {
-      return _modelData.value.sort((a, b) => (a.vip == null && b.vip != null ? 1 : -1))
+      return _modelData.value.sort((a, b) => {
+        if (a.vip == null && b.vip != null) {
+          return 1
+        }
+        if (a.vip != null && b.vip == null) {
+          return -1
+        }
+        return 0
+      })
     },
     set(value: modelData[]) {
       _modelData.value = value
@@ -72,7 +80,11 @@ export const useModel = defineStore('model', () => {
     if (vip) {
       if (typeof template === 'string') {
         const llm = new SignedKeyLLM(template)
-        void llm.checkResume()
+        void llm.checkResume().catch((error) => {
+          logger.warn('VIP模型简历检查失败', {
+            error: error instanceof Error ? error.message : String(error),
+          })
+        })
         return llm
       } else {
         throw new TypeError('VIP模型必须传入字符串')

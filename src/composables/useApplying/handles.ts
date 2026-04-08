@@ -26,6 +26,7 @@ import {
   SalaryError,
 } from '@/types/deliverError'
 import { getCurDay, getCurTime } from '@/utils'
+import { logger } from '@/utils/logger'
 
 import { SignedKeyLLM } from '../useModel/signedKey'
 import type { StepArgs, StepFactory } from './type'
@@ -41,6 +42,14 @@ import {
 
 export function handles() {
   const toCause = (error: unknown) => (error instanceof Error ? { cause: error } : undefined)
+  const warmSignedKeyResume = (gpt: SignedKeyLLM, scene: 'aiFiltering' | 'aiGreeting') => {
+    void gpt.checkResume().catch((error) => {
+      logger.warn('VIP模型简历检查失败', {
+        scene,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    })
+  }
   const { chatMessages } = useChat()
   const model = useModel()
   const conf = useConf()
@@ -342,7 +351,7 @@ export function handles() {
       conf.formData.aiFiltering.vip,
     )
     if (gpt instanceof SignedKeyLLM) {
-      void gpt.checkResume()
+      warmSignedKeyResume(gpt, 'aiFiltering')
     }
     return async (_, ctx) => {
       // const chatInput = chatInputInit(model)
@@ -592,7 +601,7 @@ export function handles() {
       conf.formData.aiGreeting.vip,
     )
     if (gpt instanceof SignedKeyLLM) {
-      void gpt.checkResume()
+      warmSignedKeyResume(gpt, 'aiGreeting')
     }
     const uid = useUser().getUserId()
     if (uid == null) {

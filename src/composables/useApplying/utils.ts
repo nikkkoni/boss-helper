@@ -26,8 +26,22 @@ interface BossApiResponse<T> {
 }
 
 async function getBossToken() {
+  const pageToken = window?.Cookie?.get?.('bst')
+  if (typeof pageToken === 'string' && pageToken) {
+    return pageToken
+  }
+
+  const cookieToken = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith('bst='))
+    ?.slice(4)
+  if (cookieToken) {
+    return decodeURIComponent(cookieToken)
+  }
+
   for (const url of ['https://www.zhipin.com', 'https://zhipin.com']) {
-    const token = await browser.cookies.get({
+    const token = await browser.cookies?.get?.({
       url,
       name: 'bst',
     })

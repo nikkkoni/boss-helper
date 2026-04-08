@@ -199,6 +199,20 @@ function getCommandTimeout(command: BossHelperAgentCommand) {
   }
 }
 
+function handleRuntimeAgentRequest(message: unknown) {
+  if (!isBossHelperAgentRequest(message)) {
+    return undefined
+  }
+
+  return forwardAgentRequestToPage(message).catch((error) =>
+    createBossHelperAgentResponse(
+      false,
+      'page-bridge-error',
+      error instanceof Error ? error.message : '投递页面未响应，请确认 Boss 页面已完成初始化',
+    ),
+  )
+}
+
 export function registerAgentMessageBridge() {
   const forwardPageEventToBackground = (event: MessageEvent) => {
     if (event.source !== window || !isBossHelperAgentEventBridgeMessage(event.data)) {
@@ -213,11 +227,20 @@ export function registerAgentMessageBridge() {
 
   window.addEventListener('message', forwardPageEventToBackground)
 
-  browser.runtime.onMessage.addListener((message) => {
-    if (!isBossHelperAgentRequest(message)) {
-      return
-    }
+  if (globalThis.chrome?.runtime?.onMessage) {
+    globalThis.chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      const responsePromise = handleRuntimeAgentRequest(message)
+      if (!responsePromise) {
+        return undefined
+      }
 
-    return forwardAgentRequestToPage(message)
+      void responsePromise.then(sendResponse)
+      return true
+    })
+    return
+  }
+
+  browser.runtime.onMessage.addListener((message) => {
+    return handleRuntimeAgentRequest(message)
   })
 }

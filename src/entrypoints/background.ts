@@ -78,9 +78,37 @@ function broadcastAgentEvent(event: BossHelperAgentEvent) {
   }
 }
 
+function handleExternalAgentRequest(message: unknown, sender: { url?: string | null }) {
+  if (!isTrustedAgentRelaySender(sender.url)) {
+    return createBossHelperAgentResponse(false, 'unauthorized-bridge', 'relay 来源不可信')
+  }
+
+  if (!hasValidBossHelperAgentBridgeToken(message) || !isBossHelperAgentRequest(message)) {
+    return createBossHelperAgentResponse(false, 'unauthorized-bridge', 'relay 认证失败')
+  }
+
+  const { bridgeToken: _bridgeToken, ...request } = message
+  return forwardAgentRequest(request)
+}
+
+async function resolveExternalAgentRequest(message: unknown, sender: { url?: string | null }) {
+  return Promise.resolve(handleExternalAgentRequest(message, sender)).catch((error: unknown) =>
+    createBossHelperAgentResponse(
+      false,
+      'tab-forward-failed',
+      error instanceof Error ? error.message : '投递页面未就绪',
+    ),
+  )
+}
+
 export default defineBackground({
   // type: 'module',
   main() {
+    const sessionStorage = browser.storage?.session
+    if (sessionStorage?.setAccessLevel) {
+      void sessionStorage.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' }).catch(() => {})
+    }
+
     provideBackgroundCounter(new ProvideBackgroundAdapter())
 
     browser.runtime.onConnectExternal.addListener((port) => {
@@ -106,17 +134,15 @@ export default defineBackground({
       return true
     })
 
-    browser.runtime.onMessageExternal.addListener((message, sender) => {
-      if (!isTrustedAgentRelaySender(sender.url)) {
-        return createBossHelperAgentResponse(false, 'unauthorized-bridge', 'relay 来源不可信')
-      }
-
-      if (!hasValidBossHelperAgentBridgeToken(message) || !isBossHelperAgentRequest(message)) {
-        return createBossHelperAgentResponse(false, 'unauthorized-bridge', 'relay 认证失败')
-      }
-
-      const { bridgeToken: _bridgeToken, ...request } = message
-      return forwardAgentRequest(request)
-    })
+    if (globalThis.chrome?.runtime?.onMessageExternal) {
+      globalThis.chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+        void resolveExternalAgentRequest(message, sender).then(sendResponse)
+        return true
+      })
+    } else {
+      browser.runtime.onMessageExternal.addListener((message, sender) => {
+        return resolveExternalAgentRequest(message, sender)
+      })
+    }
   },
 })

@@ -95,7 +95,7 @@ export async function getAgentBridgeCertificate() {
     // Fall through and generate a new localhost certificate.
   }
 
-  const certificate = selfsigned.generate(
+  const certificate = await selfsigned.generate(
     [{ name: 'commonName', value: 'localhost' }],
     {
       algorithm: 'sha256',
