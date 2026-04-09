@@ -228,6 +228,12 @@ export async function handleDeliverFailure(options: {
   return null
 }
 
+/**
+ * 执行单个岗位的完整投递链路：before pipeline -> apply -> after pipeline。
+ *
+ * 这里是批处理循环里的最小执行单元，成功和失败都会被规范化为结构化日志、
+ * 统计更新和 agent 事件，供 UI 与外部 agent 复用。
+ */
 export async function executeDeliverJob(options: {
   cacheResult: DeliverJobListHandleResult
   chandle: Awaited<ReturnType<typeof createHandle>>
@@ -277,6 +283,9 @@ export async function executeDeliverJob(options: {
   }
 }
 
+/**
+ * 无论单岗位执行成功还是失败，都在迭代末尾更新缓存并执行节流等待。
+ */
 export async function finalizeDeliverIteration(options: {
   cachePipelineResultFn: typeof cachePipelineResult
   conf: DeliverExecutionDependencies['conf']

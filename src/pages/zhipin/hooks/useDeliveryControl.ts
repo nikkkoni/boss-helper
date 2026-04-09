@@ -26,6 +26,13 @@ import { useAgentBatchRunner } from './useAgentBatchRunner'
 import { useAgentQueries } from './useAgentQueries'
 import { onBossHelperAgentEvent } from './agentEvents'
 
+/**
+ * 页面侧 agent 控制器入口。
+ *
+ * 它把扩展 UI、window bridge、runtime 消息和批处理 runner 统一到同一套命令接口，
+ * 这样 `start`、`jobs.list`、`config.update` 等命令无论来自按钮还是外部 agent，
+ * 都会走同一套校验和状态更新逻辑。
+ */
 export function useDeliveryControl() {
   useChat()
   useLog()

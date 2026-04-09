@@ -116,11 +116,11 @@
 
 ## Phase 5 — 文档 & 开发者体验（低优先级）
 
-- [ ] **P5-1** 创建 `ARCHITECTURE.md`：系统架构图（agent flow / pipeline / 消息通信层）
-- [ ] **P5-2** 补充 MCP/bridge 部署文档：protobuf schema、本地服务器要求、环境变量清单
-- [ ] **P5-3** 关键 hooks 和 composables 补充 JSDoc（仅限状态机 / 复杂控制流）
-- [ ] **P5-4** README.md 更新：反映当前架构、命令清单、开发流程
-- [ ] **P5-5** 贡献指南 `CONTRIBUTING.md`：代码规范、PR 流程、测试要求
+- [x] **P5-1** 创建 `ARCHITECTURE.md`：系统架构图（agent flow / pipeline / 消息通信层）
+- [x] **P5-2** 补充 MCP/bridge 部署文档：protobuf schema、本地服务器要求、环境变量清单
+- [x] **P5-3** 关键 hooks 和 composables 补充 JSDoc（仅限状态机 / 复杂控制流）
+- [x] **P5-4** README.md 更新：反映当前架构、命令清单、开发流程
+- [x] **P5-5** 贡献指南 `CONTRIBUTING.md`：代码规范、PR 流程、测试要求
 
 ---
 
@@ -131,7 +131,7 @@
 - [ ] **P6-3** 投递回滚/撤回能力：记录已投递状态，支持标记和导出
 - [ ] **P6-4** 管线可视化调试器：UI 中展示每个 job 的管线执行路径和各步骤耗时/结果
 - [ ] **P6-5** 多站点适配：基于 Phase 3 adapter 层，新增猎聘（Liepin）适配器作为 PoC
-- [ ] **P6-6** MCP 深度集成：利用 MCP tools 实现更智能的自主 agent 能力
+- [x] **P6-6** MCP 深度集成：利用 MCP tools 实现更智能的自主 agent 能力
 
 ---
 

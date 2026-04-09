@@ -87,3 +87,41 @@ export interface McpToolDefinition {
   inputSchema: Record<string, unknown>
   handler: (args?: Record<string, any>) => Promise<Record<string, any>>
 }
+
+export interface McpResourceContent {
+  uri: string
+  mimeType: string
+  text: string
+}
+
+export interface McpResourceDefinition {
+  uri: string
+  name: string
+  description: string
+  mimeType: string
+  read: () => Promise<McpResourceContent>
+}
+
+export interface McpPromptArgumentDefinition {
+  name: string
+  description: string
+  required?: boolean
+}
+
+export interface McpPromptMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: {
+    type: 'text'
+    text: string
+  }
+}
+
+export interface McpPromptDefinition {
+  name: string
+  description: string
+  arguments?: McpPromptArgumentDefinition[]
+  handler: (args?: Record<string, string>) => Promise<{
+    description?: string
+    messages: McpPromptMessage[]
+  }>
+}

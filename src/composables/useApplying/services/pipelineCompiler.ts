@@ -17,6 +17,9 @@ function getStepName(step: Step): string {
   return metaStep[STEP_NAME_KEY] ?? metaStep.name ?? 'anonymous-step'
 }
 
+/**
+ * 给步骤附加稳定名字，便于日志、错误上下文和调试输出定位具体 pipeline 节点。
+ */
 export function withStepName<T extends Step>(name: string, step: T): T {
   if (step == null) {
     return step
@@ -92,6 +95,12 @@ function wrapHandler(handler: Handler, step: string, stage: 'before' | 'after'):
   }
 }
 
+/**
+ * 把嵌套 pipeline 编译成线性的 before / after 队列。
+ *
+ * 编译时会保留步骤名，并在每个步骤外层注入统一错误包装，确保日志里能拿到
+ * `jobId + step + stage + root cause` 这组上下文。
+ */
 export function compilePipeline(
   pipeline: Pipeline,
   isNested = false,

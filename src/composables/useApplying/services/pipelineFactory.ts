@@ -4,6 +4,11 @@ import { handles } from '../handles'
 import { createLoadCardStep, createResolveAmapStep } from './amapStep'
 import { compilePipeline, withStepName } from './pipelineCompiler'
 
+/**
+ * 组装默认投递 pipeline，并把步骤编译成 before / after 两段执行队列。
+ *
+ * 这里定义的是业务顺序本身：哪些过滤在投递前执行，哪些动作在投递后执行。
+ */
 export async function createApplyingPipeline() {
   const h = handles()
   const loadCard = createLoadCardStep()

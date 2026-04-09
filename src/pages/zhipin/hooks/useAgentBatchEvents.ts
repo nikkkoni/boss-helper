@@ -8,6 +8,12 @@ interface UseAgentBatchEventsOptions {
   currentProgressSnapshot: () => Record<string, unknown>
 }
 
+/**
+ * 维护批处理运行态与 agent 事件广播之间的映射。
+ *
+ * 所有外部观察者看到的 `batch-started`、`batch-paused`、`state-changed` 等事件
+ * 都从这里统一发出，避免 UI 文案和 agent 侧状态流出现分叉。
+ */
 export function useAgentBatchEvents(options: UseAgentBatchEventsOptions) {
   function emitEvent(
     type: Parameters<typeof createBossHelperAgentEvent>[0]['type'],

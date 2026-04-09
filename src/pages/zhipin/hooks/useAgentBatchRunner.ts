@@ -26,6 +26,12 @@ interface UseAgentBatchRunnerOptions {
   ensureSupportedPage: () => boolean
 }
 
+/**
+ * 协调 start / pause / resume / stop 四类批处理命令。
+ *
+ * 这里不直接处理单岗位逻辑，而是维护整轮投递的生命周期、状态广播、
+ * 定向岗位集合和批处理 Promise，确保 UI 与 agent 命令看到的是同一状态机。
+ */
 export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   const agentRuntime = useAgentRuntime()
   const common = useCommon()

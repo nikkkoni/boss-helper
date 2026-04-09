@@ -9,10 +9,16 @@ import { jsonClone } from '@/utils/deepmerge'
 
 import { toAgentCurrentJob } from '../shared/jobMapping'
 
+/**
+ * 读取当前岗位的对外快照表示。
+ */
 export function currentJobSnapshot(currentData: ReturnType<typeof useDeliver>['currentData']): BossHelperAgentCurrentJob | null {
   return toAgentCurrentJob(currentData)
 }
 
+/**
+ * 构造一个无副作用的运行进度读取器，供高频 agent 事件广播复用。
+ */
 export function createCurrentProgressSnapshot(options: {
   agentRuntime: ReturnType<typeof useAgentRuntime>
   common: ReturnType<typeof useCommon>
@@ -34,6 +40,11 @@ export function createCurrentProgressSnapshot(options: {
   })
 }
 
+/**
+ * 构造 `stats`、`start`、`pause` 等命令共用的统计读取器。
+ *
+ * 每次调用都会先刷新统计 store，再返回适合对外暴露的结构化数据。
+ */
 export function createStatsDataGetter(options: {
   agentRuntime: ReturnType<typeof useAgentRuntime>
   common: ReturnType<typeof useCommon>
@@ -64,6 +75,9 @@ export function createStatsDataGetter(options: {
   }
 }
 
+/**
+ * 统一包装 agent 响应体，确保成功/失败响应都附带最新统计快照。
+ */
 export function createResponseHelpers(getStatsData: () => Promise<BossHelperAgentStatsData>) {
   return {
     async ok(code: string, message: string): Promise<BossHelperAgentResponse> {

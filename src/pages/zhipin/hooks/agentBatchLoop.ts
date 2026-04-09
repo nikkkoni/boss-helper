@@ -32,6 +32,13 @@ interface AgentBatchLoopOptions {
   wait: (ms: number) => Promise<void>
 }
 
+/**
+ * 驱动整轮批量投递的翻页循环。
+ *
+ * 循环会持续读取当前页职位、执行当前页岗位处理、在需要时翻页，并在以下条件下停止：
+ * 达到最大循环次数、达到最大运行时长、目标岗位全部命中、页面列表不再变化、
+ * 或者外部显式请求暂停/停止。
+ */
 export async function executeAgentBatchLoop(options: AgentBatchLoopOptions) {
   let stepMsg = '投递结束'
   let resetSelectionStatuses = options.resetSelectionStatuses

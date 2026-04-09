@@ -45,7 +45,7 @@ export class PipelineCacheManager {
   }
 
   /**
-   * 初始化缓存，从存储加载数据
+   * 初始化缓存，从存储恢复数据，并在启动时立即执行过期清理和 LRU 检查。
    */
   private async initCache() {
     try {

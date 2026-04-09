@@ -13,6 +13,12 @@ function normalizeTargetJobIds(jobIds?: string[]) {
   return [...new Set(jobIds.map((id) => id.trim()).filter(Boolean))]
 }
 
+/**
+ * 把 `start` 命令的运行时补丁应用到页面状态。
+ *
+ * 这里统一处理目标岗位集合、运行时配置 patch 和可选的状态重置，
+ * 避免 batch runner 在启动前自行拼装多套分支逻辑。
+ */
 export async function applyAgentBatchStartPayload(options: {
   agentRuntime: ReturnType<typeof useAgentRuntime>
   conf: ReturnType<typeof useConf>

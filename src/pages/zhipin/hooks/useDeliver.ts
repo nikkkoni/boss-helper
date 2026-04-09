@@ -57,6 +57,12 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
     }
   }
 
+  /**
+   * 顺序处理当前页岗位集合。
+   *
+   * 它会重置候选岗位状态、逐个执行 pipeline 与投递动作，并把成功、失败、
+   * 速率限制、中断请求统一落到日志、统计和 agent 事件流中。
+   */
   async function jobListHandle(options: JobListHandleOptions = {}): Promise<JobListHandleResult> {
     const selectedJobIds = options.selectedJobIds?.length ? new Set(options.selectedJobIds) : null
     const targetJobList = selectedJobIds
