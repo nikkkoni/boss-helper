@@ -389,7 +389,7 @@ describe('useApplying utils', () => {
     await expect(requestBossData(createCard(), '结束', 0)).rejects.toEqual(
       expect.objectContaining({ message: '结束' }),
     )
-  })
+  }, 10000)
 
   it('formats and matches ranges across strict, loose, swapped, and invalid inputs', () => {
     expect(rangeMatchFormat([10, 20, true], 'K')).toBe('10 - 20 K 严格')

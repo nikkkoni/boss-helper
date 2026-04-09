@@ -115,4 +115,30 @@ describe('executeAgentBatchLoop', () => {
 
     expect(result.stepMsg).toBe('投递结束, 达到最大运行时长 1 秒')
   })
+
+  it('does not stop on repeated lists for routes disabled by adapter strategy', async () => {
+    let nextCalls = 0
+    const result = await executeAgentBatchLoop({
+      activeTargetJobIds: [],
+      consumeSeenJobIds: vi.fn(),
+      delayDeliveryPageNextMs: 0,
+      delayDeliveryStartsMs: 0,
+      getJobList: () => [{ encryptJobId: 'job-1' }],
+      getLocationHref: () => 'https://www.zhipin.com/web/geek/job',
+      getRemainingTargetJobIds: () => [],
+      goNextPage: () => {
+        nextCalls += 1
+        return false
+      },
+      handleJobList: async () => ({ seenJobIds: [] }),
+      logDebug: vi.fn(),
+      maxIterations: 3,
+      resetSelectionStatuses: false,
+      shouldStop: () => false,
+      wait: async () => {},
+    })
+
+    expect(nextCalls).toBe(1)
+    expect(result.stepMsg).toBe('投递结束, 无法继续下一页')
+  })
 })

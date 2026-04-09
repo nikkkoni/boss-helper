@@ -4,6 +4,8 @@ export interface other {
   other: {
     timeout?: number
     background?: boolean
+    pricingInputPerMillion?: number
+    pricingOutputPerMillion?: number
   }
 }
 
@@ -18,6 +20,16 @@ export const other: llmInfo<other>['other'] = {
       value: false,
       type: 'switch',
       desc: '是否在后台请求, 当遇到跨域错误时, 可以开启将在扩展中请求.',
+    },
+    pricingInputPerMillion: {
+      value: 0,
+      type: 'inputNumber',
+      desc: '输入 token 单价，单位为每百万 token；仅用于统计估算费用。0 表示不计费。',
+    },
+    pricingOutputPerMillion: {
+      value: 0,
+      type: 'inputNumber',
+      desc: '输出 token 单价，单位为每百万 token；仅用于统计估算费用。0 表示不计费。',
     },
   },
   alert: 'warning',

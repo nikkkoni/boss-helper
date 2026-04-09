@@ -76,6 +76,11 @@ function resetStatistics() {
   Object.assign(stats.todayData, {
     activityFilter: 0,
     aiFiltering: 0,
+    aiInputTokens: 0,
+    aiOutputTokens: 0,
+    aiRequestCount: 0,
+    aiTotalCost: 0,
+    aiTotalTokens: 0,
     amap: 0,
     company: 0,
     companySizeRange: 0,
@@ -425,12 +430,29 @@ describe('useApplying handles', () => {
     conf.formData.aiFiltering.model = 'model-1'
     conf.formData.aiFiltering.prompt = '筛选一下'
     conf.formData.aiFiltering.score = 5
-    model.modelData = [createModelItem()]
+    model.modelData = [createModelItem({
+      data: {
+        advanced: {},
+        api_key: 'secret',
+        model: 'gpt-4o-mini',
+        mode: 'openai',
+        other: {
+          pricingInputPerMillion: 1,
+          pricingOutputPerMillion: 2,
+        },
+        url: 'https://api.example.com',
+      },
+    })]
     vi.spyOn(model, 'getModel').mockReturnValue({
       message: vi.fn(async () => ({
         content: '```json\n{"negative":[],"positive":[{"reason":"双休","score":10}]}\n```',
         prompt: 'prompt body',
         reasoning_content: 'reasoning',
+        usage: {
+          input_tokens: 1000,
+          output_tokens: 500,
+          total_tokens: 1500,
+        },
       })),
     } as unknown as llm)
 
@@ -446,6 +468,11 @@ describe('useApplying handles', () => {
         source: 'internal',
       }),
     )
+    expect(useStatistics().todayData.aiRequestCount).toBe(1)
+    expect(useStatistics().todayData.aiInputTokens).toBe(1000)
+    expect(useStatistics().todayData.aiOutputTokens).toBe(500)
+    expect(useStatistics().todayData.aiTotalTokens).toBe(1500)
+    expect(useStatistics().todayData.aiTotalCost).toBe(0.002)
   })
 
   it('covers ai filtering setup, accepted external reviews and internal edge cases', async () => {
@@ -593,6 +620,68 @@ describe('useApplying handles', () => {
         content: '外部招呼语',
       }),
     )
+  })
+
+  it('records ai usage and sends ai greetings through websocket message', async () => {
+    const conf = useConf()
+    const model = useModel()
+    const job = createJob({ card: createJobCard() })
+
+    conf.formData.aiGreeting.enable = true
+    conf.formData.aiGreeting.model = 'model-1'
+    model.modelData = [createModelItem({
+      data: {
+        advanced: {},
+        api_key: 'secret',
+        model: 'gpt-4o-mini',
+        mode: 'openai',
+        other: {
+          pricingInputPerMillion: 2,
+          pricingOutputPerMillion: 4,
+        },
+        url: 'https://api.example.com',
+      },
+    })]
+
+    vi.spyOn(model, 'getModel').mockReturnValueOnce({
+      message: vi.fn(async () => ({
+        content: '你好，很高兴了解这个岗位',
+        prompt: 'greeting prompt',
+        reasoning_content: 'greeting reasoning',
+        usage: {
+          input_tokens: 2000,
+          output_tokens: 1000,
+          total_tokens: 3000,
+        },
+      })),
+    } as unknown as llm)
+
+    const greeting = getObjectStep(handles().greeting())
+    const ctx = createLogContext(job, {
+      bossData: {
+        data: {
+          bossId: 2,
+          encryptBossId: 'encrypt-boss-2',
+        },
+      } as unknown as logData['bossData'],
+    })
+
+    await greeting.after?.({ data: job }, ctx)
+
+    expect(ctx.aiGreetingQ).toBe('greeting prompt')
+    expect(ctx.aiGreetingA).toBe('你好，很高兴了解这个岗位')
+    expect(ctx.aiGreetingR).toBe('greeting reasoning')
+    expect(ctx.message).toBe('你好，很高兴了解这个岗位')
+    expect(messageSendSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        content: '你好，很高兴了解这个岗位',
+      }),
+    )
+    expect(useStatistics().todayData.aiRequestCount).toBe(1)
+    expect(useStatistics().todayData.aiInputTokens).toBe(2000)
+    expect(useStatistics().todayData.aiOutputTokens).toBe(1000)
+    expect(useStatistics().todayData.aiTotalTokens).toBe(3000)
+    expect(useStatistics().todayData.aiTotalCost).toBe(0.008)
   })
 
   it('covers greeting no-op, custom fixed messages and ai greeting empty responses', async () => {

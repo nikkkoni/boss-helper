@@ -1,5 +1,24 @@
 export type ZhipinRouteKind = 'job' | 'job-recommend' | 'jobs' | 'unknown'
 
+export interface SelectorRegistry<RouteKind extends string = string> {
+  cleanup: readonly string[]
+  extension: {
+    appRoot: string
+    appRootId: string
+    jobPanel: string
+    jobPanelId: string
+    jobPanelWrap: string
+    jobPanelWrapId: string
+  }
+  getRouteKind: (pathname?: string) => RouteKind | 'unknown'
+  mountContainers: Record<RouteKind | 'all', readonly string[]>
+  root: string
+  searchLayout: Record<string, string | readonly string[]>
+  siteId: string
+  supportedPaths: readonly string[]
+  vueContainers: Record<RouteKind | 'all', readonly string[]>
+}
+
 export type SelectorHealthMode = 'all' | 'any'
 
 export type SelectorHealthExpectation = {
@@ -18,7 +37,9 @@ export const DOM_READY_TIMEOUT_MS = 15_000
 export const SELECTOR_TIMEOUT_MS = 15_000
 export const SELECTOR_RETRY_INTERVAL_MS = 150
 
-export const zhipinSelectors = {
+export const zhipinSelectors: SelectorRegistry<Exclude<ZhipinRouteKind, 'unknown'>> = {
+  siteId: 'zhipin',
+  supportedPaths: ['/web/geek/job', '/web/geek/job-recommend', '/web/geek/jobs'],
   root: '#wrap',
   extension: {
     appRoot: '#boss-helper',
@@ -60,7 +81,18 @@ export const zhipinSelectors = {
     '.c-hot-link.hot-link',
     '.c-breadcrumb',
   ],
+  getRouteKind: (pathname = location.pathname) => getZhipinRouteKind(pathname),
 } as const
+
+let activeSelectorRegistry: SelectorRegistry = zhipinSelectors
+
+export function setActiveSelectorRegistry(registry: SelectorRegistry) {
+  activeSelectorRegistry = registry
+}
+
+export function getActiveSelectorRegistry() {
+  return activeSelectorRegistry
+}
 
 export function splitSelectors(selectors: string | readonly string[]): string[] {
   if (typeof selectors !== 'string') {
@@ -93,20 +125,26 @@ export function isSupportedZhipinRoute(pathname = location.pathname) {
   return getZhipinRouteKind(pathname) !== 'unknown'
 }
 
-export function getMountContainerSelectors(pathname = location.pathname) {
-  const routeKind = getZhipinRouteKind(pathname)
+export function getMountContainerSelectors(
+  pathname = location.pathname,
+  registry: SelectorRegistry = getActiveSelectorRegistry(),
+) {
+  const routeKind = registry.getRouteKind(pathname)
   if (routeKind === 'unknown') {
-    return zhipinSelectors.mountContainers.all
+    return registry.mountContainers.all
   }
-  return zhipinSelectors.mountContainers[routeKind]
+  return registry.mountContainers[routeKind]
 }
 
-export function getVueContainerSelectors(pathname = location.pathname) {
-  const routeKind = getZhipinRouteKind(pathname)
+export function getVueContainerSelectors(
+  pathname = location.pathname,
+  registry: SelectorRegistry = getActiveSelectorRegistry(),
+) {
+  const routeKind = registry.getRouteKind(pathname)
   if (routeKind === 'unknown') {
-    return zhipinSelectors.vueContainers.all
+    return registry.vueContainers.all
   }
-  return zhipinSelectors.vueContainers[routeKind]
+  return registry.vueContainers[routeKind]
 }
 
 export async function waitForDocumentReady(timeoutMs = DOM_READY_TIMEOUT_MS) {
@@ -145,8 +183,9 @@ export async function waitForDocumentReady(timeoutMs = DOM_READY_TIMEOUT_MS) {
 
 export function getSelectorHealthExpectations(
   pathname = location.pathname,
+  registry: SelectorRegistry = getActiveSelectorRegistry(),
 ): SelectorHealthExpectation[] {
-  if (!isSupportedZhipinRoute(pathname)) {
+  if (registry.getRouteKind(pathname) === 'unknown') {
     return []
   }
 
@@ -154,17 +193,17 @@ export function getSelectorHealthExpectations(
     {
       label: 'root',
       mode: 'all',
-      selectors: [zhipinSelectors.root],
+      selectors: [registry.root],
     },
     {
       label: 'mount-container',
       mode: 'any',
-      selectors: getMountContainerSelectors(pathname),
+      selectors: getMountContainerSelectors(pathname, registry),
     },
     {
       label: 'vue-container',
       mode: 'any',
-      selectors: getVueContainerSelectors(pathname),
+      selectors: getVueContainerSelectors(pathname, registry),
     },
   ]
 }
@@ -172,8 +211,9 @@ export function getSelectorHealthExpectations(
 export function collectSelectorHealth(
   pathname = location.pathname,
   root: Pick<ParentNode, 'querySelector'> = document,
+  registry: SelectorRegistry = getActiveSelectorRegistry(),
 ) {
-  return getSelectorHealthExpectations(pathname).map((expectation) => {
+  return getSelectorHealthExpectations(pathname, registry).map((expectation) => {
     const matchedSelectors = expectation.selectors.filter((selector) => Boolean(root.querySelector(selector)))
     return {
       ...expectation,

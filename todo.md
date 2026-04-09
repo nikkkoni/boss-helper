@@ -83,21 +83,21 @@
 
 ### 3.1 Site Adapter 抽象
 
-- [ ] **P3-1** 定义 `SiteAdapter` 接口：`parseJobList()`, `parseJobDetail()`, `applyToJob()`, `navigatePage()`, `getSelectors()`
-- [ ] **P3-2** 将 `pages/zhipin/` 实现为 `ZhipinAdapter`，抽取纯逻辑到 adapter
-- [ ] **P3-3** `elmGetter` + 选择器注册表适配：按 adapter 实例注入不同选择器集
+- [x] **P3-1** 定义 `SiteAdapter` 接口：`parseJobList()`, `parseJobDetail()`, `applyToJob()`, `navigatePage()`, `getSelectors()`
+- [x] **P3-2** 将 `pages/zhipin/` 实现为 `ZhipinAdapter`，抽取纯逻辑到 adapter
+- [x] **P3-3** `elmGetter` + 选择器注册表适配：按 adapter 实例注入不同选择器集
 
 ### 3.2 管线 & AI 模块化
 
-- [ ] **P3-4** 管线步骤拆为独立纯函数/服务，每步可独立测试、可替换
-- [ ] **P3-5** AI 解析层重构：用 OpenAI structured outputs（function calling / JSON mode）替代正则/启发式 JSON 提取
-- [ ] **P3-6** 抽取错误恢复策略为独立模块（`src/utils/retry.ts`），统一重试、退避、熔断逻辑
+- [x] **P3-4** 管线步骤拆为独立纯函数/服务，每步可独立测试、可替换
+- [x] **P3-5** AI 解析层重构：用 OpenAI structured outputs（function calling / JSON mode）替代正则/启发式 JSON 提取
+- [x] **P3-6** 抽取错误恢复策略为独立模块（`src/utils/retry.ts`），统一重试、退避、熔断逻辑
 
 ### 3.3 代码整理
 
-- [ ] **P3-7** 合并重复的 job mapping utils（散落在 hooks/stores 中的映射函数）
-- [ ] **P3-8** 拆分超长 hook 文件（>300 LOC）：按职责拆为更小的 composable
-- [ ] **P3-9** Agent scripts（`scripts/*.mjs`）TypeScript 化或增加 JSDoc 类型注解
+- [x] **P3-7** 合并重复的 job mapping utils（散落在 hooks/stores 中的映射函数）
+- [x] **P3-8** 拆分超长 hook 文件（>300 LOC）：按职责拆为更小的 composable
+- [x] **P3-9** Agent scripts（`scripts/*.mjs`）TypeScript 化或增加 JSDoc 类型注解
 
 ---
 
@@ -105,12 +105,12 @@
 
 > 目标：降低资源占用，减少被平台检测的风险。
 
-- [ ] **P4-1** AI 调用批处理：相似请求合并或使用更轻量模型做初筛
-- [ ] **P4-2** `usePipelineCache` 增加 TTL 和 LRU 淘汰策略，防止内存膨胀
-- [ ] **P4-3** 减少 deep clone/merge 频次：用 `structuredClone` 替代 lodash 深拷贝，热路径用 immutable update
-- [ ] **P4-4** DOM 遍历节流：batch loop 中的 DOM 操作增加 requestAnimationFrame / idle callback 调度
-- [ ] **P4-5** Token 用量统计：在 `useStatistics` 中追踪每次 AI 调用的 token 消耗，UI 展示累计费用
-- [ ] **P4-6** Zhipin 请求频率控制：所有对 zhipin.com 的 API/页面请求增加最小间隔
+- [x] **P4-1** AI 调用批处理：相似请求合并或使用更轻量模型做初筛
+- [x] **P4-2** `usePipelineCache` 增加 TTL 和 LRU 淘汰策略，防止内存膨胀
+- [x] **P4-3** 减少 deep clone/merge 频次：用 `structuredClone` 替代 lodash 深拷贝，热路径用 immutable update
+- [x] **P4-4** DOM 遍历节流：batch loop 中的 DOM 操作增加 requestAnimationFrame / idle callback 调度
+- [x] **P4-5** Token 用量统计：在 `useStatistics` 中追踪每次 AI 调用的 token 消耗，UI 展示累计费用
+- [x] **P4-6** Zhipin 请求频率控制：所有对 zhipin.com 的 API/页面请求增加最小间隔
 
 ---
 

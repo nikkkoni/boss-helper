@@ -1,3 +1,5 @@
+// @ts-check
+
 import { openSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -6,12 +8,15 @@ import { fileURLToPath } from 'node:url'
 
 import { getAgentBridgeRuntime } from './agent-security.mjs'
 
+/** @typedef {import('./types.d.ts').AgentLaunchOptions} AgentLaunchOptions */
+
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = dirname(scriptDir)
 const bridgeScript = join(scriptDir, 'agent-bridge.mjs')
 const pidFile = join(repoRoot, '.boss-helper-agent-bridge.pid')
 const logFile = join(repoRoot, '.boss-helper-agent-bridge.log')
 
+/** @param {string[]} argv @returns {AgentLaunchOptions} */
 function parseArgs(argv) {
   const options = {
     browser: '',
@@ -55,6 +60,7 @@ function parseArgs(argv) {
 
 const options = parseArgs(process.argv.slice(2))
 
+/** @param {number} ms */
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

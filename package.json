@@ -16,7 +16,7 @@
     "agent:doctor": "node ./scripts/agent-cli.mjs doctor",
     "agent:mcp": "node ./scripts/agent-mcp-server.mjs",
     "agent:orchestrate": "node ./scripts/agent-orchestrator.mjs",
-    "check": "vue-tsc --noEmit",
+    "check": "vue-tsc --noEmit && tsc -p tsconfig.scripts.json",
     "openapi": "openapi-typescript http://localhost:8002/openapi.json -o ./src/types/openapi.d.ts",
     "build": "run-p build:chrome build:firefox build:edge",
     "build:chrome": "wxt build -b chrome",

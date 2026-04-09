@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// @ts-check
+
 import { Buffer } from 'node:buffer'
 import { stdin, stdout, stderr, env } from 'node:process'
 
@@ -8,10 +10,13 @@ import {
   getAgentBridgeRuntime,
 } from './agent-security.mjs'
 
+/** @typedef {import('./types.d.ts').McpToolDefinition} McpToolDefinition */
+
 const bridgeRuntime = getAgentBridgeRuntime(env)
 const BRIDGE_BASE_URL = bridgeRuntime.httpBaseUrl
 const MCP_PROTOCOL_VERSION = '2024-11-05'
 
+/** @type {McpToolDefinition[]} */
 const TOOL_DEFINITIONS = [
   {
     name: 'boss_helper_health',

@@ -33,6 +33,30 @@ describe('PipelineCacheManager', () => {
     )
   })
 
+  it('batches cache-hit persistence instead of saving on every read', async () => {
+    vi.useFakeTimers()
+
+    const storageSetSpy = vi.spyOn(counter, 'storageSet')
+    const manager = new PipelineCacheManager({
+      cleanupInterval: 60_000,
+      maxCacheSize: 10,
+      storageKey: 'local:test-hit-batch',
+    })
+
+    await manager.setCacheResult('job-1', 'Frontend', 'Acme', 'success', '处理完成')
+    storageSetSpy.mockClear()
+
+    manager.getCachedResult('job-1')
+    const cached = manager.getCachedResult('job-1')
+
+    expect(cached?.hitCount).toBe(2)
+    expect(storageSetSpy).not.toHaveBeenCalled()
+
+    await vi.runAllTimersAsync()
+
+    expect(storageSetSpy).toHaveBeenCalledTimes(1)
+  })
+
   it('does not cache error results and evicts expired entries', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-08T00:00:00Z'))

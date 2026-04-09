@@ -1,7 +1,12 @@
+// @ts-check
+
 import {
   createAgentBridgeAuthHeaders,
   getAgentBridgeRuntime,
 } from './agent-security.mjs'
+
+/** @typedef {import('./types.d.ts').AgentBridgeRuntime} AgentBridgeRuntime */
+/** @typedef {import('./types.d.ts').AgentCliOptions} AgentCliOptions */
 
 const args = process.argv.slice(2)
 
@@ -26,6 +31,7 @@ options:
   --no-wait-relay     fail immediately when relay is not connected`)
 }
 
+/** @param {string[]} argv @returns {AgentCliOptions} */
 function parseArgs(argv) {
   const options = {
     host: '127.0.0.1',
@@ -80,10 +86,12 @@ function parseArgs(argv) {
 
 const options = parseArgs(args)
 
+/** @returns {string} */
 function buildBaseUrl() {
   return `http://${options.host}:${options.port}`
 }
 
+/** @returns {AgentBridgeRuntime} */
 function getBridgeRuntime() {
   return getAgentBridgeRuntime({
     ...process.env,

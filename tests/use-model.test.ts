@@ -25,6 +25,7 @@ function createModelItem(overrides: Partial<modelData> = {}): modelData {
 const {
   mockLoggerWarn,
   mockRequestPost,
+  mockRunBatchedAIRequest,
   mockRunLimitedAIRequest,
   mockSignedKeyGet,
   mockSignedKeyPost,
@@ -32,6 +33,7 @@ const {
 } = vi.hoisted(() => ({
   mockLoggerWarn: vi.fn(),
   mockRequestPost: vi.fn(),
+  mockRunBatchedAIRequest: vi.fn(async (_key: string, task: () => unknown) => task()),
   mockRunLimitedAIRequest: vi.fn(async (task: () => unknown) => task()),
   mockSignedKeyGet: vi.fn(),
   mockSignedKeyPost: vi.fn(),
@@ -39,6 +41,7 @@ const {
 }))
 
 vi.mock('@/utils/concurrency', () => ({
+  runBatchedAIRequest: mockRunBatchedAIRequest,
   runLimitedAIRequest: mockRunLimitedAIRequest,
 }))
 
@@ -104,6 +107,7 @@ describe('useModel', () => {
   beforeEach(() => {
     setupPinia()
     mockRequestPost.mockReset()
+    mockRunBatchedAIRequest.mockClear()
     mockRunLimitedAIRequest.mockClear()
     mockLoggerWarn.mockReset()
     mockSignedKeyReqHandler.mockReset()

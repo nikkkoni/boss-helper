@@ -16,6 +16,11 @@ export interface Statistics {
   activityFilter: number
   goldHunterFilter: number
   repeat: number
+  aiRequestCount?: number
+  aiInputTokens?: number
+  aiOutputTokens?: number
+  aiTotalTokens?: number
+  aiTotalCost?: number
 }
 const ConfigLevels = ['beginner', 'intermediate', 'advanced', 'expert'] as const
 export type ConfigLevel = (typeof ConfigLevels)[number]

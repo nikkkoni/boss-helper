@@ -1,77 +1,21 @@
 import {
   createBossHelperAgentResponse,
-  type BossHelperAgentJobDetail,
   type BossHelperAgentJobDetailData,
   type BossHelperAgentJobDetailPayload,
   type BossHelperAgentJobPipelineStatus,
   type BossHelperAgentJobReviewPayload,
-  type BossHelperAgentJobSummary,
   type BossHelperAgentJobsListData,
   type BossHelperAgentJobsListPayload,
   type BossHelperAgentLogEntry,
   type BossHelperAgentLogsQueryData,
   type BossHelperAgentLogsQueryPayload,
 } from '@/message/agent'
-import { jobList, type MyJobListData } from '@/stores/jobs'
+import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
 
 import type { UseAgentQueriesOptions } from './agentQueryShared'
 import { submitExternalAIFilterReview } from './agentReview'
-
-function toAgentJobSummary(item: MyJobListData): BossHelperAgentJobSummary {
-  return {
-    encryptJobId: item.encryptJobId,
-    jobName: item.jobName ?? '',
-    brandName: item.brandName ?? '',
-    brandScaleName: item.brandScaleName ?? '',
-    salaryDesc: item.salaryDesc ?? '',
-    cityName: item.cityName ?? '',
-    areaDistrict: item.areaDistrict ?? '',
-    skills: item.skills ?? [],
-    jobLabels: item.jobLabels ?? [],
-    bossName: item.bossName ?? '',
-    bossTitle: item.bossTitle ?? '',
-    goldHunter: item.goldHunter === 1,
-    contact: Boolean(item.contact),
-    welfareList: item.welfareList ?? [],
-    status: item.status.status,
-    statusMsg: item.status.msg ?? '',
-    hasCard: Boolean(item.card),
-  }
-}
-
-function toAgentJobDetail(item: MyJobListData, card: NonNullable<MyJobListData['card']>): BossHelperAgentJobDetail {
-  return {
-    ...toAgentJobSummary(item),
-    postDescription: card.postDescription ?? card.jobInfo?.postDescription ?? '',
-    salaryDesc: card.salaryDesc ?? card.jobInfo?.salaryDesc ?? item.salaryDesc ?? '',
-    degreeName: card.degreeName ?? card.jobInfo?.degreeName ?? item.jobDegree ?? '',
-    experienceName: card.experienceName ?? card.jobInfo?.experienceName ?? item.jobExperience ?? '',
-    address: card.address ?? card.jobInfo?.address ?? '',
-    jobLabels: card.jobLabels?.length ? card.jobLabels : card.jobInfo?.showSkills ?? item.jobLabels ?? [],
-    bossName: card.bossName ?? card.bossInfo?.name ?? item.bossName ?? '',
-    bossTitle: card.bossTitle ?? card.bossInfo?.title ?? item.bossTitle ?? '',
-    activeTimeDesc: card.activeTimeDesc ?? card.bossInfo?.activeTimeDesc ?? '',
-    friendStatus:
-      typeof card.friendStatus === 'number'
-        ? card.friendStatus
-        : card.relationInfo?.beFriend
-          ? 1
-          : 0,
-    brandName: card.brandName ?? card.brandComInfo?.brandName ?? item.brandName ?? '',
-    brandIndustry: item.brandIndustry ?? card.brandComInfo?.industryName ?? '',
-    welfareList: item.welfareList ?? [],
-    skills: item.skills ?? [],
-    gps:
-      typeof card.jobInfo?.longitude === 'number' && typeof card.jobInfo?.latitude === 'number'
-        ? {
-            longitude: card.jobInfo.longitude,
-            latitude: card.jobInfo.latitude,
-          }
-        : item.gps ?? null,
-    hasCard: true,
-  }
-}
+import { toAgentJobDetail, toAgentJobSummary } from '../shared/jobMapping'
 
 function normalizeJobStatusFilter(statusFilter?: BossHelperAgentJobPipelineStatus[]) {
   if (!statusFilter?.length) {

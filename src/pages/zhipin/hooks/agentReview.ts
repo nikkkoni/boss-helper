@@ -3,6 +3,7 @@ import { useCommon } from '@/composables/useCommon'
 import type { logData } from '@/stores/log'
 import { AIFilteringError } from '@/types/deliverError'
 
+import { toAgentCurrentJob, toPendingReviewDetail } from '../shared/jobMapping'
 import { createBossHelperAgentEvent, emitBossHelperAgentEvent } from './agentEvents'
 
 interface PendingReviewEntry {
@@ -18,32 +19,6 @@ function formatExternalReviewMessage(review: BossHelperAgentJobReviewPayload, th
   const ratingText = typeof review.rating === 'number' ? `分数${review.rating}` : '未提供分数'
   const reasonText = review.reason?.trim() || (review.accepted ? '外部审核通过' : '外部审核未通过')
   return `${ratingText}\n结论:${reasonText}\n阈值:${threshold}`
-}
-
-function toPendingReviewDetail(ctx: logData, threshold: number, timeoutMs: number) {
-  return {
-    encryptJobId: ctx.listData.encryptJobId,
-    threshold,
-    timeoutMs,
-    job: {
-      encryptJobId: ctx.listData.encryptJobId,
-      jobName: ctx.listData.card?.jobName ?? ctx.listData.jobName ?? '',
-      brandName: ctx.listData.card?.brandName ?? ctx.listData.brandName ?? '',
-      salaryDesc: ctx.listData.card?.salaryDesc ?? ctx.listData.salaryDesc ?? '',
-      cityName: ctx.listData.card?.cityName ?? ctx.listData.cityName ?? '',
-      areaDistrict: ctx.listData.areaDistrict ?? '',
-      degreeName: ctx.listData.card?.degreeName ?? '',
-      experienceName: ctx.listData.card?.experienceName ?? '',
-      address: ctx.listData.card?.address ?? '',
-      welfareList: ctx.listData.welfareList ?? [],
-      skills: ctx.listData.skills ?? [],
-      jobLabels: ctx.listData.card?.jobLabels ?? ctx.listData.jobLabels ?? [],
-      bossName: ctx.listData.card?.bossName ?? ctx.listData.bossName ?? '',
-      bossTitle: ctx.listData.card?.bossTitle ?? ctx.listData.bossTitle ?? '',
-      activeTimeDesc: ctx.listData.card?.activeTimeDesc ?? '',
-      postDescription: ctx.listData.card?.postDescription ?? '',
-    },
-  }
 }
 
 export function submitExternalAIFilterReview(payload: BossHelperAgentJobReviewPayload) {
@@ -107,7 +82,7 @@ export function requestExternalAIFilterReview(
         state: common.deliverState,
         message: `等待外部审核: ${ctx.listData.jobName || encryptJobId}`,
         detail: toPendingReviewDetail(ctx, threshold, timeoutMs),
-        job: {
+        job: toAgentCurrentJob({
           encryptJobId,
           jobName: ctx.listData.jobName ?? '',
           brandName: ctx.listData.brandName ?? '',
@@ -120,7 +95,7 @@ export function requestExternalAIFilterReview(
             },
             threshold,
           ),
-        },
+        }),
       }),
     )
   })

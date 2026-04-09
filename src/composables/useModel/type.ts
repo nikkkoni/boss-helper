@@ -13,6 +13,10 @@ export interface llmMessageArgs {
   onPrompt?: (s: string) => void
   onStream?: (s: string) => void
   json?: boolean
+  structuredOutput?: {
+    name: string
+    schema: Record<string, unknown>
+  }
   test?: boolean
 }
 

@@ -1,11 +1,11 @@
 import { useChat } from '@/composables/useChat'
+import { isSupportedSiteUrl } from '@/site-adapters'
 import { jsonClone } from '@/utils/deepmerge'
 import {
   BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
   BOSS_HELPER_AGENT_EVENT_BRIDGE,
   createBossHelperAgentResponse,
   isBossHelperAgentBridgeRequest,
-  isBossHelperSupportedJobUrl,
   type BossHelperAgentController,
   type BossHelperAgentRequest,
   type BossHelperAgentChatHistoryPayload,
@@ -39,7 +39,7 @@ export function useDeliveryControl() {
 
   const batchRunner = useAgentBatchRunner({
     ensureStoresLoaded,
-    ensureSupportedPage: () => isBossHelperSupportedJobUrl(location.href),
+    ensureSupportedPage: () => isSupportedSiteUrl(location.href),
   })
   const {
     currentProgressSnapshot,
@@ -52,7 +52,7 @@ export function useDeliveryControl() {
   } = batchRunner
 
   function ensureSupportedPage() {
-    return isBossHelperSupportedJobUrl(location.href)
+    return isSupportedSiteUrl(location.href)
   }
   const queries = useAgentQueries({
     currentProgressSnapshot,

@@ -64,5 +64,13 @@ export default function deepmerge<T>(
 }
 
 export function jsonClone<T>(source: T): T {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(source)
+    } catch {
+      // Vue reactive proxies and a few DOM-backed objects are not cloneable.
+      // Fall back to the previous JSON semantics for persistence snapshots.
+    }
+  }
   return JSON.parse(JSON.stringify(source)) as T
 }

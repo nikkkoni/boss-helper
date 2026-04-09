@@ -7,12 +7,12 @@ import {
   hasValidBossHelperAgentEventPort,
   isBossHelperAgentEventForwardMessage,
   isBossHelperAgentRequest,
-  isBossHelperSupportedJobUrl,
   type BossHelperAgentEvent,
   type BossHelperAgentRequest,
   type BossHelperAgentResponse,
 } from '@/message/agent'
 import { ProvideBackgroundAdapter, provideBackgroundCounter } from '@/message/background'
+import { isSupportedSiteUrl } from '@/site-adapters'
 
 const zhipinMatches = ['*://zhipin.com/*', '*://*.zhipin.com/*']
 const eventPorts = new Set<Browser.runtime.Port>()
@@ -34,8 +34,8 @@ function isTrustedAgentRelaySender(url?: string | null) {
 async function findAgentTargetTab() {
   const tabs = await browser.tabs.query({ url: zhipinMatches })
   return (
-    tabs.find((tab) => tab.active && isBossHelperSupportedJobUrl(tab.url)) ??
-    tabs.find((tab) => isBossHelperSupportedJobUrl(tab.url))
+    tabs.find((tab) => tab.active && isSupportedSiteUrl(tab.url)) ??
+    tabs.find((tab) => isSupportedSiteUrl(tab.url))
   )
 }
 

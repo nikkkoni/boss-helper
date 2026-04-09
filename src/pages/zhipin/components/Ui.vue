@@ -16,13 +16,14 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { useModel } from '@/composables/useModel'
 import { useStatistics } from '@/composables/useStatistics'
+import { getActiveSiteAdapter } from '@/site-adapters'
 import { useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
 import elmGetter from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
-import { SELECTOR_TIMEOUT_MS, getZhipinRouteKind, zhipinSelectors } from '@/utils/selectors'
+import { SELECTOR_TIMEOUT_MS } from '@/utils/selectors'
 
 import { useDeliver } from '../hooks/useDeliver'
 import { useDeliveryControl } from '../hooks/useDeliveryControl'
@@ -51,6 +52,10 @@ const searchRef = ref()
 const tabsRef = ref()
 const helpContent = ref('鼠标移到对应元素查看提示')
 const { isOutside } = useMouseInElement(tabsRef)
+
+function getSelectors() {
+  return getActiveSiteAdapter(location.href).getSelectors()
+}
 
 const triggerRef = computed(() => {
   return {
@@ -111,14 +116,15 @@ onMounted(async () => {
     ElMessage.error(`列表初始失败: ${e instanceof Error ? e.message : '未知错误'}`)
   }
 
-  const routeKind = getZhipinRouteKind(location.pathname)
+  const selectors = getSelectors()
+  const searchPanelPlan = getActiveSiteAdapter(location.href).getSearchPanelPlan(location.pathname)
   const searchMount = searchRef.value?.$el as HTMLElement | undefined
 
   if (!searchMount) {
     logger.warn('未找到搜索栏挂载节点')
-  } else if (routeKind === 'job-recommend') {
+  } else if (searchPanelPlan.kind === 'recommend') {
     void elmGetter
-      .get<HTMLDivElement>(zhipinSelectors.searchLayout.recommendSearch, {
+      .get<HTMLDivElement>(searchPanelPlan.searchSelector, {
         timeoutMs: SELECTOR_TIMEOUT_MS,
       })
       .then((searchEl) => {
@@ -128,12 +134,12 @@ onMounted(async () => {
       .catch((error) => {
         logger.warn('初始化推荐页搜索栏失败', { error })
       })
-  } else if (routeKind === 'jobs') {
+  } else if (searchPanelPlan.kind === 'jobs') {
     const div = document.createElement('div')
     div.style.cssText = 'display: flex;flex-direction: column;gap: 15px;'
     searchMount.appendChild(div)
     void elmGetter
-      .get<HTMLDivElement>(zhipinSelectors.searchLayout.jobsBlocks, {
+      .get<HTMLDivElement>(searchPanelPlan.blockSelectors, {
         timeoutMs: SELECTOR_TIMEOUT_MS,
       })
       .then(([searchEl, conditionEl]) => {
@@ -141,7 +147,7 @@ onMounted(async () => {
         conditionEl.style.position = 'static'
         div.appendChild(conditionEl)
         void elmGetter
-          .get(zhipinSelectors.searchLayout.jobsInputs, {
+          .get<HTMLInputElement | HTMLDivElement>(searchPanelPlan.inputSelectors, {
             parent: searchEl,
             timeoutMs: SELECTOR_TIMEOUT_MS,
           })
@@ -159,14 +165,14 @@ onMounted(async () => {
       })
   } else {
     void elmGetter
-      .get(zhipinSelectors.searchLayout.legacyBlocks, {
+      .get<HTMLDivElement>(searchPanelPlan.blockSelectors, {
         timeoutMs: SELECTOR_TIMEOUT_MS,
       })
       .then(([searchEl, conditionEl]) => {
         searchMount.appendChild(searchEl)
         searchMount.appendChild(conditionEl)
         // 搜索栏去APP
-        void elmGetter.rm(zhipinSelectors.searchLayout.legacyScan, {
+        void elmGetter.rm(searchPanelPlan.scanSelector, {
           parent: searchEl,
           timeoutMs: SELECTOR_TIMEOUT_MS,
         })

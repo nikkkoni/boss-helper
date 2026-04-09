@@ -1,12 +1,37 @@
 import type { OnStream } from '@/utils/request'
 import { RequestError, request } from '@/utils/request'
-import { runLimitedAIRequest } from '@/utils/concurrency'
-import { isLikelyNetworkError, retryAsync } from '@/utils/retry'
+import { runBatchedAIRequest } from '@/utils/concurrency'
+import { parseStructuredJson } from '@/utils/parse'
+import {
+  createCircuitBreaker,
+  isLikelyNetworkError,
+  retryAsync,
+} from '@/utils/retry'
 import { logger } from '@/utils/logger'
 
 import { desc, other } from './common'
-import type { llmConf, llmInfo, messageReps, prompt } from './type'
+import type { llmConf, llmInfo, llmMessageArgs, messageReps, prompt } from './type'
 import { llm } from './type'
+
+const openAICircuitBreaker = createCircuitBreaker({
+  failureThreshold: 3,
+  isFailure: (error) => {
+    if (error instanceof RequestError) {
+      return error.statusCode === 429 || error.statusCode == null || error.statusCode >= 500
+    }
+    return isLikelyNetworkError(error)
+  },
+  openMs: 20_000,
+})
+
+function isStructuredOutputUnsupported(error: unknown) {
+  if (!(error instanceof RequestError) || error.statusCode !== 400) {
+    return false
+  }
+
+  const message = error.message.toLowerCase()
+  return ['json_schema', 'response_format', 'schema', 'structured output'].some((token) => message.includes(token))
+}
 
 export type openaiLLMConf = llmConf<
   'openai',
@@ -139,7 +164,12 @@ class Gpt extends llm<openaiLLMConf> {
     return msg?.message?.content ?? ''
   }
 
-  async message({ data = {}, onPrompt = (_s: string) => {}, json = false }): Promise<messageReps> {
+  async message({
+    data = {},
+    onPrompt = (_s: string) => {},
+    json = false,
+    structuredOutput,
+  }: llmMessageArgs, _type: 'aiGreeting' | 'aiFiltering' | 'aiReply'): Promise<messageReps> {
     const prompts = this.buildPrompt(data)
     const prompt = prompts[prompts.length - 1].content
     onPrompt(prompt)
@@ -149,6 +179,7 @@ class Gpt extends llm<openaiLLMConf> {
     const res = await this.post({
       prompt: prompts,
       json,
+      structuredOutput,
       onStream: async (_reader) => {
         // TODO: 处理 stream 输出
       },
@@ -156,7 +187,10 @@ class Gpt extends llm<openaiLLMConf> {
 
     if (!this.conf.advanced.stream) {
       const msg = (res.choices as any[]).pop()
-      ans.content = msg?.message?.content ?? ''
+      const content = msg?.message?.content ?? ''
+      ans.content = structuredOutput && typeof content === 'string'
+        ? parseStructuredJson(content)
+        : content
       ans.reasoning_content = (msg?.message?.reasoning_content as string)?.replaceAll('\n', '')
       ans.usage = {
         input_tokens: res?.usage?.prompt_tokens,
@@ -173,64 +207,106 @@ class Gpt extends llm<openaiLLMConf> {
     prompt,
     onStream,
     json = false,
+    structuredOutput,
   }: {
     prompt: prompt
     onStream?: OnStream
     json?: boolean
+    structuredOutput?: {
+      name: string
+      schema: Record<string, unknown>
+    }
   }): Promise<any> {
-    return runLimitedAIRequest(() =>
-      retryAsync(
-        async () => {
-          const res = await request.post({
-            url: this.conf.url,
-            data: JSON.stringify({
-              messages: prompt,
-              model: this.conf.model,
-              stream: this.conf.advanced.stream,
-              temperature: this.conf.advanced.temperature,
-              top_p: this.conf.advanced.top_p,
-              presence_penalty: this.conf.advanced.presence_penalty,
-              frequency_penalty: this.conf.advanced.frequency_penalty,
-              response_format: this.conf.advanced.json && json ? { type: 'json_object' } : undefined,
-            }),
-            headers: {
-              Authorization: `Bearer ${this.conf.api_key}`,
-              'Content-Type': 'application/json',
+    const batchKey = JSON.stringify({
+      json,
+      model: this.conf.model,
+      prompt,
+      structuredOutput,
+      url: this.conf.url,
+    })
+
+    const doRequest = async (useStructuredOutput: boolean) => {
+      const responseFormat = useStructuredOutput && structuredOutput
+        ? {
+            type: 'json_schema',
+            json_schema: {
+              name: structuredOutput.name,
+              strict: true,
+              schema: structuredOutput.schema,
             },
-            timeout: this.conf.other.timeout,
-            // TODO: 暂时禁用 stream 输出
-            responseType: 'json', // this.conf.advanced.stream ? 'stream' : 'json',
-            onStream,
-            isBackground: this.conf.other.background,
-          })
-          return res
+          }
+        : this.conf.advanced.json && json
+          ? { type: 'json_object' }
+          : undefined
+
+      return request.post({
+        url: this.conf.url,
+        data: JSON.stringify({
+          messages: prompt,
+          model: this.conf.model,
+          stream: this.conf.advanced.stream,
+          temperature: this.conf.advanced.temperature,
+          top_p: this.conf.advanced.top_p,
+          presence_penalty: this.conf.advanced.presence_penalty,
+          frequency_penalty: this.conf.advanced.frequency_penalty,
+          response_format: responseFormat,
+        }),
+        headers: {
+          Authorization: `Bearer ${this.conf.api_key}`,
+          'Content-Type': 'application/json',
         },
-        {
-          retries: 2,
-          baseDelayMs: 800,
-          factor: 2,
-          maxDelayMs: 5000,
-          shouldRetry: (error) => {
-            if (error instanceof RequestError) {
-              return (
-                error.statusCode === 429
-                || (error.statusCode != null && error.statusCode >= 500)
-                || isLikelyNetworkError(error)
-              )
+        timeout: this.conf.other.timeout,
+        responseType: 'json',
+        onStream,
+        isBackground: this.conf.other.background,
+      })
+    }
+
+    return runBatchedAIRequest(batchKey, () =>
+      openAICircuitBreaker.run(() =>
+        retryAsync(
+          async () => {
+            try {
+              return await doRequest(true)
+            } catch (error) {
+              if (structuredOutput && isStructuredOutputUnsupported(error)) {
+                logger.warn('AI structured output 不可用，回退到 json_object', {
+                  error: error instanceof Error ? error.message : String(error),
+                  model: this.conf.model,
+                  url: this.conf.url,
+                })
+                return doRequest(false)
+              }
+              throw error
             }
-            return isLikelyNetworkError(error)
           },
-          onRetry: (error, context) => {
-            logger.warn('AI请求重试', {
-              attempt: context.attempt,
-              nextAttempt: context.nextAttempt,
-              delayMs: context.delayMs,
-              error: error instanceof Error ? error.message : String(error),
-              model: this.conf.model,
-              url: this.conf.url,
-            })
+          {
+            retries: 2,
+            baseDelayMs: 800,
+            factor: 2,
+            maxDelayMs: 5000,
+            shouldRetry: (error) => {
+              if (error instanceof RequestError) {
+                return (
+                  error.statusCode === 429
+                  || (error.statusCode != null && error.statusCode >= 500)
+                  || isLikelyNetworkError(error)
+                )
+              }
+              return isLikelyNetworkError(error)
+            },
+            onRetry: (error, context) => {
+              logger.warn('AI请求重试', {
+                attempt: context.attempt,
+                nextAttempt: context.nextAttempt,
+                delayMs: context.delayMs,
+                error: error instanceof Error ? error.message : String(error),
+                model: this.conf.model,
+                url: this.conf.url,
+              })
+            },
           },
-        },
+        ),
       ),
     )
   }

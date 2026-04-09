@@ -4,11 +4,11 @@ import {
   provideContentCounter,
   registerAgentMessageBridge,
 } from '@/message/contentScript'
+import { isSupportedSiteUrl } from '@/site-adapters'
 import {
   DOM_READY_TIMEOUT_MS,
   collectSelectorHealth,
   formatSelectorHealth,
-  isSupportedZhipinRoute,
   waitForDocumentReady,
 } from '@/utils/selectors'
 
@@ -20,7 +20,7 @@ export default defineContentScript({
   matches: ['*://zhipin.com/*', '*://*.zhipin.com/*'],
   async main(_ctx) {
     const reportSelectorHealth = () => {
-      if (!isSupportedZhipinRoute(location.pathname)) {
+      if (!isSupportedSiteUrl(location.href)) {
         return
       }
 

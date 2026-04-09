@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import {
-  ElAlert,
   ElButton,
   ElButtonGroup,
   ElCol,
@@ -18,17 +17,11 @@ import Alert from '@/components/Alert'
 import { useCommon } from '@/composables/useCommon'
 import { useStatistics } from '@/composables/useStatistics'
 import { useConf } from '@/stores/conf'
-import { jobList } from '@/stores/jobs'
-import { useLog } from '@/stores/log'
-import { logger } from '@/utils/logger'
 
-import { useDeliver } from '../hooks/useDeliver'
 import { useDeliveryControl } from '../hooks/useDeliveryControl'
 
-const log = useLog()
 const statistics = useStatistics()
 const common = useCommon()
-const deliver = useDeliver()
 const conf = useConf()
 const { pauseBatch, resetFilter, resumeBatch, startBatch } = useDeliveryControl()
 const statisticCycle = ref(1)
@@ -72,6 +65,34 @@ const cycle = computed(() => {
 const deliveryLimit = computed(() => {
   return conf.formData.deliveryLimit.value
 })
+
+function formatPercent(value: number, total: number) {
+  if (total <= 0) {
+    return 0
+  }
+
+  return Number(((value / total) * 100).toFixed(1))
+}
+
+const filterRatio = computed(() => {
+  return formatPercent(
+    statistics.todayData.total - statistics.todayData.success,
+    statistics.todayData.total,
+  )
+})
+
+const repeatRatio = computed(() => {
+  return formatPercent(statistics.todayData.repeat, statistics.todayData.total)
+})
+
+const activityRatio = computed(() => {
+  return formatPercent(statistics.todayData.activityFilter, statistics.todayData.total)
+})
+
+const aiRequestCount = computed(() => statistics.todayData.aiRequestCount ?? 0)
+const aiTotalTokens = computed(() => statistics.todayData.aiTotalTokens ?? 0)
+const aiTotalCost = computed(() => statistics.todayData.aiTotalCost ?? 0)
+
 const isPaused = computed(() => common.deliverState === 'paused' && !common.deliverLock)
 
 onMounted(() => {
@@ -98,11 +119,7 @@ onMounted(() => {
     <ElCol :span="5">
       <ElStatistic
         data-help="统计当天岗位过滤的比例,被过滤/总数"
-        :value="
-          ((statistics.todayData.total - statistics.todayData.success) /
-            statistics.todayData.total) *
-          deliveryLimit
-        "
+        :value="filterRatio"
         title="过滤比例："
         suffix="%"
       />
@@ -110,7 +127,7 @@ onMounted(() => {
     <ElCol :span="5">
       <ElStatistic
         data-help="统计当天岗位中已沟通的比例,已沟通/总数"
-        :value="(statistics.todayData.repeat / statistics.todayData.total) * deliveryLimit"
+        :value="repeatRatio"
         title="沟通比例："
         suffix="%"
       />
@@ -118,7 +135,7 @@ onMounted(() => {
     <ElCol :span="5">
       <ElStatistic
         data-help="统计当天岗位中的活跃情况,不活跃/总数"
-        :value="(statistics.todayData.activityFilter / statistics.todayData.total) * deliveryLimit"
+        :value="activityRatio"
         title="活跃比例："
         suffix="%"
       />
@@ -163,6 +180,32 @@ onMounted(() => {
           </ElDropdown>
         </template>
       </ElStatistic>
+    </ElCol>
+  </ElRow>
+  <ElRow v-if="conf.config_level.intermediate" :gutter="20" style="margin-top: 10px">
+    <ElCol :span="8">
+      <ElStatistic
+        data-help="统计当天 AI 调用次数，包括筛选和招呼语生成"
+        :value="aiRequestCount"
+        title="AI调用："
+        suffix="次"
+      />
+    </ElCol>
+    <ElCol :span="8">
+        <ElStatistic
+          data-help="统计当天累计消耗的 token 总量"
+          :value="aiTotalTokens"
+          title="Token总量："
+          suffix="tok"
+        />
+    </ElCol>
+    <ElCol :span="8">
+        <ElStatistic
+          data-help="根据模型单价估算的累计费用，未配置单价时始终为 0"
+          :precision="6"
+          :value="aiTotalCost"
+          title="估算费用："
+        />
     </ElCol>
   </ElRow>
   <div style="display: flex">

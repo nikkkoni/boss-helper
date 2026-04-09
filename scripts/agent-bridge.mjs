@@ -1,3 +1,5 @@
+// @ts-check
+
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
@@ -12,6 +14,9 @@ import {
   getAgentBridgeEventPortName,
   getAgentBridgeRuntime,
 } from './agent-security.mjs'
+
+/** @typedef {import('node:net').Socket} NetSocket */
+/** @typedef {import('node:tls').TLSSocket} TLSSocket */
 
 const runtime = getAgentBridgeRuntime()
 const HOST = runtime.host
@@ -28,6 +33,11 @@ const relayMeta = new Map()
 const eventClients = new Map()
 const recentAgentEvents = []
 const recentAgentEventIds = new Set()
+
+/** @param {NetSocket} socket @returns {socket is TLSSocket} */
+function isTlsSocket(socket) {
+  return 'encrypted' in socket && socket.encrypted === true
+}
 
 function getCommandTimeoutMs(command, override) {
   if (Number.isFinite(override) && override > 0) {
@@ -328,8 +338,9 @@ async function createAppServer() {
         return
       }
 
-      const protocol = req.socket.encrypted ? 'https' : 'http'
-      const fallbackPort = req.socket.encrypted ? HTTPS_PORT : PORT
+      const secureRequest = isTlsSocket(req.socket)
+      const protocol = secureRequest ? 'https' : 'http'
+      const fallbackPort = secureRequest ? HTTPS_PORT : PORT
       const url = new URL(req.url, `${protocol}://${req.headers.host ?? `${HOST}:${fallbackPort}`}`)
 
       if (req.method === 'OPTIONS') {
@@ -339,7 +350,7 @@ async function createAppServer() {
         return
       }
 
-      if (!req.socket.encrypted && req.method === 'GET' && url.pathname === '/') {
+      if (!secureRequest && req.method === 'GET' && url.pathname === '/') {
         res.writeHead(307, { Location: `${runtime.httpsBaseUrl}/` })
         res.end()
         return
@@ -570,12 +581,13 @@ async function createAppServer() {
 
 const server = await createAppServer()
 const certificate = await getAgentBridgeCertificate()
+const serverRequestListener = /** @type {import('node:http').RequestListener} */ (server.listeners('request')[0])
 const httpsServer = createHttpsServer(
   {
     cert: certificate.cert,
     key: certificate.key,
   },
-  server.listeners('request')[0],
+  serverRequestListener,
 )
 
 server.listen(PORT, HOST, () => {

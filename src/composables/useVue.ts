@@ -4,12 +4,13 @@ import { ref, toValue } from 'vue'
 import {
   DOM_READY_TIMEOUT_MS,
   SELECTOR_TIMEOUT_MS,
+  getActiveSelectorRegistry,
   splitSelectors,
   waitForDocumentReady,
-  zhipinSelectors,
 } from '@/utils/selectors'
 
 const rootVue = ref()
+let rootSelector = ''
 
 type SelectorInput = string | readonly string[]
 
@@ -134,6 +135,12 @@ async function waitForVueInstance(selectors: SelectorInput, debugLabel: string) 
 }
 
 export async function getRootVue(): Promise<any> {
+  const selectors = getActiveSelectorRegistry()
+  if (rootSelector !== selectors.root) {
+    rootSelector = selectors.root
+    rootVue.value = undefined
+  }
+
   if (rootVue.value !== undefined) {
     return rootVue.value
   }
@@ -143,7 +150,7 @@ export async function getRootVue(): Promise<any> {
   const waitVueMount = async () =>
     waitForValue(
       () => {
-        const wrap = document.querySelector<any>(zhipinSelectors.root)
+        const wrap = document.querySelector<any>(selectors.root)
         if (rootVue.value !== undefined) {
           return rootVue.value
         }
@@ -157,7 +164,7 @@ export async function getRootVue(): Promise<any> {
         errorMessage: '未找到vue根组件',
         intervalMs: 300,
         retries: 2,
-        selectors: [zhipinSelectors.root],
+        selectors: [selectors.root],
         timeoutMs: SELECTOR_TIMEOUT_MS,
       },
     )

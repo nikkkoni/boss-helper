@@ -2,27 +2,18 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { useHookVueData, useHookVueFn } from '@/composables/useVue'
+import { getActiveSiteAdapter } from '@/site-adapters'
 import { logger } from '@/utils/logger'
-import { joinSelectors, zhipinSelectors } from '@/utils/selectors'
+import { getActiveSelectorRegistry, joinSelectors } from '@/utils/selectors'
 
-const legacyVueContainerQuery = joinSelectors(zhipinSelectors.vueContainers.job)
-const vueContainerQuery = joinSelectors(zhipinSelectors.vueContainers.all)
+function getVueContainerQuery(key: string) {
+  const selectors = getActiveSelectorRegistry()
+  return joinSelectors(selectors.vueContainers[key] ?? selectors.vueContainers.all)
+}
 
 export const usePager = defineStore('zhipin/pager', () => {
   const page = ref({ page: 1, pageSize: 15 })
   const pageChange = ref<((value: number) => void) | null>(null)
-
-  const initPage = useHookVueData(
-    vueContainerQuery,
-    'pageVo',
-    page,
-  )
-
-  const initChange = useHookVueFn(legacyVueContainerQuery, 'pageChangeAction')
-  const initSearch = useHookVueFn(vueContainerQuery, [
-    'searchJobAction',
-    'onSearch',
-  ])
 
   function getPageChange() {
     if (!pageChange.value) {
@@ -33,8 +24,11 @@ export const usePager = defineStore('zhipin/pager', () => {
 
   function next() {
     try {
-      getPageChange()(page.value.page + 1)
-      return true
+      return getActiveSiteAdapter(location.href).navigatePage({
+        direction: 'next',
+        page: page.value,
+        pageChange: getPageChange(),
+      })
     } catch (err) {
       logger.error('翻页: 下一页错误', err)
       return false
@@ -42,12 +36,12 @@ export const usePager = defineStore('zhipin/pager', () => {
   }
 
   function prev() {
-    if (page.value.page <= 1) {
-      return false
-    }
     try {
-      getPageChange()(page.value.page - 1)
-      return true
+      return getActiveSiteAdapter(location.href).navigatePage({
+        direction: 'prev',
+        page: page.value,
+        pageChange: getPageChange(),
+      })
     } catch (err) {
       logger.error('翻页: 上一页错误', err)
       return false
@@ -66,12 +60,20 @@ export const usePager = defineStore('zhipin/pager', () => {
     prev,
     reset,
     initPager: async () => {
+      const adapter = getActiveSiteAdapter(location.href)
+      const bindings = adapter.getPagerBindings(location.pathname)
+      const initPage = useHookVueData(
+        getVueContainerQuery(bindings.pageStateSelectorKey),
+        bindings.pageStateKey,
+        page,
+      )
+      const initChange = useHookVueFn(
+        getVueContainerQuery(bindings.pageChangeSelectorKey),
+        [...bindings.pageChangeMethodKeys],
+      )
+
       await initPage()
-      pageChange.value =
-        location.href.includes('/web/geek/job-recommend') ||
-        location.href.includes('/web/geek/jobs')
-          ? await initSearch()
-          : await initChange()
+      pageChange.value = await initChange()
       getPageChange()
     },
   }

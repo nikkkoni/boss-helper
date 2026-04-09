@@ -1,5 +1,5 @@
 import { ElMessage } from 'element-plus'
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 
 import { counter } from '@/message'
 import type { JobStatus } from '@/stores/jobs'
@@ -9,8 +9,9 @@ import type {
   PipelineCacheItem,
   ProcessorType,
 } from '@/types/pipelineCache'
-import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
+
+const CACHE_HIT_PERSIST_DELAY_MS = 1000
 // 默认处理器配置
 const DEFAULT_PROCESSOR_CONFIGS: Record<ProcessorType, { expireTime: number }> = {
   aiFiltering: { expireTime: 7 * 24 * 60 * 60 * 1000 }, // 7天
@@ -26,6 +27,8 @@ export class PipelineCacheManager {
     data: {},
     lastCleanup: Date.now(),
   })
+
+  private queuedSaveTimer: ReturnType<typeof setTimeout> | null = null
 
   private config: Required<PipelineCacheConfig>
 
@@ -112,7 +115,7 @@ export class PipelineCacheManager {
     //   count: item.hitCount,
     // })
 
-    void this.saveCache()
+    this.queueSaveCache()
     return item
   }
 
@@ -150,7 +153,7 @@ export class PipelineCacheManager {
         processorType: inferredProcessorType,
       }
 
-      this.cache.value.data[encryptJobId] = jsonClone(cacheItem)
+      this.cache.value.data[encryptJobId] = cacheItem
 
       // logger.debug('缓存结果已保存', {
       //   encryptJobId,
@@ -169,12 +172,47 @@ export class PipelineCacheManager {
    * 保存缓存到存储
    */
   private async saveCache(): Promise<void> {
+    this.cancelQueuedSave()
+
+    await this.persistCache()
+  }
+
+  private async persistCache(): Promise<void> {
     try {
-      const cacheData = jsonClone(this.cache.value)
+      const cacheData: PipelineCache = {
+        data: toRaw(this.cache.value.data),
+        lastCleanup: this.cache.value.lastCleanup,
+      }
       await counter.storageSet(this.config.storageKey, cacheData)
     } catch (error) {
       logger.error('保存缓存到存储失败', error)
     }
+  }
+
+  private queueSaveCache(delayMs = CACHE_HIT_PERSIST_DELAY_MS): void {
+    if (this.queuedSaveTimer != null) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      this.queuedSaveTimer = null
+      void this.persistCache()
+    }, delayMs)
+
+    if (typeof timer === 'object' && timer !== null && 'unref' in timer && typeof timer.unref === 'function') {
+      timer.unref()
+    }
+
+    this.queuedSaveTimer = timer
+  }
+
+  private cancelQueuedSave(): void {
+    if (this.queuedSaveTimer == null) {
+      return
+    }
+
+    clearTimeout(this.queuedSaveTimer)
+    this.queuedSaveTimer = null
   }
 
   /**

@@ -3,22 +3,20 @@ import { ElMessage } from 'element-plus'
 import { useCommon } from '@/composables/useCommon'
 import { useStatistics } from '@/composables/useStatistics'
 import {
-  createBossHelperAgentResponse,
-  type BossHelperAgentCurrentJob,
-  type BossHelperAgentResponse,
   type BossHelperAgentStartPayload,
-  type BossHelperAgentStatsData,
 } from '@/message/agent'
 import { useAgentRuntime } from '@/stores/agent'
 import { useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
 import { delay, notification } from '@/utils'
-import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
 
 import { abortAllPendingAIFilterReviews } from './agentReview'
 import { executeAgentBatchLoop } from './agentBatchLoop'
+import { createCurrentProgressSnapshot, createResponseHelpers, createStatsDataGetter } from './useAgentBatchState'
+import { resetJobStatuses } from '../shared/jobMapping'
+import { applyAgentBatchStartPayload } from '../services/agentBatchPayload'
 import { useAgentBatchEvents } from './useAgentBatchEvents'
 import { useDeliver } from './useDeliver'
 import { usePager } from './usePager'
@@ -26,28 +24,6 @@ import { usePager } from './usePager'
 interface UseAgentBatchRunnerOptions {
   ensureStoresLoaded: () => Promise<void>
   ensureSupportedPage: () => boolean
-}
-
-function normalizeTargetJobIds(jobIds?: string[]) {
-  if (!jobIds?.length) {
-    return []
-  }
-
-  return [...new Set(jobIds.map((id) => id.trim()).filter(Boolean))]
-}
-
-function currentJobSnapshot(currentData: ReturnType<typeof useDeliver>['currentData']): BossHelperAgentCurrentJob | null {
-  if (!currentData) {
-    return null
-  }
-
-  return {
-    encryptJobId: currentData.encryptJobId,
-    jobName: currentData.jobName ?? '',
-    brandName: currentData.brandName ?? '',
-    status: currentData.status.status,
-    message: currentData.status.msg ?? '',
-  }
 }
 
 export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
@@ -59,21 +35,12 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   const { next, page } = usePager()
   const statistics = useStatistics()
 
-  function currentProgressSnapshot() {
-    return {
-      activeTargetJobIds: [...agentRuntime.activeTargetJobIds],
-      current: deliver.total > 0 ? Math.min(deliver.current + 1, deliver.total) : 0,
-      currentJob: currentJobSnapshot(deliver.currentData),
-      locked: common.deliverLock,
-      message: common.deliverStatusMessage,
-      page: page.page,
-      pageSize: page.pageSize,
-      remainingTargetJobIds: [...agentRuntime.remainingTargetJobIds],
-      state: common.deliverState,
-      stopRequested: common.deliverStop,
-      total: deliver.total,
-    }
-  }
+  const currentProgressSnapshot = createCurrentProgressSnapshot({
+    agentRuntime,
+    common,
+    deliver,
+    page,
+  })
 
   const batchEvents = useAgentBatchEvents({
     common,
@@ -85,49 +52,21 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   }
 
   async function applyStartPayload(payload?: BossHelperAgentStartPayload) {
-    const targetJobIds = normalizeTargetJobIds(payload?.jobIds)
-    agentRuntime.setTargetJobIds(targetJobIds)
-
-    if (payload?.configPatch && Object.keys(payload.configPatch).length > 0) {
-      await conf.applyRuntimeConfigPatch(payload.configPatch, {
-        persist: payload.persistConfig,
-      })
-    }
-
-    if (payload?.resetFiltered && targetJobIds.length === 0) {
-      resetFilter()
-    }
+    await applyAgentBatchStartPayload({
+      agentRuntime,
+      conf,
+      payload,
+    })
   }
 
-  async function getStatsData(): Promise<BossHelperAgentStatsData> {
-    await statistics.updateStatistics()
-
-    return {
-      progress: {
-        activeTargetJobIds: [...agentRuntime.activeTargetJobIds],
-        state: common.deliverState,
-        locked: common.deliverLock,
-        stopRequested: common.deliverStop,
-        page: page.page,
-        pageSize: page.pageSize,
-        total: deliver.total,
-        current: deliver.total > 0 ? Math.min(deliver.current + 1, deliver.total) : 0,
-        message: common.deliverStatusMessage,
-        currentJob: currentJobSnapshot(deliver.currentData),
-        remainingTargetJobIds: [...agentRuntime.remainingTargetJobIds],
-      },
-      todayData: jsonClone(statistics.todayData),
-      historyData: jsonClone(statistics.statisticsData),
-    }
-  }
-
-  async function ok(code: string, message: string): Promise<BossHelperAgentResponse> {
-    return createBossHelperAgentResponse(true, code, message, await getStatsData())
-  }
-
-  async function fail(code: string, message: string): Promise<BossHelperAgentResponse> {
-    return createBossHelperAgentResponse(false, code, message, await getStatsData())
-  }
+  const getStatsData = createStatsDataGetter({
+    agentRuntime,
+    common,
+    deliver,
+    page,
+    statistics,
+  })
+  const { ok, fail } = createResponseHelpers(getStatsData)
 
   async function runBatch(mode: 'start' | 'resume', options?: BossHelperAgentStartPayload) {
     common.deliverLock = true
@@ -205,19 +144,7 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   }
 
   function resetFilter() {
-    jobList._list.value.forEach((v) => {
-      switch (v.status.status) {
-        case 'success':
-          break
-        case 'pending':
-        case 'wait':
-        case 'running':
-        case 'error':
-        case 'warn':
-        default:
-          v.status.setStatus('wait', '等待中')
-      }
-    })
+    resetJobStatuses(jobList._list.value, (job) => job.status.status !== 'success')
   }
 
   async function startBatch(payload?: BossHelperAgentStartPayload) {

@@ -5,19 +5,19 @@ import { createApp } from 'vue'
 import { defineUnlistedScript } from '#imports'
 import App from '@/App.vue'
 import { getRootVue } from '@/composables/useVue'
+import { getSiteAdapterByUrl, isSupportedSiteUrl, setActiveSiteAdapter } from '@/site-adapters'
 import { loader } from '@/utils'
 import { logger } from '@/utils/logger'
 import {
   DOM_READY_TIMEOUT_MS,
   collectSelectorHealth,
   formatSelectorHealth,
-  isSupportedZhipinRoute,
+  getActiveSelectorRegistry,
   waitForDocumentReady,
-  zhipinSelectors,
 } from '@/utils/selectors'
 
 function reportSelectorHealth(stage: string, pathname = location.pathname) {
-  if (!isSupportedZhipinRoute(pathname)) {
+  if (!isSupportedSiteUrl(new URL(pathname, location.origin).toString())) {
     return
   }
 
@@ -32,29 +32,26 @@ function reportSelectorHealth(stage: string, pathname = location.pathname) {
 }
 
 async function main(router: any) {
+  const adapter = setActiveSiteAdapter(getSiteAdapterByUrl(location.href))
+  const selectors = getActiveSelectorRegistry()
   reportSelectorHealth('route-enter', router.path)
-  let module = {
-    run() {
-      logger.info('BossHelper加载成功')
-      logger.warn('当前页面无对应hook脚本', router.path)
-    },
-  }
-  switch (router.path) {
-    case '/web/geek/job':
-    case '/web/geek/job-recommend':
-    case '/web/geek/jobs':
-      module = await import('@/pages/zhipin')
-      break
-  }
+  const module = adapter.matches(new URL(router.path, location.origin).toString())
+    ? await adapter.loadPageModule()
+    : {
+        run() {
+          logger.info('BossHelper加载成功')
+          logger.warn('当前页面无对应hook脚本', router.path)
+        },
+      }
   await Promise.resolve(module.run()).catch((error) => {
     logger.error('页面模块运行失败', { error, path: router.path })
   })
-  const helper = document.querySelector(zhipinSelectors.extension.appRoot)
+  const helper = document.querySelector(selectors.extension.appRoot)
   if (!helper) {
     const app = createApp(App)
     app.use(createPinia())
     const appEl = document.createElement('div')
-    appEl.id = zhipinSelectors.extension.appRootId
+    appEl.id = selectors.extension.appRootId
     document.body.append(appEl)
     app.mount(appEl)
   }
@@ -66,6 +63,7 @@ async function start() {
   //     GM_getValue("theme-dark", false)
   //   );
 
+  setActiveSiteAdapter(getSiteAdapterByUrl(location.href))
   await waitForDocumentReady(DOM_READY_TIMEOUT_MS)
   reportSelectorHealth('main-world-start')
 

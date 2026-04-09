@@ -1,14 +1,13 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
+import { getActiveSiteAdapter } from '@/site-adapters'
 import elmGetter from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
 import {
   SELECTOR_TIMEOUT_MS,
   getMountContainerSelectors,
-  getZhipinRouteKind,
   joinSelectors,
-  zhipinSelectors,
 } from '@/utils/selectors'
 
 import { initBossChatStream } from './hooks/useChatStream'
@@ -17,20 +16,21 @@ import Ui from './components/Ui.vue'
 import './index.scss'
 
 async function mountVue() {
+  const selectors = getActiveSiteAdapter(location.href).getSelectors()
   const jobSearchWrapper = await elmGetter.get(
-    joinSelectors(getMountContainerSelectors(location.pathname)),
+    joinSelectors(getMountContainerSelectors(location.pathname, selectors)),
     { timeoutMs: SELECTOR_TIMEOUT_MS },
   )
-  if (document.querySelector(zhipinSelectors.extension.jobPanel)) {
+  if (document.querySelector(selectors.extension.jobPanel)) {
     return
   }
   const app = createApp(Ui)
   app.use(createPinia())
 
-  const routeKind = getZhipinRouteKind(location.pathname)
+  const routeKind = selectors.getRouteKind(location.pathname)
 
   const jobEl = document.createElement('div')
-  jobEl.id = zhipinSelectors.extension.jobPanelId
+  jobEl.id = selectors.extension.jobPanelId
 
   jobSearchWrapper.setAttribute('help', '出界了哇!')
 
@@ -41,7 +41,7 @@ async function mountVue() {
       padding: 24px 24px 16px;
     `
     const jobWarpEl = document.createElement('div')
-    jobWarpEl.id = zhipinSelectors.extension.jobPanelWrapId
+    jobWarpEl.id = selectors.extension.jobPanelWrapId
     jobWarpEl.style.cssText = `
       width: 85%;
       max-width: 870px;
@@ -57,7 +57,8 @@ async function mountVue() {
 }
 
 function removeAd() {
-  for (const selector of zhipinSelectors.cleanup) {
+  const selectors = getActiveSiteAdapter(location.href).getSelectors()
+  for (const selector of selectors.cleanup) {
     void elmGetter.rm(selector, { timeoutMs: SELECTOR_TIMEOUT_MS })
   }
 }

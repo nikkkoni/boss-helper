@@ -14,6 +14,8 @@ import type { FormDataRange } from '@/types/formData'
 import { logger } from '@/utils/logger'
 import { parseGptJson } from '@/utils/parse'
 
+import { runWithZhipinRateLimit } from './services/zhipinRateLimit'
+
 // const { userInfo } = useStore()
 
 export const sameCompanyKey = 'local:sameCompany'
@@ -63,30 +65,34 @@ function ensureBossApiSuccess<T>(response: BossApiResponse<T>, action: string): 
 }
 
 export async function requestCard(params: { securityId: string; lid: string }) {
-  const res = await axios.get<
-    BossApiResponse<{
-      jobCard: bossZpCardData
-    }>
-  >('https://www.zhipin.com/wapi/zpgeek/job/card.json', {
-    params,
-    timeout: 5000,
-  })
+  const res = await runWithZhipinRateLimit(() =>
+    axios.get<
+      BossApiResponse<{
+        jobCard: bossZpCardData
+      }>
+    >('https://www.zhipin.com/wapi/zpgeek/job/card.json', {
+      params,
+      timeout: 5000,
+    }),
+  )
 
   return ensureBossApiSuccess(res.data, '获取职位卡片失败').jobCard
 }
 
 export async function requestDetail(params: { securityId: string; lid: string }) {
   const token = await getBossToken()
-  const res = await axios.get<BossApiResponse<bossZpDetailData>>(
-    'https://www.zhipin.com/wapi/zpgeek/job/detail.json',
-    {
-    params: {
-      ...params,
-      _: Date.now(),
-    },
-    headers: { Zp_token: token },
-    timeout: 5000,
-    },
+  const res = await runWithZhipinRateLimit(() =>
+    axios.get<BossApiResponse<bossZpDetailData>>(
+      'https://www.zhipin.com/wapi/zpgeek/job/detail.json',
+      {
+        params: {
+          ...params,
+          _: Date.now(),
+        },
+        headers: { Zp_token: token },
+        timeout: 5000,
+      },
+    ),
   )
 
   return ensureBossApiSuccess(res.data, '获取职位详情失败')
@@ -109,12 +115,14 @@ export async function sendPublishReq(
   }
   const token = await getBossToken()
   try {
-    const res = await axios({
-      url,
-      params,
-      method: 'POST',
-      headers: { Zp_token: token },
-    })
+    const res = await runWithZhipinRateLimit(() =>
+      axios({
+        url,
+        params,
+        method: 'POST',
+        headers: { Zp_token: token },
+      }),
+    )
 
     res.data.code !== 0 && logger.error(`投递失败`, res)
 
@@ -128,12 +136,14 @@ export async function sendPublishReq(
           const params = new URLSearchParams()
           params.append('ba', res.data.zpData.bizData.chatRemindDialog.ba)
           params.append('action', 'addf-limit-popup-c')
-          await axios({
-            url: 'https://www.zhipin.com/wapi/zpCommon/actionLog/geek/chatremind.json',
-            method: 'POST',
-            headers: { Zp_token: token },
-            data: params,
-          })
+          await runWithZhipinRateLimit(() =>
+            axios({
+              url: 'https://www.zhipin.com/wapi/zpCommon/actionLog/geek/chatremind.json',
+              method: 'POST',
+              headers: { Zp_token: token },
+              data: params,
+            }),
+          )
           return sendPublishReq(data, undefined, retries, { cid: 1 })
         } catch (e) {
           logger.error('尝试确认投递限制失败', e)
@@ -175,16 +185,18 @@ export async function requestBossData(
     data.append('bossId', card.encryptUserId)
     data.append('securityId', card.securityId)
     data.append('bossSrc', '0')
-    const res = await axios<{
-      code: number
-      message: string
-      zpData: bossZpBossData
-    }>({
-      url,
-      data,
-      method: 'POST',
-      headers: { Zp_token: token },
-    })
+    const res = await runWithZhipinRateLimit(() =>
+      axios<{
+        code: number
+        message: string
+        zpData: bossZpBossData
+      }>({
+        url,
+        data,
+        method: 'POST',
+        headers: { Zp_token: token },
+      }),
+    )
     if (res.data.code !== 0) {
       if (res.data.message === '非好友关系') {
         return await requestBossData(card, '非好友关系', retries - 1)

@@ -1,7 +1,7 @@
 import type { Client } from '@/stores/signedKey'
 import { signedKeyReqHandler, useSignedKey } from '@/stores/signedKey'
 import type { components } from '@/types/openapi'
-import { runLimitedAIRequest } from '@/utils/concurrency'
+import { runBatchedAIRequest } from '@/utils/concurrency'
 
 import type { messageReps } from './type'
 
@@ -45,7 +45,13 @@ export class SignedKeyLLM {
       card: bossZpCardData
     }
   }): Promise<messageReps> {
-    const res = await runLimitedAIRequest(() =>
+    const batchKey = JSON.stringify({
+      body: data,
+      endpoint: '/v1/llm/invoke/greetings',
+      user_request: this.user_request,
+    })
+
+    const res = await runBatchedAIRequest(batchKey, () =>
       this.client.POST('/v1/llm/invoke/greetings', {
         body: {
           test_mode: data.test ?? false,
@@ -77,7 +83,14 @@ export class SignedKeyLLM {
     }
     amap?: string
   }): Promise<messageReps> {
-    const res = await runLimitedAIRequest(() =>
+    const batchKey = JSON.stringify({
+      amap: data.amap,
+      body: data.data,
+      endpoint: '/v1/llm/invoke/filter',
+      user_request: this.user_request,
+    })
+
+    const res = await runBatchedAIRequest(batchKey, () =>
       this.client.POST('/v1/llm/invoke/filter', {
         body: {
           test_mode: data.test ?? false,

@@ -6,6 +6,7 @@ import {
   isBossHelperAgentRequest,
   isBossHelperSupportedJobUrl,
 } from '@/message/agent'
+import { isSupportedSiteUrl } from '@/site-adapters'
 
 describe('agent helpers', () => {
   it('builds a standard agent response payload', () => {
@@ -23,6 +24,13 @@ describe('agent helpers', () => {
     expect(isBossHelperSupportedJobUrl('https://www.zhipin.com/web/geek/jobs?page=2')).toBe(true)
     expect(isBossHelperSupportedJobUrl('https://www.zhipin.com/web/geek/chat')).toBe(false)
     expect(isBossHelperSupportedJobUrl('not-a-url')).toBe(false)
+  })
+
+  it('recognizes supported site urls through adapters', () => {
+    expect(isSupportedSiteUrl('https://www.zhipin.com/web/geek/job?query=frontend')).toBe(true)
+    expect(isSupportedSiteUrl('https://www.zhipin.com/web/geek/jobs?page=2')).toBe(true)
+    expect(isSupportedSiteUrl('https://www.zhipin.com/web/geek/chat')).toBe(false)
+    expect(isSupportedSiteUrl('not-a-url')).toBe(false)
   })
 
   it('validates agent requests by channel and command', () => {

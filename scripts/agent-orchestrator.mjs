@@ -1,7 +1,13 @@
+// @ts-check
+
 import {
   createAgentBridgeAuthHeaders,
   getAgentBridgeRuntime,
 } from './agent-security.mjs'
+
+/** @typedef {import('./types.d.ts').AgentBridgeRuntime} AgentBridgeRuntime */
+/** @typedef {import('./types.d.ts').AgentOrchestratorOptions} AgentOrchestratorOptions */
+/** @typedef {import('./types.d.ts').AgentReviewMode} AgentReviewMode */
 
 function printUsage() {
   console.log(`boss-helper agent orchestrator
@@ -33,6 +39,7 @@ options:
   --help                       show help`)
 }
 
+/** @param {string | undefined} value */
 function parseList(value) {
   if (!value) return []
   return value
@@ -41,7 +48,17 @@ function parseList(value) {
     .filter(Boolean)
 }
 
+/** @param {string | undefined} value @returns {AgentReviewMode} */
+function normalizeReviewMode(value) {
+  if (value === 'none' || value === 'accept' || value === 'reject') {
+    return value
+  }
+  return 'heuristic'
+}
+
+/** @param {string[]} argv @returns {AgentOrchestratorOptions} */
 function parseArgs(argv) {
+  /** @type {AgentOrchestratorOptions} */
   const options = {
     host: '127.0.0.1',
     port: 4317,
@@ -135,7 +152,7 @@ function parseArgs(argv) {
       continue
     }
     if (token === '--review-mode' && next) {
-      options.reviewMode = next
+      options.reviewMode = normalizeReviewMode(next)
       index += 1
       continue
     }
@@ -171,10 +188,12 @@ function parseArgs(argv) {
 
 const options = parseArgs(process.argv.slice(2))
 
+/** @returns {string} */
 function buildBaseUrl() {
   return `http://${options.host}:${options.port}`
 }
 
+/** @returns {AgentBridgeRuntime} */
 function getBridgeRuntime() {
   return getAgentBridgeRuntime({
     ...process.env,

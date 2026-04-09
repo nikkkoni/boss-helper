@@ -1,5 +1,7 @@
 import { runLimitedDOMBatch } from '@/utils/concurrency'
 
+import { getActiveSiteAdapter } from '@/site-adapters'
+
 interface AgentBatchListItem {
   encryptJobId?: string
 }
@@ -71,7 +73,7 @@ export async function executeAgentBatchLoop(options: AgentBatchLoopOptions) {
     const currentFirstJobId = jobs[0]?.encryptJobId ?? ''
     const locationHref = options.getLocationHref()
     if (
-      (locationHref.includes('/web/geek/job-recommend') || locationHref.includes('/web/geek/jobs'))
+      getActiveSiteAdapter(locationHref).shouldStopOnRepeatedJobList(new URL(locationHref).pathname)
       && oldLen === jobs.length
       && oldFirstJobId === currentFirstJobId
     ) {
