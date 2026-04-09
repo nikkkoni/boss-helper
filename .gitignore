@@ -28,6 +28,8 @@ dist-ssr
 
 .output
 .playwright-mcp/
+playwright-report/
+test-results/
 playwright-network.txt
 
 logapi.zhipin.*.pem
