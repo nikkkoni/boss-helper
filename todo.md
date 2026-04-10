@@ -35,7 +35,7 @@
 
 - [x] 修复 `filterSteps.ts` 用户输入直接进入 `RegExp` 的问题，统一做转义和预编译。（B9, B69, S4）
 - [x] 修复 `utils/safeHtml.ts` 的 `<br>` 正则错误，并收紧 `style` 白名单策略。（B40, S8）
-- [ ] 修复 `utils/deepmerge.ts` 的数组克隆和 `constructor` 原型污染防护。（B11, B41）
+- [x] 修复 `utils/deepmerge.ts` 的数组克隆和 `constructor` 原型污染防护。（B11, B41）
 - [ ] 修复 `stores/signedKey.ts` 的环境 URL 选择，避免开发环境请求生产地址。（B42）
 
 ### 1.3 Bridge / MCP / 消息链路安全
