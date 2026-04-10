@@ -253,7 +253,7 @@ function syncSalaryRange() {
             v-model:enable="conf.formData.salaryRange.enable"
           >
             <SalaryRangeComponent
-              :value="conf.formData.salaryRange.value"
+              v-model:value="conf.formData.salaryRange.value"
               width="80px"
               unit="K"
               :show="false"
@@ -281,7 +281,7 @@ function syncSalaryRange() {
                   :closable="false"
                 />
                 <SalaryRangeComponent
-                  :value="conf.formData.salaryRange.value"
+                  v-model:value="conf.formData.salaryRange.value"
                   unit="K"
                   :show="true"
                 />
@@ -293,19 +293,19 @@ function syncSalaryRange() {
                 />
                 <ElButton @click="syncSalaryRange"> 同步 </ElButton>
                 <SalaryRangeComponent
-                  :value="conf.formData.salaryRange.advancedValue.H"
+                  v-model:value="conf.formData.salaryRange.advancedValue.H"
                   unit="元/时"
                   :show="true"
                   :step="5"
                 />
                 <SalaryRangeComponent
-                  :value="conf.formData.salaryRange.advancedValue.D"
+                  v-model:value="conf.formData.salaryRange.advancedValue.D"
                   unit="元/天"
                   :show="true"
                   :step="10"
                 />
                 <SalaryRangeComponent
-                  :value="conf.formData.salaryRange.advancedValue.M"
+                  v-model:value="conf.formData.salaryRange.advancedValue.M"
                   unit="元/月"
                   :show="true"
                   :step="200"
@@ -320,7 +320,7 @@ function syncSalaryRange() {
           >
             <SalaryRangeComponent
               :controls="false"
-              :value="conf.formData.companySizeRange.value"
+              v-model:value="conf.formData.companySizeRange.value"
               width="90px"
               unit="人"
               :show="true"
