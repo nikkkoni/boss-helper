@@ -4,23 +4,6 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { defineConfig } from 'vitest/config'
 
-const phase2CoverageInclude = [
-  'src/composables/useApplying/*.ts',
-  'src/composables/usePipelineCache.ts',
-  'src/composables/useModel/*.ts',
-  'src/composables/useWebSocket/*.ts',
-  'src/entrypoints/background.ts',
-  'src/message/agent.ts',
-  'src/message/contentScript.ts',
-  'src/pages/zhipin/hooks/useDeliveryControl.ts',
-  'src/stores/conf/validation.ts',
-  'src/utils/amap.ts',
-  'src/utils/deepmerge.ts',
-  'src/utils/elmGetter.ts',
-  'src/utils/parse.ts',
-  'src/utils/request.ts',
-]
-
 export default defineConfig({
   plugins: [vue(), vueJsx()],
   resolve: {
@@ -51,7 +34,7 @@ export default defineConfig({
         'src/assets/**',
         'src/types/**',
       ],
-      include: phase2CoverageInclude,
+      include: ['src/**/*.ts'],
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],
       reportsDirectory: './coverage',
@@ -64,6 +47,7 @@ export default defineConfig({
     },
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    restoreMocks: true,
     setupFiles: ['./tests/setup/vitest.setup.ts'],
   },
 })
