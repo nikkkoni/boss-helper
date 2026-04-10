@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PipelineCacheManager } from '@/composables/usePipelineCache'
 
@@ -9,6 +9,10 @@ import { counter, __getStorageItem, __setStorageItem } from './mocks/message'
 describe('PipelineCacheManager', () => {
   beforeEach(() => {
     vi.useRealTimers()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('stores successful results and updates hit counters on cache hit', async () => {
@@ -127,6 +131,67 @@ describe('PipelineCacheManager', () => {
         data: {
           new: expect.any(Object),
         },
+      }),
+    )
+  })
+
+  it('waits for persisted cache before allowing writes', async () => {
+    vi.useFakeTimers()
+
+    const storageGetSpy = vi.spyOn(counter, 'storageGet')
+    const storageSetSpy = vi.spyOn(counter, 'storageSet')
+    const persistedCache = {
+      data: {
+        persisted: {
+          brandName: 'Persisted Inc',
+          createdAt: 1,
+          encryptJobId: 'persisted',
+          expireAt: Date.now() + 60_000,
+          hitCount: 0,
+          jobName: 'Persisted Job',
+          lastAccessed: 1,
+          message: 'persisted',
+          processorType: 'basic',
+          status: 'success',
+        },
+      },
+      lastCleanup: Date.now(),
+    }
+
+    storageGetSpy.mockImplementation(async (key: string, defaultValue?: unknown) => {
+      if (key === 'local:test-ready') {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        return structuredClone(persistedCache)
+      }
+
+      return structuredClone(defaultValue ?? null)
+    })
+
+    const manager = new PipelineCacheManager({
+      cleanupInterval: 60_000,
+      maxCacheSize: 10,
+      storageKey: 'local:test-ready',
+    })
+
+    const writePromise = manager.setCacheResult('job-1', 'Frontend', 'Acme', 'success', '处理完成')
+
+    await Promise.resolve()
+
+    expect(storageSetSpy).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(20)
+    await writePromise
+
+    expect(manager.getCachedResult('persisted')).toEqual(
+      expect.objectContaining({
+        brandName: 'Persisted Inc',
+        encryptJobId: 'persisted',
+      }),
+    )
+    expect(manager.getCachedResult('job-1')).toEqual(
+      expect.objectContaining({
+        brandName: 'Acme',
+        encryptJobId: 'job-1',
       }),
     )
   })

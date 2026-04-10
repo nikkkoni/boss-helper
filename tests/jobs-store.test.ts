@@ -2,16 +2,20 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { checkJobCacheMock, getActiveSiteAdapterMock, loggerMock } = vi.hoisted(() => ({
+import type { FormData } from '@/types/formData'
+
+const {
+  checkJobCacheMock,
+  getActiveSiteAdapterMock,
+  getReadyCacheManagerMock,
+  loggerMock,
+  parseJobListMock,
+  useHookVueDataMock,
+  useHookVueFnMock,
+} = vi.hoisted(() => ({
   checkJobCacheMock: vi.fn(() => null),
-  getActiveSiteAdapterMock: vi.fn(() => ({
-    getVueBindings: vi.fn(() => ({
-      clickJobCardActionKey: 'clickJobCardAction',
-      jobDetailKey: 'jobDetail',
-      jobListKey: 'jobList',
-    })),
-    parseJobList: vi.fn((items: bossZpJobItemData[]) => items),
-  })),
+  getActiveSiteAdapterMock: vi.fn(),
+  getReadyCacheManagerMock: vi.fn(async () => undefined),
   loggerMock: {
     debug: vi.fn(),
     error: vi.fn(),
@@ -21,15 +25,19 @@ const { checkJobCacheMock, getActiveSiteAdapterMock, loggerMock } = vi.hoisted((
     log: vi.fn(),
     warn: vi.fn(),
   },
+  parseJobListMock: vi.fn((items: bossZpJobItemData[]) => items),
+  useHookVueDataMock: vi.fn(),
+  useHookVueFnMock: vi.fn(),
 }))
 
 vi.mock('@/composables/useApplying', () => ({
   checkJobCache: checkJobCacheMock,
+  getReadyCacheManager: getReadyCacheManagerMock,
 }))
 
 vi.mock('@/composables/useVue', () => ({
-  useHookVueData: vi.fn(),
-  useHookVueFn: vi.fn(),
+  useHookVueData: useHookVueDataMock,
+  useHookVueFn: useHookVueFnMock,
 }))
 
 vi.mock('@/site-adapters', () => ({
@@ -77,9 +85,34 @@ function getInternalStore(store: JobList) {
   }
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
+async function flushMicrotasks() {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
 describe('JobList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    parseJobListMock.mockImplementation((items: bossZpJobItemData[]) => items)
+    getActiveSiteAdapterMock.mockReturnValue({
+      getVueBindings: vi.fn(() => ({
+        clickJobCardActionKey: 'clickJobCardAction',
+        jobDetailKey: 'jobDetail',
+        jobListKey: 'jobList',
+      })),
+      parseJobList: parseJobListMock,
+    })
+    getReadyCacheManagerMock.mockResolvedValue(undefined)
+    useHookVueDataMock.mockImplementation(() => async () => {})
+    useHookVueFnMock.mockImplementation(() => async () => async () => {})
   })
 
   it('returns entries from the reactive map getter', () => {
@@ -124,5 +157,42 @@ describe('JobList', () => {
 
     await expect(internalStore.loadJobDetail(item)).resolves.toMatchObject({ lid: detail.lid })
     expect(clickJobCardAction).toHaveBeenCalledWith(item)
+  })
+
+  it('waits for the cache manager to finish loading before hydrating the job list', async () => {
+    const jobs = new JobList()
+    const ready = createDeferred<void>()
+
+    getReadyCacheManagerMock.mockImplementation(async () => {
+      await ready.promise
+      return undefined
+    })
+    useHookVueDataMock
+      .mockImplementationOnce(() => async () => {})
+      .mockImplementationOnce(
+        (_selectors: unknown, _key: unknown, data: { value: unknown }, update?: (val: unknown) => void) =>
+          async () => {
+            data.value = [createJobItem()] as never
+            update?.(data.value)
+          },
+      )
+
+    const initPromise = jobs.initJobList({
+      useCache: {
+        value: true,
+      },
+    } as FormData)
+
+    await flushMicrotasks()
+
+    expect(getReadyCacheManagerMock).toHaveBeenCalledTimes(1)
+    expect(useHookVueDataMock).not.toHaveBeenCalled()
+    expect(parseJobListMock).not.toHaveBeenCalled()
+
+    ready.resolve()
+    await initPromise
+
+    expect(useHookVueDataMock).toHaveBeenCalledTimes(2)
+    expect(parseJobListMock).toHaveBeenCalledTimes(1)
   })
 })

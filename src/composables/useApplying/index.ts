@@ -39,6 +39,12 @@ export function getCacheManager(userId = getCurrentUserId()): PipelineCacheManag
   return cacheManagers.get(cacheKey)!
 }
 
+export async function getReadyCacheManager(userId = getCurrentUserId()): Promise<PipelineCacheManager> {
+  const cacheManager = getCacheManager(userId)
+  await cacheManager.ensureReady()
+  return cacheManager
+}
+
 /**
  * 缓存Pipeline处理结果
  */
@@ -50,7 +56,7 @@ export async function cachePipelineResult(
   message: string,
   processorType?: ProcessorType,
 ): Promise<void> {
-  const cacheManager = getCacheManager()
+  const cacheManager = await getReadyCacheManager()
   await cacheManager.setCacheResult(
     encryptJobId,
     jobName,

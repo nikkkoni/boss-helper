@@ -1,6 +1,6 @@
 import { reactive, ref, watch } from 'vue'
 
-import { checkJobCache } from '@/composables/useApplying'
+import { checkJobCache, getReadyCacheManager } from '@/composables/useApplying'
 import { useHookVueData, useHookVueFn } from '@/composables/useVue'
 import { getActiveSiteAdapter } from '@/site-adapters'
 import type { FormData } from '@/types/formData'
@@ -124,6 +124,9 @@ export class JobList {
 
   async initJobList(formData: FormData) {
     this._use_cache.value = formData.useCache.value
+    if (this._use_cache.value) {
+      await getReadyCacheManager()
+    }
     const adapter = getActiveSiteAdapter(location.href)
     const bindings = adapter.getVueBindings(location.pathname)
     const vueContainerQuery = this.getVueContainerQuery()

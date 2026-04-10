@@ -32,6 +32,8 @@ export class PipelineCacheManager {
 
   private config: Required<PipelineCacheConfig>
 
+  private initPromise: Promise<void>
+
   constructor(config: PipelineCacheConfig = {}) {
     this.config = {
       expireDays: config.expireDays ?? 3,
@@ -41,7 +43,11 @@ export class PipelineCacheManager {
       processorConfigs: config.processorConfigs ?? DEFAULT_PROCESSOR_CONFIGS,
     }
 
-    void this.initCache()
+    this.initPromise = this.initCache()
+  }
+
+  async ensureReady(): Promise<void> {
+    await this.initPromise
   }
 
   /**
@@ -130,6 +136,8 @@ export class PipelineCacheManager {
     message: string,
     processorType?: ProcessorType,
   ): Promise<void> {
+    await this.ensureReady()
+
     if (status === 'error') {
       // 不缓存错误
       return
@@ -274,6 +282,7 @@ export class PipelineCacheManager {
    * 清空所有缓存
    */
   async clearCache(): Promise<void> {
+    await this.ensureReady()
     this.cache.value.data = {}
     await this.saveCache()
     ElMessage.success('缓存已清空')
