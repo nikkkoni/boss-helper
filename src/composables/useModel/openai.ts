@@ -33,6 +33,12 @@ function isStructuredOutputUnsupported(error: unknown) {
   return ['json_schema', 'response_format', 'schema', 'structured output'].some((token) => message.includes(token))
 }
 
+function getLastChoiceMessage(response: any) {
+  const choices = Array.isArray(response?.choices) ? response.choices : []
+  const lastChoice = choices.at(-1)
+  return lastChoice?.message
+}
+
 export type openaiLLMConf = llmConf<
   'openai',
   {
@@ -160,8 +166,8 @@ class Gpt extends llm<openaiLLMConf> {
 
   async chat(message: string) {
     const res = await this.post({ prompt: this.buildPrompt(message) })
-    const msg = (res.choices as any[]).pop()
-    return msg?.message?.content ?? ''
+    const msg = getLastChoiceMessage(res)
+    return msg?.content ?? ''
   }
 
   async message({
@@ -173,25 +179,41 @@ class Gpt extends llm<openaiLLMConf> {
     const prompts = this.buildPrompt(data)
     const prompt = prompts[prompts.length - 1].content
     onPrompt(prompt)
-    const stream = ''
+    let stream = ''
     const ans: messageReps = { prompt }
 
     const res = await this.post({
       prompt: prompts,
       json,
       structuredOutput,
-      onStream: async (_reader) => {
-        // TODO: 处理 stream 输出
+      onStream: async (reader) => {
+        for await (const event of reader) {
+          const payload = typeof event?.data === 'string' ? event.data.trim() : ''
+          if (!payload || payload === '[DONE]') {
+            continue
+          }
+
+          try {
+            const chunk = JSON.parse(payload)
+            const delta = chunk?.choices?.[0]?.delta
+            const content = typeof delta?.content === 'string' ? delta.content : ''
+            if (content) {
+              stream += content
+            }
+          } catch {
+            // Ignore malformed stream chunks and keep consuming the response.
+          }
+        }
       },
     })
 
     if (!this.conf.advanced.stream) {
-      const msg = (res.choices as any[]).pop()
-      const content = msg?.message?.content ?? ''
+      const msg = getLastChoiceMessage(res)
+      const content = msg?.content ?? ''
       ans.content = structuredOutput && typeof content === 'string'
         ? parseStructuredJson(content)
         : content
-      ans.reasoning_content = (msg?.message?.reasoning_content as string)?.replaceAll('\n', '')
+      ans.reasoning_content = (msg?.reasoning_content as string)?.replaceAll('\n', '')
       ans.usage = {
         input_tokens: res?.usage?.prompt_tokens,
         output_tokens: res?.usage?.completion_tokens,

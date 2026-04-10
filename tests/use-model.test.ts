@@ -313,16 +313,18 @@ describe('useModel', () => {
         },
       }),
       '你好 {{ data.jobName }}',
-    )
+    ) as llm
 
-    mockRequestPost.mockResolvedValueOnce({
-      choices: [
-        {
-          message: {
-            content: 'ignored',
-          },
-        },
-      ],
+    mockRequestPost.mockImplementationOnce(async ({ onStream }: { onStream?: (reader: AsyncIterable<{ data?: string }>) => Promise<void> }) => {
+      await onStream?.((async function* () {
+        yield { data: '{"choices":[{"delta":{"content":"Hello"}}]}' }
+        yield { data: '{"choices":[{"delta":{"content":" world"}}]}' }
+        yield { data: '[DONE]' }
+      })())
+
+      return {
+        choices: [],
+      }
     })
 
     const response = await openaiModel.message(
@@ -336,8 +338,58 @@ describe('useModel', () => {
       'aiFiltering',
     )
 
-    expect(response.content).toBe('')
+    expect(response.content).toBe('Hello world')
     expect(response.usage).toBeUndefined()
+  })
+
+  it('does not mutate choices when reading OpenAI chat responses', async () => {
+    const store = useModel()
+    const openaiModel = store.getModel(
+      createModelItem({
+        data: {
+          advanced: {},
+          api_key: 'secret',
+          model: 'gpt-4o-mini',
+          mode: 'openai',
+          other: {},
+          url: 'https://api.example.com/v1/chat/completions',
+        },
+      }),
+      '你好 {{ data.jobName }}',
+    ) as llm
+
+    const choices = [
+      {
+        message: {
+          content: 'final answer',
+        },
+      },
+    ]
+    mockRequestPost.mockResolvedValueOnce({ choices })
+
+    await expect(openaiModel.chat('hello')).resolves.toBe('final answer')
+    expect(choices).toHaveLength(1)
+  })
+
+  it('returns empty OpenAI content safely when choices are missing', async () => {
+    const store = useModel()
+    const openaiModel = store.getModel(
+      createModelItem({
+        data: {
+          advanced: {},
+          api_key: 'secret',
+          model: 'gpt-4o-mini',
+          mode: 'openai',
+          other: {},
+          url: 'https://api.example.com/v1/chat/completions',
+        },
+      }),
+      '你好 {{ data.jobName }}',
+    ) as llm
+
+    mockRequestPost.mockResolvedValueOnce({ choices: undefined })
+
+    await expect(openaiModel.chat('hello')).resolves.toBe('')
   })
 
   it('throws for invalid VIP prompt shapes and returns SignedKeyLLM for valid ones', async () => {
@@ -460,6 +512,28 @@ describe('useModel', () => {
         'aiReply',
       ),
     ).rejects.toThrow('无效的类型')
+  })
+
+  it('does not append literal undefined to signed-key filtering prompts', async () => {
+    const store = useModel()
+    const vip = store.getModel(undefined, '筛选岗位', true)
+
+    await vip.message(
+      {
+        data: {
+          card: createJobCard(),
+          data: createJob(),
+        },
+      },
+      'aiFiltering',
+    )
+
+    expect(mockSignedKeyPost).toHaveBeenCalledWith(
+      '/v1/llm/invoke/filter',
+      expect.objectContaining({
+        body: expect.objectContaining({ user_request: '筛选岗位' }),
+      }),
+    )
   })
 
   it('surfaces signed-key resume check failures', async () => {

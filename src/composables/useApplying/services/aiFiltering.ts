@@ -89,11 +89,11 @@ export async function runInternalAIFiltering(options: {
         boss: options.ctx.bossData,
         card: options.ctx.listData.card!,
         amap: {
-          straightDistance: (options.ctx.amap?.distance?.straight.distance ?? 0) / 1000,
-          drivingDistance: (options.ctx.amap?.distance?.driving.distance ?? 0) / 1000,
-          drivingDuration: (options.ctx.amap?.distance?.driving.duration ?? 0) / 60,
-          walkingDistance: (options.ctx.amap?.distance?.walking.distance ?? 0) / 1000,
-          walkingDuration: (options.ctx.amap?.distance?.walking.duration ?? 0) / 60,
+          straightDistance: (options.ctx.amap?.distance?.straight?.distance ?? 0) / 1000,
+          drivingDistance: (options.ctx.amap?.distance?.driving?.distance ?? 0) / 1000,
+          drivingDuration: (options.ctx.amap?.distance?.driving?.duration ?? 0) / 60,
+          walkingDistance: (options.ctx.amap?.distance?.walking?.distance ?? 0) / 1000,
+          walkingDuration: (options.ctx.amap?.distance?.walking?.duration ?? 0) / 60,
         },
       },
       amap: options.amapPrompt,
@@ -111,7 +111,7 @@ export async function runInternalAIFiltering(options: {
 
   options.ctx.aiFilteringQ = response.prompt
   if (response.content == null) {
-    return
+    throw new Error('AI筛选未返回有效内容')
   }
 
   const res = typeof response.content === 'string'

@@ -10,11 +10,11 @@ export function buildAmapPrompt(ctx: logData, enabled: boolean) {
     return ''
   }
 
-  return `直线距离:${(ctx.amap?.distance?.straight.distance ?? 0) / 1000}km
-驾车距离:${(ctx.amap?.distance?.driving.distance ?? 0) / 1000}km
-驾车时间:${(ctx.amap?.distance?.driving.duration ?? 0) / 60}分钟
-步行距离:${(ctx.amap?.distance?.walking.distance ?? 0) / 1000}km
-步行时间:${(ctx.amap?.distance?.walking.duration ?? 0) / 60}分钟`
+  return `直线距离:${(ctx.amap?.distance?.straight?.distance ?? 0) / 1000}km
+驾车距离:${(ctx.amap?.distance?.driving?.distance ?? 0) / 1000}km
+驾车时间:${(ctx.amap?.distance?.driving?.duration ?? 0) / 60}分钟
+步行距离:${(ctx.amap?.distance?.walking?.distance ?? 0) / 1000}km
+步行时间:${(ctx.amap?.distance?.walking?.duration ?? 0) / 60}分钟`
 }
 
 export function createLoadCardStep(): Handler {

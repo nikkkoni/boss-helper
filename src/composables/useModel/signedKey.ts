@@ -29,6 +29,10 @@ export class SignedKeyLLM {
     this.client = useSignedKey().client
   }
 
+  private buildUserRequest(amap?: string) {
+    return `${this.user_request}${amap ?? ''}`
+  }
+
   async checkResume() {
     const res = await this.client.GET('/v1/key/resume')
     const errMsg = signedKeyReqHandler(res)
@@ -94,7 +98,7 @@ export class SignedKeyLLM {
       this.client.POST('/v1/llm/invoke/filter', {
         body: {
           test_mode: data.test ?? false,
-          user_request: this.user_request + data.amap,
+          user_request: this.buildUserRequest(data.amap),
           jd: {
             data: data.data.data as any,
             card: data.data.card as any,

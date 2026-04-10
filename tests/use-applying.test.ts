@@ -569,9 +569,12 @@ describe('useApplying handles', () => {
     } as unknown as llm)
 
     const nullCtx = createLogContext(createJob({ card: createJobCard() }))
-    await expect(getHandler(handles().aiFiltering())({ data: job }, nullCtx)).resolves.toBeUndefined()
+    await expect(getHandler(handles().aiFiltering())({ data: job }, nullCtx)).rejects.toBeInstanceOf(
+      AIFilteringError,
+    )
     expect(nullCtx.aiFilteringQ).toBe('null-content prompt')
     expect(nullCtx.aiFilteringScore).toBeUndefined()
+    expect(nullCtx.pipelineError).toBeUndefined()
 
     getModelSpy.mockReturnValueOnce({
       message: vi.fn(async () => ({
@@ -626,6 +629,55 @@ describe('useApplying handles', () => {
 
     await expect(getHandler(handles().aiFiltering())({ data: job }, createLogContext(job))).rejects.toThrow(
       'llm unavailable',
+    )
+  })
+
+  it('handles missing amap straight distance data without throwing optional-chain errors', async () => {
+    const conf = useConf()
+    const model = useModel()
+    const job = createJob({ card: createJobCard() })
+    const ctx = createLogContext(job, {
+      amap: {
+        distance: {
+          driving: { distance: 1500, duration: 600, ok: true },
+          straight: undefined as any,
+          walking: { distance: 800, duration: 480, ok: true },
+        },
+      },
+    })
+
+    conf.formData.aiFiltering.enable = true
+    conf.formData.aiFiltering.externalMode = false
+    conf.formData.aiFiltering.vip = false
+    conf.formData.aiFiltering.model = 'model-1'
+    conf.formData.aiFiltering.score = 0
+    conf.formData.amap.enable = true
+    model.modelData = [createModelItem()]
+
+    vi.spyOn(model, 'getModel').mockReturnValueOnce({
+      message: vi.fn(async (args: { data: { amap: Record<string, number> } }) => {
+        expect(args.data.amap).toEqual({
+          drivingDistance: 1.5,
+          drivingDuration: 10,
+          straightDistance: 0,
+          walkingDistance: 0.8,
+          walkingDuration: 8,
+        })
+
+        return {
+          content: '```json\n{"negative":[],"positive":[{"reason":"可接受","score":10}]}\n```',
+          prompt: 'amap prompt',
+          reasoning_content: null,
+        }
+      }),
+    } as unknown as llm)
+
+    await expect(getHandler(handles().aiFiltering())({ data: job }, ctx)).resolves.toBeUndefined()
+    expect(ctx.aiFilteringScore).toEqual(
+      expect.objectContaining({
+        accepted: true,
+        rating: 10,
+      }),
     )
   })
 
