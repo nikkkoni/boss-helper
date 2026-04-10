@@ -424,9 +424,13 @@ describe('useApplying utils', () => {
     expect(rangeMatchFormat([10, 20, true], 'K')).toBe('10 - 20 K 严格')
     expect(rangeMatch('', [10, 20, true])).toBe(false)
     expect(rangeMatch('no numbers', [10, 20, false])).toBe(false)
+    expect(rangeMatch('10-15K', [10, 20, true])).toBe(true)
     expect(rangeMatch('15-18K', [20, 10, true])).toBe(true)
+    expect(rangeMatch('15-21K', [10, 20, true])).toBe(false)
     expect(rangeMatch('18K', [10, 20, true])).toBe(true)
     expect(rangeMatch('20-10K', [9, 15, false])).toBe(true)
+    expect(rangeMatch('20-26K', [10, 20, false])).toBe(true)
+    expect(rangeMatch('21-22K', [10, 20, false])).toBe(false)
     expect(rangeMatch(`${'9'.repeat(400)}K`, [10, 20, false])).toBe(false)
   })
 

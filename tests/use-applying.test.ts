@@ -1028,6 +1028,45 @@ describe('useApplying handles', () => {
     )
   })
 
+  it('falls back to jobInfo address when card.address is missing during amap resolution', async () => {
+    const conf = useConf()
+    conf.formData.jobAddress.enable = false
+    conf.formData.amap.enable = true
+    const baseCard = createJobCard()
+
+    const amapJob = createJob({
+      card: createJobCard({
+        address: undefined,
+        jobInfo: {
+          ...baseCard.jobInfo,
+          address: '上海杨浦',
+        },
+      }),
+    })
+    const amapPipeline = await createHandle()
+    const ctx = createLogContext(amapJob)
+
+    mockAmapGeocode.mockResolvedValueOnce({
+      formatted_address: '上海市杨浦区',
+      location: '121.5,31.3',
+    })
+    mockAmapDistance.mockResolvedValueOnce({
+      driving: { distance: 0, duration: 0, ok: true },
+      straight: { distance: 0, duration: 0, ok: true },
+      walking: { distance: 0, duration: 0, ok: true },
+    })
+
+    await expect(
+      (async () => {
+        for (const step of amapPipeline.before) {
+          await step({ data: amapJob }, ctx)
+        }
+      })(),
+    ).resolves.toBeUndefined()
+
+    expect(mockAmapGeocode).toHaveBeenCalledWith('上海杨浦')
+  })
+
   it('caches pipeline results and supports anonymous cache managers', async () => {
     const user = useUser()
 

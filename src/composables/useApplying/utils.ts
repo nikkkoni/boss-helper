@@ -219,7 +219,7 @@ export function rangeMatchFormat(v: FormDataRange, unit: string): string {
 // 匹配范围
 export function rangeMatch(rangeStr: string, form: FormDataRange): boolean {
   if (!rangeStr) return false
-  let [start, end, mode] = form // mode: true=严格(包含)，false=宽松(重叠)
+  let [start, end, mode] = form // mode: true=严格(目标范围需完全落在职位范围内)，false=宽松(任意重叠)
   if (start > end) {
     ;[start, end] = [end, start]
   }
@@ -238,7 +238,7 @@ export function rangeMatch(rangeStr: string, form: FormDataRange): boolean {
   //     inputStart,inputEnd,start,end
   // })
   if (mode) {
-    // 严格：职位范围(input) 完全覆盖 目标范围(form)
+    // 严格：目标范围(form) 需完全落在职位范围(input) 内
     return start <= inputStart && inputEnd <= end
   } else {
     // 宽松：任意重叠（闭区间）

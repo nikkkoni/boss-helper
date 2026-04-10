@@ -5,6 +5,7 @@ import type {
   BossHelperAgentProgress,
   BossHelperAgentState,
 } from '@/message/agent'
+import { logger } from '@/utils/logger'
 
 const listeners = new Set<(event: BossHelperAgentEvent) => void>()
 
@@ -25,7 +26,11 @@ export function createBossHelperAgentEvent(args: {
 
 export function emitBossHelperAgentEvent(event: BossHelperAgentEvent) {
   for (const listener of listeners) {
-    listener(event)
+    try {
+      listener(event)
+    } catch (error) {
+      logger.error('Boss helper agent event listener failed', error)
+    }
   }
 }
 

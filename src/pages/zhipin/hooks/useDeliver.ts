@@ -93,16 +93,19 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
       }
       if (data.status.status !== 'wait') continue
 
+      let extraDelaySeconds = 0
       let stopResult: JobListHandleResult | null = null
       try {
         data.status.setStatus('running', '处理中')
         currentData.value = data
-        stopResult = await executeDeliverJob({
+        const result = await executeDeliverJob({
           cacheResult: createHandleResult(targetJobList.length, seenJobIds),
           chandle,
           data,
           deps: createDeliverDeps(),
         })
+        extraDelaySeconds = result.extraDelaySeconds ?? 0
+        stopResult = result.stopResult
       } catch (error) {
         data.status.setStatus('error', '未知报错')
         logger.error('未知报错', error, data)
@@ -128,6 +131,7 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
           cachePipelineResultFn: cachePipelineResult,
           conf,
           data,
+          extraDelaySeconds,
           statistics,
         })
       }

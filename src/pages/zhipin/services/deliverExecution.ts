@@ -26,6 +26,11 @@ export interface DeliverJobListHandleResult {
   seenJobIds: string[]
 }
 
+export interface DeliverIterationResult {
+  extraDelaySeconds?: number
+  stopResult: DeliverJobListHandleResult | null
+}
+
 export interface DeliverExecutionDependencies {
   cachePipelineResultFn: typeof cachePipelineResult
   common: {
@@ -84,7 +89,7 @@ export async function handleDeliverSuccess(options: {
   ctx: logData
   deps: DeliverExecutionDependencies
   result: DeliverJobListHandleResult
-}): Promise<DeliverJobListHandleResult | null> {
+}): Promise<DeliverIterationResult> {
   const { data, ctx, deps, result } = options
   deps.log.add(data, null, ctx, ctx.message)
   deps.statistics.todayData.success++
@@ -126,7 +131,9 @@ export async function handleDeliverSuccess(options: {
         },
       }),
     )
-    return result
+    return {
+      stopResult: result,
+    }
   }
 
   const date = getCurDay()
@@ -134,7 +141,9 @@ export async function handleDeliverSuccess(options: {
     await deps.statistics.updateStatistics(createDailyStatisticsSnapshot(date))
   }
 
-  return null
+  return {
+    stopResult: null,
+  }
 }
 
 export async function handleDeliverFailure(options: {
@@ -143,7 +152,7 @@ export async function handleDeliverFailure(options: {
   ctx: logData
   deps: DeliverExecutionDependencies
   result: DeliverJobListHandleResult
-}): Promise<DeliverJobListHandleResult | null> {
+}): Promise<DeliverIterationResult> {
   const { data, error, ctx, deps, result } = options
   const deliverError = normalizeDeliverError(error)
   const aiScoreDetail =
@@ -198,11 +207,12 @@ export async function handleDeliverFailure(options: {
         },
       }),
     )
-    return result
+    return {
+      stopResult: result,
+    }
   }
 
   if (deliverError instanceof RateLimitError) {
-    deps.conf.formData.delay.deliveryInterval += 3
     const msg = '触发boss速率限制,操作频繁, 建议增加投递间隔. 已临时增加3s间隔'
     deps.conf.formData.notification.value && (await notification(msg))
     ElMessage.error(msg)
@@ -223,9 +233,16 @@ export async function handleDeliverFailure(options: {
       }),
     )
     await delay(30)
+
+    return {
+      extraDelaySeconds: 3,
+      stopResult: null,
+    }
   }
 
-  return null
+  return {
+    stopResult: null,
+  }
 }
 
 /**
@@ -239,7 +256,7 @@ export async function executeDeliverJob(options: {
   chandle: Awaited<ReturnType<typeof createHandle>>
   data: MyJobListData
   deps: DeliverExecutionDependencies
-}) {
+}): Promise<DeliverIterationResult> {
   const { cacheResult, chandle, data, deps } = options
   const ctx: logData = { listData: data }
   emitBossHelperAgentEvent(
@@ -290,6 +307,7 @@ export async function finalizeDeliverIteration(options: {
   cachePipelineResultFn: typeof cachePipelineResult
   conf: DeliverExecutionDependencies['conf']
   data: MyJobListData
+  extraDelaySeconds?: number
   statistics: DeliverExecutionDependencies['statistics']
 }) {
   try {
@@ -305,5 +323,5 @@ export async function finalizeDeliverIteration(options: {
   }
 
   options.statistics.todayData.total++
-  await delay(options.conf.formData.delay.deliveryInterval)
+  await delay(options.conf.formData.delay.deliveryInterval + (options.extraDelaySeconds ?? 0))
 }

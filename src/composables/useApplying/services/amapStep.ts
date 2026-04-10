@@ -29,11 +29,11 @@ export function createLoadCardStep(): Handler {
 
 export function createResolveAmapStep(): Handler {
   return async (args: StepArgs, ctx: logData) => {
-    ctx.amap ??= {}
-    try {
-      ctx.amap.geocode = await amapGeocode(
-        args.data.card?.address ?? args.data.card?.jobInfo.address ?? '',
-      )
+      ctx.amap ??= {}
+      try {
+        ctx.amap.geocode = await amapGeocode(
+          args.data.card?.address ?? args.data.card?.jobInfo?.address ?? '',
+        )
       if (!ctx.amap.geocode?.location) {
         throw new JobAddressError('未获取到地址经纬度')
       }
