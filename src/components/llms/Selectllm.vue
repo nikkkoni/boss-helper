@@ -164,6 +164,8 @@ async function testJob() {
   testJobStop.value = false
   const md = model.modelData.find((v) => currentModel.value === v.key)
   if (singleMode.value !== 'vip' && (!currentModel.value || !md)) {
+    testJobLoading.value = false
+    testJobStop.value = true
     ElMessage.warning('请在上级弹窗右上角选择模型')
     return
   }
@@ -370,7 +372,7 @@ async function copyOnlineResume() {
       :autosize="{ minRows: 10, maxRows: 18 }"
       type="textarea"
     />
-    <ElForm v-else v-model="message as string" label-width="auto" class="demo-dynamic">
+    <ElForm v-else label-width="auto" class="demo-dynamic">
       <ElFormItem v-for="(item, index) in message as prompt" :key="index">
         <template #label>
           <ElSelectV2 v-model="item.role" :options="role" style="width: 140px" />
