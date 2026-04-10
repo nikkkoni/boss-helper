@@ -1,348 +1,165 @@
-# BossHelper 构建计划
+# BossHelper 当前整治待办
 
-> 基于 [review.md](review.md) 生成，按优先级和依赖关系分阶段执行。  
-> 当前状态：Lint 0 errors / 23 tests passing / Coverage Stmts ~69% Branches ~51% Funcs ~71% Lines ~71% / v0.4.4
-> 总计 Bug: 73 个（B1-B73） | 安全漏洞: 18 个（S1-S18） | 已覆盖 Phase 0-5（完成） + Phase 6-9（进行中）
-
----
-
-## Phase 0 — 环境治理 & 基线建立
-
-> 目标：清理技术债，统一工具链，确保基线可度量。
-
-- [x] **P0-1** 删除 `bun.lock`，统一到 pnpm 单一包管理器
-- [x] **P0-2** 检查 `.github/workflows/main.yml`，移除不存在的 `build:noTsc` 引用，与 `ci.yml` 合并或废弃
-- [x] **P0-3** 删除 `src/composables/useWebSocket/bak.ts` 等残留文件
-- [x] **P0-4** 配置 Vitest coverage（`v8`），生成基线覆盖率报告，记录当前值（2026-04-08：Stmts 74.07% / Branches 50.72% / Funcs 79.41% / Lines 76.69%）
-- [x] **P0-5** 在 package.json 中补充 `pnpm test` 脚本说明（README / copilot-instructions 同步更新）
+> 基于 [review.md](review.md)（2026-04-10）重排，只保留当前未完成且需要继续跟进的事项。  
+> 当前基线：Lint clean / 23+ tests passing / Coverage Stmts ~69% Branches ~51% Funcs ~71% Lines ~71% / Version 0.4.4  
+> 范围：73 个确认 Bug（B1-B73）+ 18 个安全问题（S1-S18）+ review 中未编号的架构、性能、测试债务。
 
 ---
 
-## Phase 1 — 稳定性 & 安全性（高优先级）
+## 重排原则
 
-> 目标：解决 review 指出的最高风险：DOM 脆弱性、安全漏洞、缺少限流。
-
-### 1.1 DOM 层加固
-
-- [x] **P1-1** `elmGetter.ts` 增强：重试机制 + 可配置超时 + MutationObserver 包装器改进
-- [x] **P1-2** 关键选择器注册表：将散落的 CSS 选择器统一收敛到 `src/utils/selectors.ts`，便于站点变更时集中更新
-- [x] **P1-3** `useVue` 挂载竞态处理：添加 DOM ready 等待守卫 + 挂载失败重试
-- [x] **P1-4** 在 `content.ts` / `main-world.ts` 中增加选择器健康检查，页面结构不匹配时输出明确警告日志
-
-### 1.2 安全加固
-
-- [x] **P1-5** 收窄 `externally_connectable`：限定为 `https://localhost:*` 和 `https://127.0.0.1:*`，拒绝 HTTP（实际使用 Chrome 合法 match pattern：`https://localhost/*` / `https://127.0.0.1/*`）
-- [x] **P1-6** Agent bridge 通信签名：在 `scripts/agent-bridge.mjs` 和扩展端加入共享密钥验证（HMAC 或 token）
-- [x] **P1-7** AI 响应渲染 XSS 防护：审计所有 `v-html` / `innerHTML` 使用，改用 DOMPurify 或纯文本渲染
-- [x] **P1-8** 敏感数据存储审计：API key 迁移到 `session:` 或使用 `chrome.storage.session`，减少持久化存储风险
-- [x] **P1-9** WXT manifest 添加 `content_security_policy`，限制 script-src / connect-src
-
-### 1.3 限流 & 容错
-
-- [x] **P1-10** 引入 `p-limit` 或自定义并发控制器，用于 AI 调用和 DOM 批量操作
-- [x] **P1-11** AI 调用增加指数退避重试（OpenAI 429 / 5xx / 网络错误）
-- [x] **P1-12** `agentBatchLoop.ts` 增加最大循环次数 / 超时硬上限，防止无限循环
-- [x] **P1-13** 管线错误处理改进：捕获后记录完整上下文（job ID + 管线步骤 + 原始错误），替代现有的宽泛 catch
+1. 以 `review.md` 为唯一事实来源，`todo.md` 只保留执行顺序和落地动作。
+2. 不再保留已完成的历史 Phase 0-6 作为主线待办；历史完成情况以 git 记录和 `review.md` 的“已解决问题”为准。
+3. 先按修复波次推进，再按模块批量修复，避免按单个编号碎片化提交。
+4. 所有任务都尽量保留 review 编号，便于提交、测试和回归时对照。
+5. 功能增强项暂缓，先把 HIGH bug、安全问题、测试基础设施和 Store 架构债务清掉。
 
 ---
 
-## Phase 2 — 测试体系（中高优先级）
+## Wave 1 — 立即修复
 
-> 目标：覆盖率从 <50% 提升到 80%+，关键路径 E2E 覆盖。
+> 目标：先清空 review 明确标记的 HIGH bug 和 HIGH 安全问题。
 
-### 2.1 单元测试扩展
+### 1.1 核心运行正确性
 
-- [x] **P2-1** `useApplying/` 管线测试：每个 handle 的正常/异常/边界路径
-- [x] **P2-2** `usePipelineCache.ts` 测试：缓存命中/失效/用户切换场景
-- [x] **P2-3** `useModel/` 测试：OpenAI 调用 mock、签名密钥逻辑、错误恢复
-- [x] **P2-4** `useWebSocket/` 测试：protobuf 编解码、连接断开重连、消息乱序
-- [x] **P2-5** `elmGetter.ts` 测试：jsdom 环境模拟 MutationObserver + 选择器匹配
-- [x] **P2-6** `utils/` 工具函数测试：`parse.ts`、`amap.ts`、`deepmerge.ts`、`request.ts`
-- [x] **P2-7** `stores/conf/validation.ts` 边界测试：无效 patch、类型不匹配、嵌套合并
+- [x] 修复 `stores/jobs.ts` 的 map getter 和详情加载轮询，确保 jobs store 可正确读取、同步和等待数据。（B1, B58）
+- [x] 修复 `utils/request.ts` timeout 单位错误，恢复真实超时语义。（B2）
+- [x] 修复 `stores/conf/index.ts` 的 `confDelete`、`confRecommend`、migration 顺序问题，确保配置删除、推荐和版本迁移真正生效。（B3, B43, B52）
+- [ ] 修复 `composables/useApplying/utils.ts` 中 `sendPublishReq` 的无限递归风险。（B4）
+- [ ] 修复 `entrypoints/main-world.ts` 的 `axiosLoad` 默认值和并发串扰，改为 request-local loader。（B5, B6）
+- [ ] 修复 `composables/useModel/index.ts` 的排序变异和重复初始化问题，避免响应式副作用和 HMR 重复数据。（B7, B51）
+- [ ] 修复 `components/llms/Selectllm.vue` 的 loading 泄漏和无效 `ElForm v-model`。（B39, B54）
+- [ ] 修复 `useWebSocket/type.ts` 缺失 `originImage` 字段导致的 protobuf 编解码错误。（B10）
 
-### 2.2 组件 & 集成测试
+### 1.2 输入、安全与序列化
 
-- [x] **P2-8** Vue 组件测试：`Ui.vue`、`Jobcard.vue`、`ConfigLLM.vue` 关键交互路径（vitest + @vue/test-utils）
-- [x] **P2-9** 消息层集成测试：模拟 background ↔ content ↔ agent 消息流
+- [ ] 修复 `filterSteps.ts` 用户输入直接进入 `RegExp` 的问题，统一做转义和预编译。（B9, B69, S4）
+- [ ] 修复 `utils/safeHtml.ts` 的 `<br>` 正则错误，并收紧 `style` 白名单策略。（B40, S8）
+- [ ] 修复 `utils/deepmerge.ts` 的数组克隆和 `constructor` 原型污染防护。（B11, B41）
+- [ ] 修复 `stores/signedKey.ts` 的环境 URL 选择，避免开发环境请求生产地址。（B42）
 
-### 2.3 E2E 测试
+### 1.3 Bridge / MCP / 消息链路安全
 
-- [x] **P2-10** Playwright E2E 框架搭建：配置 WXT 测试模式 + 测试用 fixture 页面
-- [x] **P2-11** 核心 E2E 用例：扩展加载 → 页面注入 → 职位列表解析 → 单个投递流程模拟
-- [x] **P2-12** Agent bridge E2E：CLI 命令 → relay → 扩展 → 页面控制器全链路
+- [ ] 收敛 `message/background.ts` 的代理能力，增加 URL 白名单并处理 `tab.id` 空值场景。（S1, B47）
+- [ ] 为 `scripts/agent-bridge.mjs` 增加请求体大小限制，移除 relay HTML 和 stdout 中的明文 token，并废弃 query-param token。（S3, S13, S15）
+- [ ] 为 `scripts/agent-mcp-server.mjs` 增加 stdin 串行队列和 Content-Length 上限校验。（B8, S14）
+- [ ] 修复 `scripts/agent-security.mjs` 的文件权限和证书 CA 标记。（S2, S10）
 
-### 2.4 CI 集成
+### 1.4 Wave 1 验收
 
-- [x] **P2-13** 统一 `.github/workflows/ci.yml`：lint → type-check → test → build（所有浏览器）→ coverage 上传
-- [x] **P2-14** PR 卡控：coverage 低于阈值或测试失败则 block merge
-
----
-
-## Phase 3 — 架构重构（中优先级）
-
-> 目标：降低耦合度，为多站点扩展铺路，提升可维护性。
-
-### 3.1 Site Adapter 抽象
-
-- [x] **P3-1** 定义 `SiteAdapter` 接口：`parseJobList()`, `parseJobDetail()`, `applyToJob()`, `navigatePage()`, `getSelectors()`
-- [x] **P3-2** 将 `pages/zhipin/` 实现为 `ZhipinAdapter`，抽取纯逻辑到 adapter
-- [x] **P3-3** `elmGetter` + 选择器注册表适配：按 adapter 实例注入不同选择器集
-
-### 3.2 管线 & AI 模块化
-
-- [x] **P3-4** 管线步骤拆为独立纯函数/服务，每步可独立测试、可替换
-- [x] **P3-5** AI 解析层重构：用 OpenAI structured outputs（function calling / JSON mode）替代正则/启发式 JSON 提取
-- [x] **P3-6** 抽取错误恢复策略为独立模块（`src/utils/retry.ts`），统一重试、退避、熔断逻辑
-
-### 3.3 代码整理
-
-- [x] **P3-7** 合并重复的 job mapping utils（散落在 hooks/stores 中的映射函数）
-- [x] **P3-8** 拆分超长 hook 文件（>300 LOC）：按职责拆为更小的 composable
-- [x] **P3-9** Agent scripts（`scripts/*.mjs`）TypeScript 化或增加 JSDoc 类型注解
+- [ ] 运行 `pnpm lint`
+- [ ] 运行 `pnpm check`
+- [ ] 运行 `pnpm test -- --run`
+- [ ] 为 Wave 1 改动补最小必要单测，优先覆盖 timeout、配置迁移、message 安全和 bridge body 限制。
 
 ---
 
-## Phase 4 — 性能优化（中优先级）
+## Wave 2 — 中优先级缺陷与中等级安全
 
-> 目标：降低资源占用，减少被平台检测的风险。
+> 目标：清理 MEDIUM bug，补齐消息边界、异步竞态和易错 UI。
 
-- [x] **P4-1** AI 调用批处理：相似请求合并或使用更轻量模型做初筛
-- [x] **P4-2** `usePipelineCache` 增加 TTL 和 LRU 淘汰策略，防止内存膨胀
-- [x] **P4-3** 减少 deep clone/merge 频次：用 `structuredClone` 替代 lodash 深拷贝，热路径用 immutable update
-- [x] **P4-4** DOM 遍历节流：batch loop 中的 DOM 操作增加 requestAnimationFrame / idle callback 调度
-- [x] **P4-5** Token 用量统计：在 `useStatistics` 中追踪每次 AI 调用的 token 消耗，UI 展示累计费用
-- [x] **P4-6** Zhipin 请求频率控制：所有对 zhipin.com 的 API/页面请求增加最小间隔
+### 2.1 用户、模型和并发状态
 
----
+- [ ] 修复 `stores/user.ts` 的模板渲染、gender 默认值、Cookie 可选链、简历拉取异常处理问题。（B12, B13, B44, B45）
+- [ ] 修复 `aiFiltering.ts`、`openai.ts`、`signedKey.ts` 的可选链、null content、`.pop()` 变异、stream 死代码和 `undefined` 拼接问题。（B14, B15, B18, B19, B20）
+- [ ] 修复 `useStatistics.ts`、`usePipelineCache.ts`、`utils/concurrency.ts` 的竞态、初始化等待和 falsy 缓存命中问题。（B16, B17, B21, B50）
+- [ ] 修复 `deliverExecution.ts`、`agentEvents.ts`、`amapStep.ts`、`rangeMatch` 注释/实现不一致等流程错误。（B22, B23, B48, B49）
+- [ ] 解除 `stores/user.ts ↔ stores/conf/index.ts` 循环依赖，并把 `initUser` 轮询改为 watch 驱动。（B57, B59）
 
-## Phase 5 — 文档 & 开发者体验（低优先级）
+### 2.2 组件与交互缺陷
 
-- [x] **P5-1** 创建 `ARCHITECTURE.md`：系统架构图（agent flow / pipeline / 消息通信层）
-- [x] **P5-2** 补充 MCP/bridge 部署文档：protobuf schema、本地服务器要求、环境变量清单
-- [x] **P5-3** 关键 hooks 和 composables 补充 JSDoc（仅限状态机 / 复杂控制流）
-- [x] **P5-4** README.md 更新：反映当前架构、命令清单、开发流程
-- [x] **P5-5** 贡献指南 `CONTRIBUTING.md`：代码规范、PR 流程、测试要求
+- [ ] 修复 `components/SalaryRange.vue` 的 props 变异和 `@Click` 事件名错误。（B24, B25）
+- [ ] 修复 `pages/zhipin/components/Ui.vue` 的版本比较和 `data-help` 属性拼写问题。（B26, B46）
+- [ ] 修复 `pages/zhipin/components/Ai.vue`、`components/App.vue`、`components/CreateLLM.vue`、`pages/zhipin/components/Card.vue` 等明显 UI 缺陷。（B27, B28, B29, B56）
+- [ ] 修复 `utils/logger.ts` iframe 清理和 console 方法绑定问题。（B30, B65）
+- [ ] 修复 `utils/elmGetter.ts` timeout=0 泄漏和 `components/form/FormSelect.vue` 的 `defineModel` 误用。（B53, B55）
+- [ ] 修复 `stores/log.tsx` 查询时全量复制反转造成的性能问题。（B60）
 
----
+### 2.3 中等级安全
 
-## Phase 6 — 功能增强（按需）
+- [ ] 统一 `postMessage` / `onMessage` 的 `origin` 校验，移除 `'*'` 广播。（S5, S6, S16）
+- [ ] 收紧 bridge/background 的 localhost 协议与 CORS 规则，修复 trusted relay 配置矛盾。（S7, S18）
+- [ ] 为跳转和地图请求增加协议、参数校验，并限制 WebSocket monkey patch 的作用范围。（S9, S11, S12）
+- [ ] 将 `window.__bossHelperAgent` 以及其它调试型全局暴露收敛为 dev-only。（S17）
 
-- [ ] **P6-1** Multi-LLM fallback：主模型失败时自动降级到备选模型
-- [ ] **P6-2** 模型选择 UI 改进：支持按场景（筛选/评审/打招呼）分别配模型
-- [ ] **P6-3** 投递回滚/撤回能力：记录已投递状态，支持标记和导出
-- [ ] **P6-4** 管线可视化调试器：UI 中展示每个 job 的管线执行路径和各步骤耗时/结果
-- [ ] **P6-5** 多站点适配：基于 Phase 3 adapter 层，新增猎聘（Liepin）适配器作为 PoC
-- [x] **P6-6** MCP 深度集成：利用 MCP tools 实现更智能的自主 agent 能力
+### 2.4 Wave 2 验收
 
----
-
-## Phase 7 — Bug 修复（高优先级，本轮审查新增）
-
-> 目标：修复本轮深度审查发现的确认 Bug（review.md 中 B1-B73）。
-
-### 7.1 HIGH 级别 Bug（必须立即修复）
-
-- [ ] **P7-1** `stores/jobs.ts:136` — `this._map.value` 改为 `this._map`（reactive 对象无 `.value`）
-- [ ] **P7-2** `utils/request.ts:178` — 修复 timeout 单位：移除多余的 `* 1000`
-- [ ] **P7-3** `stores/conf/index.ts:276` — `confDelete` 改用 `{ clone: false }` 或 `Object.assign`
-- [ ] **P7-4** `composables/useApplying/utils.ts:147` — `sendPublishReq` 递归需递减 retries 或改用循环
-- [ ] **P7-5** `entrypoints/main-world.ts:73-84` — `axiosLoad` 初始化为 no-op `() => {}`
-- [ ] **P7-6** `entrypoints/main-world.ts:73` — `axiosLoad` 改为 per-request 模式（Map 或 config 绑定）
-- [ ] **P7-7** `composables/useModel/index.ts:47` — computed sort 改为 `[...arr].sort()` 避免原地变异
-- [ ] **P7-8** `scripts/agent-mcp-server.mjs:1181` — stdin handler 添加消息队列防止并发交错
-- [ ] **P7-9** `composables/useApplying/services/filterSteps.ts:253` — RegExp 前转义用户输入
-- [ ] **P7-10** `useWebSocket/type.ts:82` — protobuf 定义补充 `originImage` 字段 (field 3)
-- [ ] **P7-39** `components/llms/Selectllm.vue:163-168` — testJobLoading 提前 return 时未重置为 false，UI 永久 loading
-- [ ] **P7-40** `utils/safeHtml.ts:96` — htmlToText 正则补上闭合 `>`（`/<br\s*\/?>/gi`）
-- [ ] **P7-41** `utils/deepmerge.ts:46` — 增加 `constructor` key 的原型污染防护
-- [ ] **P7-42** `stores/signedKey.ts:89-93` — 恢复环境判断逻辑，dev 不应打向生产 URL
-- [ ] **P7-43** `stores/conf/index.ts:60-67` — 修复版本迁移循环方向（从低到高遍历）
-
-### 7.2 MEDIUM 级别 Bug
-
-- [ ] **P7-11** `utils/deepmerge.ts:22` — `deepClone` 增加数组处理 `Array.isArray(source) ? source.map(deepClone) : ...`
-- [ ] **P7-12** `stores/user.ts:309` — 移除 `replaceAll('undefined', '')`，修复模板渲染根本原因
-- [ ] **P7-13** `stores/user.ts:133` — gender 增加 unknown/未设置处理
-- [ ] **P7-14** `composables/useApplying/services/aiFiltering.ts:91-96` — 可选链补全 `straight?.distance`
-- [ ] **P7-15** `composables/useApplying/services/aiFiltering.ts:113` — AI null content 应拒绝或警告
-- [ ] **P7-16** `composables/useStatistics.ts:82` — 修复 fire-and-forget async 竞态
-- [ ] **P7-17** `composables/usePipelineCache.ts:44` — 添加 `initialized` promise 等待
-- [ ] **P7-18** `composables/useModel/openai.ts:163,189` — `.pop()` 改为 `.at(-1)` 并处理 undefined
-- [ ] **P7-19** `composables/useModel/openai.ts:200-202` — 移除死代码 stream 分支
-- [ ] **P7-20** `composables/useModel/signedKey.ts:97` — `data.amap ?? ''` 修复 undefined 拼接
-- [ ] **P7-21** `utils/concurrency.ts:75` — 使用 `has()` 检查缓存而非依赖值 truthiness
-- [ ] **P7-22** `pages/zhipin/services/deliverExecution.ts:205` — 限流间隔增加上限（如 max +15s）
-- [ ] **P7-23** `pages/zhipin/hooks/agentEvents.ts:27` — listener 包裹 try/catch 防止事件丢失
-- [ ] **P7-24** `components/SalaryRange.vue` — 改用 `defineModel` 替代 props 直接修改
-- [ ] **P7-25** `components/SalaryRange.vue:49` — `@Click` 改为 `@click`
-- [ ] **P7-26** `pages/zhipin/components/Ui.vue:211` — 改用语义化版本比较或 numeric version
-- [ ] **P7-27** `pages/zhipin/components/Ai.vue:88` — `v-key` 改为 `:key`
-- [ ] **P7-28** `components/App.vue:70` — 合并重复 `style` 属性
-- [ ] **P7-29** `components/CreateLLM.vue:31` — `color16()` 增加 `.padStart(2, '0')`
-- [ ] **P7-30** `utils/logger.ts:11-16` — iframe 添加 null 检查 + 考虑移除或清理
-- [ ] **P7-44** `stores/user.ts:319` — 可选链改为 `window.Cookie?.get('bst')`
-- [ ] **P7-45** `stores/user.ts:320-327` — `getUserResumeData` fetch 添加 try/catch
-- [ ] **P7-46** `pages/zhipin/components/Ui.vue:266` — `Alertdata-help` 改为 `data-help`
-- [ ] **P7-47** `message/background.ts:169` — `tab.id!` 改为 `tab.id ?? -1` 或提前过滤
-- [ ] **P7-48** `composables/useApplying/services/amapStep.ts:35` — 补全 `card?.jobInfo?.address` 可选链
-- [ ] **P7-49** `composables/useApplying/utils.ts:240-246` — rangeMatch 注释与代码逻辑对齐
-- [ ] **P7-50** `composables/useStatistics.ts:48` — date 改为 getter 或每次 update 时重新获取
-- [ ] **P7-51** `composables/useModel/index.ts:72` — init() 改 `push` 为赋值，防 HMR 重复
-- [ ] **P7-52** `stores/conf/index.ts:251-273` — confRecommend 补充 `{ clone: false }`
-- [ ] **P7-53** `utils/elmGetter.ts:135-184` — timeoutMs=0 时添加默认超时或文档说明
-- [ ] **P7-54** `components/llms/Selectllm.vue:373` — 移除 ElForm 上的无效 v-model
-- [ ] **P7-55** `components/form/FormSelect.vue:5` — defineModel 改为 defineProps
-- [ ] **P7-56** `pages/zhipin/components/Card.vue:17` — 移除废弃 wheelDelta，统一用 deltaY
-- [ ] **P7-57** `stores/user.ts ↔ stores/conf/index.ts` — 解除循环依赖（提取公共依赖或延迟导入）
-- [ ] **P7-58** `stores/jobs.ts:61-68` — loadJobDetail 改用 Vue watch 替代 setInterval 轮询
-- [ ] **P7-59** `stores/user.ts:87-101` — initUser 改用 Vue watch 替代 setInterval 轮询
-- [ ] **P7-60** `stores/log.tsx:230` — query() 优化为倒序索引或缓存结果
-
-### 7.3 LOW 级别 Bug
-
-- [ ] **P7-31** `chatPrompt.ts:10` — 消息 ID 改用 `crypto.randomUUID()` 或计数器
-- [ ] **P7-32** `useApplying/index.ts:10` — `cacheManagers` 添加 LRU/WeakRef 淘汰策略
-- [ ] **P7-33** `useAgentBatchRunner.ts:161` — `startBatch` 在 async 前设置同步锁防 TOCTOU
-- [ ] **P7-34** `agentReview.ts:16` — `pendingReviews` 添加最大数量限制
-- [ ] **P7-35** `usePager.ts:62` — `initPager` 添加并发调用保护
-- [ ] **P7-36** `protobuf.ts:22` — 消息 ID 增加计数器避免同毫秒重复
-- [ ] **P7-37** `handler.ts:136` — 验证 `protobuf.load()` vs `protobuf.parse()` 用法
-- [ ] **P7-38** `agent-orchestrator.mjs:89` — `-h` 改为映射 `--help`
-- [ ] **P7-61** `utils/selectors.ts:49` — `boss-helper-job-warp` 改为 `boss-helper-job-wrap`
-- [ ] **P7-62** `components/llms/ConfigLLM.vue:39,63,67` — timestamp key 改用 `crypto.randomUUID()`
-- [ ] **P7-63** `utils/index.ts:50` — delayLoadId 改为 per-call 隔离或文档标注共享行为
-- [ ] **P7-64** `utils/parse.ts:25-27` — 移除 `window.__q_parseGptJson` 全局挂载或加 dev 门控
-- [ ] **P7-65** `utils/logger.ts:87-88` — group/groupEnd 添加 `.bind(cleanConsole)`
-- [ ] **P7-66** `components/conf/Log.vue + Store.vue` — 补充实际功能或标记为 WIP，统一按钮语言
-- [ ] **P7-67** `useWebSocket/protobuf.ts:54-56` — 移除未使用的 `toArrayBuffer()` 死代码
-- [ ] **P7-68** `useWebSocket/protobuf.ts:22` — 魔法数字 `68256432452609` 添加注释说明
-- [ ] **P7-69** `useApplying/services/filterSteps.ts:253` — RegExp 预编译移到步骤创建时
-- [ ] **P7-70** `scripts/agent-cli.mjs:66` — JSON.parse 添加 try/catch + 友好错误提示
-- [ ] **P7-71** `scripts/agent-orchestrator.mjs:300,499` — 添加 null 检查
-- [ ] **P7-72** `scripts/agent-launch.mjs:100` — child.pid undefined 时报错而非写入文件
-- [ ] **P7-73** `scripts/agent-launch.mjs:87` — 父进程关闭 logFd 文件描述符
+- [ ] 补齐对应模块单测：`safeHtml`、`concurrency`、`useStatistics`、`openai`、`stores/user`
+- [ ] 增加消息链路与 bridge 安全回归测试
 
 ---
 
-## Phase 8 — 安全加固（高优先级，本轮审查新增）
+## Wave 3 — 架构、组件和性能债务
 
-> 目标：修复本轮审查发现的安全漏洞（review.md 中 S1-S18）。
+> 目标：处理 review 中未编号但已明确点名的架构、组件、类型和性能问题。
 
-### 8.1 HIGH 级别安全
+### 3.1 Store 架构统一
 
-- [ ] **P8-1** `message/background.ts:110-137` — `request` 方法添加 URL 白名单，禁止任意 URL 代理
-- [ ] **P8-2** `scripts/agent-security.mjs:67` — Token/证书文件写入权限改为 `0o600`
-- [ ] **P8-3** `scripts/agent-bridge.mjs:139` — 添加请求体大小限制（如 1MB）
-- [ ] **P8-4** `filterSteps.ts:253` — RegExp 输入转义（同 P7-9）
-- [ ] **P8-13** `scripts/agent-bridge.mjs:108-109,597-598` — Token 不嵌入 relay HTML，启动日志不打印明文 token
-- [ ] **P8-14** `scripts/agent-mcp-server.mjs:1199` — Content-Length 添加上限校验（如 10MB），超限拒绝
+- [ ] 统一 store 模式：将 `stores/jobs.ts`、`stores/user.ts`、`stores/log.tsx` 收敛到 Pinia，并消除非原子更新和模块级共享状态。（Store 设计问题 1, 4, 6）
+- [ ] 为 `stores/signedKey.ts` 的 fire-and-forget Promise 增加错误处理，避免静默失败。（Store 设计问题 3）
+- [ ] 为全局 `window.__q_*` 调试入口增加 `import.meta.env.DEV` 门控。（Store 设计问题 2）
+- [ ] 统一 `_list`、`_map` 等公开性约定，补齐 jobs store 的可见性和状态边界。（Store 设计问题 5）
 
-### 8.2 MEDIUM 级别安全
+### 3.2 组件、类型与可维护性
 
-- [ ] **P8-5** `message/contentScript.ts:124,180` + `message/index.ts:17` — `postMessage` 改用 `location.origin` 替代 `'*'`
-- [ ] **P8-6** `message/index.ts:20-24` — `onMessage` 添加 `event.origin` 验证
-- [ ] **P8-7** `scripts/agent-bridge.mjs:84` — CORS 限制为 `http://localhost:*` 和 `https://localhost:*`
-- [ ] **P8-8** `utils/safeHtml.ts:76` — sanitizer 移除 `style` 属性或添加 CSS 白名单
-- [ ] **P8-9** `useAgentMetaQueries.ts:83` — 导航前验证 `targetUrl` 协议（仅允许 http/https）
-- [ ] **P8-10** `scripts/agent-security.mjs:116` — 自签名证书 `cA: true` 改为 `false`
-- [ ] **P8-11** `utils/amap.ts:56,68` — 地址参数使用 `encodeURIComponent()`
-- [ ] **P8-12** `chatStreamHooks.ts:54-68` — 按 URL 模式过滤 WebSocket 而非全局猴子补丁
-- [ ] **P8-15** `scripts/agent-bridge.mjs:93-94` — 移除 query param token 支持，仅保留 header 认证
-- [ ] **P8-16** `contentScript.ts:179` + `useDeliveryControl.ts:146` — message handler 添加 `event.origin` 验证
-- [ ] **P8-17** `useDeliveryControl.ts:133` — `window.__bossHelperAgent` 改为 dev-only 或使用 Symbol key
-- [ ] **P8-18** `background.ts:28` — trusted relay 协议匹配改为同时支持 http/https localhost
+- [ ] 拆分 `Service.vue`、`Selectllm.vue`、`Config.vue` 三个超大组件，按职责拆出表单、测试对话框、服务配置等子组件。（组件质量问题 1）
+- [ ] 为 `Selectllm.vue`、`LLMFormItem.vue`、`Logs.vue`、`Ai.vue` 增加 scoped 样式隔离，避免全局样式泄漏。（组件质量问题 2）
+- [ ] 清理 `Chat.vue`、`CreateLLM.vue` 等死代码和未使用变量，补齐 `Jobcard.vue` 可访问性与暗色模式问题。（组件质量问题 4, 5, 6）
+- [ ] 修复 `boosData.d.ts`、`openapi.d.ts`、`deliverError.ts`、`useModel/type.ts` 的命名和类型债务，并减少 `any` / `as any`。（类型系统问题 1, 2, 3, 4, 5）
+
+### 3.3 性能热点
+
+- [ ] 优化 `pages/zhipin/components/Ui.vue` 鼠标移动热路径，避免每帧执行 `elementFromPoint()` 和 `getBoundingClientRect()`。（架构/性能问题 1）
+- [ ] 优化 `utils/amap.ts` 请求策略，只请求启用的距离类型，并复用已修复的参数编码逻辑。（架构/性能问题 2）
+- [ ] 去重 `stores/signedKey.ts` 重复请求 `/v1/llm/model_list` 的问题。（架构/性能问题 3）
+- [ ] 优化 `mqtt.ts` 拼包、`agent-bridge.mjs` relay 广播策略和 `agent-relay.html` 日志 DOM 增长问题。（架构/性能问题 4, 5, 6）
+- [ ] 替换 `useVue.ts` 中废弃的 `__lookupSetter__` / `__lookupGetter__` API。（架构/性能问题 7）
 
 ---
 
-## Phase 9 — 代码质量改进（中优先级，本轮审查新增）
+## Wave 4 — 测试体系补齐
 
-> 目标：修复代码质量问题，提升可维护性。
+> 目标：让 review 中点名的关键模块都有独立测试，覆盖异常路径和并发场景。
 
-### 9.1 组件质量
+- [ ] 在 `vitest.config.ts` 中开启 `restoreMocks: true`，并把 coverage include 改为目录规则而不是手工白名单。（测试覆盖缺口 7, 8）
+- [ ] 补充 review 点名缺测模块的独立单测：`useCommon.ts`、`useChat.ts`、`useStatistics.ts`、`useVue.ts`、`conf/index.ts`、`jobs.ts`、`user.ts`、`signedKey.ts`、`content.ts`、`main-world.ts`、`concurrency.ts`、`retry.ts`、`safeHtml.ts`、`useDeliveryControl.ts`、`useAgentBatchRunner.ts`。（测试覆盖缺口 9）
+- [ ] 拆分 `agent-mcp-server.test.ts` 巨型测试，按功能拆为多个小用例。（测试覆盖缺口 10）
+- [ ] 扩展 E2E 到异常场景：网络错误、限流响应、并发投递、导航中断、端口冲突、预构建产物缺失。（测试覆盖缺口 11, 12, 13）
+- [ ] 修复 `chat-stream.test.ts` 的 `WebSocket.prototype.send` 并行测试污染问题。（测试覆盖缺口 14）
+- [ ] 补齐 `goldHunterFilter`、`shouldStop: () => true`、组件交互边界、缓存并发写、batch 双启动、mock 保真度、DOMRect 补丁等基础测试缺口。（测试覆盖缺口 1, 2, 3, 4, 5, 6）
 
-- [ ] **P9-1** 拆分超大组件：`Service.vue` (646行) → 支付/密钥/AI配置分离
-- [ ] **P9-2** 拆分 `Selectllm.vue` (587行) → 测试对话框独立组件
-- [ ] **P9-3** 拆分 `Config.vue` (635行) → 按配置类别拆分
-- [ ] **P9-4** 修复全局样式泄漏：`Selectllm.vue`、`LLMFormItem.vue`、`Logs.vue`、`Ai.vue` 改用 scoped + `:deep()`
-- [ ] **P9-5** 修复 `Chat.vue:87` 死代码 `v-if="false"`
-- [ ] **P9-6** 修复 `CreateLLM.vue` 未使用的 `_` 前缀变量
-- [ ] **P9-7** 修复 `Jobcard.vue` 可访问性：添加 `tabindex`、`role="button"`、键盘事件
-- [ ] **P9-8** 修复 `App.vue:131` 暗色模式 disabled 按钮 + `About.vue:62` 亮色模式白色文字
+---
 
-### 9.2 类型系统
+## Wave 5 — 低优先级收尾
 
-- [ ] **P9-9** 重命名 `boosData.d.ts` → `bossData.d.ts`，接口改为 PascalCase
-- [ ] **P9-10** 减少 `boosData.d.ts` 中 `any` 使用（25+ 处），改用具体类型或 `unknown`
-- [ ] **P9-11** 修复 `openapi.d.ts` 中 `Record<string, never>` 为具体类型
-- [ ] **P9-12** 修复 `deliverError.ts` 类名 `BoosHelperError` → `BossHelperError`（全代码库）
-- [ ] **P9-13** 修复 `deliverExecution.ts:97,165,213` 的 `as any` 强转，修正 `deliverState` 类型
-- [ ] **P9-14** 修复 `useModel/type.ts:23` 类名 `llm` → `LLM`
+> 目标：合并处理 LOW bug 和脚本健壮性问题，避免主线修复期间被噪音打断。
 
-### 9.3 架构/性能
+- [ ] 处理 ID 生成、锁和容量上限类问题：`chatPrompt.ts`、`useApplying/index.ts`、`useAgentBatchRunner.ts`、`agentReview.ts`、`usePager.ts`、`useWebSocket/protobuf.ts`。（B31, B32, B33, B34, B35, B36）
+- [ ] 校正协议/CLI/脚本健壮性问题：`handler.ts`、`agent-orchestrator.mjs`、`agent-cli.mjs`、`agent-launch.mjs`。（B37, B38, B70, B71, B72, B73）
+- [ ] 清理命名、key 生成、共享状态和调试暴露问题：`selectors.ts`、`ConfigLLM.vue`、`utils/index.ts`、`utils/parse.ts`、`components/conf/Log.vue`、`components/conf/Store.vue`。（B61, B62, B63, B64, B66）
+- [ ] 清理 `useWebSocket/protobuf.ts` 的死代码与魔法数字说明。（B67, B68）
 
-- [ ] **P9-15** 优化 `Ui.vue:73-93` `boxStyles` computed：节流鼠标移动事件
-- [ ] **P9-16** 优化 `utils/amap.ts:64`：按配置禁用类型跳过对应请求
-- [ ] **P9-17** 修复 `stores/signedKey.ts:222,267` 重复请求 `/v1/llm/model_list`
-- [ ] **P9-18** 优化 `mqtt.ts:63` Uint8Array 拼接：使用 `.set()` 替代 spread
-- [ ] **P9-19** 修复 `agent-bridge.mjs:216` 多 relay 支持（轮询或最新连接）
-- [ ] **P9-20** 限制 `agent-relay.html:189` 日志 DOM 最大行数
-- [ ] **P9-21** 替换 `useVue.ts:188-190` 废弃 `__lookupSetter__` 为 `Object.getOwnPropertyDescriptor`
+---
 
-### 9.4 测试覆盖
+## 暂缓项
 
-- [ ] **P9-22** 补充 `goldHunterFilter` 测试
-- [ ] **P9-23** 补充 `shouldStop: () => true` batch loop 终止路径测试
-- [ ] **P9-24** 增强组件测试交互/边界场景
-- [ ] **P9-25** 补充缓存并发写、batch 双启动竞态测试
-- [ ] **P9-26** 增强 `wxt-imports.ts` mock 保真度（sender/sendResponse）
-- [ ] **P9-27** 补充 `vitest.setup.ts` DOMRect `top`/`right`/`bottom`/`left` 属性
-
-### 9.5 测试基础设施（第二轮审查新增）
-
-- [ ] **P9-28** vitest.config.ts 添加 `restoreMocks: true`，防止 spy 跨测试泄漏
-- [ ] **P9-29** Coverage include 改为 `src/**/*.ts` + excludes，替代手动白名单
-- [ ] **P9-30** 拆分 `agent-mcp-server.test.ts` 巨型测试为独立 test case
-- [ ] **P9-31** `chat-stream.test.ts` WebSocket.prototype.send 改用 afterEach 恢复，防并行泄漏
-- [ ] **P9-32** 补充核心模块独立单元测试：`useCommon.ts`、`useChat.ts`、`useStatistics.ts`、`conf/index.ts`、`jobs.ts`、`user.ts`、`signedKey.ts`、`concurrency.ts`、`safeHtml.ts`、`useDeliveryControl.ts`
-- [ ] **P9-33** E2E 补充异常场景：网络错误、限流响应、导航中断
-- [ ] **P9-34** E2E `pickAvailablePort` 改用随机端口或锁机制防冲突
-- [ ] **P9-35** E2E 添加构建产物新鲜度检查或自动构建步骤
-
-### 9.6 Store 架构统一（第二轮审查新增）
-
-- [ ] **P9-36** `stores/jobs.ts` 从 Class 单例改为 Pinia `defineStore`
-- [ ] **P9-37** `stores/user.ts` 从纯 composable 改为 Pinia `defineStore`
-- [ ] **P9-38** `stores/log.tsx` 从模块级状态改为 Pinia `defineStore`，JSX 列定义分离
-- [ ] **P9-39** 全局 `window.__q_*` 调试挂载添加 `import.meta.env.DEV` 门控
-- [ ] **P9-40** `stores/signedKey.ts` fire-and-forget Promise 添加 `.catch()` 错误处理
-- [ ] **P9-41** `stores/jobs.ts:85-92` `syncJobList` 改为原子操作（一次性替换而非先删后加）
+- [ ] 在 Wave 1-4 基本完成前，不重新排期功能增强：Multi-LLM fallback、场景化模型配置、投递回滚、管线可视化、多站点适配。
 
 ---
 
 ## 里程碑
 
-| 里程碑 | 包含 Phase | 核心交付物 | 验收标准 |
-|--------|-----------|-----------|---------|
-| **M0 - 基线就绪** | Phase 0 | 干净工具链 + 覆盖率基线 | 无冗余文件，CI 可运行，覆盖率已记录 |
-| **M1 - 稳定可靠** | Phase 1 | DOM 加固 + 安全修复 + 限流 | 选择器集中管理，bridge 签名，无 XSS，batch 有硬上限 |
-| **M2 - 质量保障** | Phase 2 | 测试覆盖 80%+ + CI 卡控 | 所有 composables 有测试，E2E 核心链路通过，PR 自动检查 |
-| **M3 - 架构升级** | Phase 3 | Adapter 层 + 管线纯函数化 | Zhipin 完全通过 adapter 接口工作，管线步骤可独立测试 |
-| **M4 - 性能达标** | Phase 4 | 资源优化 + 费用可视 | Token 消耗可追踪，内存无膨胀，请求有频率控制 |
-| **M5 - 文档完善** | Phase 5 | 架构文档 + 开发者指南 | README 准确，新开发者可自助上手 |
-| **M6 - 功能扩展** | Phase 6 | 多模型/多站点/可视化 | 至少一个备选模型可 fallback，管线可视化可用 |
-| **M7 - Bug 清零** | Phase 7 | 73 个确认 Bug 全部修复 | 所有 HIGH/MEDIUM bug 修复，LOW bug 有跟踪 |
-| **M8 - 安全加固** | Phase 8 | 18 个安全漏洞修复 | 无 HIGH 级别安全漏洞，postMessage/CORS/代理/token 受限 |
-| **M9 - 质量提升** | Phase 9 | 代码质量 + Store 统一 + 测试基础设施 | Store 统一 Pinia，样式 scoped，覆盖率配置自动化，核心模块有独立测试 |
+1. M1：Wave 1 完成，HIGH bug 和 HIGH 安全问题清零。
+2. M2：Wave 2 完成，消息链路、用户态、组件交互不再存在已知中级风险。
+3. M3：Wave 3 完成，Store 模式统一，超大组件拆分，主要性能热点收敛。
+4. M4：Wave 4 完成，核心模块具备独立单测和异常场景 E2E。
+5. M5：Wave 5 完成，LOW bug 和脚本收尾问题全部关闭。
 
 ---
 
-## 执行原则
+## 执行约束
 
-1. **Phase 0 → 1 → 2 严格按序**，后续 Phase 可交叉并行
-2. 每个任务完成后运行 `pnpm lint && pnpm check && pnpm test -- --run` 验证
-3. 安全相关改动（P1-5 ~ P1-9, P8）需单独 PR，附安全审计说明
-4. 重构任务（Phase 3, Phase 9）采用"先加测试、再重构"模式，确保行为不变
-5. 功能增强（Phase 6）根据用户反馈优先级动态排序
-6. **Phase 7 (Bug 修复) 优先于 Phase 8 (安全) 和 Phase 9 (质量)**，HIGH 级别 bug 应最先修复
-7. Phase 7-9 为深度审查新增（含两轮审查），应尽快纳入开发计划
-8. 第二轮审查新增项（P7-39~P7-73, P8-13~P8-18, P9-28~P9-41）与原有项保持同优先级处理
+1. 每个提交只覆盖一个波次内的一个模块簇，避免跨层大杂烩。
+2. 先补回归测试再动重构；安全修复优先于样式、命名和功能增强。
+3. 每个模块修复时同步关闭重复项，例如 `RegExp`、`safeHtml`、`postMessage`、Store 轮询问题不要拆成多个零碎提交。
+4. 任何一项完成后，都要在提交说明里标注对应 review 编号。
