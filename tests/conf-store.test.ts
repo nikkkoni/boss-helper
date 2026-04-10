@@ -10,6 +10,7 @@ const { elMessageError, elMessageSuccess, mockUserStore } = vi.hoisted(() => ({
   mockUserStore: {
     changeUser: vi.fn(async () => {}),
     getUserId: vi.fn(() => null),
+    registerUserConfigSnapshotGetter: vi.fn(),
   },
 }))
 
@@ -28,6 +29,7 @@ vi.mock('element-plus', async (importOriginal) => {
 })
 
 vi.mock('@/stores/user', () => ({
+  registerUserConfigSnapshotGetter: mockUserStore.registerUserConfigSnapshotGetter,
   useUser: () => mockUserStore,
 }))
 
@@ -46,6 +48,7 @@ describe('useConf store', () => {
     mockUserStore.getUserId.mockReset()
     mockUserStore.getUserId.mockReturnValue(null)
     mockUserStore.changeUser.mockClear()
+    mockUserStore.registerUserConfigSnapshotGetter.mockClear()
     elMessageSuccess.mockClear()
     elMessageError.mockClear()
   })

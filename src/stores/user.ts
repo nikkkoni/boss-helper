@@ -1,13 +1,14 @@
 import { ElMessage } from 'element-plus'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { useStatistics } from '@/composables/useStatistics'
 import { getRootVue } from '@/composables/useVue'
 import { counter } from '@/message'
 import type { CookieInfo } from '@/message'
-import { amapKeyStorageKey, formDataKey, sanitizeSensitiveFormData, useConf } from '@/stores/conf'
+import { amapKeyStorageKey, formDataKey, sanitizeSensitiveFormData } from '@/stores/conf/shared'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
+import type { FormData } from '@/types/formData'
 
 function toCookieGender(gender?: number): CookieInfo['gender'] {
   if (gender === 0) {
@@ -126,6 +127,70 @@ const cookieTableData = computed(() => Object.values(cookieDatas.value))
 
 const resume = ref<bossZpResumeData>()
 
+let getCurrentFormDataSnapshot: (() => Partial<FormData>) | null = null
+
+export function registerUserConfigSnapshotGetter(getter: (() => Partial<FormData>) | null) {
+  getCurrentFormDataSnapshot = getter
+}
+
+function getSanitizedCurrentFormData() {
+  if (getCurrentFormDataSnapshot == null) {
+    return undefined
+  }
+
+  return sanitizeSensitiveFormData(getCurrentFormDataSnapshot())
+}
+
+export function waitForRootUserInfo(
+  rootState: { userInfo?: UserInfo | null | undefined },
+  now = Date.now(),
+): Promise<UserInfo | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    let stop = () => {}
+
+    const cleanup = () => {
+      stop()
+      clearTimeout(timeout)
+    }
+
+    const finish = (value: UserInfo | null | undefined) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      cleanup()
+      resolve(value ?? null)
+    }
+
+    const applyUserInfo = (userInfo: UserInfo | null | undefined) => {
+      if (userInfo) {
+        info.value = userInfo
+        logger.debug('用户信息获取成功: ', now, userInfo)
+        finish(info.value)
+      }
+    }
+
+    stop = watch(
+      () => rootState.userInfo,
+      (userInfo) => {
+        applyUserInfo(userInfo)
+      },
+      {
+        flush: 'sync',
+        immediate: true,
+      },
+    )
+
+    const timeout = setTimeout(() => {
+      if (!info.value) {
+        logger.error('获取用户信息失败', now, { rootState, info })
+      }
+      finish(null)
+    }, 25000)
+  })
+}
+
 export function useUser() {
   function getUserId(): number | string | null {
     return info.value?.userId ?? window?._PAGE?.uid ?? window?._PAGE?.userId
@@ -134,38 +199,14 @@ export function useUser() {
   async function initUser() {
     const v = await getRootVue()
     const now = Date.now()
-    await new Promise((resolve) => {
-      let settled = false
+    const rootState = v?.$store?.state
 
-      const cleanup = () => {
-        clearInterval(interval)
-        clearTimeout(timeout)
-      }
+    if (rootState == null || typeof rootState !== 'object') {
+      logger.error('获取用户信息失败', now, { root: v, info })
+      return null
+    }
 
-      const finish = (value: UserInfo | null | undefined) => {
-        if (settled) {
-          return
-        }
-        settled = true
-        cleanup()
-        resolve(value)
-      }
-
-      const interval = setInterval(() => {
-        const userInfo = v?.$store?.state?.userInfo
-        if (userInfo) {
-          info.value = userInfo
-          logger.debug('用户信息获取成功: ', now, userInfo)
-          finish(info.value)
-        }
-      }, 400)
-      const timeout = setTimeout(() => {
-        if (!info.value) {
-          logger.error('获取用户信息失败', now, { root: v, info })
-        }
-        finish(null)
-      }, 25000)
-    })
+    return waitForRootUserInfo(rootState as { userInfo?: UserInfo | null | undefined }, now)
   }
 
   async function initCookie() {
@@ -185,8 +226,6 @@ export function useUser() {
       uid = getUserId()
     }
 
-    const { formData } = useConf()
-
     if (uid == null) {
       throw new Error('找不到uid')
     }
@@ -200,7 +239,7 @@ export function useUser() {
       gender: toCookieGender(info.value?.gender),
       flag: info.value?.studentFlag ? 'student' : 'staff',
       date: new Date().toLocaleString(),
-      form: sanitizeSensitiveFormData(formData),
+      form: getSanitizedCurrentFormData(),
       statistics: await useStatistics().getStatistics(),
     }
     logger.debug('开始创建账户', info.value, val)

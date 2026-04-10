@@ -15,12 +15,16 @@ import {
 import { logger } from '@/utils/logger'
 
 import { defaultFormData } from './info'
+import { registerUserConfigSnapshotGetter } from '../user'
+import {
+  amapKeyStorageKey,
+  formDataKey,
+  formDataTemplatesKey,
+  sanitizeSensitiveFormData,
+} from './shared'
 
 export * from './info'
-
-export const formDataKey = 'local:web-geek-job-FormData'
-export const formDataTemplatesKey = 'local:web-geek-job-FormDataTemplates'
-export const amapKeyStorageKey = 'session:web-geek-job-AmapKey'
+export * from './shared'
 
 type FormDataTemplates = Record<string, Partial<FormData>>
 export type FormDataMigration = [string, (from: Partial<FormData>) => Partial<FormData>]
@@ -58,19 +62,12 @@ export function applyFormDataMigrations(
   return from
 }
 
-export function sanitizeSensitiveFormData(data: Partial<FormData>) {
-  const snapshot = jsonClone(data)
-  delete snapshot.userId
-  if (snapshot.amap) {
-    snapshot.amap.key = ''
-  }
-  return snapshot
-}
-
 export const useConf = defineStore('conf', () => {
   const formData: FormData = reactive(jsonClone(defaultFormData))
   const isLoaded = ref(false)
   const templateNames = ref<string[]>([])
+
+  registerUserConfigSnapshotGetter(() => formData)
 
   async function formDataHandler(from: Partial<FormData>) {
     try {
