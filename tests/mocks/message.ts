@@ -3,7 +3,7 @@ type CookieInfo = {
   date: string
   flag: 'student' | 'staff'
   form?: Record<string, unknown>
-  gender: 'man' | 'woman'
+  gender: 'man' | 'woman' | 'unknown'
   remark: string
   statistics?: string
   uid: string

@@ -9,6 +9,73 @@ import { amapKeyStorageKey, formDataKey, sanitizeSensitiveFormData, useConf } fr
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
 
+function toCookieGender(gender?: number): CookieInfo['gender'] {
+  if (gender === 0) {
+    return 'man'
+  }
+  if (gender === 1) {
+    return 'woman'
+  }
+  return 'unknown'
+}
+
+function getResumeGenderLabel(gender?: number) {
+  if (gender === 0) {
+    return '男'
+  }
+  if (gender === 1) {
+    return '女'
+  }
+  return '未知'
+}
+
+function toResumeValue(value: unknown) {
+  if (value == null) {
+    return ''
+  }
+  return String(value).trim()
+}
+
+function joinResumeValues(values: unknown[], separator: string) {
+  return values.map((value) => toResumeValue(value)).filter(Boolean).join(separator)
+}
+
+function formatResumeRange(start?: string, end?: string) {
+  const range = joinResumeValues([start, end], '-')
+  return range ? ` ${range}` : ''
+}
+
+function formatResumeBlock(tag: string, value: unknown) {
+  const text = toResumeValue(value)
+  return text ? `<${tag}>\n${text}\n</${tag}>` : ''
+}
+
+function sanitizeResumeText(text: string) {
+  return text
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function getBossToken() {
+  const pageToken = window?.Cookie?.get?.('bst')
+  if (typeof pageToken === 'string' && pageToken) {
+    return pageToken
+  }
+
+  const cookieToken = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith('bst='))
+    ?.slice(4)
+
+  if (cookieToken) {
+    return decodeURIComponent(cookieToken)
+  }
+
+  return ''
+}
+
 export interface UserInfo {
   userId: number
   identity: number
@@ -130,7 +197,7 @@ export function useUser() {
       user: info.value?.showName ?? info.value?.name ?? '未知用户',
       avatar: info.value?.tinyAvatar ?? info.value?.largeAvatar ?? '',
       remark: '',
-      gender: info.value?.gender === 0 ? 'man' : 'woman',
+      gender: toCookieGender(info.value?.gender),
       flag: info.value?.studentFlag ? 'student' : 'staff',
       date: new Date().toLocaleString(),
       form: sanitizeSensitiveFormData(formData),
@@ -215,8 +282,8 @@ export function useUser() {
       if (options.基本信息.年龄 && data.baseInfo?.age) {
         template += `\n- 年龄: ${data.baseInfo.age}`
       }
-      if (options.基本信息.性别 && data.baseInfo?.gender) {
-        template += `\n- 性别: ${data.baseInfo.gender === 1 ? '男' : '女'}`
+      if (options.基本信息.性别 && data.baseInfo) {
+        template += `\n- 性别: ${getResumeGenderLabel(data.baseInfo.gender)}`
       }
       if (options.基本信息.学历 && data.baseInfo?.degreeCategory) {
         template += `\n- 学历: ${data.baseInfo.degreeCategory}`
@@ -230,8 +297,11 @@ export function useUser() {
     }
     const expectList = data.expectList?.filter((item) => item?.positionType === 0)
     if (options.期望职位 && expectList && expectList.length > 0) {
+      const positions = expectList
+        .map((item) => joinResumeValues([item?.positionName, item?.salaryDesc], ' '))
+        .filter(Boolean)
       template += `\n\n## 期望职位
-${expectList?.map((item) => `- ${item?.positionName} ${item?.salaryDesc}`).join('\n')}`
+${positions.map((item) => `- ${item}`).join('\n')}`
     }
     if (options.个人优势 && data.userDesc) {
       template += `\n\n## 个人优势
@@ -241,72 +311,80 @@ ${data.userDesc}
 </个人优势>`
     }
     if (options.工作经历 && data.workExpList != null && data.workExpList.length > 0) {
+      const workExperiences = data.workExpList
+        ?.map((item) => {
+          const heading = joinResumeValues([
+            item?.companyName,
+            item?.positionName ? `(${item.positionName})` : '',
+          ], ' ')
+          const emphasis = Array.isArray(item?.emphasis)
+            ? item.emphasis.map((entry) => toResumeValue(entry)).filter(Boolean).map((entry) => `\`${entry}\``).join(' ')
+            : ''
+          const sections = [
+            heading ? `### ${heading}${formatResumeRange(item?.startDate, item?.endDate)}` : '',
+            emphasis ? `相关技能: ${emphasis}` : '',
+            formatResumeBlock('工作内容', item?.workContent),
+            formatResumeBlock('工作业绩', item?.workPerformance),
+          ].filter(Boolean)
+          return sections.join('\n\n')
+        })
+        .filter(Boolean)
       template += `\n\n## 工作经历
-${data.workExpList
-  ?.map(
-    (item) => `
-### ${item?.companyName} (${item?.positionName}) ${item?.startDate}-${item?.endDate}
-
-相关技能: ${item?.emphasis?.map((e) => `\`${e}\``).join(' ')}
-${
-  item?.workContent
-    ? `<工作内容>
-${item.workContent}
-</工作内容>`
-    : ''
-}
-${
-  item?.workPerformance
-    ? `<工作业绩>
-${item.workPerformance}
-</工作业绩>`
-    : ''
-}
-`,
-  )
-  .join('\n')}`
+${workExperiences.join('\n\n')}`
     }
     if (options.项目经历 && data.projectExpList && data.projectExpList.length > 0) {
+      const projectExperiences = data.projectExpList
+        ?.map((item) => {
+          const heading = joinResumeValues([
+            item?.name,
+            item?.roleName ? `(${item.roleName})` : '',
+          ], ' ')
+          const sections = [
+            heading ? `### ${heading}${formatResumeRange(item?.startDate, item?.endDate)}` : '',
+            formatResumeBlock('项目描述', item?.projectDesc),
+            formatResumeBlock('项目业绩', item?.performance),
+          ].filter(Boolean)
+          return sections.join('\n')
+        })
+        .filter(Boolean)
       template += `\n\n## 项目经历
-${data.projectExpList
-  ?.map(
-    (item) => `
-### ${item?.name} (${item?.roleName}) ${item?.startDate}-${item?.endDate}
-<项目描述>
-${item?.projectDesc}
-</项目描述>
-<项目业绩>
-${item?.performance}
-</项目业绩>
-`,
-  )
-  .join('\n')}`
+${projectExperiences.join('\n\n')}`
     }
     if (options.教育经历 && data.educationExpList && data.educationExpList.length > 0) {
+      const educationExperiences = data.educationExpList
+        ?.map((item) => {
+          const firstLine = joinResumeValues([
+            item?.school,
+            joinResumeValues([item?.startYear, item?.endYear], '-'),
+          ], ' ')
+          const secondLine = toResumeValue(item?.degreeName)
+          return [firstLine ? `- ${firstLine}` : '', secondLine].filter(Boolean).join('\n')
+        })
+        .filter(Boolean)
       template += `\n## 教育经历
-${data.educationExpList
-  ?.map(
-    (item) => `- ${item?.school} ${item?.startYear}-${item?.endYear}
-    ${item?.degreeName}`,
-  )
-  .join('\n')}`
+${educationExperiences.join('\n')}`
     }
     if (options.资格证书 && data.certificationList && data.certificationList.length > 0) {
+      const certifications = data.certificationList
+        ?.map((item) => toResumeValue(item?.certName))
+        .filter(Boolean)
       template += `\n## 资格证书:
-${data.certificationList?.map((item) => `- ${item?.certName}`).join('\n')}
+${certifications.map((item) => `- ${item}`).join('\n')}
 `
     }
     if (options.志愿者经历 && data.volunteerExpList && data.volunteerExpList.length > 0) {
+      const volunteerExperiences = data.volunteerExpList
+        ?.map((item) => {
+          const firstLine = joinResumeValues([item?.name, item?.serviceLength], ' ')
+          const secondLine = toResumeValue(item?.volunteerDesc ?? item?.volunteerDescription)
+          return [firstLine ? `- ${firstLine}` : '', secondLine].filter(Boolean).join('\n')
+        })
+        .filter(Boolean)
       template += `\n## 志愿者经历:
-${data.volunteerExpList
-  ?.map(
-    (item) => `- ${item?.name} ${item?.serviceLength}
-    ${item?.volunteerDesc ?? item?.volunteerDescription}`,
-  )
-  .join('\n')}`
+${volunteerExperiences.join('\n')}`
     }
 
-    template = template.replaceAll('undefined', '')
+    template = sanitizeResumeText(template)
     logger.debug('getUserResumeString', { template, data })
     return template
   }
@@ -316,26 +394,32 @@ ${data.volunteerExpList
       return resume.value
     }
 
-    const token = window?.Cookie.get('bst')
-    const res = await fetch(
-      `https://www.zhipin.com/wapi/zpgeek/resume/geek/preview/data.json?_=${Date.now()}`,
-      {
-        headers: {
-          Zp_token: token,
+    const token = getBossToken()
+
+    try {
+      const res = await fetch(
+        `https://www.zhipin.com/wapi/zpgeek/resume/geek/preview/data.json?_=${Date.now()}`,
+        {
+          headers: {
+            Zp_token: token,
+          },
         },
-      },
-    )
-    const data = (await res.json()) as {
-      code: number
-      message: string
-      zpData: bossZpResumeData
+      )
+      const data = (await res.json()) as {
+        code: number
+        message: string
+        zpData: bossZpResumeData
+      }
+      if (data.code !== 0) {
+        throw new Error(data.message)
+      }
+      resume.value = data.zpData
+      return data.zpData
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误'
+      ElMessage.error(`获取简历数据失败: ${message}`)
+      throw error instanceof Error ? error : new Error(message)
     }
-    if (data.code !== 0) {
-      ElMessage.error(`获取简历数据失败: ${data.message}`)
-      throw new Error(data.message)
-    }
-    resume.value = data.zpData
-    return data.zpData
   }
   return {
     info,

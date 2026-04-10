@@ -91,7 +91,7 @@ export interface CookieInfo {
   user: string
   avatar: string
   remark: string
-  gender: 'man' | 'woman'
+  gender: 'man' | 'woman' | 'unknown'
   flag: 'student' | 'staff'
   date: string
   form?: Partial<FormData>

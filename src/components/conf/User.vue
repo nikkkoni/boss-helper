@@ -24,6 +24,28 @@ const show = defineModel<boolean>({ required: true })
 const currentRow = ref<CookieInfo | undefined>()
 const loading = ref(false)
 
+function getGenderTagColor(gender: CookieInfo['gender']) {
+  switch (gender) {
+    case 'man':
+      return '#9BC1FE'
+    case 'woman':
+      return '#FFBDEB'
+    default:
+      return '#C8CED8'
+  }
+}
+
+function getGenderLabel(gender: CookieInfo['gender']) {
+  switch (gender) {
+    case 'man':
+      return '男'
+    case 'woman':
+      return '女'
+    default:
+      return '未知'
+  }
+}
+
 async function handleCreate() {
   loading.value = true
   try {
@@ -132,9 +154,9 @@ function handleCurrentChange(val: CookieInfo | undefined) {
             round
             effect="dark"
             style="border-style: none"
-            :color="scope.row.gender === 'man' ? '#9BC1FE' : '#FFBDEB'"
+            :color="getGenderTagColor(scope.row.gender)"
           >
-            {{ scope.row.gender === 'man' ? '男' : '女' }}
+            {{ getGenderLabel(scope.row.gender) }}
           </ElTag>
         </template>
       </ElTableColumn>
