@@ -73,7 +73,7 @@ const svgAttrs = [
 
 export function sanitizeRichHtml(value?: string | null) {
   return DOMPurify.sanitize(value ?? '', {
-    ALLOWED_ATTR: ['alt', 'class', 'href', 'rel', 'src', 'style', 'target', 'title'],
+    ALLOWED_ATTR: ['alt', 'class', 'href', 'rel', 'src', 'target', 'title'],
     ALLOWED_TAGS: ['a', 'b', 'br', 'div', 'h2', 'h3', 'img', 'li', 'ol', 'p', 'span', 'strong', 'ul'],
   })
 }
@@ -93,7 +93,7 @@ export function sanitizeSvgHtml(value?: string | null) {
 export function htmlToText(value?: string | null) {
   const sanitized = sanitizeRichHtml(value)
   const withLineBreaks = sanitized
-    .replaceAll(/<br\s*\/?/gi, '<br')
+    .replaceAll(/<br\s*\/?>/gi, '<br>')
     .replaceAll(/<br>/gi, '\n')
     .replaceAll(/<\/p>/gi, '\n')
     .replaceAll(/<\/div>/gi, '\n')
