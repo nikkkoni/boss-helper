@@ -1,8 +1,8 @@
 // @ts-check
 
 import { randomBytes } from 'node:crypto'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmod, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -12,6 +12,9 @@ import selfsigned from 'selfsigned'
 /** @typedef {import('./types.d.ts').AgentBridgeRuntime} AgentBridgeRuntime */
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
+const PRIVATE_FILE_MODE = 0o600
+const AGENT_BRIDGE_TOKEN_FILE_ENV = 'BOSS_HELPER_AGENT_TOKEN_FILE'
+const AGENT_BRIDGE_CERT_FILE_ENV = 'BOSS_HELPER_AGENT_CERT_FILE'
 
 export const repoRoot = dirname(scriptDir)
 export const AGENT_BRIDGE_TOKEN_ENV = 'BOSS_HELPER_AGENT_BRIDGE_TOKEN'
@@ -23,6 +26,38 @@ export const AGENT_BRIDGE_EVENT_PORT_PREFIX = '__boss_helper_agent_event_port__'
 
 const agentBridgeTokenFile = join(repoRoot, '.boss-helper-agent-token')
 const agentBridgeCertFile = join(repoRoot, '.boss-helper-agent-cert.json')
+
+/** @param {NodeJS.ProcessEnv} [env] */
+function getAgentBridgeTokenFile(env = process.env) {
+  return env[AGENT_BRIDGE_TOKEN_FILE_ENV]?.trim() || agentBridgeTokenFile
+}
+
+/** @param {NodeJS.ProcessEnv} [env] */
+function getAgentBridgeCertFile(env = process.env) {
+  return env[AGENT_BRIDGE_CERT_FILE_ENV]?.trim() || agentBridgeCertFile
+}
+
+/** @param {string} filePath */
+function ensurePrivateFileModeSync(filePath) {
+  chmodSync(filePath, PRIVATE_FILE_MODE)
+}
+
+/** @param {string} filePath */
+async function ensurePrivateFileMode(filePath) {
+  await chmod(filePath, PRIVATE_FILE_MODE)
+}
+
+/** @param {string} filePath @param {string} content */
+function writePrivateFileSync(filePath, content) {
+  writeFileSync(filePath, content, { encoding: 'utf8', mode: PRIVATE_FILE_MODE })
+  ensurePrivateFileModeSync(filePath)
+}
+
+/** @param {string} filePath @param {string} content */
+async function writePrivateFile(filePath, content) {
+  await writeFile(filePath, content, { encoding: 'utf8', mode: PRIVATE_FILE_MODE })
+  await ensurePrivateFileMode(filePath)
+}
 
 /** @param {string | undefined} value @param {number} fallback */
 function parsePort(value, fallback) {
@@ -47,23 +82,27 @@ export function getAgentBridgeHttpsPort(env = process.env) {
 
 /** @param {NodeJS.ProcessEnv} [env] */
 export function getAgentBridgeTokenSync(env = process.env) {
+  const tokenFile = getAgentBridgeTokenFile(env)
   const tokenFromEnv = env[AGENT_BRIDGE_TOKEN_ENV]?.trim()
   if (tokenFromEnv) {
-    if (!existsSync(agentBridgeTokenFile) || readFileSync(agentBridgeTokenFile, 'utf8').trim() !== tokenFromEnv) {
-      writeFileSync(agentBridgeTokenFile, `${tokenFromEnv}\n`, 'utf8')
+    if (!existsSync(tokenFile) || readFileSync(tokenFile, 'utf8').trim() !== tokenFromEnv) {
+      writePrivateFileSync(tokenFile, `${tokenFromEnv}\n`)
+    } else {
+      ensurePrivateFileModeSync(tokenFile)
     }
     return tokenFromEnv
   }
 
-  if (existsSync(agentBridgeTokenFile)) {
-    const storedToken = readFileSync(agentBridgeTokenFile, 'utf8').trim()
+  if (existsSync(tokenFile)) {
+    const storedToken = readFileSync(tokenFile, 'utf8').trim()
     if (storedToken) {
+      ensurePrivateFileModeSync(tokenFile)
       return storedToken
     }
   }
 
   const generatedToken = randomBytes(32).toString('hex')
-  writeFileSync(agentBridgeTokenFile, `${generatedToken}\n`, 'utf8')
+  writePrivateFileSync(tokenFile, `${generatedToken}\n`)
   return generatedToken
 }
 
@@ -96,11 +135,14 @@ export function getAgentBridgeEventPortName(token) {
   return `${AGENT_BRIDGE_EVENT_PORT_PREFIX}:${token}`
 }
 
-/** @returns {Promise<AgentBridgeCertificate>} */
-export async function getAgentBridgeCertificate() {
+/** @param {NodeJS.ProcessEnv} [env] @returns {Promise<AgentBridgeCertificate>} */
+export async function getAgentBridgeCertificate(env = process.env) {
+  const certFile = getAgentBridgeCertFile(env)
+
   try {
-    const stored = /** @type {Partial<AgentBridgeCertificate>} */ (JSON.parse(await readFile(agentBridgeCertFile, 'utf8')))
+    const stored = /** @type {Partial<AgentBridgeCertificate>} */ (JSON.parse(await readFile(certFile, 'utf8')))
     if (typeof stored?.key === 'string' && typeof stored?.cert === 'string') {
+      await ensurePrivateFileMode(certFile)
       return /** @type {AgentBridgeCertificate} */ (stored)
     }
   } catch {
@@ -113,7 +155,7 @@ export async function getAgentBridgeCertificate() {
     extensions: [
       {
         name: 'basicConstraints',
-        cA: true,
+        cA: false,
       },
       {
         name: 'keyUsage',
@@ -145,6 +187,6 @@ export async function getAgentBridgeCertificate() {
     key: certificate.private,
   })
 
-  await writeFile(agentBridgeCertFile, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+  await writePrivateFile(certFile, `${JSON.stringify(payload, null, 2)}\n`)
   return payload
 }
