@@ -63,7 +63,7 @@
 - [x] 修复 `stores/user.ts` 的模板渲染、gender 默认值、Cookie 可选链、简历拉取异常处理问题。（B12, B13, B44, B45）
 - [x] 修复 `aiFiltering.ts`、`openai.ts`、`signedKey.ts` 的可选链、null content、`.pop()` 变异、stream 死代码和 `undefined` 拼接问题。（B14, B15, B18, B19, B20）
 - [x] 修复 `useStatistics.ts`、`usePipelineCache.ts`、`utils/concurrency.ts` 的竞态、初始化等待和 falsy 缓存命中问题。（B16, B17, B21, B50）
-- [ ] 修复 `deliverExecution.ts`、`agentEvents.ts`、`amapStep.ts`、`rangeMatch` 注释/实现不一致等流程错误。（B22, B23, B48, B49）
+- [x] 修复 `deliverExecution.ts`、`agentEvents.ts`、`amapStep.ts`、`rangeMatch` 注释/实现不一致等流程错误。（B22, B23, B48, B49）
 - [ ] 解除 `stores/user.ts ↔ stores/conf/index.ts` 循环依赖，并把 `initUser` 轮询改为 watch 驱动。（B57, B59）
 
 ### 2.2 组件与交互缺陷
