@@ -78,7 +78,8 @@ const root = new Root()
   .add(
     new Type('TechwolfImage')
       .add(new Field('iid', 1, 'int64', 'optional'))
-      .add(new Field('tinyImage', 2, 'TechwolfImageInfo', 'optional')),
+      .add(new Field('tinyImage', 2, 'TechwolfImageInfo', 'optional'))
+      .add(new Field('originImage', 3, 'TechwolfImageInfo', 'optional')),
   )
   .add(
     new Type('TechwolfMessageBody')

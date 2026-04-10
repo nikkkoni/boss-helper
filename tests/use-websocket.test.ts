@@ -153,6 +153,56 @@ describe('websocket protobuf and mqtt helpers', () => {
     )
   })
 
+  it('round-trips protobuf image payloads with originImage metadata', async () => {
+    const { AwesomeMessage } = await import('@/composables/useWebSocket/type')
+
+    const payload = {
+      messages: [
+        {
+          body: {
+            image: {
+              originImage: {
+                height: 20,
+                url: 'https://example.com/origin.png',
+                width: 10,
+              },
+              tinyImage: {
+                height: 10,
+                url: 'https://example.com/tiny.png',
+                width: 5,
+              },
+            },
+            templateId: 1,
+            type: 3,
+          },
+          from: { uid: '1' },
+          to: { uid: '2' },
+        },
+      ],
+      type: 1,
+    }
+
+    const encoded = AwesomeMessage.encode(AwesomeMessage.create(payload)).finish()
+    const decoded = AwesomeMessage.toObject(AwesomeMessage.decode(encoded), {
+      defaults: false,
+      longs: String,
+    }) as {
+      messages?: Array<{
+        body?: {
+          image?: {
+            originImage?: { height?: number; url?: string; width?: number }
+          }
+        }
+      }>
+    }
+
+    expect(decoded.messages?.[0]?.body?.image?.originImage).toEqual({
+      height: 20,
+      url: 'https://example.com/origin.png',
+      width: 10,
+    })
+  })
+
   it('round-trips mqtt packets and decodes message ids', async () => {
     const { decodeLength, decodeUTF8String, mqtt, parseMessageId } = await import(
       '@/composables/useWebSocket/mqtt'
