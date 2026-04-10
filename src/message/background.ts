@@ -8,6 +8,84 @@ import type { ResponseType } from '@/utils/request'
 
 export const userKey = 'local:conf-user'
 
+const blockedBackgroundRequestHosts = new Set([
+  '0.0.0.0',
+  '127.0.0.1',
+  '::',
+  '::1',
+  '[::1]',
+  'localhost',
+])
+
+function isPrivateIpv4Host(hostname: string) {
+  const parts = hostname.split('.').map((part) => Number.parseInt(part, 10))
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
+    return false
+  }
+
+  const [first, second] = parts
+  return (
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  )
+}
+
+function isPrivateIpv6Host(hostname: string) {
+  const normalizedHost = hostname.replace(/^\[/, '').replace(/\]$/, '').toLowerCase()
+
+  if (!normalizedHost.includes(':')) {
+    return false
+  }
+
+  if (
+    normalizedHost === '::' ||
+    normalizedHost === '::1' ||
+    normalizedHost === '0:0:0:0:0:0:0:1'
+  ) {
+    return true
+  }
+
+  if (normalizedHost.startsWith('::ffff:')) {
+    return isPrivateIpv4Host(normalizedHost.slice('::ffff:'.length))
+  }
+
+  return (
+    normalizedHost.startsWith('fc') ||
+    normalizedHost.startsWith('fd') ||
+    normalizedHost.startsWith('fe8') ||
+    normalizedHost.startsWith('fe9') ||
+    normalizedHost.startsWith('fea') ||
+    normalizedHost.startsWith('feb')
+  )
+}
+
+export function isAllowedBackgroundRequestUrl(url: string) {
+  try {
+    const parsed = new URL(url)
+    const hostname = parsed.hostname.toLowerCase()
+
+    if (parsed.protocol !== 'https:') {
+      return false
+    }
+
+    if (
+      !hostname ||
+      blockedBackgroundRequestHosts.has(hostname) ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.localhost')
+    ) {
+      return false
+    }
+
+    return !isPrivateIpv4Host(hostname) && !isPrivateIpv6Host(hostname)
+  } catch {
+    return false
+  }
+}
+
 export interface CookieInfo {
   uid: string
   user: string
@@ -114,13 +192,18 @@ export class BackgroundCounter {
     responseType: ResponseType
   }) {
     console.log('request', args)
-    const signal = AbortSignal.timeout(args.timeout * 1000)
+
+    if (!isAllowedBackgroundRequestUrl(args.url)) {
+      throw new Error('不支持代理该请求地址')
+    }
+
+    const signal = AbortSignal.timeout(args.timeout)
 
     const res = await fetch(args.url, {
       ...args.data,
       signal,
       mode: 'cors',
-      credentials: 'include',
+      credentials: 'omit',
     }).then(async (res) => {
       console.log('request res', res)
 
@@ -166,7 +249,11 @@ interface MessageMeta {
 export class ProvideBackgroundAdapter implements Adapter<MessageMeta> {
   sendMessage: SendMessage<MessageMeta> = async (message) => {
     const tabs = await browser.tabs.query({ url: message.meta.url })
-    await Promise.all(tabs.map(async (tab) => browser.tabs.sendMessage(tab.id!, message)))
+    await Promise.all(
+      tabs
+        .filter((tab): tab is Browser.tabs.Tab & { id: number } => tab.id != null)
+        .map(async (tab) => browser.tabs.sendMessage(tab.id, message)),
+    )
   }
 
   onMessage: OnMessage<MessageMeta> = (callback) => {
