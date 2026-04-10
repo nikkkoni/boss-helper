@@ -17,6 +17,10 @@ import {
 const bridgeRuntime = getAgentBridgeRuntime(env)
 const BRIDGE_BASE_URL = bridgeRuntime.httpBaseUrl
 const MCP_PROTOCOL_VERSION = '2024-11-05'
+const MAX_STDIN_CONTENT_LENGTH = Number.parseInt(
+  env.BOSS_HELPER_AGENT_MCP_MAX_CONTENT_LENGTH ?? `${1024 * 1024}`,
+  10,
+)
 const JOB_STATUS_FILTERS = ['pending', 'wait', 'running', 'success', 'error', 'warn']
 const AGENT_CONTEXT_SECTIONS = ['config', 'events', 'jobs', 'logs', 'resume', 'stats']
 const DEFAULT_AGENT_CONTEXT_SECTIONS = ['config', 'events', 'jobs', 'resume', 'stats']
@@ -831,8 +835,8 @@ async function readAgentContext(args = {}) {
 function writeMessage(message) {
   const json = JSON.stringify(message)
   const payload = Buffer.from(json, 'utf8')
-  stdout.write(`Content-Length: ${payload.length}\r\n\r\n`)
-  stdout.write(payload)
+  const header = Buffer.from(`Content-Length: ${payload.length}\r\n\r\n`, 'utf8')
+  stdout.write(Buffer.concat([header, payload]))
 }
 
 function sendResult(id, result) {
@@ -841,10 +845,10 @@ function sendResult(id, result) {
 }
 
 function sendError(id, code, message, data = undefined) {
-  if (id == null) return
+  if (id === undefined) return
   writeMessage({
     jsonrpc: '2.0',
-    id,
+    id: id ?? null,
     error: {
       code,
       message,
@@ -1177,10 +1181,25 @@ async function handleRequest(message) {
 }
 
 let buffer = Buffer.alloc(0)
+let discardBytesRemaining = 0
+let stdinQueue = Promise.resolve()
 
-stdin.on('data', async (chunk) => {
-  buffer = Buffer.concat([buffer, chunk])
+function discardBufferedBytes(bytes) {
+  if (bytes <= 0) {
+    return
+  }
 
+  const bufferedBytes = Math.min(bytes, buffer.length)
+  buffer = buffer.slice(bufferedBytes)
+  discardBytesRemaining = bytes - bufferedBytes
+}
+
+function rejectOversizedStdinFrame(messageStart, contentLength) {
+  sendError(null, -32600, `Content-Length exceeds limit ${MAX_STDIN_CONTENT_LENGTH}`)
+  discardBufferedBytes(messageStart + contentLength)
+}
+
+async function processBufferedMessages() {
   while (true) {
     const headerIndex = buffer.indexOf('\r\n\r\n')
     if (headerIndex === -1) {
@@ -1197,7 +1216,21 @@ stdin.on('data', async (chunk) => {
     }
 
     const contentLength = Number.parseInt(lengthHeader.split(':')[1].trim(), 10)
+    if (!Number.isFinite(contentLength) || contentLength < 0) {
+      sendError(null, -32600, 'Invalid Content-Length header')
+      buffer = Buffer.alloc(0)
+      return
+    }
+
     const messageStart = headerIndex + 4
+    if (contentLength > MAX_STDIN_CONTENT_LENGTH) {
+      rejectOversizedStdinFrame(messageStart, contentLength)
+      if (discardBytesRemaining > 0) {
+        return
+      }
+      continue
+    }
+
     const messageEnd = messageStart + contentLength
     if (buffer.length < messageEnd) {
       return
@@ -1214,6 +1247,31 @@ stdin.on('data', async (chunk) => {
       sendError(null, -32700, 'Parse error')
     }
   }
+}
+
+async function processStdinChunk(chunk) {
+  let nextChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+
+  if (discardBytesRemaining > 0) {
+    const discardFromChunk = Math.min(discardBytesRemaining, nextChunk.length)
+    discardBytesRemaining -= discardFromChunk
+    nextChunk = nextChunk.slice(discardFromChunk)
+  }
+
+  if (nextChunk.length === 0) {
+    return
+  }
+
+  buffer = Buffer.concat([buffer, nextChunk])
+  await processBufferedMessages()
+}
+
+stdin.on('data', (chunk) => {
+  stdinQueue = stdinQueue
+    .then(() => processStdinChunk(chunk))
+    .catch((error) => {
+      logError(error)
+    })
 })
 
 stdin.on('error', (error) => {

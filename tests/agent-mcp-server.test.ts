@@ -23,6 +23,8 @@ class McpClient {
   private nextId = 1
   private buffer = Buffer.alloc(0)
   private pending = new Map<number, { reject: (error: Error) => void, resolve: (message: JsonRpcMessage) => void }>()
+  private unsolicited: JsonRpcMessage[] = []
+  private unsolicitedWaiters: Array<(message: JsonRpcMessage) => void> = []
 
   constructor(private readonly child: ChildProcessWithoutNullStreams) {
     this.child.stdout.on('data', (chunk) => this.handleStdout(chunk))
@@ -82,15 +84,38 @@ class McpClient {
         if (pending) {
           this.pending.delete(message.id)
           pending.resolve(message)
+          continue
         }
       }
+
+      const waiter = this.unsolicitedWaiters.shift()
+      if (waiter) {
+        waiter(message)
+      } else {
+        this.unsolicited.push(message)
+      }
     }
+  }
+
+  nextUnsolicited() {
+    const queued = this.unsolicited.shift()
+    if (queued) {
+      return Promise.resolve(queued)
+    }
+
+    return new Promise<JsonRpcMessage>((resolve) => {
+      this.unsolicitedWaiters.push(resolve)
+    })
   }
 
   private writeMessage(message: Record<string, unknown>) {
     const payload = Buffer.from(JSON.stringify(message), 'utf8')
     this.child.stdin.write(`Content-Length: ${payload.length}\r\n\r\n`)
     this.child.stdin.write(payload)
+  }
+
+  writeRaw(buffer: Buffer | string) {
+    this.child.stdin.write(buffer)
   }
 }
 
@@ -281,6 +306,14 @@ async function terminateChild(child: ChildProcessWithoutNullStreams) {
   await once(child, 'exit')
 }
 
+function buildMcpFrame(message: Record<string, unknown>) {
+  const payload = Buffer.from(JSON.stringify(message), 'utf8')
+  return Buffer.concat([
+    Buffer.from(`Content-Length: ${payload.length}\r\n\r\n`, 'utf8'),
+    payload,
+  ])
+}
+
 let cleanupTokenFile = false
 
 afterEach(() => {
@@ -418,6 +451,154 @@ describe('agent mcp server', () => {
           'POST /command:jobs.list',
           'POST /command:stats',
         ]),
+      )
+    } catch (error) {
+      throw new Error(`${error instanceof Error ? error.message : String(error)}\nMCP stderr:\n${stderr}`)
+    } finally {
+      await terminateChild(child)
+      await bridge.close()
+    }
+  })
+
+  it('rejects oversized stdin frames and continues serving later requests', async () => {
+    const originalToken = existsSync(tokenFile) ? readFileSync(tokenFile, 'utf8').trim() : ''
+    const bridgeToken = originalToken || 'vitest-bridge-token'
+    cleanupTokenFile = originalToken.length === 0
+
+    const bridge = await createFakeBridge(bridgeToken)
+    const child = spawn(process.execPath, ['./scripts/agent-mcp-server.mjs'], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        BOSS_HELPER_AGENT_BRIDGE_TOKEN: bridgeToken,
+        BOSS_HELPER_AGENT_HOST: '127.0.0.1',
+        BOSS_HELPER_AGENT_PORT: String(bridge.port),
+        BOSS_HELPER_AGENT_MCP_MAX_CONTENT_LENGTH: '180',
+      },
+      stdio: 'pipe',
+    })
+
+    let stderr = ''
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString('utf8')
+    })
+
+    const client = new McpClient(child)
+
+    try {
+      const oversizedFrame = buildMcpFrame({
+        id: 99,
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          capabilities: {},
+          clientInfo: { name: 'vitest', version: '1.0.0' },
+          protocolVersion: '2024-11-05',
+          padding: 'x'.repeat(200),
+        },
+      })
+
+      client.writeRaw(oversizedFrame)
+
+      const oversizedResponse = await client.nextUnsolicited()
+      expect(oversizedResponse).toEqual(
+        expect.objectContaining({
+          error: expect.objectContaining({
+            code: -32600,
+            message: 'Content-Length exceeds limit 180',
+          }),
+          id: null,
+          jsonrpc: '2.0',
+        }),
+      )
+
+      const initialize = await client.request('initialize', {
+        capabilities: {},
+        clientInfo: { name: 'vitest', version: '1.0.0' },
+        protocolVersion: '2024-11-05',
+      })
+
+      expect(initialize.error).toBeUndefined()
+      expect(initialize.result?.serverInfo).toEqual(
+        expect.objectContaining({
+          name: 'boss-helper-agent-mcp',
+        }),
+      )
+    } catch (error) {
+      throw new Error(`${error instanceof Error ? error.message : String(error)}\nMCP stderr:\n${stderr}`)
+    } finally {
+      await terminateChild(child)
+      await bridge.close()
+    }
+  })
+
+  it('processes split stdin frames in order across chunk boundaries', async () => {
+    const originalToken = existsSync(tokenFile) ? readFileSync(tokenFile, 'utf8').trim() : ''
+    const bridgeToken = originalToken || 'vitest-bridge-token'
+    cleanupTokenFile = originalToken.length === 0
+
+    const bridge = await createFakeBridge(bridgeToken)
+    const child = spawn(process.execPath, ['./scripts/agent-mcp-server.mjs'], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        BOSS_HELPER_AGENT_BRIDGE_TOKEN: bridgeToken,
+        BOSS_HELPER_AGENT_HOST: '127.0.0.1',
+        BOSS_HELPER_AGENT_PORT: String(bridge.port),
+      },
+      stdio: 'pipe',
+    })
+
+    let stderr = ''
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString('utf8')
+    })
+
+    const client = new McpClient(child)
+
+    try {
+      const initializeFrame = buildMcpFrame({
+        id: 1,
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          capabilities: {},
+          clientInfo: { name: 'vitest', version: '1.0.0' },
+          protocolVersion: '2024-11-05',
+        },
+      })
+      const pingFrame = buildMcpFrame({
+        id: 2,
+        jsonrpc: '2.0',
+        method: 'ping',
+        params: {},
+      })
+      const combined = Buffer.concat([initializeFrame, pingFrame])
+
+      client.writeRaw(combined.subarray(0, 17))
+      client.writeRaw(combined.subarray(17, 63))
+      client.writeRaw(combined.subarray(63))
+
+      const first = await client.nextUnsolicited()
+      const second = await client.nextUnsolicited()
+
+      expect(first).toEqual(
+        expect.objectContaining({
+          id: 1,
+          jsonrpc: '2.0',
+          result: expect.objectContaining({
+            serverInfo: expect.objectContaining({
+              name: 'boss-helper-agent-mcp',
+            }),
+          }),
+        }),
+      )
+      expect(second).toEqual(
+        expect.objectContaining({
+          id: 2,
+          jsonrpc: '2.0',
+          result: {},
+        }),
       )
     } catch (error) {
       throw new Error(`${error instanceof Error ? error.message : String(error)}\nMCP stderr:\n${stderr}`)
