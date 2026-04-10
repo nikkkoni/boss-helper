@@ -29,7 +29,7 @@
 - [x] 修复 `entrypoints/main-world.ts` 的 `axiosLoad` 默认值和并发串扰，改为 request-local loader。（B5, B6）
 - [x] 修复 `composables/useModel/index.ts` 的排序变异和重复初始化问题，避免响应式副作用和 HMR 重复数据。（B7, B51）
 - [x] 修复 `components/llms/Selectllm.vue` 的 loading 泄漏和无效 `ElForm v-model`。（B39, B54）
-- [ ] 修复 `useWebSocket/type.ts` 缺失 `originImage` 字段导致的 protobuf 编解码错误。（B10）
+- [x] 修复 `useWebSocket/type.ts` 缺失 `originImage` 字段导致的 protobuf 编解码错误。（B10）
 
 ### 1.2 输入、安全与序列化
 
