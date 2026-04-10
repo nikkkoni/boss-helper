@@ -175,9 +175,9 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
     isBackground = false,
   } = args
 
-  const signal = AbortSignal.timeout(timeout * 1000)
+  const signal = AbortSignal.timeout(timeout)
   return new Promise<ResponseData<TResponseType>>((resolve, reject) => {
-    const axiosLoad = loader({ ms: timeout * 1000, color: '#F79E63' })
+    const axiosLoad = loader({ ms: timeout, color: '#F79E63' })
 
     const requestData = {
       method,

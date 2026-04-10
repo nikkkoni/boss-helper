@@ -19,6 +19,15 @@ describe('request', () => {
     mockCounterRequest.mockReset()
   })
 
+  it('passes timeout values through in milliseconds', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })))
+
+    await request.get({ timeout: 1500, url: 'https://example.com/timeout-ms' })
+
+    expect(timeoutSpy).toHaveBeenCalledWith(1500)
+  })
+
   it('parses json responses in foreground mode', async () => {
     vi.stubGlobal(
       'fetch',
