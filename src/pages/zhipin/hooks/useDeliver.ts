@@ -66,13 +66,13 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
   async function jobListHandle(options: JobListHandleOptions = {}): Promise<JobListHandleResult> {
     const selectedJobIds = options.selectedJobIds?.length ? new Set(options.selectedJobIds) : null
     const targetJobList = selectedJobIds
-      ? jobList._list.value.filter((item) => selectedJobIds.has(item.encryptJobId))
-      : jobList._list.value
+      ? jobList.list.filter((item) => selectedJobIds.has(item.encryptJobId))
+      : jobList.list
 
     log.info(
       '获取岗位',
       selectedJobIds
-        ? `本次获取到 ${jobList._list.value.length} 个，命中定向岗位 ${targetJobList.length} 个`
+        ? `本次获取到 ${jobList.list.length} 个，命中定向岗位 ${targetJobList.length} 个`
         : `本次获取到 ${targetJobList.length} 个`,
     )
     total.value = targetJobList.length
@@ -83,7 +83,7 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
       return !selectedJobIds || Boolean(options.resetSelectionStatuses && selectedJobIds.has(item.encryptJobId))
     }
 
-    resetJobStatuses(jobList._list.value, shouldResetStatus)
+    resetJobStatuses(jobList.list, shouldResetStatus)
 
     for (const [index, data] of targetJobList.entries()) {
       current.value = index

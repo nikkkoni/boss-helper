@@ -12,7 +12,7 @@ import {
   ElText,
   ElTooltip,
 } from 'element-plus'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 
 import { useModel } from '@/composables/useModel'
 import { useStatistics } from '@/composables/useStatistics'
@@ -52,6 +52,11 @@ const searchRef = ref()
 const tabsRef = ref()
 const helpContent = ref('鼠标移到对应元素查看提示')
 const { isOutside } = useMouseInElement(tabsRef)
+const currentHelpElement = shallowRef<HTMLElement | null>(null)
+const boxStyles = ref<Record<string, string | number>>({
+  display: 'none',
+})
+let tabsRootElement: HTMLElement | null = null
 
 function getSelectors() {
   return getActiveSiteAdapter(location.href).getSelectors()
@@ -70,37 +75,92 @@ const triggerRef = computed(() => {
   }
 })
 
-const boxStyles = computed(() => {
-  if (helpVisible.value && !isOutside.value) {
-    const element = document.elementFromPoint(x.value, y.value)
-    const el = findHelp(element as HTMLElement)
-    if (el) {
-      const bounding = el.getBoundingClientRect()
-      return {
-        width: `${bounding.width}px`,
-        height: `${bounding.height}px`,
-        left: `${bounding.left}px`,
-        top: `${bounding.top}px`,
-        display: 'block',
-        backgroundColor: '#3eaf7c33',
-        transition: 'all 0.08s linear',
-      } as Record<string, string | number>
-    }
-  }
-  return {
+const helpMaxWidth = computed(() =>
+  typeof boxStyles.value.width === 'string' && boxStyles.value.width
+    ? boxStyles.value.width
+    : '320px',
+)
+
+function hideHelpBox() {
+  currentHelpElement.value = null
+  boxStyles.value = {
     display: 'none',
   }
-})
+}
 
-function findHelp(dom: HTMLElement | null) {
-  if (!dom) return
-  const help = dom.dataset.help
+function findHelpTarget(dom: HTMLElement | null) {
+  let current = dom
+  while (current) {
+    if (current.dataset.help) {
+      return current
+    }
+    current = current.parentElement
+  }
+  return null
+}
+
+function updateHelpBox(target: HTMLElement | null) {
+  if (!target) {
+    hideHelpBox()
+    return
+  }
+
+  const help = target.dataset.help
   if (help) {
     helpContent.value = help
-    return dom
   }
-  return findHelp(dom.parentElement)
+
+  const bounding = target.getBoundingClientRect()
+  boxStyles.value = {
+    width: `${bounding.width}px`,
+    height: `${bounding.height}px`,
+    left: `${bounding.left}px`,
+    top: `${bounding.top}px`,
+    display: 'block',
+    backgroundColor: '#3eaf7c33',
+    transition: 'all 0.08s linear',
+  }
 }
+
+function syncHelpTarget(target: EventTarget | null) {
+  if (!helpVisible.value || isOutside.value) {
+    hideHelpBox()
+    return
+  }
+
+  const nextTarget = target instanceof HTMLElement ? findHelpTarget(target) : null
+  if (nextTarget === currentHelpElement.value) {
+    return
+  }
+
+  currentHelpElement.value = nextTarget
+  updateHelpBox(nextTarget)
+}
+
+function refreshHelpBox() {
+  if (!helpVisible.value || isOutside.value || currentHelpElement.value == null) {
+    hideHelpBox()
+    return
+  }
+  updateHelpBox(currentHelpElement.value)
+}
+
+function handleHelpMouseMove(event: MouseEvent) {
+  syncHelpTarget(event.target)
+}
+
+function handleHelpMouseLeave() {
+  hideHelpBox()
+}
+
+watch([helpVisible, isOutside], ([visible, outside]) => {
+  if (!visible || outside) {
+    hideHelpBox()
+    return
+  }
+
+  refreshHelpBox()
+})
 
 onMounted(async () => {
   unregisterAgentBridge = registerWindowAgentBridge()
@@ -193,6 +253,12 @@ onMounted(async () => {
     },
     1000 * 60 * 20,
   )
+
+  tabsRootElement = (tabsRef.value?.$el as HTMLElement | undefined) ?? null
+  tabsRootElement?.addEventListener('mousemove', handleHelpMouseMove, true)
+  tabsRootElement?.addEventListener('mouseleave', handleHelpMouseLeave, true)
+  window.addEventListener('scroll', refreshHelpBox, true)
+  window.addEventListener('resize', refreshHelpBox)
 })
 
 onUnmounted(() => {
@@ -200,6 +266,11 @@ onUnmounted(() => {
     clearInterval(refreshSignedKeyTimer)
   }
   unregisterAgentBridge?.()
+  tabsRootElement?.removeEventListener('mousemove', handleHelpMouseMove, true)
+  tabsRootElement?.removeEventListener('mouseleave', handleHelpMouseLeave, true)
+  window.removeEventListener('scroll', refreshHelpBox, true)
+  window.removeEventListener('resize', refreshHelpBox)
+  tabsRootElement = null
 })
 
 function tagOpen(url: string) {
@@ -277,7 +348,7 @@ function openStore() {
     </div>
     <ElTooltip :visible="helpVisible && !isOutside" :virtual-ref="triggerRef">
       <template #content>
-        <div :style="`width: auto;max-width:${boxStyles.width};font-size:17px;`">
+        <div :style="`width: auto;max-width:${helpMaxWidth};font-size:17px;`">
           {{ helpContent }}
         </div>
       </template>

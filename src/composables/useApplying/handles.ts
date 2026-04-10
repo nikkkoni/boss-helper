@@ -160,7 +160,7 @@ export function handles() {
         if (e instanceof AIFilteringError) {
           throw e
         }
-        throw new AIFilteringError(errorHandle(e), ctx.aiFilteringScore as any, toCause(e))
+        throw new AIFilteringError(errorHandle(e), ctx.aiFilteringScore, toCause(e))
       }
     }
   }

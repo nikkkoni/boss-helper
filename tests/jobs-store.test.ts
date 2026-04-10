@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 
 import type { FormData } from '@/types/formData'
+
+import { setupPinia } from './helpers/pinia'
 
 const {
   checkJobCacheMock,
@@ -48,7 +51,7 @@ vi.mock('@/utils/logger', () => ({
   logger: loggerMock,
 }))
 
-import { JobList } from '@/stores/jobs'
+import { useJobs, waitForJobDetail } from '@/stores/jobs'
 
 function createJobItem(overrides: Partial<bossZpJobItemData> = {}): bossZpJobItemData {
   return {
@@ -77,14 +80,6 @@ function createListItem(overrides: Partial<Record<string, unknown>> = {}) {
   return job
 }
 
-function getInternalStore(store: JobList) {
-  return store as unknown as {
-    _vue_jobDetail: { value?: bossZpDetailData }
-    clickJobCardAction: (item: bossZpJobItemData) => Promise<void>
-    loadJobDetail: (item: bossZpJobItemData) => Promise<bossZpDetailData>
-  }
-}
-
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void
   const promise = new Promise<T>((res) => {
@@ -98,8 +93,9 @@ async function flushMicrotasks() {
   await Promise.resolve()
 }
 
-describe('JobList', () => {
+describe('jobs store', () => {
   beforeEach(() => {
+    setupPinia()
     vi.clearAllMocks()
     parseJobListMock.mockImplementation((items: bossZpJobItemData[]) => items)
     getActiveSiteAdapterMock.mockReturnValue({
@@ -113,54 +109,60 @@ describe('JobList', () => {
     getReadyCacheManagerMock.mockResolvedValue(undefined)
     useHookVueDataMock.mockImplementation(() => async () => {})
     useHookVueFnMock.mockImplementation(() => async () => async () => {})
+    useJobs().clear()
   })
 
-  it('returns entries from the reactive map getter', () => {
-    const jobs = new JobList()
+  it('returns entries from the derived map getter', () => {
+    const jobs = useJobs()
     const job = createListItem()
 
     jobs.set(job.encryptJobId, job as never)
 
-    expect(jobs.map[job.encryptJobId]).toMatchObject({
+    expect(jobs.map.value[job.encryptJobId]).toMatchObject({
       encryptJobId: job.encryptJobId,
       lid: job.lid,
     })
   })
 
   it('waits for matching detail updates without interval polling', async () => {
-    const jobs = new JobList()
-    const internalStore = getInternalStore(jobs)
     const item = createJobItem()
     const detail = { lid: item.lid } as bossZpDetailData
+    const jobDetail = ref<bossZpDetailData>()
+    const clickJobCardAction = vi.fn(async () => {})
     const setIntervalSpy = vi.spyOn(window, 'setInterval')
 
-    internalStore.clickJobCardAction = vi.fn(async () => {})
-
-    const detailPromise = internalStore.loadJobDetail(item)
+    const detailPromise = waitForJobDetail({
+      clickJobCardAction,
+      item,
+      jobDetail,
+    })
     await Promise.resolve()
-    internalStore._vue_jobDetail.value = detail
+    jobDetail.value = detail
 
     await expect(detailPromise).resolves.toMatchObject({ lid: detail.lid })
     expect(setIntervalSpy).not.toHaveBeenCalled()
   })
 
   it('resolves immediately when click action already loaded the matching detail', async () => {
-    const jobs = new JobList()
-    const internalStore = getInternalStore(jobs)
     const item = createJobItem()
     const detail = { lid: item.lid } as bossZpDetailData
+    const jobDetail = ref<bossZpDetailData>()
     const clickJobCardAction = vi.fn(async () => {
-      internalStore._vue_jobDetail.value = detail
+      jobDetail.value = detail
     })
 
-    internalStore.clickJobCardAction = clickJobCardAction
-
-    await expect(internalStore.loadJobDetail(item)).resolves.toMatchObject({ lid: detail.lid })
+    await expect(
+      waitForJobDetail({
+        clickJobCardAction,
+        item,
+        jobDetail,
+      }),
+    ).resolves.toMatchObject({ lid: detail.lid })
     expect(clickJobCardAction).toHaveBeenCalledWith(item)
   })
 
   it('waits for the cache manager to finish loading before hydrating the job list', async () => {
-    const jobs = new JobList()
+    const jobs = useJobs()
     const ready = createDeferred<void>()
 
     getReadyCacheManagerMock.mockImplementation(async () => {

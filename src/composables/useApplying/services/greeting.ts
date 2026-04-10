@@ -85,7 +85,7 @@ export async function runAIGreeting(options: {
         data: options.ctx.listData,
         boss: bossData,
         card: options.ctx.listData.card!,
-        amap: {},
+        amap: buildAmapTemplateData(options.ctx),
       },
       onPrompt: options.onPrompt,
     },

@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from 'node:fs'
+
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -63,7 +65,6 @@ vi.mock('@/stores/conf', () => ({
 
 vi.mock('@/stores/jobs', () => ({
   jobList: {
-    _list: { value: [] },
     initJobList: mockInitJobList,
     list: [],
   },
@@ -266,5 +267,12 @@ describe('Ui.vue', () => {
     expect(wrapper.find('[data-help="好好看，好好学"]').exists()).toBe(true)
 
     wrapper.unmount()
+  })
+
+  it('avoids elementFromPoint in the help overlay hot path', () => {
+    const source = readFileSync('src/pages/zhipin/components/Ui.vue', 'utf8')
+
+    expect(source).not.toContain('elementFromPoint(')
+    expect(source).toContain("addEventListener('mousemove', handleHelpMouseMove")
   })
 })

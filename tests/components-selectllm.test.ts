@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { shallowMount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { ref } from 'vue'
 
 import { setupPinia } from './helpers/pinia'
 
@@ -32,7 +33,7 @@ const {
   mockGetModel: vi.fn(),
   mockGetUserResumeString: vi.fn(async () => 'resume'),
   mockJobList: {
-    _list: { value: [] as Array<Record<string, unknown>> },
+    list: [] as Array<Record<string, unknown>>,
   },
   mockModelStore: {
     getModel: vi.fn(),
@@ -102,7 +103,7 @@ vi.mock('@/stores/user', () => ({
   }),
 }))
 
-import Selectllm from '@/components/llms/Selectllm.vue'
+import SelectllmTestDialog from '@/components/llms/selectllm/SelectllmTestDialog.vue'
 
 describe('Selectllm.vue', () => {
   beforeEach(() => {
@@ -118,18 +119,23 @@ describe('Selectllm.vue', () => {
     mockConf.formData.aiFiltering.score = 10
     mockConf.formData.aiFiltering.vip = false
     mockModelStore.modelData = []
-    mockJobList._list.value = []
+    mockJobList.list = []
   })
 
   it('resets test loading state when model validation fails early', async () => {
-    const wrapper = shallowMount(Selectllm, {
+    const wrapper = mount(SelectllmTestDialog, {
       props: {
         data: 'aiFiltering',
         modelValue: true,
+        state: {
+          currentModel: ref(''),
+          message: ref(''),
+          singleMode: ref(true),
+        },
       },
     })
 
-    const state = ((wrapper.vm.$ as unknown) as { setupState: unknown }).setupState as {
+    const state = wrapper.vm as unknown as {
       testJob: () => Promise<void>
       testJobLoading: { value: boolean } | boolean
       testJobStop: { value: boolean } | boolean
@@ -146,7 +152,7 @@ describe('Selectllm.vue', () => {
 
   it('renders multi-turn form mode without binding v-model to ElForm', () => {
     const source = readFileSync(
-      '/Users/wang/Documents/boss/boss-helper/src/components/llms/Selectllm.vue',
+      '/Users/wang/Documents/boss/boss-helper/src/components/llms/selectllm/SelectllmPromptEditor.vue',
       'utf8',
     )
 

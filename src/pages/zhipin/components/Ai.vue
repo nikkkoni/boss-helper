@@ -11,17 +11,14 @@ import type { FormDataAi } from '@/types/formData'
 
 const conf = useConf()
 const { deliverLock } = useCommon()
-// const useModelData = useModel()
 const aiBoxShow = ref(false)
 const aiConfBoxShow = ref(false)
 const aiBox = ref<'aiGreeting' | 'aiFiltering' | 'aiReply' | 'record'>('aiGreeting')
+
 function change(v: Partial<FormDataAi>) {
   v.enable = !v.enable
-  conf.confSaving()
+  void conf.confSaving()
 }
-// 写的依托
-// const m = formData.record.model || []
-// const recordModel = ref(Array.isArray(m) ? m : [m])
 </script>
 
 <template>
@@ -65,15 +62,6 @@ function change(v: Partial<FormDataAi>) {
       "
       @change="change"
     />
-    <!-- <formSwitch
-      v-bind="formInfoData.record"
-      :data="formData.record"
-      @show="
-        aiBox = 'record';
-        aiBoxShow = true;
-      "
-      @change="change"
-    /> -->
   </ElSpace>
   <div style="margin-top: 15px">
     <ElButton type="primary" data-help="配置需要使用的LLM大模型" @click="aiConfBoxShow = true">
@@ -90,8 +78,8 @@ function change(v: Partial<FormDataAi>) {
   />
 </template>
 
-<style lang="scss">
-.ehp-space .ehp-button-group {
+<style lang="scss" scoped>
+:deep(.ehp-space .ehp-button-group) {
   display: flex;
   .ehp-button:first-child {
     flex: 1;

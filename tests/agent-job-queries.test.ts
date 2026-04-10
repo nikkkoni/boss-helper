@@ -32,13 +32,22 @@ const { mockJobList, mockLogStore } = vi.hoisted(() => {
   }
 
   const mockJobList = {
-    _list: { value: [] as Array<Record<string, unknown>> },
-    _map: {} as Record<string, Record<string, unknown>>,
+    list: [] as Array<Record<string, unknown>>,
+    map: {} as Record<string, Record<string, unknown>>,
+    clear() {
+      this.list = []
+      Object.keys(this.map).forEach((key) => {
+        delete this.map[key]
+      })
+    },
     get(encryptJobId: string) {
-      return this._map[encryptJobId]
+      return this.map[encryptJobId]
     },
     set(encryptJobId: string, val: Record<string, unknown>) {
-      this._map[encryptJobId] = val
+      this.map[encryptJobId] = val
+    },
+    replace(nextList: Array<Record<string, unknown>>) {
+      this.list = [...nextList]
     },
   }
 
@@ -125,10 +134,7 @@ function createJob(overrides: Partial<MyJobListData> = {}): MyJobListData {
 
 describe('useAgentJobQueries', () => {
   beforeEach(() => {
-    jobList._list.value = []
-    Object.keys(jobList._map).forEach((key) => {
-      delete jobList._map[key]
-    })
+    jobList.clear()
     useLog().clear()
   })
 
@@ -146,7 +152,7 @@ describe('useAgentJobQueries', () => {
       },
     })
 
-    jobList._list.value = [waitJob, successJob]
+    jobList.replace([waitJob, successJob])
     jobList.set(waitJob.encryptJobId, waitJob)
     jobList.set(successJob.encryptJobId, successJob)
 
@@ -198,7 +204,7 @@ describe('useAgentJobQueries', () => {
       return job.card
     }
 
-    jobList._list.value = [job]
+    jobList.replace([job])
     jobList.set(job.encryptJobId, job)
 
     const queries = useAgentJobQueries(createQueryOptions())

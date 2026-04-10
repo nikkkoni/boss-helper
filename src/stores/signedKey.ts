@@ -14,6 +14,8 @@ import type { components, paths } from '@/types/openapi'
 import { logger } from '@/utils/logger'
 
 type SignedKeyInfo = components['schemas']['KeyInfo']
+type SignedKeyResponseLike = { error?: unknown } | null | undefined
+type ModelListEntry = components['schemas']['ModelListEntry']
 
 export interface NetConf {
   version: string
@@ -70,9 +72,9 @@ function sdbmCode(str: string) {
   return hash.toString()
 }
 
-export function signedKeyReqHandler(data: any, message = true): string | undefined {
+export function signedKeyReqHandler(data: SignedKeyResponseLike, message = true): string | undefined {
   // logger.debug('请求响应', data)
-  const { error } = data
+  const error = data?.error
   if (error != null) {
     let errMsg = '未知错误'
     if (error instanceof Error) {
@@ -95,6 +97,13 @@ export function signedKeyReqHandler(data: any, message = true): string | undefin
   }
 }
 
+function reportAsyncTaskFailure(action: string, error: unknown, message?: string) {
+  logger.error(action, error)
+  if (message) {
+    ElMessage.error(message)
+  }
+}
+
 export type Client = ReturnType<typeof createClient<paths>>
 export const signedKeyBaseUrl = resolveSignedKeyBaseUrl()
 
@@ -108,6 +117,7 @@ export const useSignedKey = defineStore('signedKey', () => {
   const legacySignedKeyInfoStorageKey = 'sync:signedKeyInfo'
   const user = useUser()
   const netConf = ref<NetConf>()
+  let modelListPromise: Promise<modelData[] | undefined> | null = null
 
   const netNotificationMap = new Map<string, boolean>()
 
@@ -130,28 +140,90 @@ export const useSignedKey = defineStore('signedKey', () => {
 
   client.use(authMiddleware)
 
+  function persistTask<T>(promise: Promise<T>, action: string, message?: string) {
+    void promise.catch((error) => {
+      reportAsyncTaskFailure(action, error, message)
+    })
+  }
+
+  function mergeRemoteModels(items: modelData[]) {
+    const model = useModel()
+    model.modelData = [
+      ...model.modelData,
+      ...items.filter((item) => !model.modelData.some((current) => current.key === item.key)),
+    ]
+  }
+
+  function normalizeRemoteModel(item: ModelListEntry): modelData {
+    return {
+      key: item.key,
+      name: item.name,
+      ...(item.color ? { color: item.color } : {}),
+      ...(item.data ? { data: item.data as unknown as modelData['data'] } : {}),
+      ...(item.vip ? { vip: item.vip } : {}),
+    }
+  }
+
+  async function refreshModelList() {
+    if (modelListPromise) {
+      return modelListPromise
+    }
+
+    modelListPromise = client.GET('/v1/llm/model_list')
+      .then(({ data }) => {
+        const items = Array.isArray(data)
+          ? data.map((item) => normalizeRemoteModel(item as ModelListEntry))
+          : []
+        mergeRemoteModels(items)
+        return items
+      })
+      .catch((error) => {
+        reportAsyncTaskFailure('加载模型列表失败', error)
+        return undefined
+      })
+      .finally(() => {
+        modelListPromise = null
+      })
+
+    return modelListPromise
+  }
+
+  async function refreshNetConfig() {
+    const { data } = await client.GET('/config')
+    netConf.value = data as unknown as NetConf
+    if (import.meta.env.DEV) {
+      window.__q_netConf = () => netConf.value
+    }
+
+    const now = Date.now()
+    const notifications: NetConf['notification'] = netConf.value?.notification ?? []
+    await Promise.all(notifications.map(async (item) => netNotification(item, now)))
+  }
+
   watch(signedKey, (v) => {
     if (v == null || v === '') {
-      void counter.storageRm(signedKeyStorageKey)
+      persistTask(counter.storageRm(signedKeyStorageKey), '删除密钥失败', '删除密钥失败')
       return
     }
-    void counter.storageSet(signedKeyStorageKey, v).catch((e) => {
-      logger.error('保存密钥失败', e)
-      ElMessage.error('保存密钥失败')
-    })
+    persistTask(counter.storageSet(signedKeyStorageKey, v), '保存密钥失败', '保存密钥失败')
   })
 
   watchThrottled(
     signedKeyInfo,
     (v) => {
       if (v == null) {
-        void counter.storageRm(signedKeyInfoStorageKey)
+        persistTask(
+          counter.storageRm(signedKeyInfoStorageKey),
+          '删除密钥信息失败',
+          '删除密钥信息失败',
+        )
         return
       }
-      void counter.storageSet(signedKeyInfoStorageKey, toRaw(v)).catch((e) => {
-        logger.error('保存密钥信息失败', e)
-        ElMessage.error('保存密钥信息失败')
-      })
+      persistTask(
+        counter.storageSet(signedKeyInfoStorageKey, toRaw(v)),
+        '保存密钥信息失败',
+        '保存密钥信息失败',
+      )
     },
     { throttle: 2000 },
   )
@@ -172,9 +244,12 @@ export const useSignedKey = defineStore('signedKey', () => {
         ...item.data,
         confirmButtonText: 'OK',
         callback: () => {
-          void counter.storageSet(
-            `local:netConf-${item.key}`,
-            now + (item.data.duration ?? 86400) * 1000,
+          persistTask(
+            counter.storageSet(
+              `local:netConf-${item.key}`,
+              now + (item.data.duration ?? 86400) * 1000,
+            ),
+            '保存消息通知状态失败',
           )
         },
       })
@@ -183,9 +258,12 @@ export const useSignedKey = defineStore('signedKey', () => {
         ...item.data,
         duration: 0,
         onClose() {
-          void counter.storageSet(
-            `local:netConf-${item.key}`,
-            now + (item.data.duration ?? 86400) * 1000,
+          persistTask(
+            counter.storageSet(
+              `local:netConf-${item.key}`,
+              now + (item.data.duration ?? 86400) * 1000,
+            ),
+            '保存通知状态失败',
           )
         },
         onClick() {
@@ -213,28 +291,11 @@ export const useSignedKey = defineStore('signedKey', () => {
   }
 
   async function refreshSignedKeyInfo(token?: string) {
-    void client.GET('/config').then(async ({ data }) => {
-      netConf.value = data as NetConf
-      if (import.meta.env.DEV) {
-        window.__q_netConf = () => netConf.value
-      }
-      const now = new Date().getTime()
-      return Promise.all(
-        netConf.value?.notification.map(async (item) => netNotification(item, now)) ?? [],
-      )
-    })
+    persistTask(refreshNetConfig(), '刷新远程配置失败')
     if (token == null && (signedKey.value == null || signedKey.value === '')) {
       return false
     }
-    const model = useModel()
-    void client.GET('/v1/llm/model_list').then(async ({ data }) => {
-      model.modelData = [
-        ...model.modelData,
-        ...((data as modelData[]) ?? []).filter(
-          (item) => !model.modelData.some((m) => m.key === item.key),
-        ),
-      ]
-    })
+    void refreshModelList()
 
     const data = await getSignedKeyInfo(token)
     signedKeyInfo.value = data
@@ -272,15 +333,6 @@ export const useSignedKey = defineStore('signedKey', () => {
         signedKeyBak.value = key
       } else {
         signedKey.value = key
-        void client.GET('/v1/llm/model_list').then(async ({ data }) => {
-          const model = useModel()
-          model.modelData = [
-            ...model.modelData,
-            ...((data as modelData[]) ?? []).filter(
-              (item) => !model.modelData.some((m) => m.key === item.key),
-            ),
-          ]
-        })
       }
     }
   }
@@ -300,7 +352,7 @@ export const useSignedKey = defineStore('signedKey', () => {
     resp = await client.POST('/v1/key/resume', {
       body: {
         code,
-        data: resume as any,
+        data: resume,
       },
     })
     errMsg = signedKeyReqHandler(resp)

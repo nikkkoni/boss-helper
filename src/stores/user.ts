@@ -1,14 +1,15 @@
 import { ElMessage } from 'element-plus'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
+import { defineStore, storeToRefs } from 'pinia'
 
 import { useStatistics } from '@/composables/useStatistics'
 import { getRootVue } from '@/composables/useVue'
 import { counter } from '@/message'
 import type { CookieInfo } from '@/message'
 import { amapKeyStorageKey, formDataKey, sanitizeSensitiveFormData } from '@/stores/conf/shared'
+import type { FormData } from '@/types/formData'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
-import type { FormData } from '@/types/formData'
 
 function toCookieGender(gender?: number): CookieInfo['gender'] {
   if (gender === 0) {
@@ -111,7 +112,7 @@ export const UserResumeStringOptions = {
     学历: true,
     求职状态: true,
     工作年限: true,
-  }, // ?? false,
+  },
   期望职位: true,
   个人优势: true,
   工作经历: true,
@@ -120,12 +121,6 @@ export const UserResumeStringOptions = {
   资格证书: true,
   志愿者经历: true,
 }
-
-const info = ref<UserInfo>()
-const cookieDatas = ref<Record<string, CookieInfo>>({})
-const cookieTableData = computed(() => Object.values(cookieDatas.value))
-
-const resume = ref<bossZpResumeData>()
 
 let getCurrentFormDataSnapshot: (() => Partial<FormData>) | null = null
 
@@ -141,57 +136,12 @@ function getSanitizedCurrentFormData() {
   return sanitizeSensitiveFormData(getCurrentFormDataSnapshot())
 }
 
-export function waitForRootUserInfo(
-  rootState: { userInfo?: UserInfo | null | undefined },
-  now = Date.now(),
-): Promise<UserInfo | null> {
-  return new Promise((resolve) => {
-    let settled = false
-    let stop = () => {}
+const useUserStore = defineStore('user', () => {
+  const info = ref<UserInfo>()
+  const cookieDatas = ref<Record<string, CookieInfo>>({})
+  const cookieTableData = computed(() => Object.values(cookieDatas.value))
+  const resume = ref<bossZpResumeData>()
 
-    const cleanup = () => {
-      stop()
-      clearTimeout(timeout)
-    }
-
-    const finish = (value: UserInfo | null | undefined) => {
-      if (settled) {
-        return
-      }
-      settled = true
-      cleanup()
-      resolve(value ?? null)
-    }
-
-    const applyUserInfo = (userInfo: UserInfo | null | undefined) => {
-      if (userInfo) {
-        info.value = userInfo
-        logger.debug('用户信息获取成功: ', now, userInfo)
-        finish(info.value)
-      }
-    }
-
-    stop = watch(
-      () => rootState.userInfo,
-      (userInfo) => {
-        applyUserInfo(userInfo)
-      },
-      {
-        flush: 'sync',
-        immediate: true,
-      },
-    )
-
-    const timeout = setTimeout(() => {
-      if (!info.value) {
-        logger.error('获取用户信息失败', now, { rootState, info })
-      }
-      finish(null)
-    }, 25000)
-  })
-}
-
-export function useUser() {
   function getUserId(): number | string | null {
     return info.value?.userId ?? window?._PAGE?.uid ?? window?._PAGE?.userId
   }
@@ -206,7 +156,7 @@ export function useUser() {
       return null
     }
 
-    return waitForRootUserInfo(rootState as { userInfo?: UserInfo | null | undefined }, now)
+    return waitForRootUserInfo(rootState as { userInfo?: UserInfo | null | undefined }, now, info)
   }
 
   async function initCookie() {
@@ -216,8 +166,6 @@ export function useUser() {
       cookieDatas.value = res
     } catch (err) {
       logger.error('获取账户数据失败', err)
-      // 仅影响账户切换, 暂时不用提醒
-      // ElMessage.error(`获取账户数据失败, 可尝试刷新插件: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -258,13 +206,11 @@ export function useUser() {
     }
 
     const targetAccount = jsonClone(currentRow)
-    const uid = useUser().getUserId()
+    const uid = getUserId()
     if (uid != null) {
-      // 保存当前账号状态
       await saveUser({ uid })
     }
 
-    // 恢复目标账号的配置
     if (targetAccount.form) {
       if (typeof targetAccount.form.amap?.key === 'string' && targetAccount.form.amap.key.trim()) {
         await counter.storageSet(amapKeyStorageKey, targetAccount.form.amap.key.trim())
@@ -276,7 +222,6 @@ export function useUser() {
       await useStatistics().setStatistics(targetAccount.statistics)
     }
 
-    // 切换到目标账号
     await counter.cookieSwitch(targetAccount.uid)
   }
 
@@ -314,7 +259,7 @@ export function useUser() {
     }
     let template = ''
     if (typeof options.基本信息 === 'object') {
-      template += `## 基本信息`
+      template += '## 基本信息'
       if (options.基本信息.姓名 && data.baseInfo?.nickName) {
         template += `\n- 姓名: ${data.baseInfo.nickName}`
       }
@@ -357,7 +302,11 @@ ${data.userDesc}
             item?.positionName ? `(${item.positionName})` : '',
           ], ' ')
           const emphasis = Array.isArray(item?.emphasis)
-            ? item.emphasis.map((entry) => toResumeValue(entry)).filter(Boolean).map((entry) => `\`${entry}\``).join(' ')
+            ? item.emphasis
+              .map((entry) => toResumeValue(entry))
+              .filter(Boolean)
+              .map((entry) => `\`${entry}\``)
+              .join(' ')
             : ''
           const sections = [
             heading ? `### ${heading}${formatResumeRange(item?.startDate, item?.endDate)}` : '',
@@ -460,6 +409,7 @@ ${volunteerExperiences.join('\n')}`
       throw error instanceof Error ? error : new Error(message)
     }
   }
+
   return {
     info,
     resume,
@@ -474,6 +424,75 @@ ${volunteerExperiences.join('\n')}`
     cookieDatas,
     cookieTableData,
     initCookie,
+  }
+})
+
+export function waitForRootUserInfo(
+  rootState: { userInfo?: UserInfo | null | undefined },
+  now = Date.now(),
+  infoRef: Ref<UserInfo | undefined> = useUser().info,
+): Promise<UserInfo | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    let stop = () => {}
+
+    const cleanup = () => {
+      stop()
+      clearTimeout(timeout)
+    }
+
+    const finish = (value: UserInfo | null | undefined) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      cleanup()
+      resolve(value ?? null)
+    }
+
+    const applyUserInfo = (userInfo: UserInfo | null | undefined) => {
+      if (userInfo) {
+        infoRef.value = userInfo
+        logger.debug('用户信息获取成功: ', now, userInfo)
+        finish(infoRef.value)
+      }
+    }
+
+    stop = watch(
+      () => rootState.userInfo,
+      (userInfo) => {
+        applyUserInfo(userInfo)
+      },
+      {
+        flush: 'sync',
+        immediate: true,
+      },
+    )
+
+    const timeout = setTimeout(() => {
+      if (!infoRef.value) {
+        logger.error('获取用户信息失败', now, { rootState, info: infoRef })
+      }
+      finish(null)
+    }, 25000)
+  })
+}
+
+export function useUser() {
+  const store = useUserStore()
+  const refs = storeToRefs(store)
+
+  return {
+    ...refs,
+    getUserResumeString: store.getUserResumeString,
+    getUserResumeData: store.getUserResumeData,
+    getUserId: store.getUserId,
+    initUser: store.initUser,
+    saveUser: store.saveUser,
+    clearUser: store.clearUser,
+    changeUser: store.changeUser,
+    deleteUser: store.deleteUser,
+    initCookie: store.initCookie,
   }
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElSpace, ElTag } from 'element-plus'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { MyJobListData } from '@/stores/jobs'
 
@@ -10,6 +10,7 @@ const props = defineProps<{
 }>()
 
 const showDescription = ref(false)
+const descriptionId = computed(() => `job-card-description-${props.job.encryptJobId}`)
 function stateColor(state?: string): string {
   switch (state) {
     case 'pending':
@@ -67,15 +68,24 @@ function getActiveTimeType(activeTime?: number): 'success' | 'warning' | 'danger
     <h3 class="card-salary">
       {{ job.salaryDesc }}
     </h3>
-    <div
+    <button
       v-show="showDescription"
+      :id="descriptionId"
       class="card-content"
       :title="job.card?.postDescription"
+      type="button"
       @click="showDescription = false"
     >
       {{ job.card?.postDescription }}
-    </div>
-    <div v-show="!showDescription" class="card-content" @click="showDescriptionHandler">
+    </button>
+    <button
+      v-show="!showDescription"
+      class="card-content"
+      type="button"
+      :aria-controls="descriptionId"
+      :aria-expanded="showDescription"
+      @click="showDescriptionHandler"
+    >
       <div>
         <ElSpace :size="3" wrap>
           <ElTag v-for="tag in job.skills" :key="tag" size="small" effect="plain" type="warning">
@@ -89,7 +99,7 @@ function getActiveTimeType(activeTime?: number): 'success' | 'warning' | 'danger
       <div class="card-footer">
         {{ job.welfareList.join(',') }}
       </div>
-    </div>
+    </button>
 
     <div v-if="job.card?.brandComInfo?.activeTime" class="active-time-tag">
       <ElTag :type="getActiveTimeType(job.card.brandComInfo.activeTime)" effect="plain">
@@ -98,7 +108,13 @@ function getActiveTimeType(activeTime?: number): 'success' | 'warning' | 'danger
     </div>
 
     <div class="author-row">
-      <img alt="" class="avatar" height="80" :src="job.brandLogo" width="80" />
+      <img
+        :alt="job.brandName ? `${job.brandName} logo` : '公司 logo'"
+        class="avatar"
+        height="80"
+        :src="job.brandLogo"
+        width="80"
+      />
       <div>
         <span class="company-name">{{ job.brandName }}</span>
         <h4>{{ job.cityName }}/{{ job.areaDistrict }}/{{ job.businessDistrict }}</h4>
@@ -130,9 +146,6 @@ function getActiveTimeType(activeTime?: number): 'success' | 'warning' | 'danger
   max-height: 32rem;
   box-shadow: -2rem 0 1rem -2rem #cdb9b9;
 
-  * {
-    user-select: none;
-  }
   .card-status {
     position: absolute;
     display: var(--state-show);
@@ -197,6 +210,10 @@ function getActiveTimeType(activeTime?: number): 'success' | 'warning' | 'danger
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    text-align: left;
   }
   .avatar {
     width: 40px;
@@ -287,6 +304,10 @@ html.dark {
       .company-name {
         color: #fff;
       }
+    }
+
+    .card-content {
+      color: #f5f5f5;
     }
 
     &:not(:first-child) {

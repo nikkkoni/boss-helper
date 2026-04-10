@@ -95,25 +95,25 @@
 
 ### 3.1 Store 架构统一
 
-- [ ] 统一 store 模式：将 `stores/jobs.ts`、`stores/user.ts`、`stores/log.tsx` 收敛到 Pinia，并消除非原子更新和模块级共享状态。（Store 设计问题 1, 4, 6）
-- [ ] 为 `stores/signedKey.ts` 的 fire-and-forget Promise 增加错误处理，避免静默失败。（Store 设计问题 3）
-- [ ] 为全局 `window.__q_*` 调试入口增加 `import.meta.env.DEV` 门控。（Store 设计问题 2）
-- [ ] 统一 `_list`、`_map` 等公开性约定，补齐 jobs store 的可见性和状态边界。（Store 设计问题 5）
+- [x] 统一 store 模式：将 `stores/jobs.ts`、`stores/user.ts`、`stores/log.tsx` 收敛到 Pinia，并消除非原子更新和模块级共享状态。（Store 设计问题 1, 4, 6）
+- [x] 为 `stores/signedKey.ts` 的 fire-and-forget Promise 增加错误处理，避免静默失败。（Store 设计问题 3）
+- [x] 为全局 `window.__q_*` 调试入口增加 `import.meta.env.DEV` 门控。（Store 设计问题 2）
+- [x] 统一 `_list`、`_map` 等公开性约定，补齐 jobs store 的可见性和状态边界。（Store 设计问题 5）
 
 ### 3.2 组件、类型与可维护性
 
-- [ ] 拆分 `Service.vue`、`Selectllm.vue`、`Config.vue` 三个超大组件，按职责拆出表单、测试对话框、服务配置等子组件。（组件质量问题 1）
-- [ ] 为 `Selectllm.vue`、`LLMFormItem.vue`、`Logs.vue`、`Ai.vue` 增加 scoped 样式隔离，避免全局样式泄漏。（组件质量问题 2）
-- [ ] 清理 `Chat.vue`、`CreateLLM.vue` 等死代码和未使用变量，补齐 `Jobcard.vue` 可访问性与暗色模式问题。（组件质量问题 4, 5, 6）
-- [ ] 修复 `boosData.d.ts`、`openapi.d.ts`、`deliverError.ts`、`useModel/type.ts` 的命名和类型债务，并减少 `any` / `as any`。（类型系统问题 1, 2, 3, 4, 5）
+- [x] 拆分 `Service.vue`、`Selectllm.vue`、`Config.vue` 三个超大组件，按职责拆出表单、测试对话框、服务配置等子组件。（组件质量问题 1）
+- [x] 为 `Selectllm.vue`、`LLMFormItem.vue`、`Logs.vue`、`Ai.vue` 增加 scoped 样式隔离，避免全局样式泄漏。（组件质量问题 2）
+- [x] 清理 `Chat.vue`、`CreateLLM.vue` 等死代码和未使用变量，补齐 `Jobcard.vue` 可访问性与暗色模式问题。（组件质量问题 4, 5, 6）
+- [x] 修复 `boosData.d.ts`、`openapi.d.ts`、`deliverError.ts`、`useModel/type.ts` 的命名和类型债务，并减少 `any` / `as any`。（类型系统问题 1, 2, 3, 4, 5）
 
 ### 3.3 性能热点
 
-- [ ] 优化 `pages/zhipin/components/Ui.vue` 鼠标移动热路径，避免每帧执行 `elementFromPoint()` 和 `getBoundingClientRect()`。（架构/性能问题 1）
-- [ ] 优化 `utils/amap.ts` 请求策略，只请求启用的距离类型，并复用已修复的参数编码逻辑。（架构/性能问题 2）
-- [ ] 去重 `stores/signedKey.ts` 重复请求 `/v1/llm/model_list` 的问题。（架构/性能问题 3）
-- [ ] 优化 `mqtt.ts` 拼包、`agent-bridge.mjs` relay 广播策略和 `agent-relay.html` 日志 DOM 增长问题。（架构/性能问题 4, 5, 6）
-- [ ] 替换 `useVue.ts` 中废弃的 `__lookupSetter__` / `__lookupGetter__` API。（架构/性能问题 7）
+- [x] 优化 `pages/zhipin/components/Ui.vue` 鼠标移动热路径，避免每帧执行 `elementFromPoint()` 和 `getBoundingClientRect()`。（架构/性能问题 1）
+- [x] 优化 `utils/amap.ts` 请求策略，只请求启用的距离类型，并复用已修复的参数编码逻辑。（架构/性能问题 2）
+- [x] 去重 `stores/signedKey.ts` 重复请求 `/v1/llm/model_list` 的问题。（架构/性能问题 3）
+- [x] 优化 `mqtt.ts` 拼包、`agent-bridge.mjs` relay 广播策略和 `agent-relay.html` 日志 DOM 增长问题。（架构/性能问题 4, 5, 6）
+- [x] 替换 `useVue.ts` 中废弃的 `__lookupSetter__` / `__lookupGetter__` API。（架构/性能问题 7）
 
 ---
 

@@ -171,8 +171,10 @@
       const logsEl = document.getElementById('logs')
       const responseEl = document.getElementById('response')
       const saveButton = document.getElementById('saveButton')
+      const MAX_LOG_ENTRIES = 120
       const relayClientId = localStorage.getItem(RELAY_CLIENT_ID_KEY) || crypto.randomUUID()
       const urlExtensionId = new URLSearchParams(location.search).get('extensionId') || ''
+      const logEntries = []
       let bridgeBootstrap = null
 
       localStorage.setItem(RELAY_CLIENT_ID_KEY, relayClientId)
@@ -185,7 +187,11 @@
       function log(message, data) {
         const line = `[${new Date().toLocaleTimeString()}] ${message}`
         const body = data ? `\n${JSON.stringify(data, null, 2)}` : ''
-        logsEl.textContent = `${line}${body}\n\n${logsEl.textContent}`.trim()
+        logEntries.unshift(`${line}${body}`)
+        if (logEntries.length > MAX_LOG_ENTRIES) {
+          logEntries.length = MAX_LOG_ENTRIES
+        }
+        logsEl.textContent = logEntries.join('\n\n')
       }
 
       function setBridgeState(text) {

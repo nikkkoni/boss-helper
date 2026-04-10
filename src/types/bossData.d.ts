@@ -9,7 +9,7 @@ interface bossZpBossData {
     regionCode: string
     bothTalked: boolean
     encryptBossId: string
-    warningTips: any[]
+    warningTips: unknown[]
     bossId: number
     weixinVisible: number
     mobile: string
@@ -103,7 +103,7 @@ interface bossZpJobItemData {
   /** 是否为优选职位，例如：0 */
   optimal: number
   /** 图标标记列表，例如：[] */
-  iconFlagList: any[]
+  iconFlagList: unknown[]
   /** 物品ID，例如：1 */
   itemId: number
   /** 城市编码，例如：101270100 */
@@ -234,12 +234,12 @@ type bossZpResumeData = DeepPartial<{
     resumeStatus: number
     resumeCount: number
     complete: boolean
-    weiXinSecurityUid: any
-    garbageFieldList: any
+    weiXinSecurityUid: unknown
+    garbageFieldList: unknown
     hometown: number
-    hometownName: any
+    hometownName: unknown
     studyAbroadCertPass: number
-    highestEduExp: any
+    highestEduExp: unknown
     showF3Optimize: number
     startWorkDateDesc: string
     birthdayDesc: string
@@ -257,7 +257,7 @@ type bossZpResumeData = DeepPartial<{
     location: number
     locationName: string
     subLocation: number
-    subLocationName: any
+    subLocationName: unknown
     lowSalary: number
     highSalary: number
     salaryDesc: string
@@ -269,12 +269,12 @@ type bossZpResumeData = DeepPartial<{
     suggestPosition: string
     applyStatus: number
     freshGraduate: number
-    doneWorkPositionList: any
-    garbageFieldList: any
-    interestPositionList: any
-    interestLocationList: any
+    doneWorkPositionList: unknown
+    garbageFieldList: unknown
+    interestPositionList: unknown
+    interestLocationList: unknown
     industryExpect: boolean
-    tagName: any
+    tagName: unknown
   }>
   workExpList: Array<{
     id: string
@@ -298,7 +298,7 @@ type bossZpResumeData = DeepPartial<{
     isPublic: number
     workType: number
     suggestToDel: number
-    garbageFieldList: any
+    garbageFieldList: unknown
   }>
   projectExpList: Array<{
     id: string
@@ -310,7 +310,7 @@ type bossZpResumeData = DeepPartial<{
     projectDesc: string
     performance: string
     suggestToDel: number
-    garbageFieldList: any
+    garbageFieldList: unknown
     endDateStr: string
     startDateStr: string
   }>
@@ -325,20 +325,20 @@ type bossZpResumeData = DeepPartial<{
     startYear: string
     endYear: string
     educationDesc: string
-    country: any
-    tags: any
+    country: unknown
+    tags: unknown
     schoolType: number
     suggestToDel: number
     thesisTitle: string
     thesisDesc: string
     majorRanking: number
-    courseList: Array<any>
+    courseList: unknown[]
     badge: string
-    garbageFieldList: any
+    garbageFieldList: unknown
     startYearStr: string
     endYearStr: string
   }>
-  socialContactList: any
+  socialContactList: unknown
   volunteerExpList: Array<{
     id: string
     name: string
@@ -346,7 +346,7 @@ type bossZpResumeData = DeepPartial<{
     startDate: string
     endDate: string
     volunteerDesc: string
-    garbageFieldList: any
+    garbageFieldList: unknown
     endDateStr: string
     volunteerDescription: string
     startDateStr: string
@@ -357,40 +357,40 @@ type bossZpResumeData = DeepPartial<{
     certStatus: number
     certType: number
   }>
-  trainingExpList: any
-  designWorksImage: any
-  designWorksVideo: any
-  personalImage: any
-  deliciousFoodImage: any
+  trainingExpList: unknown
+  designWorksImage: unknown
+  designWorksVideo: unknown
+  personalImage: unknown
+  deliciousFoodImage: unknown
   garbage: {
     status: number
     reasonCode: number
     resumeDetailStatus: number
-    garbageBaseInfo: any
-    baseInfo: any
-    garbageUserDesc: any
-    personalAdvantages: any
-    garbageWorkExp: any
-    workExp: any
-    garbageEduExp: any
-    eduExp: any
-    garbageProjectExp: any
-    projectExp: any
-    garbageVolunteerExp: any
-    volunteerExp: any
-    garbageExpectList: any
-    expect: any
-    garbageCertificationList: any
-    certification: any
-    designWorks: any
-    designWorksImageList: any
-    designWorksVideoList: any
-    garbageHandicapped: any
-    handicapped: any
-    trainingExp: any
-    clubExp: any
-    professionalSkill: any
-    honor: any
+    garbageBaseInfo: unknown
+    baseInfo: unknown
+    garbageUserDesc: unknown
+    personalAdvantages: unknown
+    garbageWorkExp: unknown
+    workExp: unknown
+    garbageEduExp: unknown
+    eduExp: unknown
+    garbageProjectExp: unknown
+    projectExp: unknown
+    garbageVolunteerExp: unknown
+    volunteerExp: unknown
+    garbageExpectList: unknown
+    expect: unknown
+    garbageCertificationList: unknown
+    certification: unknown
+    designWorks: unknown
+    designWorksImageList: unknown
+    designWorksVideoList: unknown
+    garbageHandicapped: unknown
+    handicapped: unknown
+    trainingExp: unknown
+    clubExp: unknown
+    professionalSkill: unknown
+    honor: unknown
   }
   editStatus: {
     canAddExpect: boolean
@@ -399,13 +399,13 @@ type bossZpResumeData = DeepPartial<{
     canAddEduExp: boolean
     canAddSocialContact: boolean
   }
-  doneWorkPositionList: Array<any>
-  handicappedInfo: any
-  postExpList: Array<any>
-  myLabels: any
-  clubExpList: Array<any>
+  doneWorkPositionList: unknown[]
+  handicappedInfo: unknown
+  postExpList: unknown[]
+  myLabels: unknown
+  clubExpList: unknown[]
   professionalSkill: string
-  honorList: Array<any>
+  honorList: unknown[]
   feature: {
     showNewPositionStyle: number
     showHandicappedModule: number
@@ -419,7 +419,7 @@ type bossZpResumeData = DeepPartial<{
     expectLocationInterestCombine: number
     stuMultiExpectChoose: number
   }
-  virtualPartTimeCombineExpect: any
+  virtualPartTimeCombineExpect: unknown
 }>
 
 /**
@@ -434,7 +434,7 @@ interface bossZpDetailData {
   /** 安全标识符，用于请求验证，例如：'abc123def456...' */
   securityId: string
   /** 会话ID，例如：null */
-  sessionId: any
+  sessionId: string | null
   /** 日志ID，用于追踪，例如：'abc123.search.35' */
   lid: string
   /** 职位详细信息 */
@@ -470,7 +470,7 @@ interface bossZpDetailData {
     /** 薪资描述，例如：'15-25K' */
     salaryDesc: string
     /** 薪资类型描述，例如：null */
-    payTypeDesc: any
+    payTypeDesc: unknown
     /** 职位描述，包含岗位职责和任职要求，例如：'负责前端页面开发，熟悉Vue/React框架...' */
     postDescription: string
     /** 加密后的地址ID，例如：'def456ghi789...' */
@@ -490,9 +490,9 @@ interface bossZpDetailData {
     /** 百度静态地图URL（PC端） */
     baiduPcStaticMapUrl: string
     /** 海外地址列表，例如：[] */
-    overseasAddressList: Array<any>
+    overseasAddressList: unknown[]
     /** 海外信息，例如：null */
-    overseasInfo: any
+    overseasInfo: unknown
     /** 显示的技能标签，例如：['Vue', 'React', 'JavaScript', 'TypeScript', '前端开发经验'] */
     showSkills: Array<string>
     /** 是否匿名发布，例如：0 */
@@ -521,9 +521,9 @@ interface bossZpDetailData {
     /** 是否认证，例如：true */
     certificated: boolean
     /** 标签图标URL，例如：null */
-    tagIconUrl: any
+    tagIconUrl: unknown
     /** 头像贴纸URL，例如：null */
-    avatarStickerUrl: any
+    avatarStickerUrl: unknown
   }
   /** 公司品牌信息 */
   brandComInfo: {
@@ -548,7 +548,7 @@ interface bossZpDetailData {
     /** 公司介绍，例如：'' */
     introduce: string
     /** 公司标签，例如：[] */
-    labels: Array<any>
+    labels: unknown[]
     /** 活跃时间戳，例如：1640995200000 */
     activeTime: number
     /** 是否显示品牌信息，例如：true */
@@ -581,13 +581,13 @@ interface bossZpDetailData {
     beFriend: boolean
   }
   /** 残障信息，例如：null */
-  handicappedInfo: any
+  handicappedInfo: unknown
   /** 附录信息 */
   appendixInfo: {
     /** 是否可以反馈，例如：false */
     canFeedback: boolean
     /** 聊天气泡，例如：null */
-    chatBubble: any
+    chatBubble: unknown
   }
   /** ATS在线申请信息 */
   atsOnlineApplyInfo: {
@@ -597,5 +597,5 @@ interface bossZpDetailData {
     alreadyApply: boolean
   }
   /** 认证材料列表，例如：[] */
-  certMaterials: Array<any>
+  certMaterials: unknown[]
 }

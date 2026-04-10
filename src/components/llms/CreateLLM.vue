@@ -14,7 +14,7 @@ import { computed, ref } from 'vue'
 
 import type { modelData } from '@/composables/useModel'
 import { llms, useModel } from '@/composables/useModel'
-import type { llm } from '@/composables/useModel/type'
+import type { Llm } from '@/composables/useModel/type'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
 
@@ -38,13 +38,6 @@ const createColor = ref(props.model?.color || color16())
 const testShow = ref(false)
 const { getModel } = useModel()
 
-const _llmsOptions = computed(() =>
-  llms.map((v) => {
-    const m = v.mode
-    return { ...m, value: m.mode }
-  }),
-)
-
 const selectLLM = ref(props.model?.data?.mode || llms[0].mode.mode)
 const formLLM = computed(() =>
   Math.max(
@@ -53,36 +46,36 @@ const formLLM = computed(() =>
   ),
 )
 
-type r = Record<string, any>
+type LlmFormModel = Record<string, unknown>
 
-function dfs(res: r, data: r) {
+function isObjectRecord(value: unknown): value is LlmFormModel {
+  return value != null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function dfs(res: LlmFormModel, data: LlmFormModel) {
   for (const key in data) {
     const v = data[key]
-    if ('mode' in v) {
+    if (!isObjectRecord(v) || 'mode' in v) {
       continue
-    } else if ('alert' in v) {
-      res[key] = {}
-      dfs(res[key], v.value)
-    } else {
+    }
+
+    if ('alert' in v && isObjectRecord(v.value)) {
+      const nextLevel: LlmFormModel = {}
+      res[key] = nextLevel
+      dfs(nextLevel, v.value)
+    } else if ('value' in v) {
       res[key] = v.value
     }
   }
 }
 
-const llmFormData = reactiveComputed<r>(() => {
-  const res = {}
+const llmFormData = reactiveComputed<LlmFormModel>(() => {
+  const res: LlmFormModel = {}
   dfs(res, llms[formLLM.value])
   deepmerge(res, props.model?.data, { clone: false })
   return res
 })
 
-function _updateFormLLM(_v: string) {
-  // for (const key in llmFormData) {
-  //   delete llmFormData[key];
-  // }
-  dfs(llmFormData, llms[formLLM.value])
-  deepmerge(llmFormData, props.model?.data, { clone: false })
-}
 const testIn = ref('')
 const testOut = ref('')
 const testExample = {
@@ -138,14 +131,21 @@ interface UserInfo {
     '小于90度的是锐角，等于90度的是直角，大于90度的是钝角\n开水有100度，所以开水是钝角吗？',
   ],
 }
+
+function buildModelConfig(): modelData['data'] {
+  return {
+    ...(jsonClone(llmFormData) as Record<string, unknown>),
+    mode: selectLLM.value,
+  } as unknown as modelData['data']
+}
+
 async function test() {
   const data: modelData = JSON.parse(JSON.stringify(props.model || { name: '', key: '' }))
   data.name = createName.value
-  data.data = jsonClone(llmFormData) as modelData['data'] & {}
-  data.data.mode = selectLLM.value
+  data.data = buildModelConfig()
   logger.debug(data)
 
-  const gpt = getModel(data, testIn.value) as llm<any>
+  const gpt = getModel(data, testIn.value) as Llm
   testOut.value = ''
   try {
     logger.group('LLMTest')
@@ -166,8 +166,8 @@ async function test() {
       testOut.value = msg.content || ''
     }
     logger.debug('TestRes', msg)
-  } catch (err: any) {
-    ElMessage.error(err.message)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : String(error))
   }
   logger.groupEnd()
 }
@@ -175,8 +175,7 @@ async function test() {
 function create() {
   const data: modelData = props.model || { name: '', key: '' }
   data.name = createName.value
-  data.data = jsonClone(llmFormData) as modelData['data'] & {}
-  data.data.mode = selectLLM.value
+  data.data = buildModelConfig()
   data.color = createColor.value
   emit('create', data)
 }
@@ -202,21 +201,6 @@ function create() {
         </ElFormItem>
       </div>
 
-      <!-- <ElSegmented
-        v-model="selectLLM"
-        :options="llmsOptions"
-        block
-        @update:model-value="updateFormLLM"
-      >
-        <template #default="{ item }">
-          <div v-if="typeof item === 'object'" class="llms-select">
-            <ElIcon size="20">
-              <SafeHtml tag="span" variant="svg" :html="item.icon" />
-            </ElIcon>
-            <div>{{ item.label || item.mode }}</div>
-          </div>
-        </template>
-      </ElSegmented> -->
       <ElForm label-width="auto" size="large" label-position="left">
         <LLMForm :key="formLLM" v-model="llmFormData" :data="llms[formLLM]" />
       </ElForm>

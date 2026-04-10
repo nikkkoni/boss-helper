@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 
 import { browser } from '#imports'
 import {
-  BoosHelperError,
+  BossHelperError,
   GreetError,
   LimitError,
   PublishError,
@@ -161,7 +161,7 @@ export async function sendPublishReq(
     }
     return res.data
   } catch (e: unknown) {
-    if (e instanceof BoosHelperError) {
+    if (e instanceof BossHelperError) {
       throw e
     }
     logger.warn(`sendPublishReq 重试, 剩余 ${retries - 1} 次`, e)

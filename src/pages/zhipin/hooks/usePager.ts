@@ -67,7 +67,7 @@ export const usePager = defineStore('zhipin/pager', () => {
         bindings.pageStateKey,
         page,
       )
-      const initChange = useHookVueFn(
+      const initChange = useHookVueFn<(value: number) => void>(
         getVueContainerQuery(bindings.pageChangeSelectorKey),
         [...bindings.pageChangeMethodKeys],
       )

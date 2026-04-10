@@ -19,18 +19,18 @@ export interface AmapGeocode {
     citycode: string
     city: string
     district: string
-    township: Array<any>
+    township: unknown[]
     neighborhood: {
-      name: Array<any>
-      type: Array<any>
+      name: unknown[]
+      type: unknown[]
     }
     building: {
-      name: Array<any>
-      type: Array<any>
+      name: unknown[]
+      type: unknown[]
     }
     adcode: string
-    street: Array<any>
-    number: Array<any>
+    street: unknown[]
+    number: unknown[]
     location: string
     level: string
   }>
@@ -47,6 +47,16 @@ export interface AmapDistance {
     duration: string
   }>
 }
+
+type AmapDistanceMode = 'straight' | 'driving' | 'walking'
+
+export interface AmapDistanceMetric {
+  ok: boolean
+  distance: number
+  duration: number
+}
+
+export type AmapDistanceResult = Record<AmapDistanceMode, AmapDistanceMetric>
 
 export async function amapGeocode(
   address: string,
@@ -68,6 +78,12 @@ export async function amapGeocode(
 
 export async function amapDistance(destination: string) {
   const { formData } = useConf()
+  const data: AmapDistanceResult = {
+    straight: { ok: false, distance: 0, duration: 0 },
+    driving: { ok: false, distance: 0, duration: 0 },
+    walking: { ok: false, distance: 0, duration: 0 },
+  }
+
   const createDistanceRequest = async (type: 0 | 1 | 3) => {
     const params = new URLSearchParams({
       origins: formData.amap.origins,
@@ -81,32 +97,30 @@ export async function amapDistance(destination: string) {
     })) as AmapDistance | AmapError
   }
 
-  const [res0, res1, res3] = await Promise.all([
-    createDistanceRequest(0),
-    createDistanceRequest(1),
-    createDistanceRequest(3),
-  ])
-
-  const data = {
-    straight: { ok: false, distance: 0, duration: 0 },
-    driving: { ok: false, distance: 0, duration: 0 },
-    walking: { ok: false, distance: 0, duration: 0 },
+  const requestPlan: Array<{ mode: AmapDistanceMode; type: 0 | 1 | 3 }> = []
+  if (formData.amap.straightDistance > 0) {
+    requestPlan.push({ mode: 'straight', type: 0 })
+  }
+  if (formData.amap.drivingDistance > 0 || formData.amap.drivingDuration > 0) {
+    requestPlan.push({ mode: 'driving', type: 1 })
+  }
+  if (formData.amap.walkingDistance > 0 || formData.amap.walkingDuration > 0) {
+    requestPlan.push({ mode: 'walking', type: 3 })
   }
 
-  if (res0.status === '1' && 'results' in res0) {
-    data.straight.ok = true
-    data.straight.distance = Number(res0.results?.[0]?.distance)
-    data.straight.duration = Number(res0.results?.[0]?.duration)
-  }
-  if (res1.status === '1' && 'results' in res1) {
-    data.driving.ok = true
-    data.driving.distance = Number(res1.results?.[0]?.distance)
-    data.driving.duration = Number(res1.results?.[0]?.duration)
-  }
-  if (res3.status === '1' && 'results' in res3) {
-    data.walking.ok = true
-    data.walking.distance = Number(res3.results?.[0]?.distance)
-    data.walking.duration = Number(res3.results?.[0]?.duration)
+  const responses = await Promise.all(
+    requestPlan.map(async ({ mode, type }) => ({
+      mode,
+      response: await createDistanceRequest(type),
+    })),
+  )
+
+  for (const { mode, response } of responses) {
+    if (response.status === '1' && 'results' in response) {
+      data[mode].ok = true
+      data[mode].distance = Number(response.results?.[0]?.distance)
+      data[mode].duration = Number(response.results?.[0]?.duration)
+    }
   }
   return data
 }

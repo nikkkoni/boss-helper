@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLog } from '@/stores/log'
 
 import { createJob } from './helpers/jobs'
+import { setupPinia } from './helpers/pinia'
 
 describe('log store query', () => {
   beforeEach(() => {
+    setupPinia()
     useLog().clear()
   })
 

@@ -35,6 +35,7 @@ const relayMeta = new Map()
 const eventClients = new Map()
 const recentAgentEvents = []
 const recentAgentEventIds = new Set()
+let nextRelayIndex = 0
 const trustedRelayOrigins = new Set([
   `https://127.0.0.1:${HTTPS_PORT}`,
   `https://localhost:${HTTPS_PORT}`,
@@ -278,7 +279,8 @@ function dispatchQueuedCommands() {
   }
 
   while (commandQueue.length > 0) {
-    const relay = relays[0]
+    const relay = relays[nextRelayIndex % relays.length]
+    nextRelayIndex = (nextRelayIndex + 1) % relays.length
     const command = commandQueue.shift()
     writeSse(relay, 'command', command)
   }
@@ -370,6 +372,11 @@ async function runBatchCommands(commands, options = {}) {
 function handleRelayDisconnect(res) {
   relayClients.delete(res)
   relayMeta.delete(res)
+  if (relayClients.size === 0) {
+    nextRelayIndex = 0
+  } else {
+    nextRelayIndex %= relayClients.size
+  }
   broadcastQueueState()
 }
 

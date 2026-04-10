@@ -1,12 +1,13 @@
 import { ElMessage } from 'element-plus'
 
 import type { cachePipelineResult, createHandle } from '@/composables/useApplying'
+import type { BossHelperAgentState } from '@/message/agent'
 import { getActiveSiteAdapter } from '@/site-adapters'
 import type { MyJobListData } from '@/stores/jobs'
 import type { logData, logErr } from '@/stores/log'
 import {
   AIFilteringError,
-  BoosHelperError,
+  BossHelperError,
   LimitError,
   RateLimitError,
   type AIFilteringScoreDetail,
@@ -34,7 +35,7 @@ export interface DeliverIterationResult {
 export interface DeliverExecutionDependencies {
   cachePipelineResultFn: typeof cachePipelineResult
   common: {
-    deliverState: string
+    deliverState: BossHelperAgentState
     deliverStop: boolean
   }
   conf: {
@@ -62,7 +63,7 @@ export interface DeliverExecutionDependencies {
       success: number
       total: number
     }
-    updateStatistics: (curData?: typeof createDailyStatisticsSnapshot extends (...args: any[]) => infer R ? R : never) => Promise<unknown>
+    updateStatistics: (curData?: ReturnType<typeof createDailyStatisticsSnapshot>) => Promise<unknown>
   }
 }
 
@@ -73,8 +74,8 @@ export function createHandleResult(candidateCount: number, seenJobIds: string[])
   }
 }
 
-export function normalizeDeliverError(error: unknown): BoosHelperError {
-  if (error instanceof BoosHelperError) {
+export function normalizeDeliverError(error: unknown): BossHelperError {
+  if (error instanceof BossHelperError) {
     return error
   }
 
@@ -99,7 +100,7 @@ export async function handleDeliverSuccess(options: {
   emitBossHelperAgentEvent(
     createBossHelperAgentEvent({
       type: 'job-succeeded',
-      state: deps.common.deliverState as any,
+      state: deps.common.deliverState,
       message: `投递成功: ${data.jobName || data.encryptJobId}`,
       job: toAgentCurrentJob(data),
       progress: {
@@ -164,14 +165,14 @@ export async function handleDeliverFailure(options: {
     deliverError.state === 'warning' ? 'warn' : 'error',
     deliverError.name || '没有消息',
   )
-  deps.log.add(data, deliverError as logErr, ctx)
+  deps.log.add(data, deliverError, ctx)
   logger.warn('投递过滤', ctx)
   ctx.state = '过滤'
   ctx.err = deliverError.message ?? ''
   emitBossHelperAgentEvent(
     createBossHelperAgentEvent({
       type: deliverError.state === 'warning' ? 'job-filtered' : 'job-failed',
-      state: deps.common.deliverState as any,
+      state: deps.common.deliverState,
       message: `${deliverError.name}: ${deliverError.message}`,
       job: toAgentCurrentJob(data),
       progress: {
@@ -219,7 +220,7 @@ export async function handleDeliverFailure(options: {
     emitBossHelperAgentEvent(
       createBossHelperAgentEvent({
         type: 'rate-limited',
-        state: deps.common.deliverState as any,
+        state: deps.common.deliverState,
         message: msg,
         job: toAgentCurrentJob(data),
         progress: {
@@ -262,7 +263,7 @@ export async function executeDeliverJob(options: {
   emitBossHelperAgentEvent(
     createBossHelperAgentEvent({
       type: 'job-started',
-      state: deps.common.deliverState as any,
+      state: deps.common.deliverState,
       message: `开始处理岗位: ${data.jobName || data.encryptJobId}`,
       job: toAgentCurrentJob(data),
       progress: {

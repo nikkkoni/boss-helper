@@ -99,7 +99,7 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
         delayDeliveryPageNextMs: conf.formData.delay.deliveryPageNext,
         delayDeliveryStartsMs: conf.formData.delay.deliveryStarts,
         getNow: () => Date.now(),
-        getJobList: () => jobList._list.value,
+        getJobList: () => jobList.list,
         getLocationHref: () => location.href,
         maxIterations: Math.max(agentRuntime.activeTargetJobIds.length * 5, 300),
         maxRuntimeMs: Math.max(conf.formData.delay.deliveryPageNext * 1000 * 10, 3 * 60 * 60 * 1000),
@@ -150,7 +150,7 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   }
 
   function resetFilter() {
-    resetJobStatuses(jobList._list.value, (job) => job.status.status !== 'success')
+    resetJobStatuses(jobList.list, (job) => job.status.status !== 'success')
   }
 
   async function startBatch(payload?: BossHelperAgentStartPayload) {

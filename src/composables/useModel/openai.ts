@@ -10,8 +10,8 @@ import {
 import { logger } from '@/utils/logger'
 
 import { desc, other } from './common'
-import type { llmConf, llmInfo, llmMessageArgs, messageReps, prompt } from './type'
-import { llm } from './type'
+import type { LlmConf, LlmInfo, LlmMessageArgs, MessageResponse, Prompt } from './type'
+import { Llm } from './type'
 
 const openAICircuitBreaker = createCircuitBreaker({
   failureThreshold: 3,
@@ -33,13 +33,29 @@ function isStructuredOutputUnsupported(error: unknown) {
   return ['json_schema', 'response_format', 'schema', 'structured output'].some((token) => message.includes(token))
 }
 
-function getLastChoiceMessage(response: any) {
+type OpenAIChoiceMessage = {
+  content?: string
+  reasoning_content?: string | null
+}
+
+type OpenAIChatResponse = {
+  choices?: Array<{
+    message?: OpenAIChoiceMessage
+  }>
+  usage?: {
+    completion_tokens?: number
+    prompt_tokens?: number
+    total_tokens?: number
+  }
+}
+
+function getLastChoiceMessage(response: OpenAIChatResponse | null | undefined) {
   const choices = Array.isArray(response?.choices) ? response.choices : []
   const lastChoice = choices.at(-1)
   return lastChoice?.message
 }
 
-export type openaiLLMConf = llmConf<
+export type openaiLLMConf = LlmConf<
   'openai',
   {
     url: string
@@ -57,7 +73,7 @@ export type openaiLLMConf = llmConf<
     }
 >
 
-const info: llmInfo<openaiLLMConf> = {
+const info: LlmInfo<openaiLLMConf> = {
   mode: {
     mode: 'openai',
     label: 'ChatGPT',
@@ -159,8 +175,8 @@ const info: llmInfo<openaiLLMConf> = {
   },
 }
 
-class Gpt extends llm<openaiLLMConf> {
-  constructor(conf: openaiLLMConf, template: string | prompt) {
+class Gpt extends Llm<openaiLLMConf> {
+  constructor(conf: openaiLLMConf, template: string | Prompt) {
     super(conf, template)
   }
 
@@ -175,12 +191,12 @@ class Gpt extends llm<openaiLLMConf> {
     onPrompt = (_s: string) => {},
     json = false,
     structuredOutput,
-  }: llmMessageArgs, _type: 'aiGreeting' | 'aiFiltering' | 'aiReply'): Promise<messageReps> {
+  }: LlmMessageArgs, _type: 'aiGreeting' | 'aiFiltering' | 'aiReply'): Promise<MessageResponse> {
     const prompts = this.buildPrompt(data)
     const prompt = prompts[prompts.length - 1].content
     onPrompt(prompt)
     let stream = ''
-    const ans: messageReps = { prompt }
+    const ans: MessageResponse = { prompt }
 
     const res = await this.post({
       prompt: prompts,
@@ -215,9 +231,9 @@ class Gpt extends llm<openaiLLMConf> {
         : content
       ans.reasoning_content = (msg?.reasoning_content as string)?.replaceAll('\n', '')
       ans.usage = {
-        input_tokens: res?.usage?.prompt_tokens,
-        output_tokens: res?.usage?.completion_tokens,
-        total_tokens: res?.usage?.total_tokens,
+        input_tokens: res?.usage?.prompt_tokens ?? 0,
+        output_tokens: res?.usage?.completion_tokens ?? 0,
+        total_tokens: res?.usage?.total_tokens ?? 0,
       }
     } else {
       ans.content = stream
@@ -231,14 +247,14 @@ class Gpt extends llm<openaiLLMConf> {
     json = false,
     structuredOutput,
   }: {
-    prompt: prompt
+    prompt: Prompt
     onStream?: OnStream
     json?: boolean
     structuredOutput?: {
       name: string
       schema: Record<string, unknown>
     }
-  }): Promise<any> {
+  }): Promise<OpenAIChatResponse> {
     const batchKey = JSON.stringify({
       json,
       model: this.conf.model,

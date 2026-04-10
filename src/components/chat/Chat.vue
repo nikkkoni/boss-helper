@@ -1,20 +1,16 @@
 <script lang="ts" setup>
-import { watchIgnorable } from '@vueuse/core'
-import { ElAvatar, ElButton, ElIcon, ElInput } from 'element-plus'
+import { ElAvatar, ElIcon } from 'element-plus'
 import { ref, watch } from 'vue'
 import type { RecycleScrollerInstance } from 'vue-virtual-scroller'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 
 import SafeHtml from '@/components/SafeHtml.vue'
 import { useChat } from '@/composables/useChat'
-import { useUser } from '@/stores/user'
 
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
-const { chatMessages, chatInput } = useChat()
-const user = useUser()
+const { chatMessages } = useChat()
 const messageScroller = ref<RecycleScrollerInstance>()
-const messageInput = ref<InstanceType<typeof ElInput>>()
 
 watch(
   () => chatMessages.value.length,
@@ -22,20 +18,6 @@ watch(
     messageScroller.value?.scrollToBottom()
   },
 )
-
-// 创建可忽略的监听,在用户输入的时候不进行更改. TODO: 节流优化
-const { ignoreUpdates } = watchIgnorable(chatInput, () => {
-  if (messageInput.value?.textarea?.scrollTop) {
-    messageInput.value.textarea.scrollTop = messageInput.value?.textarea?.scrollHeight || 0
-  }
-})
-
-function inputMsgUpdate(v: string) {
-  if (chatInput.input) return
-  ignoreUpdates(() => {
-    chatInput.content = v
-  })
-}
 </script>
 
 <template>
@@ -84,31 +66,6 @@ function inputMsgUpdate(v: string) {
         </DynamicScrollerItem>
       </template>
     </DynamicScroller>
-    <div v-if="false" class="chat-footer">
-      <ElInput
-        ref="messageInput"
-        :model-value="chatInput.content"
-        :autosize="{ minRows: 5, maxRows: 10 }"
-        type="textarea"
-        placeholder="输入消息..."
-        @update:model-value="inputMsgUpdate"
-      />
-      <div class="footer-right">
-        <ElAvatar
-          :src="
-            chatInput.avatar
-              ? undefined
-              : user.info.value?.tinyAvatar || user.info.value?.largeAvatar
-          "
-          :style="{ '--el-avatar-bg-color': chatInput?.avatar?.color }"
-        >
-          <ElIcon v-if="chatInput.avatar" size="large">
-            <SafeHtml tag="span" variant="svg" :html="chatInput.avatar?.icon" />
-          </ElIcon>
-        </ElAvatar>
-        <ElButton type="primary" plain round> 发送 </ElButton>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -209,29 +166,6 @@ function inputMsgUpdate(v: string) {
     .message-options {
       flex-direction: row-reverse;
     }
-  }
-}
-.chat-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-top: 10px;
-  position: relative;
-  .ehp-textarea {
-    :deep(.ehp-textarea__inner) {
-      padding-right: 70px;
-    }
-  }
-  .footer-right {
-    display: flex;
-    height: 100%;
-    margin: 0px 10px;
-    flex-direction: column;
-    align-items: center;
-    position: absolute;
-    right: 0px;
-    justify-content: space-between;
-    padding: 11px 0px;
   }
 }
 </style>

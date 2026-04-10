@@ -337,7 +337,7 @@ export interface components {
       /** Code */
       code: string
       /** Data */
-      data?: Record<string, never> | null
+      data?: object | null
     }
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -360,11 +360,11 @@ export interface components {
     /** InvokeReqsJD */
     InvokeReqsJD: {
       /** Data */
-      data: Record<string, never>
+      data: object
       /** Boss */
-      boss?: Record<string, never> | null
+      boss?: object | null
       /** Card */
-      card: Record<string, never>
+      card: object
     }
     /** Key */
     Key: {
@@ -396,6 +396,20 @@ export interface components {
       key: components['schemas']['Key']
       /** Users */
       users: components['schemas']['UserPublic'][]
+    }
+    /** ModelListEntry */
+    ModelListEntry: {
+      key: string
+      name: string
+      color?: string | null
+      data?: object | null
+      vip?: {
+        description: string
+        price: {
+          input: string
+          output: string
+        }
+      } | null
     }
     /** LLMResponse */
     LLMResponse: {
@@ -576,7 +590,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': unknown
+          'application/json': components['schemas']['ModelListEntry'][]
         }
       }
     }

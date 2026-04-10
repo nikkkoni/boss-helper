@@ -10,7 +10,7 @@ describe('FormSelect integration', () => {
       'utf8',
     )
     const configSource = readFileSync(
-      resolve(process.cwd(), 'src/pages/zhipin/components/Config.vue'),
+      resolve(process.cwd(), 'src/pages/zhipin/components/config/ConfigFilterSection.vue'),
       'utf8',
     )
 

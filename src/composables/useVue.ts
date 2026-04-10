@@ -9,8 +9,25 @@ import {
   waitForDocumentReady,
 } from '@/utils/selectors'
 
-const rootVue = ref()
+export type VueRouteLike = {
+  path: string
+}
+
+export type VueRootInstance = Record<string, unknown> & {
+  $route?: VueRouteLike
+  $router?: {
+    afterHooks?: Array<(route: VueRouteLike) => void | Promise<void>>
+  }
+  $store?: {
+    state?: unknown
+  }
+}
+
+const rootVue = ref<VueRootInstance>()
 let rootSelector = ''
+type VueHostElement = Element & {
+  __vue__?: VueRootInstance
+}
 
 type SelectorInput = string | readonly string[]
 
@@ -87,6 +104,18 @@ function waitForValueOnce<T>(
   })
 }
 
+function findPropertyDescriptor(target: object, key: string) {
+  let current: object | null = target
+  while (current) {
+    const descriptor = Object.getOwnPropertyDescriptor(current, key)
+    if (descriptor) {
+      return descriptor
+    }
+    current = Object.getPrototypeOf(current)
+  }
+  return undefined
+}
+
 async function waitForValue<T>(
   getter: () => T | null | undefined,
   options: WaitForValueOptions,
@@ -117,7 +146,7 @@ async function waitForVueInstance(selectors: SelectorInput, debugLabel: string) 
   return waitForValue(
     () => {
       for (const selector of selectorList) {
-        const vueInstance = document.querySelector<any>(selector)?.__vue__
+        const vueInstance = document.querySelector<VueHostElement>(selector)?.__vue__
         if (vueInstance != null) {
           return vueInstance
         }
@@ -134,7 +163,7 @@ async function waitForVueInstance(selectors: SelectorInput, debugLabel: string) 
   )
 }
 
-export async function getRootVue(): Promise<any> {
+export async function getRootVue(): Promise<VueRootInstance> {
   const selectors = getActiveSelectorRegistry()
   if (rootSelector !== selectors.root) {
     rootSelector = selectors.root
@@ -150,7 +179,7 @@ export async function getRootVue(): Promise<any> {
   const waitVueMount = async () =>
     waitForValue(
       () => {
-        const wrap = document.querySelector<any>(selectors.root)
+        const wrap = document.querySelector<VueHostElement>(selectors.root)
         if (rootVue.value !== undefined) {
           return rootVue.value
         }
@@ -170,10 +199,13 @@ export async function getRootVue(): Promise<any> {
     )
 
   await waitVueMount()
+  if (rootVue.value == null) {
+    throw new Error('未找到vue根组件')
+  }
   return rootVue.value
 }
 
-export function useHookVueData<T = any>(
+export function useHookVueData<T = unknown>(
   selectors: SelectorInput,
   key: string,
   data: Ref<T>,
@@ -182,16 +214,15 @@ export function useHookVueData<T = any>(
   return async () => {
     const jobVue = await waitForVueInstance(selectors, `vue-data:${key}`)
 
-    data.value = jobVue[key]
+    data.value = jobVue[key] as T
     update?.(toValue(jobVue[key] as T))
-    // eslint-disable-next-line no-restricted-properties
-    const originalSet = typeof jobVue.__lookupSetter__ === 'function' ? jobVue.__lookupSetter__(key) : undefined
-    // eslint-disable-next-line no-restricted-properties
-    const originalGet = typeof jobVue.__lookupGetter__ === 'function' ? jobVue.__lookupGetter__(key) : undefined
+    const descriptor = findPropertyDescriptor(jobVue, key)
+    const originalSet = descriptor?.set
+    const originalGet = descriptor?.get
     let currentValue = jobVue[key] as T
-    // eslint-disable-next-line accessor-pairs
     Object.defineProperty(jobVue, key, {
       configurable: true,
+      enumerable: descriptor?.enumerable ?? true,
       get() {
         return originalGet ? originalGet.call(this) : currentValue
       },
@@ -207,19 +238,22 @@ export function useHookVueData<T = any>(
   }
 }
 
-export function useHookVueFn(selectors: SelectorInput, key: string | string[]) {
+export function useHookVueFn<T extends (...args: never[]) => unknown = (...args: never[]) => unknown>(
+  selectors: SelectorInput,
+  key: string | string[],
+) {
   return async () => {
     const jobVue = await waitForVueInstance(selectors, `vue-fn:${Array.isArray(key) ? key.join('|') : key}`)
     if (Array.isArray(key)) {
       for (const k of key) {
         if (jobVue[k]) {
-          return jobVue[k]
+          return jobVue[k] as T
         }
       }
       throw new Error(`未找到可用的Vue方法: ${key.join(', ')}`)
     }
     if (jobVue[key]) {
-      return jobVue[key]
+      return jobVue[key] as T
     }
     throw new Error(`未找到Vue方法: ${key}`)
   }

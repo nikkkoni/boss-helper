@@ -26,7 +26,7 @@ function normalizeJobStatusFilter(statusFilter?: BossHelperAgentJobPipelineStatu
 }
 
 function getJobById(encryptJobId: string) {
-  return jobList.get(encryptJobId) ?? jobList._list.value.find((item) => item.encryptJobId === encryptJobId)
+  return jobList.get(encryptJobId) ?? jobList.list.find((item) => item.encryptJobId === encryptJobId)
 }
 
 function toAgentLogEntry(item: ReturnType<ReturnType<typeof useLog>['query']>['items'][number]): BossHelperAgentLogEntry {
@@ -60,7 +60,7 @@ export function useAgentJobQueries(options: UseAgentQueriesOptions) {
     }
 
     const statusFilter = normalizeJobStatusFilter(payload?.statusFilter)
-    const allJobs = jobList._list.value
+    const allJobs = jobList.list
     const jobs = statusFilter
       ? allJobs.filter((item) => statusFilter.has(item.status.status))
       : allJobs

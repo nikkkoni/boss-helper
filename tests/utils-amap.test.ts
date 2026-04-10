@@ -1,18 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockRequestGet } = vi.hoisted(() => ({
-  mockRequestGet: vi.fn(),
-}))
-
-vi.mock('@/stores/conf', () => ({
-  useConf: () => ({
+const { mockConf, mockRequestGet } = vi.hoisted(() => ({
+  mockConf: {
     formData: {
       amap: {
         key: 'amap-key',
         origins: '121.1,31.2',
+        straightDistance: 3,
+        drivingDistance: 5,
+        drivingDuration: 15,
+        walkingDistance: 2,
+        walkingDuration: 20,
       },
     },
-  }),
+  },
+  mockRequestGet: vi.fn(),
+}))
+
+vi.mock('@/stores/conf', () => ({
+  useConf: () => mockConf,
 }))
 
 vi.mock('@/utils/request', () => ({
@@ -26,6 +32,11 @@ import { amapDistance, amapGeocode } from '@/utils/amap'
 describe('amap helpers', () => {
   beforeEach(() => {
     mockRequestGet.mockReset()
+    mockConf.formData.amap.straightDistance = 3
+    mockConf.formData.amap.drivingDistance = 5
+    mockConf.formData.amap.drivingDuration = 15
+    mockConf.formData.amap.walkingDistance = 2
+    mockConf.formData.amap.walkingDuration = 20
   })
 
   it('returns the first geocode result', async () => {
@@ -124,5 +135,31 @@ describe('amap helpers', () => {
     const distanceUrl = new URL(mockRequestGet.mock.calls[1][0].url as string)
     expect(distanceUrl.searchParams.get('destination')).toBe('121.2,31.3&mode=hijack')
     expect(distanceUrl.searchParams.get('mode')).toBeNull()
+  })
+
+  it('only requests enabled distance modes', async () => {
+    mockConf.formData.amap.straightDistance = 0
+    mockConf.formData.amap.drivingDistance = 10
+    mockConf.formData.amap.drivingDuration = 0
+    mockConf.formData.amap.walkingDistance = 0
+    mockConf.formData.amap.walkingDuration = 0
+
+    mockRequestGet.mockResolvedValueOnce({
+      count: '1',
+      info: 'OK',
+      infocode: '10000',
+      results: [{ distance: '2800', duration: '420' }],
+      status: '1',
+    })
+
+    await expect(amapDistance('121.2,31.3')).resolves.toEqual({
+      driving: { distance: 2800, duration: 420, ok: true },
+      straight: { distance: 0, duration: 0, ok: false },
+      walking: { distance: 0, duration: 0, ok: false },
+    })
+
+    expect(mockRequestGet).toHaveBeenCalledTimes(1)
+    const requestUrl = new URL(mockRequestGet.mock.calls[0][0].url as string)
+    expect(requestUrl.searchParams.get('type')).toBe('1')
   })
 })

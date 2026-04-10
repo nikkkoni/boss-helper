@@ -22,6 +22,20 @@ export interface UTF8Encoder {
 export interface UTF8Decoder {
   decode: (bytes: Uint8Array) => string
 }
+
+function concatUint8Arrays(chunks: readonly Uint8Array[]) {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+  const merged = new Uint8Array(totalLength)
+  let offset = 0
+
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.length
+  }
+
+  return merged
+}
+
 export function encodeUTF8String(str: string, encoder: UTF8Encoder) {
   const bytes = encoder.encode(str)
   return [bytes.length >> 8, bytes.length & 0xff, ...bytes]
@@ -60,7 +74,11 @@ export const mqtt = {
       ...encodeLength(variableHeader.length + payload.length),
     ]
 
-    return Uint8Array.from([...fixedHeader, ...variableHeader, ...payload])
+    return concatUint8Arrays([
+      Uint8Array.from(fixedHeader),
+      Uint8Array.from(variableHeader),
+      payload,
+    ])
   },
   decode(buffer: Uint8Array, flags = 3) {
     const dup = !!(flags & 8)

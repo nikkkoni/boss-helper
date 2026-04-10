@@ -82,7 +82,7 @@ function reportSelectorHealth(stage: string, pathname = location.pathname) {
   }
 }
 
-async function main(router: any) {
+async function main(router: { path: string }) {
   const adapter = setActiveSiteAdapter(getSiteAdapterByUrl(location.href))
   const selectors = getActiveSelectorRegistry()
   reportSelectorHealth('route-enter', router.path)
@@ -119,8 +119,13 @@ async function start() {
   reportSelectorHealth('main-world-start')
 
   const v = await getRootVue()
-  v.$router.afterHooks.push(main)
-  void main(v.$route)
+  const route = v.$route
+  const afterHooks = v.$router?.afterHooks
+  if (!route?.path || !Array.isArray(afterHooks)) {
+    throw new Error('未找到页面路由上下文')
+  }
+  afterHooks.push((nextRoute) => void main(nextRoute))
+  void main(route)
   installAxiosLoaderInterceptors()
 }
 

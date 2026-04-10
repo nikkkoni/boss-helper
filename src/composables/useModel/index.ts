@@ -9,7 +9,7 @@ import { logger } from '@/utils/logger'
 import type { openaiLLMConf } from './openai'
 import { openai } from './openai'
 import { SignedKeyLLM } from './signedKey'
-import type { llm, prompt } from './type'
+import type { Llm, Prompt } from './type'
 
 export const confModelKey = 'conf-model'
 const sessionConfModelKey = 'session:conf-model'
@@ -90,9 +90,9 @@ export const useModel = defineStore('model', () => {
 
   function getModel(
     model: modelData | undefined,
-    template: string | prompt,
+    template: string | Prompt,
     vip = false,
-  ): llm | SignedKeyLLM {
+  ): Llm | SignedKeyLLM {
     if (vip) {
       if (typeof template === 'string') {
         const llm = new SignedKeyLLM(template)
@@ -117,8 +117,8 @@ export const useModel = defineStore('model', () => {
         return new openai.Gpt(model.data, template)
       }
       throw new Error('无GPT模型')
-    } catch (e: any) {
-      throw new Error(`GPT构建错误, ${e.message}`)
+    } catch (error) {
+      throw new Error(`GPT构建错误, ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

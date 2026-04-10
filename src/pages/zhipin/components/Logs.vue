@@ -106,12 +106,12 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
   </ElDialog>
 </template>
 
-<style lang="scss">
-.ehp-table-v2__row-depth-0 {
+<style lang="scss" scoped>
+:deep(.ehp-table-v2__row-depth-0) {
   height: 50px;
 }
 
-.ehp-table-v2__cell-text {
+:deep(.ehp-table-v2__cell-text) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -162,7 +162,7 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
   line-height: 1.5;
 }
 
-.ehp-collapse-item.active {
+:deep(.ehp-collapse-item.active) {
   .ehp-collapse-item__header {
     border-bottom-color: transparent;
   }

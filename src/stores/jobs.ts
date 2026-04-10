@@ -1,4 +1,5 @@
-import { reactive, ref, watch } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
+import { defineStore, storeToRefs } from 'pinia'
 
 import { checkJobCache, getReadyCacheManager } from '@/composables/useApplying'
 import { useHookVueData, useHookVueFn } from '@/composables/useVue'
@@ -6,7 +7,6 @@ import { getActiveSiteAdapter } from '@/site-adapters'
 import type { FormData } from '@/types/formData'
 import type { PipelineCacheItem } from '@/types/pipelineCache'
 import { logger } from '@/utils/logger'
-
 import { getActiveSelectorRegistry, joinSelectors } from '@/utils/selectors'
 
 export type EncryptJobId = bossZpJobItemData['encryptJobId']
@@ -21,21 +21,102 @@ export type MyJobListData = bossZpJobItemData & {
   getCard: () => Promise<bossZpCardData>
 }
 
-export class JobList {
-  private _vue_jobList = ref<bossZpJobItemData[]>([])
-  private _vue_jobDetail = ref<bossZpDetailData>()
+export async function waitForJobDetail(options: {
+  clickJobCardAction: (item: bossZpJobItemData) => Promise<void>
+  item: bossZpJobItemData
+  jobDetail: Ref<bossZpDetailData | undefined>
+}) {
+  const { clickJobCardAction, item, jobDetail } = options
+  await clickJobCardAction(item)
 
-  _list = ref<Array<MyJobListData>>([])
-  _map = reactive<Record<EncryptJobId, MyJobListData>>({})
+  return new Promise<bossZpDetailData>((resolve, reject) => {
+    let settled = false
+    let timeout = 0
+    let stop = () => {}
 
-  _use_cache = ref<boolean>(true)
-  private clickJobCardAction = async (_: bossZpJobItemData) => {}
+    const cleanup = () => {
+      stop()
+      if (timeout) {
+        window.clearTimeout(timeout)
+      }
+    }
 
-  private getVueContainerQuery() {
+    const finish = (callback: () => void) => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      cleanup()
+      callback()
+    }
+
+    const handleDetail = (detail?: bossZpDetailData) => {
+      if (detail && detail.lid === item.lid) {
+        finish(() => resolve(detail))
+      }
+    }
+
+    stop = watch(
+      () => jobDetail.value,
+      (detail) => {
+        handleDetail(detail)
+      },
+      {
+        flush: 'sync',
+      },
+    )
+
+    timeout = window.setTimeout(() => {
+      finish(() => reject(new Error('bossZpDetailData获取超时')))
+    }, 1000 * 60)
+
+    handleDetail(jobDetail.value)
+  })
+}
+
+const useJobsStore = defineStore('jobs', () => {
+  const vueJobList = ref<bossZpJobItemData[]>([])
+  const vueJobDetail = ref<bossZpDetailData>()
+  const list = ref<Array<MyJobListData>>([])
+  const useCache = ref(true)
+  const map = computed<Record<EncryptJobId, MyJobListData>>(() => {
+    return Object.fromEntries(
+      list.value.map((item) => [item.encryptJobId, item]),
+    ) as Record<EncryptJobId, MyJobListData>
+  })
+
+  let clickJobCardAction = async (_: bossZpJobItemData) => {}
+
+  function getVueContainerQuery() {
     return joinSelectors(getActiveSelectorRegistry().vueContainers.all)
   }
 
-  private createJobStatus(
+  function get(encryptJobId: EncryptJobId): MyJobListData | undefined {
+    return map.value[encryptJobId]
+  }
+
+  function replace(nextList: MyJobListData[]) {
+    list.value = nextList
+  }
+
+  function clear() {
+    list.value = []
+  }
+
+  function set(encryptJobId: EncryptJobId, value: MyJobListData) {
+    const index = list.value.findIndex((item) => item.encryptJobId === encryptJobId)
+    if (index === -1) {
+      list.value = [...list.value, value]
+      return
+    }
+
+    const nextList = [...list.value]
+    nextList.splice(index, 1, value)
+    list.value = nextList
+  }
+
+  function createJobStatus(
     encryptJobId: string,
     cacheCheck: Pick<PipelineCacheItem, 'message' | 'status'> | null,
   ) {
@@ -43,134 +124,123 @@ export class JobList {
       status: cacheCheck ? cacheCheck.status : 'pending',
       msg: cacheCheck ? `${cacheCheck.message} (缓存)` : '未开始',
       setStatus: (status: JobStatus, msg?: string) => {
-        this._map[encryptJobId].status.status = status
-        this._map[encryptJobId].status.msg = msg ?? ''
+        const target = get(encryptJobId)
+        if (!target) {
+          return
+        }
+        target.status.status = status
+        target.status.msg = msg ?? ''
       },
     }
   }
 
-  private async loadJobDetail(item: bossZpJobItemData) {
-    await this.clickJobCardAction(item)
-
-    return new Promise<bossZpDetailData>((resolve, reject) => {
-      let settled = false
-      let timeout = 0
-      let stop = () => {}
-
-      const cleanup = () => {
-        stop()
-        if (timeout) {
-          window.clearTimeout(timeout)
-        }
-      }
-
-      const finish = (callback: () => void) => {
-        if (settled) {
-          return
-        }
-
-        settled = true
-        cleanup()
-        callback()
-      }
-
-      const handleDetail = (detail?: bossZpDetailData) => {
-        if (detail && detail.lid === item.lid) {
-          finish(() => resolve(detail))
-        }
-      }
-
-      stop = watch(
-        () => this._vue_jobDetail.value,
-        (detail) => {
-          handleDetail(detail)
-        },
-        {
-          flush: 'sync',
-        },
-      )
-
-      timeout = window.setTimeout(() => {
-        finish(() => reject(new Error('bossZpDetailData获取超时')))
-      }, 1000 * 60)
-
-      handleDetail(this._vue_jobDetail.value)
+  async function loadJobDetail(item: bossZpJobItemData) {
+    return waitForJobDetail({
+      clickJobCardAction,
+      item,
+      jobDetail: vueJobDetail,
     })
   }
 
-  private syncJobList(items: bossZpJobItemData[]) {
+  function syncJobList(items: bossZpJobItemData[]) {
     logger.debug('初始化岗位列表', items)
 
     const adapter = getActiveSiteAdapter(location.href)
     const nextList = adapter.parseJobList(items, {
-      currentJobs: this._list.value,
-      getCachedResult: (encryptJobId) => (this._use_cache.value ? checkJobCache(encryptJobId) : null),
-      createStatus: (encryptJobId, cacheCheck) => this.createJobStatus(encryptJobId, cacheCheck),
-      loadJobDetail: (item) => this.loadJobDetail(item),
+      currentJobs: list.value,
+      getCachedResult: (encryptJobId) => (useCache.value ? checkJobCache(encryptJobId) : null),
+      createStatus: (encryptJobId, cacheCheck) => createJobStatus(encryptJobId, cacheCheck),
+      loadJobDetail: (item) => loadJobDetail(item),
       onCardLoaded: (encryptJobId, card) => {
-        this._map[encryptJobId].card = card
+        const target = get(encryptJobId)
+        if (target) {
+          target.card = card
+        }
       },
     })
 
-    Object.keys(this._map).forEach((key) => {
-      delete this._map[key as EncryptJobId]
-    })
-
-    nextList.forEach((item) => {
-      this._map[item.encryptJobId] = item
-    })
-    this._list.value = nextList
+    replace(nextList)
   }
 
-  async initJobList(formData: FormData) {
-    this._use_cache.value = formData.useCache.value
-    if (this._use_cache.value) {
+  async function initJobList(formData: FormData) {
+    useCache.value = formData.useCache.value
+    if (useCache.value) {
       await getReadyCacheManager()
     }
+
     const adapter = getActiveSiteAdapter(location.href)
     const bindings = adapter.getVueBindings(location.pathname)
-    const vueContainerQuery = this.getVueContainerQuery()
-    const hookJobDetail = useHookVueData(
-      vueContainerQuery,
-      bindings.jobDetailKey,
-      this._vue_jobDetail,
-    )
-    const hookClickJobCardAction = useHookVueFn(
+    const vueContainerQuery = getVueContainerQuery()
+    const hookJobDetail = useHookVueData(vueContainerQuery, bindings.jobDetailKey, vueJobDetail)
+    const hookClickJobCardAction = useHookVueFn<(_: bossZpJobItemData) => Promise<void>>(
       vueContainerQuery,
       bindings.clickJobCardActionKey,
     )
-    const hookJobList = useHookVueData(
-      vueContainerQuery,
-      bindings.jobListKey,
-      this._vue_jobList,
-      (v) => {
-        this.syncJobList(v)
-      },
-    )
+    const hookJobList = useHookVueData(vueContainerQuery, bindings.jobListKey, vueJobList, (value) => {
+      syncJobList(value)
+    })
 
     await hookJobDetail()
-    this.clickJobCardAction = await hookClickJobCardAction()
+    clickJobCardAction = await hookClickJobCardAction()
     await hookJobList()
   }
 
-  get(encryptJobId: EncryptJobId): MyJobListData | undefined {
-    return this._map[encryptJobId]
+  return {
+    list,
+    map,
+    useCache,
+    initJobList,
+    get,
+    set,
+    clear,
+    replace,
+    syncJobList,
+    loadJobDetail,
   }
+})
 
-  set(encryptJobId: EncryptJobId, val: MyJobListData) {
-    this._map[encryptJobId] = val
-  }
+export function useJobs() {
+  const store = useJobsStore()
+  const refs = storeToRefs(store)
 
-  get list() {
-    return this._list.value
-  }
-
-  get map() {
-    return this._map
+  return {
+    ...refs,
+    initJobList: store.initJobList,
+    get: store.get,
+    set: store.set,
+    clear: store.clear,
+    replace: store.replace,
+    syncJobList: store.syncJobList,
+    loadJobDetail: store.loadJobDetail,
   }
 }
 
-export const jobList = new JobList()
+export const jobList = {
+  get list() {
+    return useJobsStore().list
+  },
+  get map() {
+    return useJobsStore().map
+  },
+  get useCache() {
+    return useJobsStore().useCache
+  },
+  initJobList(formData: FormData) {
+    return useJobsStore().initJobList(formData)
+  },
+  get(encryptJobId: EncryptJobId) {
+    return useJobsStore().get(encryptJobId)
+  },
+  set(encryptJobId: EncryptJobId, value: MyJobListData) {
+    return useJobsStore().set(encryptJobId, value)
+  },
+  clear() {
+    return useJobsStore().clear()
+  },
+  replace(nextList: MyJobListData[]) {
+    return useJobsStore().replace(nextList)
+  },
+}
 
 if (import.meta.env.DEV) {
   window.__q_jobList = jobList

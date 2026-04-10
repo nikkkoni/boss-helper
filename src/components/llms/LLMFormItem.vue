@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { AlertProps } from 'element-plus'
 import {
   ElAlert,
   ElFormItem,
@@ -11,20 +12,22 @@ import {
   ElText,
   ElTooltip,
 } from 'element-plus'
+import type { Component } from 'vue'
+import { computed } from 'vue'
 
 import Info from '@/components/icon/Info.vue'
-import type { formElm, llmInfoVal } from '@/composables/useModel/type'
+import type { FormElm, LlmInfoVal } from '@/composables/useModel/type'
 import { htmlToText } from '@/utils/safeHtml'
 
 const props = defineProps<{
-  value: llmInfoVal<unknown, { required: boolean }>
+  value: LlmInfoVal<unknown, { required: boolean }>
   label: string | number | symbol
   depth?: number
 }>()
 
-const fromVal = defineModel<any>({ required: true })
+const fromVal = defineModel<unknown>({ required: true })
 
-function getComponent(elm: formElm['type'] | undefined) {
+function getComponent(elm: FormElm['type'] | undefined) {
   switch (elm) {
     case 'input':
       return { el: ElInput, defaultConf: { clearable: true } }
@@ -43,7 +46,26 @@ function getComponent(elm: formElm['type'] | undefined) {
   return { el: undefined, defaultConf: {} }
 }
 
-const { el, defaultConf } = getComponent(props.value.type)
+const { el, defaultConf } = getComponent(props.value.type) as {
+  defaultConf: Record<string, unknown>
+  el: Component | undefined
+}
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === 'object' && !Array.isArray(value)
+}
+
+const nestedModel = computed<Record<string, unknown>>({
+  get: () => (isObjectRecord(fromVal.value) ? fromVal.value : {}),
+  set: (value) => {
+    fromVal.value = value
+  },
+})
+const componentModel = computed<string | number | boolean | Record<string, unknown> | undefined>({
+  get: () => fromVal.value as string | number | boolean | Record<string, unknown> | undefined,
+  set: (value) => {
+    fromVal.value = value
+  },
+})
 </script>
 
 <template>
@@ -51,7 +73,7 @@ const { el, defaultConf } = getComponent(props.value.type)
     <ElAlert
       :title="value.label || label.toString()"
       :description="htmlToText(value.desc)"
-      :type="value.alert as any"
+      :type="value.alert as NonNullable<AlertProps['type']>"
       :closable="false"
       show-icon
       :style="`margin: 10px 0px 20px ${(props.depth || 0) * 10}px;`"
@@ -59,7 +81,7 @@ const { el, defaultConf } = getComponent(props.value.type)
     <LLMFormItem
       v-for="(x, k) in value.value"
       :key="k"
-      v-model="fromVal[k]"
+      v-model="nestedModel[k]"
       :value="x"
       :label="k"
       :depth="(depth || 0) + 1"
@@ -83,16 +105,16 @@ const { el, defaultConf } = getComponent(props.value.type)
         </ElIcon>
       </ElTooltip>
     </template>
-    <component :is="el" v-model="fromVal" v-bind="{ ...defaultConf, ...value.config }" />
+    <component :is="el" v-model="componentModel" v-bind="{ ...defaultConf, ...value.config }" />
   </ElFormItem>
 </template>
 
-<style>
-.ehp-input__wrapper {
+<style scoped>
+:deep(.ehp-input__wrapper) {
   width: 100%;
 }
 
-.ehp-slider .ehp-slider__input {
+:deep(.ehp-slider .ehp-slider__input) {
   width: 200px !important;
 }
 

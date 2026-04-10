@@ -35,6 +35,6 @@ export async function applyAgentBatchStartPayload(options: {
   }
 
   if (payload?.resetFiltered && targetJobIds.length === 0) {
-    resetJobStatuses(jobList._list.value, (job) => job.status.status !== 'success')
+    resetJobStatuses(jobList.list, (job) => job.status.status !== 'success')
   }
 }
