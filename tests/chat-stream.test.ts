@@ -127,4 +127,50 @@ describe('initBossChatStream', () => {
     const history = useChat().getChatHistory('uid:2')
     expect(history.total).toBe(1)
   })
+
+  it('does not monkey patch unrelated websocket instances outside window.socket', async () => {
+    const payload = encodeProtocol({
+      messages: [
+        {
+          body: {
+            templateId: 1,
+            text: '不应被采集',
+            type: 1,
+          },
+          cmid: '9',
+          from: { source: 0, uid: '1', name: 'Me' },
+          mid: '9',
+          time: '9000',
+          to: { source: 0, uid: '3', name: 'Other' },
+          type: 1,
+        },
+      ],
+      type: 1,
+    })
+
+    const originalSend = WebSocket.prototype.send
+    const sendSpy = vi.fn()
+
+    try {
+      WebSocket.prototype.send = function (
+        this: WebSocket,
+        data: string | ArrayBufferLike | Blob | ArrayBufferView,
+      ) {
+        sendSpy(data)
+      }
+
+      window.socket = new WebSocket('ws://localhost:1234')
+      initBossChatStream()
+
+      const unrelatedSocket = new WebSocket('ws://localhost:4321')
+      unrelatedSocket.send(payload)
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    } finally {
+      WebSocket.prototype.send = originalSend
+    }
+
+    expect(sendSpy).toHaveBeenCalledTimes(1)
+    expect(useChat().listChatConversations(10).total).toBe(0)
+  })
 })

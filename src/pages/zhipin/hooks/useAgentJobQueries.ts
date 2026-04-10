@@ -31,6 +31,7 @@ function getJobById(encryptJobId: string) {
 
 function toAgentLogEntry(item: ReturnType<ReturnType<typeof useLog>['query']>['items'][number]): BossHelperAgentLogEntry {
   const aiFiltering = item.data?.aiFilteringAjson
+  const pipelineError = item.data?.pipelineError ? { ...item.data.pipelineError } : undefined
   return {
     encryptJobId: item.job?.encryptJobId ?? '',
     jobName: item.job?.jobName ?? item.title ?? '',
@@ -40,7 +41,7 @@ function toAgentLogEntry(item: ReturnType<ReturnType<typeof useLog>['query']>['i
     error: item.data?.err,
     greeting: item.data?.aiGreetingA ?? item.data?.message,
     aiScore: aiFiltering,
-    pipelineError: item.data?.pipelineError,
+    pipelineError,
     timestamp: item.createdAt,
   }
 }

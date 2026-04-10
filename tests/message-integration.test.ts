@@ -24,8 +24,8 @@ describe('agent message integration', () => {
   })
 
   it('forwards commands background -> content -> page controller and relays events back out', async () => {
-    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(((data: unknown) => {
-      const event = new MessageEvent('message', { data })
+    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(((data: unknown, origin: string) => {
+      const event = new MessageEvent('message', { data, origin })
       Object.defineProperty(event, 'source', {
         configurable: true,
         value: window,
@@ -45,6 +45,10 @@ describe('agent message integration', () => {
       '@/pages/zhipin/hooks/agentEvents'
     )
     const { useConf } = await import('@/stores/conf')
+    const {
+      BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+      BOSS_HELPER_AGENT_EVENT_BRIDGE,
+    } = await import('@/message/agent')
 
     useConf().isLoaded = true
 
@@ -66,6 +70,47 @@ describe('agent message integration', () => {
     registerAgentMessageBridge()
     const unregister = useDeliveryControl().registerWindowAgentBridge()
 
+    const foreignRequestEvent = new MessageEvent('message', {
+      data: {
+        payload: {
+          channel: BOSS_HELPER_AGENT_CHANNEL,
+          command: 'stats',
+        },
+        requestId: 'foreign-origin-request',
+        type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+      },
+      origin: 'https://evil.example',
+    })
+    Object.defineProperty(foreignRequestEvent, 'source', {
+      configurable: true,
+      value: window,
+    })
+    window.dispatchEvent(foreignRequestEvent)
+
+    const foreignBridgeEvent = new MessageEvent('message', {
+      data: {
+        payload: {
+          message: 'blocked',
+          type: 'job-started',
+        },
+        type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
+      },
+      origin: 'https://evil.example',
+    })
+    Object.defineProperty(foreignBridgeEvent, 'source', {
+      configurable: true,
+      value: window,
+    })
+    window.dispatchEvent(foreignBridgeEvent)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(browser.runtime.sendMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ message: 'blocked' }),
+      }),
+    )
+
     const statsResponse = await __emitRuntimeMessageExternal(
       {
         bridgeToken: BOSS_HELPER_AGENT_BRIDGE_TOKEN,
@@ -74,11 +119,25 @@ describe('agent message integration', () => {
       },
       { url: 'https://127.0.0.1/' },
     )
+    const insecureRelayResponse = await __emitRuntimeMessageExternal(
+      {
+        bridgeToken: BOSS_HELPER_AGENT_BRIDGE_TOKEN,
+        channel: BOSS_HELPER_AGENT_CHANNEL,
+        command: 'stats',
+      },
+      { url: 'http://127.0.0.1/' },
+    )
 
     expect(statsResponse).toEqual(
       expect.objectContaining({
         code: 'stats',
         ok: true,
+      }),
+    )
+    expect(insecureRelayResponse).toEqual(
+      expect.objectContaining({
+        code: 'unauthorized-bridge',
+        ok: false,
       }),
     )
 
@@ -102,6 +161,10 @@ describe('agent message integration', () => {
         message: 'job updated',
         type: 'job-started',
       }),
+    )
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      window.location.origin,
     )
 
     unregister()

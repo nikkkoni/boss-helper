@@ -28,7 +28,8 @@ function color16() {
   const r = Math.floor(Math.random() * 256)
   const g = Math.floor(Math.random() * 256)
   const b = Math.floor(Math.random() * 256)
-  const color = `#${r.toString(16)}${g.toString(16)}${b.toString(16)}`
+  const toHex = (value: number) => value.toString(16).padStart(2, '0')
+  const color = `#${toHex(r)}${toHex(g)}${toHex(b)}`
   return color
 }
 const show = defineModel<boolean>({ required: true })

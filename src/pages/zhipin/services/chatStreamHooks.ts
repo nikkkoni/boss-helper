@@ -4,6 +4,7 @@ import { captureChatPayload } from './chatStreamMessages'
 
 const attachedSockets = new WeakSet<WebSocket>()
 const patchedSendTargets = new WeakSet<object>()
+const patchedSocketSends = new WeakSet<WebSocket>()
 
 function attachSocket(socket: WebSocket) {
   if (attachedSockets.has(socket)) {
@@ -14,6 +15,23 @@ function attachSocket(socket: WebSocket) {
   socket.addEventListener('message', (event) => {
     void captureChatPayload(event.data)
   })
+}
+
+function patchSocketSend(socket: WebSocket) {
+  if (patchedSocketSends.has(socket)) {
+    attachSocket(socket)
+    return true
+  }
+
+  const originalSend = socket.send.bind(socket)
+  socket.send = ((data: Parameters<WebSocket['send']>[0]) => {
+    attachSocket(socket)
+    void captureChatPayload(data)
+    return originalSend(data)
+  }) as typeof socket.send
+  patchedSocketSends.add(socket)
+  attachSocket(socket)
+  return true
 }
 
 function patchSendTarget(target: { send: (...args: any[]) => unknown }) {
@@ -50,30 +68,14 @@ function installWrapperHooks() {
   return patchedAny
 }
 
-function installWebSocketHooks() {
-  const originalSend = WebSocket.prototype.send
-  if ((originalSend as typeof originalSend & { __bossHelperHooked?: boolean }).__bossHelperHooked) {
-    if (window.socket instanceof WebSocket) {
-      attachSocket(window.socket)
-    }
-    return
-  }
-
-  const hookedSend: typeof WebSocket.prototype.send & { __bossHelperHooked?: boolean } = function (this: WebSocket, data) {
-    attachSocket(this)
-    void captureChatPayload(data)
-    return originalSend.call(this, data)
-  }
-  hookedSend.__bossHelperHooked = true
-  WebSocket.prototype.send = hookedSend
-
+function installSocketHooks() {
   if (window.socket instanceof WebSocket) {
-    attachSocket(window.socket)
+    patchSocketSend(window.socket)
   }
 }
 
 export function installBossChatStreamHooks() {
-  installWebSocketHooks()
+  installSocketHooks()
   installWrapperHooks()
 
   let attempts = 0
@@ -81,7 +83,7 @@ export function installBossChatStreamHooks() {
     attempts += 1
     installWrapperHooks()
     if (window.socket instanceof WebSocket) {
-      attachSocket(window.socket)
+      patchSocketSend(window.socket)
     }
     if (attempts >= 30) {
       window.clearInterval(timer)

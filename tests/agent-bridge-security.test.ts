@@ -137,6 +137,31 @@ afterEach(async () => {
 })
 
 describe('agent bridge security', () => {
+  it('limits CORS headers to trusted local HTTPS relay origins', async () => {
+    const { bridge, httpsPort, port } = await startBridge()
+    activeBridge = bridge
+
+    const blockedCorsResponse = await requestText(`http://127.0.0.1:${port}/health`, {
+      headers: {
+        Origin: 'https://evil.example',
+      },
+    })
+
+    expect(blockedCorsResponse.statusCode).toBe(200)
+    expect(blockedCorsResponse.headers['access-control-allow-origin']).toBeUndefined()
+
+    const allowedOrigin = `https://127.0.0.1:${httpsPort}`
+    const allowedCorsResponse = await requestText(`${allowedOrigin}/health`, {
+      headers: {
+        Origin: allowedOrigin,
+      },
+    })
+
+    expect(allowedCorsResponse.statusCode).toBe(200)
+    expect(allowedCorsResponse.headers['access-control-allow-origin']).toBe(allowedOrigin)
+    expect(allowedCorsResponse.headers.vary).toBe('Origin')
+  })
+
   it('removes token leakage from relay HTML and rejects query token auth', async () => {
     const { bridge, httpsPort, token } = await startBridge()
     activeBridge = bridge

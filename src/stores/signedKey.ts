@@ -215,7 +215,9 @@ export const useSignedKey = defineStore('signedKey', () => {
   async function refreshSignedKeyInfo(token?: string) {
     void client.GET('/config').then(async ({ data }) => {
       netConf.value = data as NetConf
-      window.__q_netConf = () => netConf.value
+      if (import.meta.env.DEV) {
+        window.__q_netConf = () => netConf.value
+      }
       const now = new Date().getTime()
       return Promise.all(
         netConf.value?.notification.map(async (item) => netNotification(item, now)) ?? [],
@@ -323,4 +325,6 @@ export const useSignedKey = defineStore('signedKey', () => {
   }
 })
 
-window.__q_useSignedKey = useSignedKey
+if (import.meta.env.DEV) {
+  window.__q_useSignedKey = useSignedKey
+}

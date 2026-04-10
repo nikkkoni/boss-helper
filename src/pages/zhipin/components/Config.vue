@@ -196,7 +196,7 @@ function syncSalaryRange() {
           >
             <formSelect
               v-model:value="conf.formData.company.value"
-              v-model:options="conf.formData.company.options"
+              :options="conf.formData.company.options"
             />
           </form-item>
           <form-item
@@ -207,7 +207,7 @@ function syncSalaryRange() {
           >
             <form-select
               v-model:value="conf.formData.jobTitle.value"
-              v-model:options="conf.formData.jobTitle.options"
+              :options="conf.formData.jobTitle.options"
             />
           </form-item>
           <form-item
@@ -218,7 +218,7 @@ function syncSalaryRange() {
           >
             <form-select
               v-model:value="conf.formData.jobContent.value"
-              v-model:options="conf.formData.jobContent.options"
+              :options="conf.formData.jobContent.options"
             />
           </form-item>
           <form-item
@@ -230,7 +230,7 @@ function syncSalaryRange() {
           >
             <form-select
               v-model:value="conf.formData.hrPosition.value"
-              v-model:options="conf.formData.hrPosition.options"
+              :options="conf.formData.hrPosition.options"
             />
           </form-item>
           <form-item
@@ -244,7 +244,7 @@ function syncSalaryRange() {
             </template>
             <form-select
               v-model:value="conf.formData.jobAddress.value"
-              v-model:options="conf.formData.jobAddress.options"
+              :options="conf.formData.jobAddress.options"
             />
           </form-item>
           <form-item

@@ -2,7 +2,9 @@
 import { ElOption, ElSelect } from 'element-plus'
 
 const value = defineModel<string[]>('value', { required: true })
-const options = defineModel<string[]>('options', { required: true })
+defineProps<{
+  options: string[]
+}>()
 </script>
 
 <template>

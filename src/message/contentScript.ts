@@ -17,6 +17,10 @@ import {
   type BossHelperAgentRequest,
   type BossHelperAgentResponse,
 } from '@/message/agent'
+import {
+  isBossHelperSameOriginWindowMessage,
+  postBossHelperWindowMessage,
+} from '@/message/window'
 
 import type { BackgroundCounter } from './background'
 
@@ -121,12 +125,16 @@ export const [provideContentCounter] = defineProxy(
 
 export class ProvideContentAdapter implements Adapter {
   sendMessage: SendMessage = (message) => {
-    window.parent.postMessage(message, '*')
+    postBossHelperWindowMessage(window.parent, message)
   }
 
   onMessage: OnMessage = (callback) => {
-    const handler = (event: MessageEvent<Partial<Message<Record<string, any>>> | undefined>) =>
+    const handler = (event: MessageEvent<Partial<Message<Record<string, any>>> | undefined>) => {
+      if (!isBossHelperSameOriginWindowMessage(event, window.parent)) {
+        return
+      }
       callback(event.data)
+    }
     window.parent.addEventListener('message', handler)
     return () => window.parent.removeEventListener('message', handler)
   }
@@ -139,7 +147,7 @@ async function forwardAgentRequestToPage(
 
   return new Promise((resolve) => {
     const handleResponse = (event: MessageEvent) => {
-      if (event.source !== window || !isBossHelperAgentBridgeResponse(event.data)) {
+      if (!isBossHelperSameOriginWindowMessage(event) || !isBossHelperAgentBridgeResponse(event.data)) {
         return
       }
       if (event.data.requestId !== requestId) {
@@ -177,7 +185,7 @@ async function forwardAgentRequestToPage(
     }
 
     window.addEventListener('message', handleResponse)
-    window.postMessage(payload, '*')
+    postBossHelperWindowMessage(window, payload)
   })
 }
 
@@ -215,7 +223,7 @@ function handleRuntimeAgentRequest(message: unknown) {
 
 export function registerAgentMessageBridge() {
   const forwardPageEventToBackground = (event: MessageEvent) => {
-    if (event.source !== window || !isBossHelperAgentEventBridgeMessage(event.data)) {
+    if (!isBossHelperSameOriginWindowMessage(event) || !isBossHelperAgentEventBridgeMessage(event.data)) {
       return
     }
 

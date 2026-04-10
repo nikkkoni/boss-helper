@@ -13,6 +13,12 @@ function buildZhipinNavigateUrl(
 ) {
   if (payload?.url) {
     const targetUrl = new URL(payload.url, origin)
+    if (!['http:', 'https:'].includes(targetUrl.protocol)) {
+      throw new Error('navigate.url 协议不合法')
+    }
+    if (targetUrl.origin !== origin) {
+      throw new Error('navigate.url 必须与当前站点同源')
+    }
     if (!zhipinSelectors.supportedPaths.some((path) => targetUrl.pathname === path || targetUrl.pathname.startsWith(`${path}/`))) {
       throw new Error('navigate.url 必须指向 Boss 职位搜索页')
     }

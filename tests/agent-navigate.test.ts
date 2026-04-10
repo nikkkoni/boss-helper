@@ -46,5 +46,11 @@ describe('buildBossHelperNavigateUrl', () => {
     expect(() => buildBossHelperNavigateUrl({ url: 'https://www.zhipin.com/web/geek/chat' }, currentUrl, origin)).toThrow(
       'navigate.url 必须指向 Boss 职位搜索页',
     )
+    expect(() =>
+      buildBossHelperNavigateUrl({ url: 'https://evil.example/web/geek/jobs' }, currentUrl, origin),
+    ).toThrow('navigate.url 必须与当前站点同源')
+    expect(() =>
+      buildBossHelperNavigateUrl({ url: 'javascript:alert(1)' }, currentUrl, origin),
+    ).toThrow('navigate.url 协议不合法')
   })
 })

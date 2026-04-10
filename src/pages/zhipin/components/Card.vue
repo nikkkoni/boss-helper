@@ -14,12 +14,12 @@ const jobSetRef = ref<Record<EncryptJobId, Element | ComponentPublicInstance | n
 const autoScroll = ref(true)
 const cards = ref<HTMLDivElement>()
 
-function scroll(e: any) {
+function scroll(e: WheelEvent) {
   e.preventDefault()
   if (!cards.value) {
     return
   }
-  const left = -e.wheelDelta || e.deltaY / 2
+  const left = e.deltaX !== 0 ? e.deltaX : e.deltaY / 2
   cards.value.scrollLeft = cards.value.scrollLeft + left
   autoScroll.value = false
 }

@@ -19,6 +19,10 @@ import {
   type BossHelperAgentNavigatePayload,
   type BossHelperAgentStartPayload,
 } from '@/message/agent'
+import {
+  isBossHelperSameOriginWindowMessage,
+  postBossHelperWindowMessage,
+} from '@/message/window'
 import { useConf } from '@/stores/conf'
 import { useLog } from '@/stores/log'
 
@@ -130,20 +134,22 @@ export function useDeliveryControl() {
     controller,
     pauseBatch,
     registerWindowAgentBridge() {
-      window.__bossHelperAgent = controller
+      if (import.meta.env.DEV) {
+        window.__bossHelperAgent = controller
+      }
       const stopAgentEventBridge = onBossHelperAgentEvent((payload) => {
         const plainPayload = jsonClone(payload)
-        window.postMessage(
+        postBossHelperWindowMessage(
+          window,
           {
             type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
             payload: plainPayload,
           },
-          '*',
         )
       })
 
       const onMessage = (event: MessageEvent) => {
-        if (event.source !== window || !isBossHelperAgentBridgeRequest(event.data)) {
+        if (!isBossHelperSameOriginWindowMessage(event) || !isBossHelperAgentBridgeRequest(event.data)) {
           return
         }
 
@@ -158,13 +164,13 @@ export function useDeliveryControl() {
           })
           .then((payload) => {
             const plainPayload = jsonClone(payload)
-            window.postMessage(
+            postBossHelperWindowMessage(
+              window,
               {
                 type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
                 requestId: event.data.requestId,
                 payload: plainPayload,
               },
-              '*',
             )
           })
       }
@@ -173,7 +179,7 @@ export function useDeliveryControl() {
 
       return () => {
         stopAgentEventBridge()
-        if (window.__bossHelperAgent === controller) {
+        if (import.meta.env.DEV && window.__bossHelperAgent === controller) {
           delete window.__bossHelperAgent
         }
         window.removeEventListener('message', onMessage)

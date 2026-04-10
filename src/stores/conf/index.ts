@@ -320,4 +320,6 @@ export const useConf = defineStore('conf', () => {
   }
 })
 
-window.__q_useConf = useConf
+if (import.meta.env.DEV) {
+  window.__q_useConf = useConf
+}

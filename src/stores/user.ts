@@ -477,4 +477,6 @@ ${volunteerExperiences.join('\n')}`
   }
 }
 
-window.__q_useUser = useUser
+if (import.meta.env.DEV) {
+  window.__q_useUser = useUser
+}

@@ -165,6 +165,11 @@ function waitForSelector<E extends Element = Element>(selector: string, options:
       return
     }
 
+    if (options.timeoutMs <= 0) {
+      finish(() => reject(new SelectorTimeoutError(selector, options.timeoutMs, options.parent)))
+      return
+    }
+
     cleanups.push(observeTarget(options.parent, (element) => lookup(element, true)))
 
     if (options.retryIntervalMs > 0) {
@@ -174,12 +179,10 @@ function waitForSelector<E extends Element = Element>(selector: string, options:
       cleanups.push(() => clearInterval(retryId))
     }
 
-    if (options.timeoutMs > 0) {
-      const timeoutId = window.setTimeout(() => {
-        finish(() => reject(new SelectorTimeoutError(selector, options.timeoutMs, options.parent)))
-      }, options.timeoutMs)
-      cleanups.push(() => clearTimeout(timeoutId))
-    }
+    const timeoutId = window.setTimeout(() => {
+      finish(() => reject(new SelectorTimeoutError(selector, options.timeoutMs, options.parent)))
+    }, options.timeoutMs)
+    cleanups.push(() => clearTimeout(timeoutId))
   })
 }
 

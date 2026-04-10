@@ -3,6 +3,10 @@ import type { Adapter, Message, OnMessage, SendMessage } from 'comctx'
 import { defineProxy } from 'comctx'
 
 import type { ContentCounter } from './contentScript'
+import {
+  isBossHelperSameOriginWindowMessage,
+  postBossHelperWindowMessage,
+} from './window'
 
 export type { CookieInfo } from './background'
 // export type * from './background'
@@ -14,12 +18,16 @@ export const [, injectCounter] = defineProxy(() => ({}) as ContentCounter, {
 
 export default class InjectAdapter implements Adapter {
   sendMessage: SendMessage = (message) => {
-    window.postMessage(message, '*')
+    postBossHelperWindowMessage(window, message)
   }
 
   onMessage: OnMessage = (callback) => {
-    const handler = (event: MessageEvent<Partial<Message<Record<string, any>>> | undefined>) =>
+    const handler = (event: MessageEvent<Partial<Message<Record<string, any>>> | undefined>) => {
+      if (!isBossHelperSameOriginWindowMessage(event)) {
+        return
+      }
       callback(event.data)
+    }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
   }

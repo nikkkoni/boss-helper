@@ -35,6 +35,10 @@ const relayMeta = new Map()
 const eventClients = new Map()
 const recentAgentEvents = []
 const recentAgentEventIds = new Set()
+const trustedRelayOrigins = new Set([
+  `https://127.0.0.1:${HTTPS_PORT}`,
+  `https://localhost:${HTTPS_PORT}`,
+])
 
 /** @param {NetSocket} socket @returns {socket is TLSSocket} */
 function isTlsSocket(socket) {
@@ -82,10 +86,17 @@ function normalizeRelayClientId(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : randomUUID()
 }
 
-function setCorsHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+function setCorsHeaders(req, res) {
+  const originHeader = req.headers.origin
+  if (typeof originHeader !== 'string' || !trustedRelayOrigins.has(originHeader)) {
+    return false
+  }
+
+  res.setHeader('Access-Control-Allow-Origin', originHeader)
+  res.setHeader('Vary', 'Origin')
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', `Content-Type,${AGENT_BRIDGE_AUTH_HEADER}`)
+  return true
 }
 
 function getRequestToken(req) {
@@ -146,20 +157,20 @@ function getRelayBootstrapPayload() {
   }
 }
 
-function sendJson(res, statusCode, body) {
-  setCorsHeaders(res)
+function sendJson(req, res, statusCode, body) {
+  setCorsHeaders(req, res)
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify(body))
 }
 
-function sendHtml(res, html) {
-  setCorsHeaders(res)
+function sendHtml(req, res, html) {
+  setCorsHeaders(req, res)
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
   res.end(html)
 }
 
-function sendSse(res) {
-  setCorsHeaders(res)
+function sendSse(req, res) {
+  setCorsHeaders(req, res)
   res.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
     'Cache-Control': 'no-cache, no-transform',
@@ -388,7 +399,7 @@ async function createAppServer() {
   return createServer(async (req, res) => {
     try {
       if (!req.url) {
-        sendJson(res, 400, { ok: false, message: 'missing url' })
+        sendJson(req, res, 400, { ok: false, message: 'missing url' })
         return
       }
 
@@ -398,8 +409,8 @@ async function createAppServer() {
       const url = new URL(req.url, `${protocol}://${req.headers.host ?? `${HOST}:${fallbackPort}`}`)
 
       if (req.method === 'OPTIONS') {
-        setCorsHeaders(res)
-        res.writeHead(204)
+        const allowed = setCorsHeaders(req, res)
+        res.writeHead(allowed ? 204 : 403)
         res.end()
         return
       }
@@ -411,7 +422,7 @@ async function createAppServer() {
       }
 
       if (!shouldSkipAuth(req, url) && !isAuthorizedRequest(req)) {
-        sendJson(res, 401, {
+        sendJson(req, res, 401, {
           ok: false,
           code: 'unauthorized-bridge-token',
           message: '缺少或错误的 bridge token',
@@ -423,13 +434,13 @@ async function createAppServer() {
         if (secureRequest) {
           setRelaySessionCookie(res)
         }
-        sendHtml(res, relayPageHtml)
+        sendHtml(req, res, relayPageHtml)
         return
       }
 
       if (req.method === 'GET' && url.pathname === '/relay/bootstrap') {
         if (!secureRequest) {
-          sendJson(res, 400, {
+          sendJson(req, res, 400, {
             ok: false,
             code: 'relay-bootstrap-requires-https',
             message: 'relay bootstrap 仅支持 HTTPS',
@@ -437,7 +448,7 @@ async function createAppServer() {
           return
         }
 
-        sendJson(res, 200, {
+        sendJson(req, res, 200, {
           ok: true,
           ...getRelayBootstrapPayload(),
         })
@@ -445,7 +456,7 @@ async function createAppServer() {
       }
 
       if (req.method === 'GET' && url.pathname === '/health') {
-        sendJson(res, 200, {
+        sendJson(req, res, 200, {
           ok: true,
           host: HOST,
           port: PORT,
@@ -459,7 +470,7 @@ async function createAppServer() {
       }
 
       if (req.method === 'GET' && url.pathname === '/status') {
-        sendJson(res, 200, {
+        sendJson(req, res, 200, {
           ok: true,
           relayConnected: relayClients.size > 0,
           eventSubscribers: eventClients.size,
@@ -474,7 +485,7 @@ async function createAppServer() {
 
       if (req.method === 'GET' && url.pathname === '/events') {
         const clientId = normalizeRelayClientId(url.searchParams.get('clientId'))
-        sendSse(res)
+        sendSse(req, res)
         relayClients.add(res)
         relayMeta.set(res, {
           clientId,
@@ -495,7 +506,7 @@ async function createAppServer() {
 
       if (req.method === 'GET' && url.pathname === '/agent-events') {
         const typeFilter = normalizeEventTypeFilter(url.searchParams.get('types'))
-        sendSse(res)
+        sendSse(req, res)
         eventClients.set(res, { typeFilter })
         req.on('close', () => handleEventClientDisconnect(res))
         writeSse(res, 'history', getFilteredEventSnapshot(typeFilter))
@@ -511,7 +522,7 @@ async function createAppServer() {
           userAgent: body.browser ?? '',
         })
         broadcastQueueState()
-        sendJson(res, 200, {
+        sendJson(req, res, 200, {
           ok: true,
           relay: {
             clientId,
@@ -525,7 +536,7 @@ async function createAppServer() {
       if (req.method === 'POST' && url.pathname === '/responses') {
         const body = await readJson(req)
         const resolved = clearPendingResponse(body.requestId, body.response)
-        sendJson(res, resolved ? 200 : 404, {
+        sendJson(req, res, resolved ? 200 : 404, {
           ok: resolved,
           requestId: body.requestId,
           message: resolved ? 'response accepted' : 'request not found',
@@ -538,7 +549,7 @@ async function createAppServer() {
         const event = body?.event ?? body
 
         if (!event || typeof event !== 'object') {
-          sendJson(res, 400, {
+          sendJson(req, res, 400, {
             ok: false,
             code: 'invalid-agent-event',
             message: '缺少 event 数据',
@@ -547,7 +558,7 @@ async function createAppServer() {
         }
 
         if (!rememberAgentEvent(event)) {
-          sendJson(res, 202, {
+          sendJson(req, res, 202, {
             ok: true,
             accepted: false,
             reason: 'duplicate-event',
@@ -562,7 +573,7 @@ async function createAppServer() {
           writeSse(client, 'agent-event', event)
         }
 
-        sendJson(res, 200, {
+        sendJson(req, res, 200, {
           ok: true,
           accepted: true,
         })
@@ -574,7 +585,7 @@ async function createAppServer() {
         const waitForRelay = body.waitForRelay !== false
 
         if (relayClients.size === 0 && !waitForRelay) {
-          sendJson(res, 503, {
+          sendJson(req, res, 503, {
             ok: false,
             code: 'relay-not-connected',
             message: '没有已连接的 relay 页面，请先打开 companion 页面并连接扩展',
@@ -583,7 +594,7 @@ async function createAppServer() {
         }
 
         if (!body.command || typeof body.command !== 'string') {
-          sendJson(res, 400, {
+          sendJson(req, res, 400, {
             ok: false,
             code: 'invalid-command',
             message: '缺少 command 字段',
@@ -599,7 +610,7 @@ async function createAppServer() {
           getCommandTimeoutMs(body.command, body.timeoutMs),
         )
 
-        sendJson(res, 200, response)
+        sendJson(req, res, 200, response)
         return
       }
 
@@ -608,7 +619,7 @@ async function createAppServer() {
         const waitForRelay = body.waitForRelay !== false
 
         if (relayClients.size === 0 && !waitForRelay) {
-          sendJson(res, 503, {
+          sendJson(req, res, 503, {
             ok: false,
             code: 'relay-not-connected',
             message: '没有已连接的 relay 页面，请先打开 companion 页面并连接扩展',
@@ -617,7 +628,7 @@ async function createAppServer() {
         }
 
         if (!Array.isArray(body.commands) || body.commands.length === 0) {
-          sendJson(res, 400, {
+          sendJson(req, res, 400, {
             ok: false,
             code: 'invalid-batch-commands',
             message: 'commands 必须是非空数组',
@@ -626,7 +637,7 @@ async function createAppServer() {
         }
 
         if (body.commands.some((command) => !command?.command || typeof command.command !== 'string')) {
-          sendJson(res, 400, {
+          sendJson(req, res, 400, {
             ok: false,
             code: 'invalid-batch-command-item',
             message: 'commands 中的每一项都必须包含 command 字段',
@@ -638,14 +649,14 @@ async function createAppServer() {
           stopOnError: body.stopOnError,
         })
 
-        sendJson(res, 200, response)
+        sendJson(req, res, 200, response)
         return
       }
 
-      sendJson(res, 404, { ok: false, message: 'not found' })
+      sendJson(req, res, 404, { ok: false, message: 'not found' })
     } catch (error) {
       if (error instanceof Error && error.name === 'BridgeBodyTooLargeError') {
-        sendJson(res, 413, {
+        sendJson(req, res, 413, {
           ok: false,
           code: 'request-body-too-large',
           message: `请求体超过限制（${MAX_JSON_BODY_BYTES} bytes）`,
@@ -653,7 +664,7 @@ async function createAppServer() {
         return
       }
 
-      sendJson(res, 500, {
+      sendJson(req, res, 500, {
         ok: false,
         code: 'bridge-server-error',
         message: error instanceof Error ? error.message : 'unknown error',

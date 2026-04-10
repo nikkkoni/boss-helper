@@ -203,4 +203,22 @@ describe('elmGetter', () => {
       }),
     ).rejects.toThrow('等待选择器超时: .never (10ms, parent=article#host)')
   })
+
+  it('fails immediately for timeoutMs=0 without starting observers or retry timers', async () => {
+    const observeSpy = vi.spyOn(MutationObserver.prototype, 'observe')
+    const intervalSpy = vi.spyOn(window, 'setInterval')
+
+    await expect(
+      elmGetter.get('.never', {
+        retryIntervalMs: 10,
+        timeoutMs: 0,
+      }),
+    ).rejects.toThrow('等待选择器超时: .never (0ms, parent=document)')
+
+    expect(observeSpy).not.toHaveBeenCalled()
+    expect(intervalSpy).not.toHaveBeenCalled()
+
+    observeSpy.mockRestore()
+    intervalSpy.mockRestore()
+  })
 })

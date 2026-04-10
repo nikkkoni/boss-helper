@@ -210,29 +210,36 @@ export function useLog() {
     const statusFilter = options.status?.length ? new Set(options.status) : null
     const fromTs = options.from ? Date.parse(options.from) : null
     const toTs = options.to ? Date.parse(options.to) : null
+    const items: LogEntry[] = []
+    let total = 0
 
-    const filtered = data.value.filter((item) => {
+    for (let index = data.value.length - 1; index >= 0; index -= 1) {
+      const item = data.value[index]
       if (statusFilter && !statusFilter.has(item.state_name) && !statusFilter.has(item.state)) {
-        return false
+        continue
       }
 
       const createdAt = Date.parse(item.createdAt)
       if (fromTs != null && !Number.isNaN(fromTs) && createdAt < fromTs) {
-        return false
+        continue
       }
       if (toTs != null && !Number.isNaN(toTs) && createdAt > toTs) {
-        return false
+        continue
       }
 
-      return true
-    })
+      total += 1
+      if (total <= offset || items.length >= limit) {
+        continue
+      }
 
-    const ordered = [...filtered].reverse()
+      items.push(item)
+    }
+
     return {
-      items: ordered.slice(offset, offset + limit),
+      items,
       limit,
       offset,
-      total: ordered.length,
+      total,
     }
   }
 
@@ -276,4 +283,6 @@ export function useLog() {
   }
 }
 
-window.__q_log = data
+if (import.meta.env.DEV) {
+  window.__q_log = data
+}

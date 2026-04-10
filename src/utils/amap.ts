@@ -52,8 +52,13 @@ export async function amapGeocode(
   address: string,
 ): Promise<AmapGeocode['geocodes'][number] | undefined> {
   const { formData } = useConf()
+  const params = new URLSearchParams({
+    address,
+    output: 'JSON',
+    Key: formData.amap.key,
+  })
   const res = (await request.get({
-    url: `https://restapi.amap.com/v3/geocode/geo?address=${address}&output=JSON&Key=${formData.amap.key}`,
+    url: `https://restapi.amap.com/v3/geocode/geo?${params.toString()}`,
   })) as AmapGeocode | AmapError
   if (res.status !== '1' || !('geocodes' in res)) {
     throw new Error(res.info)
@@ -63,10 +68,18 @@ export async function amapGeocode(
 
 export async function amapDistance(destination: string) {
   const { formData } = useConf()
-  const createDistanceRequest = async (type: 0 | 1 | 3) =>
-    (await request.get({
-      url: `https://restapi.amap.com/v3/distance?origins=${formData.amap.origins}&destination=${destination}&type=${type}&output=JSON&Key=${formData.amap.key}`,
+  const createDistanceRequest = async (type: 0 | 1 | 3) => {
+    const params = new URLSearchParams({
+      origins: formData.amap.origins,
+      destination,
+      type: String(type),
+      output: 'JSON',
+      Key: formData.amap.key,
+    })
+    return (await request.get({
+      url: `https://restapi.amap.com/v3/distance?${params.toString()}`,
     })) as AmapDistance | AmapError
+  }
 
   const [res0, res1, res3] = await Promise.all([
     createDistanceRequest(0),

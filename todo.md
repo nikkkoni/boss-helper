@@ -70,22 +70,22 @@
 
 - [x] 修复 `components/SalaryRange.vue` 的 props 变异和 `@Click` 事件名错误。（B24, B25）
 - [x] 修复 `pages/zhipin/components/Ui.vue` 的版本比较和 `data-help` 属性拼写问题。（B26, B46）
-- [ ] 修复 `pages/zhipin/components/Ai.vue`、`components/App.vue`、`components/CreateLLM.vue`、`pages/zhipin/components/Card.vue` 等明显 UI 缺陷。（B27, B28, B29, B56）
-- [ ] 修复 `utils/logger.ts` iframe 清理和 console 方法绑定问题。（B30, B65）
-- [ ] 修复 `utils/elmGetter.ts` timeout=0 泄漏和 `components/form/FormSelect.vue` 的 `defineModel` 误用。（B53, B55）
-- [ ] 修复 `stores/log.tsx` 查询时全量复制反转造成的性能问题。（B60）
+- [x] 修复 `pages/zhipin/components/Ai.vue`、`components/App.vue`、`components/CreateLLM.vue`、`pages/zhipin/components/Card.vue` 等明显 UI 缺陷。（B27, B28, B29, B56）
+- [x] 修复 `utils/logger.ts` iframe 清理和 console 方法绑定问题。（B30, B65）
+- [x] 修复 `utils/elmGetter.ts` timeout=0 泄漏和 `components/form/FormSelect.vue` 的 `defineModel` 误用。（B53, B55）
+- [x] 修复 `stores/log.tsx` 查询时全量复制反转造成的性能问题。（B60）
 
 ### 2.3 中等级安全
 
-- [ ] 统一 `postMessage` / `onMessage` 的 `origin` 校验，移除 `'*'` 广播。（S5, S6, S16）
-- [ ] 收紧 bridge/background 的 localhost 协议与 CORS 规则，修复 trusted relay 配置矛盾。（S7, S18）
-- [ ] 为跳转和地图请求增加协议、参数校验，并限制 WebSocket monkey patch 的作用范围。（S9, S11, S12）
-- [ ] 将 `window.__bossHelperAgent` 以及其它调试型全局暴露收敛为 dev-only。（S17）
+- [x] 统一 `postMessage` / `onMessage` 的 `origin` 校验，移除 `'*'` 广播。（S5, S6, S16）
+- [x] 收紧 bridge/background 的 localhost 协议与 CORS 规则，修复 trusted relay 配置矛盾。（S7, S18）
+- [x] 为跳转和地图请求增加协议、参数校验，并限制 WebSocket monkey patch 的作用范围。（S9, S11, S12）
+- [x] 将 `window.__bossHelperAgent` 以及其它调试型全局暴露收敛为 dev-only。（S17）
 
 ### 2.4 Wave 2 验收
 
-- [ ] 补齐对应模块单测：`safeHtml`、`openai`、`stores/user`
-- [ ] 增加消息链路与 bridge 安全回归测试
+- [x] 补齐对应模块单测：`safeHtml`、`openai`、`stores/user`
+- [x] 增加消息链路与 bridge 安全回归测试
 
 ---
 

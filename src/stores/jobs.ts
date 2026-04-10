@@ -172,4 +172,6 @@ export class JobList {
 
 export const jobList = new JobList()
 
-window.__q_jobList = jobList
+if (import.meta.env.DEV) {
+  window.__q_jobList = jobList
+}

@@ -85,7 +85,7 @@ function change(v: Partial<FormDataAi>) {
   <selectLLM
     v-if="aiBoxShow && aiBox !== 'record'"
     v-model="aiBoxShow"
-    v-key="aiBox"
+    :key="aiBox"
     :data="aiBox"
   />
 </template>

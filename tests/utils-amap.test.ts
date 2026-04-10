@@ -40,11 +40,8 @@ describe('amap helpers', () => {
     await expect(amapGeocode('上海张江')).resolves.toEqual(
       expect.objectContaining({ location: '121.1,31.2' }),
     )
-    expect(mockRequestGet).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: expect.stringContaining('address=上海张江'),
-      }),
-    )
+    const geocodeUrl = new URL(mockRequestGet.mock.calls[0][0].url as string)
+    expect(geocodeUrl.searchParams.get('address')).toBe('上海张江')
   })
 
   it('throws when geocode api returns an error payload', async () => {
@@ -84,5 +81,48 @@ describe('amap helpers', () => {
       straight: { distance: 1000, duration: 60, ok: true },
       walking: { distance: 0, duration: 0, ok: false },
     })
+  })
+
+  it('encodes amap query parameters instead of interpolating raw user input', async () => {
+    mockRequestGet
+      .mockResolvedValueOnce({
+        count: '1',
+        geocodes: [{ location: '121.1,31.2', formatted_address: '上海市张江路' }],
+        info: 'OK',
+        infocode: '10000',
+        status: '1',
+      })
+      .mockResolvedValueOnce({
+        count: '1',
+        info: 'OK',
+        infocode: '10000',
+        results: [{ distance: '1000', duration: '60' }],
+        status: '1',
+      })
+      .mockResolvedValueOnce({
+        count: '1',
+        info: 'OK',
+        infocode: '10000',
+        results: [{ distance: '2000', duration: '300' }],
+        status: '1',
+      })
+      .mockResolvedValueOnce({
+        count: '1',
+        info: 'OK',
+        infocode: '10000',
+        results: [{ distance: '3000', duration: '600' }],
+        status: '1',
+      })
+
+    await amapGeocode('上海 张江&role=admin')
+    await amapDistance('121.2,31.3&mode=hijack')
+
+    const geocodeUrl = new URL(mockRequestGet.mock.calls[0][0].url as string)
+    expect(geocodeUrl.searchParams.get('address')).toBe('上海 张江&role=admin')
+    expect(geocodeUrl.searchParams.get('role')).toBeNull()
+
+    const distanceUrl = new URL(mockRequestGet.mock.calls[1][0].url as string)
+    expect(distanceUrl.searchParams.get('destination')).toBe('121.2,31.3&mode=hijack')
+    expect(distanceUrl.searchParams.get('mode')).toBeNull()
   })
 })

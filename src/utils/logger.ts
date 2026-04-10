@@ -9,12 +9,17 @@ const Color = {
 }
 
 function getCleanConsole() {
+  if (typeof document === 'undefined' || !document.head) {
+    return console
+  }
   const iframe = document.createElement('iframe')
   iframe.style.display = 'none'
   document.head.appendChild(iframe)
-  const cleanConsole = iframe.contentWindow?.console as Console
-  // document.head.removeChild(iframe)
-  return cleanConsole
+  try {
+    return iframe.contentWindow?.console ?? console
+  } finally {
+    iframe.remove()
+  }
 }
 enum LogLevel {
   DEBUG = 8,
@@ -48,42 +53,48 @@ function getLogLevel() {
 
 const newConsole = getCleanConsole()
 const logLevel = getLogLevel()
+const noop = () => {}
+
+function bindConsoleMethod(method: keyof Console, ...args: unknown[]) {
+  const fn = newConsole[method]
+  return typeof fn === 'function' ? fn.bind(newConsole, ...args) : noop
+}
 
 export const logger = {
-  log: newConsole.log.bind(
-    newConsole,
+  log: bindConsoleMethod(
+    'log',
     `%c${icons.info} log > `,
     `color:${Color.info}; padding-left:1.2em; line-height:1.5em;`,
   ),
   debug:
     logLevel >= LogLevel.DEBUG
-      ? newConsole.log.bind(
-          newConsole,
+      ? bindConsoleMethod(
+          'log',
           `%c${icons.debug} debug > `,
           `color:${Color.debug}; padding-left:1.2em; line-height:1.5em;`,
         )
-      : () => {},
+      : noop,
   info:
     logLevel >= LogLevel.INFO
-      ? newConsole.info.bind(
-          newConsole,
+      ? bindConsoleMethod(
+          'info',
           `%c${icons.info} info > `,
           `color:${Color.info}; padding-left:1.2em; line-height:1.5em;`,
         )
-      : () => {},
+      : noop,
   warn:
     logLevel >= LogLevel.WARN
-      ? newConsole.warn.bind(
-          newConsole,
+      ? bindConsoleMethod(
+          'warn',
           `%c${icons.warn} warn > `,
           `color:${Color.warn}; padding-left:1.2em; line-height:1.5em;`,
         )
-      : () => {},
-  error: newConsole.error.bind(
-    newConsole,
+      : noop,
+  error: bindConsoleMethod(
+    'error',
     `%c${icons.error} error > `,
     `color:${Color.error}; padding-left:1.2em; line-height:1.5em;`,
   ),
-  group: newConsole.groupCollapsed,
-  groupEnd: newConsole.groupEnd,
+  group: bindConsoleMethod('groupCollapsed'),
+  groupEnd: bindConsoleMethod('groupEnd'),
 }

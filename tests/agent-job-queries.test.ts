@@ -220,7 +220,22 @@ describe('useAgentJobQueries', () => {
     const log = useLog()
 
     log.add(olderJob, null, { listData: olderJob, aiGreetingA: '你好' }, 'older message')
-    log.add(newerJob, null, { listData: newerJob, aiFilteringAjson: { score: 92 } }, 'newer message')
+    log.add(
+      newerJob,
+      null,
+      {
+        listData: newerJob,
+        aiFilteringAjson: { score: 92 },
+        pipelineError: {
+          errorMessage: 'step failed',
+          errorName: 'PipelineError',
+          jobId: newerJob.encryptJobId,
+          stage: 'after',
+          step: 'filtering',
+        },
+      },
+      'newer message',
+    )
 
     const queries = useAgentJobQueries(createQueryOptions())
     const response = await queries.logsQuery({ limit: 10, offset: 0 })
@@ -230,6 +245,13 @@ describe('useAgentJobQueries', () => {
     expect(response.data?.total).toBe(2)
     expect(response.data?.items[0]?.encryptJobId).toBe('job-new')
     expect(response.data?.items[0]?.aiScore).toEqual({ score: 92 })
+    expect(response.data?.items[0]?.pipelineError).toEqual({
+      errorMessage: 'step failed',
+      errorName: 'PipelineError',
+      jobId: 'job-new',
+      stage: 'after',
+      step: 'filtering',
+    })
     expect(response.data?.items[1]?.encryptJobId).toBe('job-old')
     expect(response.data?.items[1]?.greeting).toBe('你好')
   })
