@@ -27,7 +27,7 @@
 - [x] 修复 `stores/conf/index.ts` 的 `confDelete`、`confRecommend`、migration 顺序问题，确保配置删除、推荐和版本迁移真正生效。（B3, B43, B52）
 - [x] 修复 `composables/useApplying/utils.ts` 中 `sendPublishReq` 的无限递归风险。（B4）
 - [x] 修复 `entrypoints/main-world.ts` 的 `axiosLoad` 默认值和并发串扰，改为 request-local loader。（B5, B6）
-- [ ] 修复 `composables/useModel/index.ts` 的排序变异和重复初始化问题，避免响应式副作用和 HMR 重复数据。（B7, B51）
+- [x] 修复 `composables/useModel/index.ts` 的排序变异和重复初始化问题，避免响应式副作用和 HMR 重复数据。（B7, B51）
 - [ ] 修复 `components/llms/Selectllm.vue` 的 loading 泄漏和无效 `ElForm v-model`。（B39, B54）
 - [ ] 修复 `useWebSocket/type.ts` 缺失 `originImage` 字段导致的 protobuf 编解码错误。（B10）
 
