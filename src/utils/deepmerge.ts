@@ -20,6 +20,10 @@ export interface DeepmergeOptions {
 }
 
 function deepClone<T>(source: T): T | Record<keyof any, unknown> {
+  if (Array.isArray(source)) {
+    return source.map((item) => deepClone(item)) as T
+  }
+
   if (!isPlainObject(source)) {
     return source
   }
@@ -43,7 +47,7 @@ export default function deepmerge<T>(
   if (isPlainObject(target) && isPlainObject(source)) {
     Object.keys(source).forEach((key) => {
       // Avoid prototype pollution
-      if (key === '__proto__') {
+      if (key === '__proto__' || key === 'constructor') {
         return
       }
 

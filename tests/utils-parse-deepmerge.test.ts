@@ -55,6 +55,34 @@ describe('deepmerge helpers', () => {
     expect(result).not.toBe(target)
   })
 
+  it('clones arrays instead of reusing source references', () => {
+    const source = {
+      nested: {
+        list: [{ value: 1 }],
+      },
+    }
+
+    const result = deepmerge({}, source)
+    ;(result as { nested: { list: Array<{ value: number }> } }).nested.list[0].value = 2
+
+    expect(source.nested.list[0].value).toBe(1)
+  })
+
+  it('ignores constructor pollution payloads', () => {
+    const result = deepmerge(
+      { nested: { safe: true } },
+      JSON.parse('{"constructor":{"prototype":{"polluted":true}},"nested":{"next":1}}'),
+    )
+
+    expect(result).toEqual({
+      nested: {
+        next: 1,
+        safe: true,
+      },
+    })
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+  })
+
   it('supports in-place merging when clone is false', () => {
     const target = {
       nested: {
