@@ -1,4 +1,4 @@
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 
 import { checkJobCache } from '@/composables/useApplying'
 import { useHookVueData, useHookVueFn } from '@/composables/useVue'
@@ -53,18 +53,48 @@ export class JobList {
     await this.clickJobCardAction(item)
 
     return new Promise<bossZpDetailData>((resolve, reject) => {
-      const timeout = window.setTimeout(() => {
-        clearInterval(interval)
-        reject(new Error('bossZpDetailData获取超时'))
+      let settled = false
+      let timeout = 0
+      let stop = () => {}
+
+      const cleanup = () => {
+        stop()
+        if (timeout) {
+          window.clearTimeout(timeout)
+        }
+      }
+
+      const finish = (callback: () => void) => {
+        if (settled) {
+          return
+        }
+
+        settled = true
+        cleanup()
+        callback()
+      }
+
+      const handleDetail = (detail?: bossZpDetailData) => {
+        if (detail && detail.lid === item.lid) {
+          finish(() => resolve(detail))
+        }
+      }
+
+      stop = watch(
+        () => this._vue_jobDetail.value,
+        (detail) => {
+          handleDetail(detail)
+        },
+        {
+          flush: 'sync',
+        },
+      )
+
+      timeout = window.setTimeout(() => {
+        finish(() => reject(new Error('bossZpDetailData获取超时')))
       }, 1000 * 60)
 
-      const interval = window.setInterval(() => {
-        if (this._vue_jobDetail.value && this._vue_jobDetail.value.lid === item.lid) {
-          clearTimeout(timeout)
-          clearInterval(interval)
-          resolve(this._vue_jobDetail.value)
-        }
-      }, 100)
+      handleDetail(this._vue_jobDetail.value)
     })
   }
 
@@ -133,7 +163,7 @@ export class JobList {
   }
 
   get map() {
-    return this._map.value
+    return this._map
   }
 }
 
