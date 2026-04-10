@@ -47,10 +47,10 @@
 
 ### 1.4 Wave 1 验收
 
-- [ ] 运行 `pnpm lint`
-- [ ] 运行 `pnpm check`
-- [ ] 运行 `pnpm test -- --run`
-- [ ] 为 Wave 1 改动补最小必要单测，优先覆盖 timeout、配置迁移、message 安全和 bridge body 限制。
+- [x] 运行 `pnpm lint`
+- [x] 运行 `pnpm check`
+- [x] 运行 `pnpm test -- --run`
+- [x] 为 Wave 1 改动补最小必要单测，优先覆盖 timeout、配置迁移、message 安全和 bridge body 限制。
 
 ---
 
