@@ -69,7 +69,7 @@
 ### 2.2 组件与交互缺陷
 
 - [x] 修复 `components/SalaryRange.vue` 的 props 变异和 `@Click` 事件名错误。（B24, B25）
-- [ ] 修复 `pages/zhipin/components/Ui.vue` 的版本比较和 `data-help` 属性拼写问题。（B26, B46）
+- [x] 修复 `pages/zhipin/components/Ui.vue` 的版本比较和 `data-help` 属性拼写问题。（B26, B46）
 - [ ] 修复 `pages/zhipin/components/Ai.vue`、`components/App.vue`、`components/CreateLLM.vue`、`pages/zhipin/components/Card.vue` 等明显 UI 缺陷。（B27, B28, B29, B56）
 - [ ] 修复 `utils/logger.ts` iframe 清理和 console 方法绑定问题。（B30, B65）
 - [ ] 修复 `utils/elmGetter.ts` timeout=0 泄漏和 `components/form/FormSelect.vue` 的 `defineModel` 误用。（B53, B55）
