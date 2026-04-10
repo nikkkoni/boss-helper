@@ -41,7 +41,7 @@
 ### 1.3 Bridge / MCP / 消息链路安全
 
 - [x] 收敛 `message/background.ts` 的代理能力，增加 URL 白名单并处理 `tab.id` 空值场景。（S1, B47）
-- [ ] 为 `scripts/agent-bridge.mjs` 增加请求体大小限制，移除 relay HTML 和 stdout 中的明文 token，并废弃 query-param token。（S3, S13, S15）
+- [x] 为 `scripts/agent-bridge.mjs` 增加请求体大小限制，移除 relay HTML 和 stdout 中的明文 token，并废弃 query-param token。（S3, S13, S15）
 - [ ] 为 `scripts/agent-mcp-server.mjs` 增加 stdin 串行队列和 Content-Length 上限校验。（B8, S14）
 - [ ] 修复 `scripts/agent-security.mjs` 的文件权限和证书 CA 标记。（S2, S10）
 
