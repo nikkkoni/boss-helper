@@ -1,6 +1,6 @@
 import { ElMessage } from 'element-plus'
 import { defineStore } from 'pinia'
-import { computed, ref, toRaw } from 'vue'
+import { ref, toRaw, watch } from 'vue'
 
 import { counter } from '@/message'
 import { jsonClone } from '@/utils/deepmerge'
@@ -39,25 +39,35 @@ export interface modelData {
   }
 }
 
-export const useModel = defineStore('model', () => {
-  const _modelData = ref<modelData[]>([])
+function compareModelData(left: modelData, right: modelData) {
+  if (left.vip == null && right.vip != null) {
+    return 1
+  }
+  if (left.vip != null && right.vip == null) {
+    return -1
+  }
+  return 0
+}
 
-  const modelData = computed({
-    get() {
-      return _modelData.value.sort((a, b) => {
-        if (a.vip == null && b.vip != null) {
-          return 1
-        }
-        if (a.vip != null && b.vip == null) {
-          return -1
-        }
-        return 0
-      })
+export function sortModelEntries(items: modelData[]) {
+  return [...items].sort(compareModelData)
+}
+
+export const useModel = defineStore('model', () => {
+  const modelData = ref<modelData[]>([])
+
+  watch(
+    modelData,
+    (items) => {
+      const sorted = sortModelEntries(items.map((item) => toRaw(item)))
+      if (sorted.every((item, index) => item === toRaw(items[index]))) {
+        return
+      }
+
+      modelData.value = sorted
     },
-    set(value: modelData[]) {
-      _modelData.value = value
-    },
-  })
+    { deep: true, flush: 'sync' },
+  )
 
   async function init() {
     let data = await counter.storageGet<modelData[]>(sessionConfModelKey)
@@ -69,7 +79,13 @@ export const useModel = defineStore('model', () => {
       }
     }
     logger.debug('ai模型数据', data)
-    modelData.value.push(...(data ?? []))
+    const persistedModels = data ?? []
+    const vipModels = modelData.value.filter((item) => item.vip != null)
+
+    modelData.value = [
+      ...persistedModels,
+      ...vipModels.filter((item) => !persistedModels.some((stored) => stored.key === item.key)),
+    ]
   }
 
   function getModel(

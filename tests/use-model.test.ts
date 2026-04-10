@@ -86,7 +86,7 @@ vi.mock('@/utils/logger', () => ({
   },
 }))
 
-import { useModel } from '@/composables/useModel'
+import { sortModelEntries, useModel } from '@/composables/useModel'
 import { SignedKeyLLM } from '@/composables/useModel/signedKey'
 import { llm } from '@/composables/useModel/type'
 import { RequestError } from '@/utils/request'
@@ -186,6 +186,40 @@ describe('useModel', () => {
 
     expect(store.modelData).toHaveLength(1)
     expect(store.modelData[0].name).toBe('Legacy model')
+  })
+
+  it('replaces persisted models on repeated init without duplicating entries', async () => {
+    __setStorageItem('session:conf-model', [
+      createModelItem({ key: 'persisted', name: 'Persisted model' }),
+    ])
+
+    const store = useModel()
+    await store.initModel()
+    await store.initModel()
+
+    expect(store.modelData).toEqual([expect.objectContaining({ key: 'persisted' })])
+  })
+
+  it('sorts model entries without mutating the source array', () => {
+    const original = [
+      createModelItem({ key: 'standard', name: 'Standard' }),
+      {
+        key: 'vip',
+        name: 'VIP',
+        vip: {
+          description: 'vip',
+          price: {
+            input: '1',
+            output: '1',
+          },
+        },
+      },
+    ]
+
+    const sorted = sortModelEntries(original)
+
+    expect(sorted.map((item) => item.key)).toEqual(['vip', 'standard'])
+    expect(original.map((item) => item.key)).toEqual(['standard', 'vip'])
   })
 
   it('builds an OpenAI model and retries retryable request errors', async () => {
