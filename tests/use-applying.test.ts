@@ -380,6 +380,49 @@ describe('useApplying handles', () => {
     await expect(getHandler(handles().hrPosition())({ data: job }, ctx)).rejects.toThrow('Hr职位不在白名单中')
   })
 
+  it('treats job content keywords as escaped precompiled literals', async () => {
+    const conf = useConf()
+    const job = createJob({
+      card: createJobCard({
+        postDescription: '负责括号()处理和正则文本 .* 的展示',
+      }),
+    })
+    const ctx = createLogContext(job)
+
+    conf.formData.jobContent.enable = true
+    conf.formData.jobContent.include = false
+
+    conf.formData.jobContent.value = ['(']
+    await expect(getHandler(handles().jobContent())({ data: job }, ctx)).rejects.toThrow(
+      '工作内容含有排除关键词 [(]',
+    )
+
+    conf.formData.jobContent.value = ['.*']
+    job.card = createJobCard({
+      postDescription: '普通文本，不应该因为正则通配符被误判',
+    })
+    await expect(getHandler(handles().jobContent())({ data: job }, ctx)).resolves.toBeUndefined()
+  })
+
+  it('precompiles job content patterns once per step creation', async () => {
+    const conf = useConf()
+    const job = createJob({
+      card: createJobCard({
+        postDescription: '包含外包岗位描述',
+      }),
+    })
+    const ctx = createLogContext(job)
+
+    conf.formData.jobContent.enable = true
+    conf.formData.jobContent.include = false
+    conf.formData.jobContent.value = ['外包', '销售']
+
+    const step = getHandler(handles().jobContent())
+
+    await expect(step({ data: job }, ctx)).rejects.toThrow('工作内容含有排除关键词 [外包]')
+    await expect(step({ data: job }, ctx)).rejects.toThrow('工作内容含有排除关键词 [外包]')
+  })
+
   it('uses external ai review responses and preserves greeting', async () => {
     const conf = useConf()
     const job = createJob({ card: createJobCard() })

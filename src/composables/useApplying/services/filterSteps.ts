@@ -21,6 +21,10 @@ import { errorHandle, rangeMatch, rangeMatchFormat } from '../utils'
 type ToCause = (error: unknown) => { cause: Error } | undefined
 type ApplyingStatistics = { todayData: Statistics }
 
+function escapeRegExp(source: string) {
+  return source.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export function createCommunicatedStep(statistics: ApplyingStatistics): StepFactory {
   return () => {
     return async ({ data }) => {
@@ -242,20 +246,27 @@ export function createJobContentStep(
       return
     }
 
+    const compiledKeywords = formData.jobContent.value
+      .filter(Boolean)
+      .map((keyword) => {
+        const normalizedKeyword = keyword.toLowerCase()
+        return {
+          keyword,
+          pattern: new RegExp(
+            `(?<!(不|无).{0,5})${escapeRegExp(normalizedKeyword)}(?!系统|软件|工具|服务)`,
+          ),
+        }
+      })
+
     return async (_, ctx) => {
       try {
         const content = ctx.listData.card?.postDescription.toLowerCase()
-        for (const x of formData.jobContent.value) {
-          if (!x) {
-            continue
-          }
-
-          const re = new RegExp(`(?<!(不|无).{0,5})${x.toLowerCase()}(?!系统|软件|工具|服务)`)
-          if (content != null && re.test(content)) {
+        for (const { keyword, pattern } of compiledKeywords) {
+          if (content != null && pattern.test(content)) {
             if (formData.jobContent.include) {
               return
             }
-            throw new JobDescriptionError(`工作内容含有排除关键词 [${x}]`)
+            throw new JobDescriptionError(`工作内容含有排除关键词 [${keyword}]`)
           }
         }
 
