@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url'
 
 import {
   AGENT_BRIDGE_AUTH_HEADER,
-  AGENT_BRIDGE_TOKEN_QUERY,
   getAgentBridgeCertificate,
   getAgentBridgeEventPortName,
   getAgentBridgeRuntime,
@@ -23,8 +22,11 @@ const HOST = runtime.host
 const PORT = runtime.port
 const HTTPS_PORT = runtime.httpsPort
 const BRIDGE_TOKEN = runtime.token
+const RELAY_SESSION_TOKEN = randomUUID()
 const COMMAND_TIMEOUT_MS = Number.parseInt(process.env.BOSS_HELPER_AGENT_TIMEOUT ?? '30000', 10)
+const MAX_JSON_BODY_BYTES = Number.parseInt(process.env.BOSS_HELPER_AGENT_MAX_BODY_BYTES ?? `${1024 * 1024}`, 10)
 const relayFile = join(dirname(fileURLToPath(import.meta.url)), 'agent-relay.html')
+const RELAY_SESSION_COOKIE = 'boss_helper_agent_relay_session'
 
 const commandQueue = []
 const pendingResponses = new Map()
@@ -86,16 +88,48 @@ function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Headers', `Content-Type,${AGENT_BRIDGE_AUTH_HEADER}`)
 }
 
-function getRequestToken(req, url) {
+function getRequestToken(req) {
   const authHeader = req.headers[AGENT_BRIDGE_AUTH_HEADER]
   if (typeof authHeader === 'string' && authHeader.trim()) {
     return authHeader.trim()
   }
-  return url.searchParams.get(AGENT_BRIDGE_TOKEN_QUERY)?.trim() ?? ''
+  return ''
 }
 
-function isAuthorizedRequest(req, url) {
-  return getRequestToken(req, url) === BRIDGE_TOKEN
+function parseCookieHeader(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    return new Map()
+  }
+
+  const cookies = new Map()
+  for (const item of value.split(';')) {
+    const [name, ...rest] = item.split('=')
+    const key = name?.trim()
+    if (!key) {
+      continue
+    }
+    cookies.set(key, rest.join('=').trim())
+  }
+  return cookies
+}
+
+function getRelaySessionToken(req) {
+  return parseCookieHeader(req.headers.cookie).get(RELAY_SESSION_COOKIE) ?? ''
+}
+
+function isRelaySessionRequest(req) {
+  return getRelaySessionToken(req) === RELAY_SESSION_TOKEN
+}
+
+function isAuthorizedRequest(req) {
+  return getRequestToken(req) === BRIDGE_TOKEN || isRelaySessionRequest(req)
+}
+
+function setRelaySessionCookie(res) {
+  res.setHeader(
+    'Set-Cookie',
+    `${RELAY_SESSION_COOKIE}=${RELAY_SESSION_TOKEN}; Path=/; HttpOnly; Secure; SameSite=Strict`,
+  )
 }
 
 function shouldSkipAuth(req, url) {
@@ -103,10 +137,13 @@ function shouldSkipAuth(req, url) {
 }
 
 function getRelayPageHtml(relayHtml) {
-  return relayHtml
-    .replaceAll('__BOSS_HELPER_AGENT_BRIDGE_BASE_URL__', runtime.httpsBaseUrl)
-    .replaceAll('__BOSS_HELPER_AGENT_BRIDGE_TOKEN__', BRIDGE_TOKEN)
-    .replaceAll('__BOSS_HELPER_AGENT_EVENT_PORT_NAME__', getAgentBridgeEventPortName(BRIDGE_TOKEN))
+  return relayHtml.replaceAll('__BOSS_HELPER_AGENT_BRIDGE_BASE_URL__', runtime.httpsBaseUrl)
+}
+
+function getRelayBootstrapPayload() {
+  return {
+    eventPortName: getAgentBridgeEventPortName(BRIDGE_TOKEN),
+  }
 }
 
 function sendJson(res, statusCode, body) {
@@ -137,9 +174,26 @@ function writeSse(res, event, data) {
 }
 
 async function readJson(req) {
+  const contentLengthHeader = req.headers['content-length']
+  const contentLength = Number.parseInt(Array.isArray(contentLengthHeader) ? contentLengthHeader[0] : contentLengthHeader ?? '', 10)
+
+  if (Number.isFinite(contentLength) && contentLength > MAX_JSON_BODY_BYTES) {
+    const error = new Error('请求体过大')
+    error.name = 'BridgeBodyTooLargeError'
+    throw error
+  }
+
   const chunks = []
+  let totalBytes = 0
   for await (const chunk of req) {
-    chunks.push(chunk)
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    totalBytes += buffer.length
+    if (totalBytes > MAX_JSON_BODY_BYTES) {
+      const error = new Error('请求体过大')
+      error.name = 'BridgeBodyTooLargeError'
+      throw error
+    }
+    chunks.push(buffer)
   }
 
   if (chunks.length === 0) {
@@ -356,7 +410,7 @@ async function createAppServer() {
         return
       }
 
-      if (!shouldSkipAuth(req, url) && !isAuthorizedRequest(req, url)) {
+      if (!shouldSkipAuth(req, url) && !isAuthorizedRequest(req)) {
         sendJson(res, 401, {
           ok: false,
           code: 'unauthorized-bridge-token',
@@ -366,7 +420,27 @@ async function createAppServer() {
       }
 
       if (req.method === 'GET' && url.pathname === '/') {
+        if (secureRequest) {
+          setRelaySessionCookie(res)
+        }
         sendHtml(res, relayPageHtml)
+        return
+      }
+
+      if (req.method === 'GET' && url.pathname === '/relay/bootstrap') {
+        if (!secureRequest) {
+          sendJson(res, 400, {
+            ok: false,
+            code: 'relay-bootstrap-requires-https',
+            message: 'relay bootstrap 仅支持 HTTPS',
+          })
+          return
+        }
+
+        sendJson(res, 200, {
+          ok: true,
+          ...getRelayBootstrapPayload(),
+        })
         return
       }
 
@@ -570,6 +644,15 @@ async function createAppServer() {
 
       sendJson(res, 404, { ok: false, message: 'not found' })
     } catch (error) {
+      if (error instanceof Error && error.name === 'BridgeBodyTooLargeError') {
+        sendJson(res, 413, {
+          ok: false,
+          code: 'request-body-too-large',
+          message: `请求体超过限制（${MAX_JSON_BODY_BYTES} bytes）`,
+        })
+        return
+      }
+
       sendJson(res, 500, {
         ok: false,
         code: 'bridge-server-error',
@@ -593,9 +676,7 @@ const httpsServer = createHttpsServer(
 server.listen(PORT, HOST, () => {
   console.log(`[boss-helper-agent-bridge] listening on http://${HOST}:${PORT}`)
   console.log(`[boss-helper-agent-bridge] open https://${HOST}:${HTTPS_PORT}/ in a Chromium browser and connect the extension relay`)
-  console.log(
-    `[boss-helper-agent-bridge] bridge token header ${AGENT_BRIDGE_AUTH_HEADER}: ${BRIDGE_TOKEN}`,
-  )
+  console.log(`[boss-helper-agent-bridge] authenticate API clients with header ${AGENT_BRIDGE_AUTH_HEADER}`)
 })
 
 httpsServer.listen(HTTPS_PORT, HOST, () => {

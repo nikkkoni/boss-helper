@@ -197,7 +197,10 @@ bridge 当前对外暴露这些接口：
 | `POST /batch` | 顺序执行一组命令 |
 | `GET /agent-events` | 订阅实时投递事件 |
 
-除 `/` 和 `/health` 外，其余接口都需要携带 `x-boss-helper-agent-token` 头，或通过 `token` query 传递 token。
+除 `/` 和 `/health` 外，其余接口都需要认证：
+
+- CLI / MCP / 脚本客户端：携带 `x-boss-helper-agent-token` 请求头。
+- relay 页面：先通过 `GET /` 建立同源 HTTPS session cookie，再访问 `/events`、`/relay/bootstrap`、`/responses`、`/relay/announce` 等接口。
 
 ## MCP 部署说明
 

@@ -162,8 +162,6 @@
 
     <script>
       const BRIDGE_BASE_URL = '__BOSS_HELPER_AGENT_BRIDGE_BASE_URL__'
-      const BRIDGE_TOKEN = '__BOSS_HELPER_AGENT_BRIDGE_TOKEN__'
-      const EXTENSION_EVENT_PORT_NAME = '__BOSS_HELPER_AGENT_EVENT_PORT_NAME__'
       const EXTENSION_ID_KEY = 'boss-helper-agent-extension-id'
       const RELAY_CLIENT_ID_KEY = 'boss-helper-agent-relay-client-id'
       const bridgeState = document.getElementById('bridgeState')
@@ -175,6 +173,7 @@
       const saveButton = document.getElementById('saveButton')
       const relayClientId = localStorage.getItem(RELAY_CLIENT_ID_KEY) || crypto.randomUUID()
       const urlExtensionId = new URLSearchParams(location.search).get('extensionId') || ''
+      let bridgeBootstrap = null
 
       localStorage.setItem(RELAY_CLIENT_ID_KEY, relayClientId)
       extensionIdInput.value = urlExtensionId || localStorage.getItem(EXTENSION_ID_KEY) || ''
@@ -210,10 +209,32 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-boss-helper-agent-token': BRIDGE_TOKEN,
           },
+          credentials: 'include',
           body: JSON.stringify(payload),
         })
+      }
+
+      async function ensureBridgeBootstrap() {
+        if (bridgeBootstrap) {
+          return bridgeBootstrap
+        }
+
+        const response = await fetch(`${BRIDGE_BASE_URL}/relay/bootstrap`, {
+          credentials: 'include',
+        })
+
+        if (!response.ok) {
+          throw new Error(`bootstrap failed: HTTP ${response.status}`)
+        }
+
+        const payload = await response.json()
+        if (!payload?.ok || typeof payload.eventPortName !== 'string') {
+          throw new Error(payload?.message || 'bootstrap failed')
+        }
+
+        bridgeBootstrap = payload
+        return bridgeBootstrap
       }
 
       async function sendExtensionMessage(commandEnvelope) {
@@ -233,12 +254,14 @@
           }
         }
 
+        const bootstrap = await ensureBridgeBootstrap()
+
         return new Promise((resolve) => {
           window.chrome.runtime.sendMessage(
             extensionId,
             {
               ...commandEnvelope.request,
-              bridgeToken: BRIDGE_TOKEN,
+              bridgeToken: bootstrap.eventPortName.replace(/^__boss_helper_agent_event_port__:/, ''),
             },
             (reply) => {
               const error = window.chrome.runtime.lastError
@@ -266,7 +289,17 @@
       async function handleCommand(commandEnvelope) {
         setRelayState(`running ${commandEnvelope.request.command}`)
         log(`收到命令 ${commandEnvelope.request.command}`, commandEnvelope.request)
-        const response = await sendExtensionMessage(commandEnvelope)
+        let response
+        try {
+          response = await sendExtensionMessage(commandEnvelope)
+        } catch (error) {
+          response = {
+            ok: false,
+            code: 'relay-bootstrap-failed',
+            message: error instanceof Error ? error.message : String(error),
+          }
+          log('relay bootstrap 失败', response)
+        }
         responseEl.textContent = JSON.stringify(response, null, 2)
         await postJson('/responses', {
           requestId: commandEnvelope.requestId,
@@ -286,7 +319,7 @@
       let eventSource
       let extensionPort
 
-      function connectExtensionEventPort() {
+      async function connectExtensionEventPort() {
         extensionPort?.disconnect()
         extensionPort = undefined
 
@@ -302,8 +335,9 @@
         }
 
         try {
+          const bootstrap = await ensureBridgeBootstrap()
           extensionPort = window.chrome.runtime.connect(extensionId, {
-            name: EXTENSION_EVENT_PORT_NAME,
+            name: bootstrap.eventPortName,
           })
           setExtensionEventsState('connected')
 
@@ -332,9 +366,9 @@
         eventSource?.close()
         const extensionId = encodeURIComponent(getExtensionId())
         const clientId = encodeURIComponent(relayClientId)
-        const token = encodeURIComponent(BRIDGE_TOKEN)
         eventSource = new EventSource(
-          `${BRIDGE_BASE_URL}/events?extensionId=${extensionId}&clientId=${clientId}&token=${token}`,
+          `${BRIDGE_BASE_URL}/events?extensionId=${extensionId}&clientId=${clientId}`,
+          { withCredentials: true },
         )
 
         eventSource.onopen = () => {
@@ -372,11 +406,11 @@
         localStorage.setItem(EXTENSION_ID_KEY, getExtensionId())
         log('已保存扩展 ID，正在重连')
         connectEventSource()
-        connectExtensionEventPort()
+        void connectExtensionEventPort()
       })
 
       connectEventSource()
-      connectExtensionEventPort()
+      void connectExtensionEventPort()
     </script>
   </body>
 </html>

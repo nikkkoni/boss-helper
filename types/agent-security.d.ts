@@ -4,7 +4,6 @@ declare module '../scripts/agent-security.mjs' {
   export const AGENT_BRIDGE_PORT_ENV: string
   export const AGENT_BRIDGE_HTTPS_PORT_ENV: string
   export const AGENT_BRIDGE_AUTH_HEADER: string
-  export const AGENT_BRIDGE_TOKEN_QUERY: string
   export const AGENT_BRIDGE_EVENT_PORT_PREFIX: string
 
   export interface AgentBridgeRuntime {

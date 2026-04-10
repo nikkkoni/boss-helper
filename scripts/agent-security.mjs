@@ -19,7 +19,6 @@ export const AGENT_BRIDGE_HOST_ENV = 'BOSS_HELPER_AGENT_HOST'
 export const AGENT_BRIDGE_PORT_ENV = 'BOSS_HELPER_AGENT_PORT'
 export const AGENT_BRIDGE_HTTPS_PORT_ENV = 'BOSS_HELPER_AGENT_HTTPS_PORT'
 export const AGENT_BRIDGE_AUTH_HEADER = 'x-boss-helper-agent-token'
-export const AGENT_BRIDGE_TOKEN_QUERY = 'token'
 export const AGENT_BRIDGE_EVENT_PORT_PREFIX = '__boss_helper_agent_event_port__'
 
 const agentBridgeTokenFile = join(repoRoot, '.boss-helper-agent-token')
