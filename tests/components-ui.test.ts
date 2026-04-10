@@ -16,6 +16,7 @@ const {
   mockInitModel,
   mockRefreshSignedKeyInfo,
   mockRegisterWindowAgentBridge,
+  mockSignedKey,
   mockUnregister,
 } = vi.hoisted(() => ({
   mockConf: {
@@ -34,6 +35,16 @@ const {
   mockInitUser: vi.fn(async () => {}),
   mockRefreshSignedKeyInfo: vi.fn(async () => {}),
   mockRegisterWindowAgentBridge: vi.fn(() => mockUnregister),
+  mockSignedKey: {
+    initSignedKey: vi.fn(async () => {}),
+    netConf: {
+      feedback: 'https://example.com/feedback',
+      notification: [],
+      version: '0.4.5',
+    },
+    refreshSignedKeyInfo: vi.fn(async () => {}),
+    signedKey: 'signed-key',
+  },
   mockUnregister: vi.fn(),
 }))
 
@@ -72,16 +83,7 @@ vi.mock('@/composables/useModel', () => ({
 }))
 
 vi.mock('@/stores/signedKey', () => ({
-  useSignedKey: () => ({
-    initSignedKey: mockInitSignedKey,
-    netConf: {
-      feedback: 'https://example.com/feedback',
-      notification: [],
-      version: '0.4.5',
-    },
-    refreshSignedKeyInfo: mockRefreshSignedKeyInfo,
-    signedKey: 'signed-key',
-  }),
+  useSignedKey: () => mockSignedKey,
 }))
 
 vi.mock('@/composables/useStatistics', () => ({
@@ -150,6 +152,7 @@ describe('Ui.vue', () => {
     window.history.replaceState({}, '', '/web/geek/jobs')
     mockElmGetterGet.mockReset()
     mockElmGetterRm.mockReset()
+    mockElmGetterGet.mockResolvedValue([])
     mockInitJobList.mockReset()
     mockInitPager.mockReset()
     mockInitUser.mockReset()
@@ -158,6 +161,12 @@ describe('Ui.vue', () => {
     mockInitSignedKey.mockReset()
     mockRefreshSignedKeyInfo.mockReset()
     mockRegisterWindowAgentBridge.mockClear()
+    mockSignedKey.initSignedKey = mockInitSignedKey
+    mockSignedKey.refreshSignedKeyInfo = mockRefreshSignedKeyInfo
+    mockSignedKey.netConf.feedback = 'https://example.com/feedback'
+    mockSignedKey.netConf.notification = []
+    mockSignedKey.netConf.version = '0.4.5'
+    mockSignedKey.signedKey = 'signed-key'
     mockUnregister.mockClear()
   })
 
@@ -221,5 +230,41 @@ describe('Ui.vue', () => {
 
     vi.advanceTimersByTime(20 * 60 * 1000)
     expect(mockRefreshSignedKeyInfo).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses semantic version comparison for update dots and keeps config help attributes addressable', async () => {
+    mockSignedKey.netConf.version = '10.0.0'
+    document.body.innerHTML = '<div class="page-jobs-main"></div>'
+
+    const wrapper = mount(Ui, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          About: true,
+          Card: true,
+          Config: true,
+          ElBadge: passthrough('div'),
+          ElCheckbox: passthrough('button'),
+          ElConfigProvider: passthrough('div'),
+          ElLink: passthrough('a'),
+          ElTabPane: passthrough('section'),
+          ElTabs: passthrough('div'),
+          ElTag: passthrough('span'),
+          ElText: passthrough('span'),
+          ElTooltip: passthrough('div'),
+          Logs: true,
+          Service: true,
+          Statistics: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('有更新')
+    expect(wrapper.find('[data-help="好好看，好好学"]').exists()).toBe(true)
+
+    wrapper.unmount()
   })
 })

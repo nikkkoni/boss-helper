@@ -207,8 +207,32 @@ function tagOpen(url: string) {
 }
 const VITE_VERSION = __APP_VERSION__
 
+function parseVersionSegments(version: string) {
+  return version
+    .split(/[^\d]+/)
+    .filter(Boolean)
+    .map((part) => Number.parseInt(part, 10))
+}
+
+function isVersionNewer(remoteVersion: string, currentVersion: string) {
+  const remoteParts = parseVersionSegments(remoteVersion)
+  const currentParts = parseVersionSegments(currentVersion)
+  const length = Math.max(remoteParts.length, currentParts.length)
+
+  for (let index = 0; index < length; index += 1) {
+    const remote = remoteParts[index] ?? 0
+    const current = currentParts[index] ?? 0
+
+    if (remote !== current) {
+      return remote > current
+    }
+  }
+
+  return false
+}
+
 const isDot = computed(() => {
-  return (signedKey.netConf?.version ?? '0') > VITE_VERSION
+  return isVersionNewer(signedKey.netConf?.version ?? '0', VITE_VERSION)
 })
 
 function openStore() {
@@ -263,7 +287,7 @@ function openStore() {
         <Statistics />
       </ElTabPane>
       <ElTabPane ref="searchRef" label="筛选" />
-      <ElTabPane label="配置" Alertdata-help="好好看，好好学">
+      <ElTabPane label="配置" data-help="好好看，好好学">
         <Config />
       </ElTabPane>
       <ElTabPane v-if="signedKey.signedKey" label="AI" data-help="AI时代，脚本怎么能落伍!">
