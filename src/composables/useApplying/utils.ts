@@ -144,7 +144,7 @@ export async function sendPublishReq(
               data: params,
             }),
           )
-          return sendPublishReq(data, undefined, retries, { cid: 1 })
+          return sendPublishReq(data, undefined, retries - 1, { ..._params, cid: 1 })
         } catch (e) {
           logger.error('尝试确认投递限制失败', e)
           throw new PublishError(`投递限制确认失败]${content}`)

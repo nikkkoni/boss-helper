@@ -336,6 +336,35 @@ describe('useApplying utils', () => {
     )
   })
 
+  it('decrements retries when the 120-boss popup keeps reappearing', async () => {
+    document.cookie = 'bst=confirm-token; path=/'
+    const popupResponse = {
+      data: {
+        code: 1,
+        message: '触发限额',
+        zpData: {
+          bizData: {
+            chatRemindDialog: {
+              ba: 'popup-ba',
+              content: '您今天已与120位BOSS沟通',
+            },
+          },
+        },
+      },
+    }
+
+    axiosMock
+      .mockResolvedValueOnce(popupResponse)
+      .mockResolvedValueOnce({ data: { ok: true } })
+      .mockResolvedValueOnce(popupResponse)
+      .mockResolvedValueOnce({ data: { ok: true } })
+
+    await expect(sendPublishReq(createJob(), undefined, 2)).rejects.toEqual(
+      expect.objectContaining({ message: '重试多次失败' }),
+    )
+    expect(axiosMock).toHaveBeenCalledTimes(4)
+  })
+
   it('returns boss data, retries friend-state failures, and surfaces fatal greet errors', async () => {
     document.cookie = 'bst=greet-token; path=/'
     axiosMock
