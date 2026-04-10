@@ -49,7 +49,17 @@ export interface NotificationNotification {
   }
 }
 
-// logger.debug("import.meta.env",import.meta.env)
+type SignedKeyEnv = {
+  PROD?: boolean
+  TEST?: boolean
+  WXT_TEST?: boolean
+}
+
+export function resolveSignedKeyBaseUrl(env: SignedKeyEnv = import.meta.env as SignedKeyEnv) {
+  return env.PROD || env.TEST || env.WXT_TEST
+    ? 'https://boss-helper.ocyss.icu'
+    : 'http://localhost:8002'
+}
 
 function sdbmCode(str: string) {
   let hash = 0
@@ -86,11 +96,7 @@ export function signedKeyReqHandler(data: any, message = true): string | undefin
 }
 
 export type Client = ReturnType<typeof createClient<paths>>
-const baseUrl = 'https://boss-helper.ocyss.icu'
-// const baseUrl =
-//   import.meta.env.PROD || import.meta.env.TEST || import.meta.env.WXT_TEST
-//     ? 'https://boss-helper.ocyss.icu'
-//     : 'http://localhost:8002'
+export const signedKeyBaseUrl = resolveSignedKeyBaseUrl()
 
 export const useSignedKey = defineStore('signedKey', () => {
   const signedKey = ref<string | null>(null)
@@ -105,7 +111,7 @@ export const useSignedKey = defineStore('signedKey', () => {
 
   const netNotificationMap = new Map<string, boolean>()
 
-  const client = createClient<paths>({ baseUrl })
+  const client = createClient<paths>({ baseUrl: signedKeyBaseUrl })
 
   const authMiddleware: Middleware = {
     async onRequest({ request }) {
