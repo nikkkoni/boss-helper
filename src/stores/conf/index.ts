@@ -23,6 +23,40 @@ export const formDataTemplatesKey = 'local:web-geek-job-FormDataTemplates'
 export const amapKeyStorageKey = 'session:web-geek-job-AmapKey'
 
 type FormDataTemplates = Record<string, Partial<FormData>>
+export type FormDataMigration = [string, (from: Partial<FormData>) => Partial<FormData>]
+
+export const FORM_DATA_MIGRATIONS: readonly FormDataMigration[] = [
+  [
+    '20250826',
+    (from) => {
+      if (from.salaryRange && typeof from.salaryRange.value === 'string') {
+        const [min, max] = (from.salaryRange.value as string).split('-').map(Number)
+        from.salaryRange.value = [min, max, false]
+      }
+      if (from.companySizeRange && typeof from.companySizeRange.value === 'string') {
+        const [min, max] = (from.companySizeRange.value as string).split('-').map(Number)
+        from.companySizeRange.value = [min, max, false]
+      }
+      return from
+    },
+  ],
+]
+
+export function applyFormDataMigrations(
+  from: Partial<FormData>,
+  migrations: readonly FormDataMigration[] = FORM_DATA_MIGRATIONS,
+) {
+  for (const [version, migrate] of migrations) {
+    if ((from?.version ?? '20240401') >= version) {
+      continue
+    }
+
+    from = migrate(from)
+    from.version = version
+  }
+
+  return from
+}
 
 export function sanitizeSensitiveFormData(data: Partial<FormData>) {
   const snapshot = jsonClone(data)
@@ -38,33 +72,9 @@ export const useConf = defineStore('conf', () => {
   const isLoaded = ref(false)
   const templateNames = ref<string[]>([])
 
-  const FROM_VERSION: [string, (from: Partial<FormData>) => Partial<FormData>][] = [
-    [
-      '20250826',
-      (from) => {
-        if (from.salaryRange && typeof from.salaryRange.value === 'string') {
-          const [min, max] = (from.salaryRange.value as string).split('-').map(Number)
-          from.salaryRange.value = [min, max, false]
-        }
-        if (from.companySizeRange && typeof from.companySizeRange.value === 'string') {
-          const [min, max] = (from.companySizeRange.value as string).split('-').map(Number)
-          from.companySizeRange.value = [min, max, false]
-        }
-        return from
-      },
-    ],
-  ]
-
   async function formDataHandler(from: Partial<FormData>) {
     try {
-      for (let i = FROM_VERSION.length - 1; i >= 0; i--) {
-        const [version, fn] = FROM_VERSION[i]
-        if ((from?.version ?? '20240401') >= version) {
-          break
-        }
-        from = fn(from)
-        from.version = version
-      }
+      from = applyFormDataMigrations(from)
       const user = useUser()
       const uid = user.getUserId()
       // eslint-disable-next-line eqeqeq
@@ -248,8 +258,7 @@ export const useConf = defineStore('conf', () => {
   }
 
   function confRecommend() {
-    deepmerge(
-      formData,
+    const recommendedDefaults = Object.fromEntries(
       [
         'deliveryLimit',
         'activityFilter',
@@ -260,20 +269,16 @@ export const useConf = defineStore('conf', () => {
         'notification',
         'useCache',
         'delay',
-      ].reduce(
-        (result, key) => {
-          result[key] = defaultFormData[key as keyof FormData]
-          return result
-        },
-        {} as Record<string, any>,
-      ),
+      ].map((key) => [key, jsonClone(defaultFormData[key as keyof FormData])]),
     )
+
+    Object.assign(formData, recommendedDefaults)
     logger.debug('formData推荐配置已应用')
     ElMessage.success('推荐配置已应用, 不会自动保存, 请手动保存或重载恢复')
   }
 
   function confDelete() {
-    deepmerge(formData, defaultFormData)
+    Object.assign(formData, jsonClone(defaultFormData))
     logger.debug('formData已清空')
     ElMessage.success('配置清空成功, 不会自动保存, 请手动保存或重载恢复')
   }
