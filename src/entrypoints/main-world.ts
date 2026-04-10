@@ -16,6 +16,57 @@ import {
   waitForDocumentReady,
 } from '@/utils/selectors'
 
+const axiosLoaderKey = Symbol('boss-helper-axios-loader')
+
+type AxiosLoaderStop = () => void
+type AxiosLoaderCarrier = {
+  timeout?: number | null
+  [axiosLoaderKey]?: AxiosLoaderStop
+}
+
+function attachAxiosLoader(config: AxiosLoaderCarrier) {
+  if (typeof config.timeout === 'number' && Number.isFinite(config.timeout) && config.timeout > 0) {
+    config[axiosLoaderKey] = loader({ ms: config.timeout, color: '#F79E63' })
+    return
+  }
+
+  config[axiosLoaderKey] = () => {}
+}
+
+function clearAxiosLoader(config?: AxiosLoaderCarrier | null) {
+  if (!config) {
+    return
+  }
+
+  const stop = config[axiosLoaderKey]
+  delete config[axiosLoaderKey]
+  stop?.()
+}
+
+export function installAxiosLoaderInterceptors(client: Pick<typeof axios, 'interceptors'> = axios) {
+  client.interceptors.request.use(
+    (config) => {
+      attachAxiosLoader(config as AxiosLoaderCarrier)
+      return config
+    },
+    async (error) => {
+      clearAxiosLoader(error?.config as AxiosLoaderCarrier | undefined)
+      return Promise.reject(error)
+    },
+  )
+
+  client.interceptors.response.use(
+    (response) => {
+      clearAxiosLoader(response.config as AxiosLoaderCarrier)
+      return response
+    },
+    async (error) => {
+      clearAxiosLoader(error?.config as AxiosLoaderCarrier | undefined)
+      return Promise.reject(error)
+    },
+  )
+}
+
 function reportSelectorHealth(stage: string, pathname = location.pathname) {
   if (!isSupportedSiteUrl(new URL(pathname, location.origin).toString())) {
     return
@@ -70,29 +121,7 @@ async function start() {
   const v = await getRootVue()
   v.$router.afterHooks.push(main)
   void main(v.$route)
-  let axiosLoad: () => void
-  axios.interceptors.request.use(
-    (config) => {
-      if (config.timeout != null) {
-        axiosLoad = loader({ ms: config.timeout, color: '#F79E63' })
-      }
-      return config
-    },
-    async (error) => {
-      axiosLoad()
-      return Promise.reject(error)
-    },
-  )
-  axios.interceptors.response.use(
-    (response) => {
-      axiosLoad()
-      return response
-    },
-    async (error) => {
-      axiosLoad()
-      return Promise.reject(error)
-    },
-  )
+  installAxiosLoaderInterceptors()
 }
 
 export default defineUnlistedScript(() => {
