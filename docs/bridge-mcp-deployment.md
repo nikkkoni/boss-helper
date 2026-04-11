@@ -174,10 +174,117 @@ export BOSS_HELPER_AGENT_TIMEOUT=45000
 - CLI / orchestrator / MCP 客户端配置
 - 本地自动化脚本中的 bridge base URL
 
+## 认证机制
+
+bridge 使用 token 进行 API 认证，所有客户端必须携带正确的 token 才能访问受保护的接口。
+
+### Token 来源
+
+Token 存储在 `.boss-helper-agent-token` 文件中（位于仓库根目录），生成逻辑如下：
+
+1. 优先读取环境变量 `BOSS_HELPER_AGENT_BRIDGE_TOKEN`
+2. 若未设置，则读取 `.boss-helper-agent-token` 文件内容
+3. 若文件也不存在，则自动生成随机 token 并写入文件
+
+### 认证 Header
+
+HTTP 请求必须携带以下 header：
+
+```
+x-boss-helper-agent-token: <你的token>
+```
+
+### 接口认证范围
+
+| 接口 | 是否需要 token |
+| --- | --- |
+| `GET /` (relay 页面) | 否（依赖 session cookie） |
+| `GET /health` | 否 |
+| `GET /status` | 是 |
+| `GET /events` | 是（依赖 session cookie） |
+| `GET /agent-events` | 是 |
+| `POST /command` | 是 |
+| `POST /batch` | 是 |
+| `POST /responses` | 是（依赖 session cookie） |
+| `POST /relay/announce` | 是（依赖 session cookie） |
+| `GET /relay/bootstrap` | 是（依赖 session cookie） |
+
+### Token 排障
+
+如果遇到 `unauthorized-bridge-token` 错误：
+
+1. 确认 `.boss-helper-agent-token` 文件内容与 bridge 启动时使用的 token 一致
+2. 如果文件包含测试 token（如 `vitest-bridge-token-*`），可能需要重启 bridge 以生成新 token
+3. 检查 CLI / MCP 是否正确读取了 token 文件
+4. 确认没有连接到错误的 bridge 端口
+
+重启 bridge 并刷新 token：
+
+```bash
+# 停止现有 bridge（如果有 PID 文件）
+kill $(cat .boss-helper-agent-bridge.pid 2>/dev/null) 2>/dev/null
+# 重新启动
+pnpm agent:bridge
+```
+
+## 认证机制
+
+bridge 使用 token 进行 API 认证，所有客户端必须携带正确的 token 才能访问受保护的接口。
+
+### Token 来源
+
+Token 存储在 `.boss-helper-agent-token` 文件中（位于仓库根目录），生成逻辑如下：
+
+1. 优先读取环境变量 `BOSS_HELPER_AGENT_BRIDGE_TOKEN`
+2. 若未设置，则读取 `.boss-helper-agent-token` 文件内容
+3. 若文件也不存在，则自动生成随机 token 并写入文件
+
+### 认证 Header
+
+HTTP 请求必须携带以下 header：
+
+```
+x-boss-helper-agent-token: <你的token>
+```
+
+### 接口认证范围
+
+| 接口 | 是否需要 token |
+| --- | --- |
+| `GET /` (relay 页面) | 否（依赖 session cookie） |
+| `GET /health` | 否 |
+| `GET /status` | 是 |
+| `GET /events` | 是（依赖 session cookie） |
+| `GET /agent-events` | 是 |
+| `POST /command` | 是 |
+| `POST /batch` | 是 |
+| `POST /responses` | 是（依赖 session cookie） |
+| `POST /relay/announce` | 是（依赖 session cookie） |
+| `GET /relay/bootstrap` | 是（依赖 session cookie） |
+
+### Token 排障
+
+如果遇到 `unauthorized-bridge-token` 错误：
+
+1. 确认 `.boss-helper-agent-token` 文件内容与 bridge 启动时使用的 token 一致
+2. 如果文件包含测试 token（如 `vitest-bridge-token-*`），可能需要重启 bridge 以生成新 token
+3. 检查 CLI / MCP 是否正确读取了 token 文件
+4. 确认没有连接到错误的 bridge 端口
+
+重启 bridge 并刷新 token：
+
+```bash
+# 停止现有 bridge（如果有 PID 文件）
+kill $(cat .boss-helper-agent-bridge.pid 2>/dev/null) 2>/dev/null
+# 重新启动
+pnpm agent:bridge
+```
+
 ## HTTP / SSE 接口
 
 bridge 当前对外暴露这些接口：
 
+- `GET /`
 - `GET /health`
 - `GET /status`
 - `GET /events`
@@ -186,11 +293,13 @@ bridge 当前对外暴露这些接口：
 - `POST /batch`
 - `POST /responses`
 - `POST /relay/announce`
+- `GET /relay/bootstrap`
 
 常用接口含义：
 
 | 接口 | 作用 |
 | --- | --- |
+| `GET /` | relay 页面，建立 session cookie |
 | `GET /health` | 检查 bridge 是否存活 |
 | `GET /status` | 检查 relay、队列和事件订阅状态 |
 | `POST /command` | 发送单条命令 |
