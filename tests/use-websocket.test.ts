@@ -37,8 +37,16 @@ describe('websocket protobuf and mqtt helpers', () => {
     }
 
     const { Message } = await import('@/composables/useWebSocket/protobuf')
+    const realDateNow = Date.now
+    vi.spyOn(Date, 'now').mockImplementation(() => 1_700_000_000_000)
     const message = new Message({
       content: '你好',
+      form_uid: '1',
+      to_name: 'encryptBoss',
+      to_uid: '2',
+    })
+    const duplicateTimestampMessage = new Message({
+      content: '再来一条',
       form_uid: '1',
       to_name: 'encryptBoss',
       to_uid: '2',
@@ -46,10 +54,12 @@ describe('websocket protobuf and mqtt helpers', () => {
 
     expect(message.hex).toMatch(/^[0-9a-f]+$/)
     expect(message.toArrayBuffer().byteLength).toBeGreaterThan(0)
+    expect(message.msg).not.toEqual(duplicateTimestampMessage.msg)
 
     message.send()
 
     expect(clientSend).toHaveBeenCalledWith(message)
+    Date.now = realDateNow
   })
 
   it('falls back to ChatWebsocket when GeekChatCore is missing', async () => {
@@ -151,6 +161,17 @@ describe('websocket protobuf and mqtt helpers', () => {
         originImage: expect.objectContaining({ width: 10 }),
       }),
     )
+  })
+
+  it('initializes protobuf handlers from the raw proto string', async () => {
+    const { default: ChatProtobufHandler } = await import('@/composables/useWebSocket/handler')
+    const handler = new ChatProtobufHandler()
+
+    await handler.init()
+
+    expect(handler.chatProto).toBeTruthy()
+    expect(handler.build.chatProtocol).toBeTruthy()
+    expect(handler.build.message).toBeTruthy()
   })
 
   it('round-trips protobuf image payloads with originImage metadata', async () => {

@@ -73,6 +73,7 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
     statistics,
   })
   const { ok, fail } = createResponseHelpers(getStatsData)
+  let startPending = false
 
   async function runBatch(mode: 'start' | 'resume', options?: BossHelperAgentStartPayload) {
     common.deliverLock = true
@@ -154,30 +155,47 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   }
 
   async function startBatch(payload?: BossHelperAgentStartPayload) {
-    await options.ensureStoresLoaded()
-    if (!options.ensureSupportedPage()) {
-      return fail('unsupported-page', '当前页面不支持自动投递')
-    }
-    if (common.deliverLock || agentRuntime.hasPendingBatch) {
+    if (startPending || common.deliverLock || agentRuntime.hasPendingBatch) {
       return fail('already-running', '当前已有进行中的投递任务')
     }
-    if (common.deliverState === 'paused') {
-      return fail('paused', '当前任务已暂停，请调用 resume 继续执行')
+
+    startPending = true
+
+    try {
+      common.deliverLock = true
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+        common.deliverLock = false
+        return fail('unsupported-page', '当前页面不支持自动投递')
+      }
+      if (agentRuntime.hasPendingBatch) {
+        common.deliverLock = false
+        return fail('already-running', '当前已有进行中的投递任务')
+      }
+      if (common.deliverState === 'paused') {
+        common.deliverLock = false
+        return fail('paused', '当前任务已暂停，请调用 resume 继续执行')
+      }
+
+      await applyStartPayload(payload)
+
+      agentRuntime.setBatchPromise(
+        runBatch('start', payload).finally(() => {
+          agentRuntime.setBatchPromise(null)
+        }),
+      )
+      return ok(
+        'started',
+        agentRuntime.activeTargetJobIds.length > 0
+          ? `定向投递任务已启动，目标 ${agentRuntime.activeTargetJobIds.length} 个岗位`
+          : '投递任务已启动',
+      )
+    } catch (error) {
+      common.deliverLock = false
+      throw error
+    } finally {
+      startPending = false
     }
-
-    await applyStartPayload(payload)
-
-    agentRuntime.setBatchPromise(
-      runBatch('start', payload).finally(() => {
-        agentRuntime.setBatchPromise(null)
-      }),
-    )
-    return ok(
-      'started',
-      agentRuntime.activeTargetJobIds.length > 0
-        ? `定向投递任务已启动，目标 ${agentRuntime.activeTargetJobIds.length} 个岗位`
-        : '投递任务已启动',
-    )
   }
 
   async function pauseBatch() {

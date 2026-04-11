@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useChat } from '@/composables/useChat'
+import { useChatPromptBridge } from '@/composables/useApplying/services/chatPrompt'
 
 function createChatMessage(overrides: Partial<ReturnType<typeof useChat>['chatMessages']['value'][number]> = {}) {
   return {
@@ -142,5 +143,44 @@ describe('useChat', () => {
         role: 'assistant',
       }),
     )
+  })
+
+  it('issues monotonic ids for assistant and boss messages within the same millisecond', () => {
+    const fixedNow = new Date('2026-04-10T00:00:05')
+    const chat = useChat()
+    const stream = chat.chatInputInit({
+      color: '#00f',
+      data: {
+        advanced: {},
+        api_key: 'test-key',
+        model: 'gpt-test',
+        mode: 'openai',
+        other: {},
+        url: 'https://example.com/v1',
+      },
+      key: 'model-1',
+      name: 'GPT',
+    })
+    const { chatBossMessage } = useChatPromptBridge()
+
+    try {
+      vi.useFakeTimers()
+      vi.setSystemTime(fixedNow)
+      stream.end('assistant message')
+      chatBossMessage(
+        {
+          listData: {
+            brandLogo: 'logo',
+            brandName: 'Boss Inc',
+          },
+        } as never,
+        'boss message',
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(chat.chatMessages.value).toHaveLength(2)
+    expect(chat.chatMessages.value[0].id).toBeLessThan(chat.chatMessages.value[1].id)
   })
 })

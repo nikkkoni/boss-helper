@@ -341,4 +341,31 @@ describe('useAgentBatchRunner', () => {
     await expect(runner.stopBatch()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'unsupported-page' }))
     await expect(runner.stats()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'unsupported-page' }))
   })
+
+  it('guards concurrent start requests before async setup finishes', async () => {
+    let releaseEnsureStoresLoaded!: () => void
+    const ensureStoresLoaded = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseEnsureStoresLoaded = resolve
+        }),
+    )
+    const { useAgentBatchRunner } = await loadBatchRunner()
+    const runner = useAgentBatchRunner({
+      ensureStoresLoaded,
+      ensureSupportedPage: () => true,
+    })
+
+    const firstStart = runner.startBatch({ jobIds: ['job-1'] })
+    const secondStart = runner.startBatch({ jobIds: ['job-2'] })
+
+    await Promise.resolve()
+
+    await expect(secondStart).resolves.toEqual(expect.objectContaining({ ok: false, code: 'already-running' }))
+    expect(runnerMocks.applyAgentBatchStartPayload).not.toHaveBeenCalled()
+
+    releaseEnsureStoresLoaded()
+
+    await expect(firstStart).resolves.toEqual(expect.objectContaining({ ok: true, code: 'started' }))
+  })
 })

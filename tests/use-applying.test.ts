@@ -1096,4 +1096,20 @@ describe('useApplying handles', () => {
     expect(managerA).toBe(managerA2)
     expect(managerA).not.toBe(managerB)
   })
+
+  it('evicts least recently used cache managers when user ids keep growing', () => {
+    const retainedManagers = new Map<string, ReturnType<typeof getCacheManager>>()
+
+    for (let index = 0; index < 8; index += 1) {
+      retainedManagers.set(`user-${index}`, getCacheManager(`user-${index}`))
+    }
+
+    expect(getCacheManager('user-0')).toBe(retainedManagers.get('user-0'))
+
+    const overflowManager = getCacheManager('user-overflow')
+    expect(overflowManager).toBe(getCacheManager('user-overflow'))
+
+    expect(getCacheManager('user-0')).toBe(retainedManagers.get('user-0'))
+    expect(getCacheManager('user-1')).not.toBe(retainedManagers.get('user-1'))
+  })
 })

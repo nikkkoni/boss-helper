@@ -8,6 +8,30 @@ import { createApplyingPipeline } from './services/pipelineFactory'
 export * from './utils'
 
 const cacheManagers = new Map<string, PipelineCacheManager>()
+const cacheManagerAccessQueue: string[] = []
+const MAX_CACHE_MANAGERS = 8
+
+function rememberCacheManagerAccess(cacheKey: string) {
+  const existingIndex = cacheManagerAccessQueue.indexOf(cacheKey)
+  if (existingIndex >= 0) {
+    cacheManagerAccessQueue.splice(existingIndex, 1)
+  }
+  cacheManagerAccessQueue.push(cacheKey)
+}
+
+function evictCacheManagerIfNeeded(activeCacheKey: string) {
+  while (cacheManagers.size > MAX_CACHE_MANAGERS) {
+    const oldestCacheKey = cacheManagerAccessQueue.shift()
+    if (!oldestCacheKey) {
+      return
+    }
+    if (oldestCacheKey === activeCacheKey) {
+      cacheManagerAccessQueue.push(oldestCacheKey)
+      continue
+    }
+    cacheManagers.delete(oldestCacheKey)
+  }
+}
 
 function getCurrentUserId() {
   try {
@@ -36,6 +60,8 @@ export function getCacheManager(userId = getCurrentUserId()): PipelineCacheManag
   if (!cacheManagers.has(cacheKey)) {
     cacheManagers.set(cacheKey, new PipelineCacheManager())
   }
+  rememberCacheManagerAccess(cacheKey)
+  evictCacheManagerIfNeeded(cacheKey)
   return cacheManagers.get(cacheKey)!
 }
 

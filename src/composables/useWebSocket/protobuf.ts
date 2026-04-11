@@ -1,7 +1,11 @@
+import { createMonotonicIdGenerator } from '@/utils/monotonicId'
 import { ElMessage } from 'element-plus'
 
 import type { TechwolfChatProtocol } from './type'
 import { AwesomeMessage } from './type'
+
+const nextWebSocketMessageId = createMonotonicIdGenerator()
+const MID_OFFSET = 68_256_432_452_609
 
 interface MessageArgs {
   form_uid: string
@@ -18,8 +22,9 @@ export class Message {
 
   constructor(args: MessageArgs) {
     this.args = args
-    const r = new Date().getTime()
-    const d = r + 68256432452609
+    const createdAt = Date.now()
+    // Boss 页面原生协议使用 time + 固定偏移生成 mid/cmid，这里保留该格式并保证同毫秒内单调递增。
+    const messageId = nextWebSocketMessageId(createdAt + MID_OFFSET)
     const data: TechwolfChatProtocol = {
       messages: [
         {
@@ -33,15 +38,15 @@ export class Message {
             source: 0,
           },
           type: 1,
-          mid: d.toString(),
-          time: r.toString(),
+          mid: String(messageId),
+          time: String(createdAt),
           body: {
             type: 1,
             templateId: 1,
             text: args.content,
             // image: {},
           },
-          cmid: d.toString(),
+          cmid: String(messageId),
         },
       ],
       type: 1,

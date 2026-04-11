@@ -1,5 +1,6 @@
 import { reactive, ref, toRaw } from 'vue'
 
+import { nextChatId } from '@/composables/useChatMessageId'
 import { getCurDay, getCurTime } from '@/utils'
 
 import type { modelData } from './useModel'
@@ -107,12 +108,13 @@ function chatInputInit(model: modelData) {
       chatInput.input = false
       chatInput.content = s
       const d = new Date()
+      const createdAt = d.getTime()
       chatMessages.value.push({
-        id: d.getTime(),
+        id: nextChatId(createdAt),
         role: 'assistant',
         content: s,
         date: [getCurDay(d), getCurTime(d)],
-        createdAt: d.getTime(),
+        createdAt,
         name: chatInput.name,
         avatar: toRaw(chatInput.avatar!),
       })

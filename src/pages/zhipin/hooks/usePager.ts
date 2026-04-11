@@ -14,6 +14,7 @@ function getVueContainerQuery(key: string) {
 export const usePager = defineStore('zhipin/pager', () => {
   const page = ref({ page: 1, pageSize: 15 })
   const pageChange = ref<((value: number) => void) | null>(null)
+  let initPagerPromise: Promise<void> | null = null
 
   function getPageChange() {
     if (!pageChange.value) {
@@ -51,15 +52,15 @@ export const usePager = defineStore('zhipin/pager', () => {
   function reset() {
     page.value = { page: 1, pageSize: 15 }
     pageChange.value = null
+    initPagerPromise = null
   }
 
-  return {
-    page,
-    pageChange,
-    next,
-    prev,
-    reset,
-    initPager: async () => {
+  async function initPager() {
+    if (initPagerPromise) {
+      return initPagerPromise
+    }
+
+    initPagerPromise = (async () => {
       const adapter = getActiveSiteAdapter(location.href)
       const bindings = adapter.getPagerBindings(location.pathname)
       const initPage = useHookVueData(
@@ -75,6 +76,19 @@ export const usePager = defineStore('zhipin/pager', () => {
       await initPage()
       pageChange.value = await initChange()
       getPageChange()
-    },
+    })().finally(() => {
+      initPagerPromise = null
+    })
+
+    return initPagerPromise
+  }
+
+  return {
+    page,
+    pageChange,
+    next,
+    prev,
+    reset,
+    initPager,
   }
 })

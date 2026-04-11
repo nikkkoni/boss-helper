@@ -110,4 +110,43 @@ describe('usePager', () => {
     expect(pager.page).toEqual({ page: 1, pageSize: 15 })
     expect(pager.pageChange).toBeNull()
   })
+
+  it('deduplicates concurrent initPager calls', async () => {
+    const changePage = vi.fn()
+    let resolveInitPage!: () => void
+    pagerMocks.getActiveSiteAdapter.mockReturnValue({
+      getPagerBindings: vi.fn(() => ({
+        pageChangeMethodKeys: ['pageChangeAction'],
+        pageChangeSelectorKey: 'pager',
+        pageStateKey: 'pageVo',
+        pageStateSelectorKey: 'all',
+      })),
+      navigatePage: vi.fn(),
+    })
+    pagerMocks.useHookVueData.mockImplementation(
+      (_selectors: string, _key: string, pageRef: { value: { page: number; pageSize: number } }) => {
+        return () =>
+          new Promise<void>((resolve) => {
+            resolveInitPage = () => {
+              pageRef.value = { page: 2, pageSize: 30 }
+              resolve()
+            }
+          })
+      },
+    )
+    pagerMocks.useHookVueFn.mockImplementation(() => async () => changePage)
+
+    const pager = usePager()
+    const firstInit = pager.initPager()
+    const secondInit = pager.initPager()
+
+    expect(pagerMocks.useHookVueData).toHaveBeenCalledTimes(1)
+    expect(pagerMocks.useHookVueFn).toHaveBeenCalledTimes(1)
+
+    resolveInitPage()
+    await Promise.all([firstInit, secondInit])
+
+    expect(pager.page).toEqual({ page: 2, pageSize: 30 })
+    expect(pager.pageChange).toBe(changePage)
+  })
 })

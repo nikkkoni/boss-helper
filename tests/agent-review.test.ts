@@ -152,4 +152,53 @@ describe('agentReview', () => {
       name: 'AI筛选',
     })
   })
+
+  it('replaces pending reviews for the same job id and rejects when the queue is full', async () => {
+    const { requestExternalAIFilterReview } = await import('@/pages/zhipin/hooks/agentReview')
+    const firstPromise = requestExternalAIFilterReview(
+      createLogContext(createJob({ encryptJobId: 'job-review-replaced' })),
+      60,
+      1_000,
+    )
+    const replacedErrorPromise = firstPromise.catch((error) => error)
+
+    const secondPromise = requestExternalAIFilterReview(
+      createLogContext(createJob({ encryptJobId: 'job-review-replaced' })),
+      70,
+      1_000,
+    )
+
+    await expect(replacedErrorPromise).resolves.toMatchObject({
+      aiScore: {
+        reason: '外部审核请求已被新的请求替换',
+        threshold: 60,
+      },
+    })
+
+    const overflowPromises = Array.from({ length: 100 }, (_, index) =>
+      requestExternalAIFilterReview(
+        createLogContext(createJob({ encryptJobId: `job-review-overflow-${index}` })),
+        50,
+        1_000,
+      ),
+    )
+    const overflowError = await requestExternalAIFilterReview(
+      createLogContext(createJob({ encryptJobId: 'job-review-overflow-final' })),
+      80,
+      1_000,
+    ).catch((error) => error)
+
+    expect(overflowError).toMatchObject({
+      aiScore: {
+        reason: '外部审核队列已满，请稍后重试',
+        threshold: 80,
+      },
+      message: '外部审核队列已满，请稍后重试',
+    })
+
+    void secondPromise.catch(() => undefined)
+    for (const promise of overflowPromises) {
+      void promise.catch(() => undefined)
+    }
+  })
 })

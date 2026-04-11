@@ -1,4 +1,5 @@
 import { useChat } from '@/composables/useChat'
+import { nextChatId } from '@/composables/useChatMessageId'
 import type { logData } from '@/stores/log'
 import { getCurDay, getCurTime } from '@/utils'
 
@@ -8,7 +9,7 @@ export function useChatPromptBridge() {
   function chatBossMessage(ctx: logData, msg: string) {
     const d = new Date()
     chatMessages.value.push({
-      id: d.getTime(),
+      id: nextChatId(d.getTime()),
       role: 'boss',
       content: msg,
       date: [getCurDay(d), getCurTime(d)],

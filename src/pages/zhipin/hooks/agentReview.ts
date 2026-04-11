@@ -14,6 +14,16 @@ interface PendingReviewEntry {
 }
 
 const pendingReviews = new Map<string, PendingReviewEntry>()
+const MAX_PENDING_REVIEWS = 100
+
+function createPendingReviewOverflowError(reason: string, threshold: number) {
+  return new AIFilteringError(reason, {
+    accepted: false,
+    reason,
+    source: 'external',
+    threshold,
+  })
+}
 
 function formatExternalReviewMessage(review: BossHelperAgentJobReviewPayload, threshold: number) {
   const ratingText = typeof review.rating === 'number' ? `分数${review.rating}` : '未提供分数'
@@ -56,18 +66,23 @@ export function requestExternalAIFilterReview(
   const encryptJobId = ctx.listData.encryptJobId
   const common = useCommon()
 
+  if (!pendingReviews.has(encryptJobId) && pendingReviews.size >= MAX_PENDING_REVIEWS) {
+    return Promise.reject(createPendingReviewOverflowError('外部审核队列已满，请稍后重试', threshold))
+  }
+
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       pendingReviews.delete(encryptJobId)
       reject(
-        new AIFilteringError('外部审核超时', {
-          accepted: false,
-          reason: '外部审核超时',
-          source: 'external',
-          threshold,
-        }),
+        createPendingReviewOverflowError('外部审核超时', threshold),
       )
     }, timeoutMs)
+
+    const existing = pendingReviews.get(encryptJobId)
+    if (existing) {
+      window.clearTimeout(existing.timeout)
+      existing.reject(createPendingReviewOverflowError('外部审核请求已被新的请求替换', existing.threshold))
+    }
 
     pendingReviews.set(encryptJobId, {
       resolve,
