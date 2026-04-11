@@ -13,6 +13,8 @@
 
 ### Task 1.1: 拆分 `message/agent.ts` (协议定义文件)
 
+**状态:** [x] 已完成（2026-04-11）
+
 **现状:** ~600 行，混合了协议类型、命令定义、事件定义、payload 类型、type guard 函数、工厂函数、验证函数。
 
 **涉及文件:**
@@ -41,6 +43,8 @@
 
 ### Task 1.2: 拆分 `filterSteps.ts`
 
+**状态:** [x] 已完成（2026-04-11）
+
 **现状:** ~500 行，13 个 filter factory 函数，每个有不同的依赖和逻辑。
 
 **涉及文件:**
@@ -66,6 +70,8 @@
 ---
 
 ### Task 1.3: 拆分 `useDeliveryControl.ts` (解耦 god object)
+
+**状态:** [x] 已完成（2026-04-11）
 
 **现状:** God object，~300 行。混合了 controller 构造、command dispatch、window bridge 注册、event forwarding。
 
@@ -93,6 +99,8 @@
 ---
 
 ### Task 1.4: 拆分 `useApplying/utils.ts`
+
+**状态:** [x] 已完成（2026-04-11）
 
 **现状:** 混合了 zhipin API 调用、范围匹配算法、错误处理、auth token 提取。
 

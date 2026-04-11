@@ -1,34 +1,14 @@
 import { useChat } from '@/composables/useChat'
+import { createBossHelperAgentResponse } from '@/message/agent'
 import { isSupportedSiteUrl } from '@/site-adapters'
-import { jsonClone } from '@/utils/deepmerge'
-import {
-  BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
-  BOSS_HELPER_AGENT_EVENT_BRIDGE,
-  createBossHelperAgentResponse,
-  isBossHelperAgentBridgeRequest,
-  type BossHelperAgentController,
-  type BossHelperAgentRequest,
-  type BossHelperAgentChatHistoryPayload,
-  type BossHelperAgentChatListPayload,
-  type BossHelperAgentChatSendPayload,
-  type BossHelperAgentConfigUpdatePayload,
-  type BossHelperAgentJobDetailPayload,
-  type BossHelperAgentJobReviewPayload,
-  type BossHelperAgentJobsListPayload,
-  type BossHelperAgentLogsQueryPayload,
-  type BossHelperAgentNavigatePayload,
-  type BossHelperAgentStartPayload,
-} from '@/message/agent'
-import {
-  isBossHelperSameOriginWindowMessage,
-  postBossHelperWindowMessage,
-} from '@/message/window'
 import { useConf } from '@/stores/conf'
 import { useLog } from '@/stores/log'
 
+import { createAgentController } from './agentController'
+import { onBossHelperAgentEvent } from './agentEvents'
+import { registerWindowAgentBridge as setupWindowAgentBridge } from './agentWindowBridge'
 import { useAgentBatchRunner } from './useAgentBatchRunner'
 import { useAgentQueries } from './useAgentQueries'
-import { onBossHelperAgentEvent } from './agentEvents'
 
 /**
  * 页面侧 agent 控制器入口。
@@ -61,10 +41,7 @@ export function useDeliveryControl() {
     stats,
     stopBatch,
   } = batchRunner
-
-  function ensureSupportedPage() {
-    return isSupportedSiteUrl(location.href)
-  }
+  const ensureSupportedPage = () => isSupportedSiteUrl(location.href)
   const queries = useAgentQueries({
     currentProgressSnapshot,
     ensureStoresLoaded,
@@ -75,116 +52,13 @@ export function useDeliveryControl() {
       createBossHelperAgentResponse(false, code, message, await batchRunner.getStatsData()),
   })
 
-  const controller: BossHelperAgentController = {
-    start: startBatch,
-    pause: pauseBatch,
-    resume: resumeBatch,
-    resumeGet: queries.resumeGet,
-    stop: stopBatch,
-    stats,
-    navigate: queries.navigate,
-    chatList: queries.chatList,
-    chatHistory: queries.chatHistory,
-    chatSend: queries.chatSend,
-    jobsReview: queries.jobsReview,
-    logsQuery: queries.logsQuery,
-    jobsList: queries.jobsList,
-    jobsDetail: (payload) => queries.jobsDetail(payload),
-    configGet: queries.getConfig,
-    configUpdate: (payload) => queries.updateConfig(payload),
-    async handle(request: BossHelperAgentRequest) {
-      switch (request.command) {
-        case 'start':
-          return startBatch(request.payload as BossHelperAgentStartPayload | undefined)
-        case 'pause':
-          return pauseBatch()
-        case 'resume':
-          return resumeBatch()
-        case 'resume.get':
-          return queries.resumeGet()
-        case 'stop':
-          return stopBatch()
-        case 'stats':
-          return stats()
-        case 'navigate':
-          return queries.navigate(request.payload as BossHelperAgentNavigatePayload | undefined)
-        case 'chat.list':
-          return queries.chatList(request.payload as BossHelperAgentChatListPayload | undefined)
-        case 'chat.history':
-          return queries.chatHistory(request.payload as BossHelperAgentChatHistoryPayload | undefined)
-        case 'chat.send':
-          return queries.chatSend(request.payload as BossHelperAgentChatSendPayload | undefined)
-        case 'logs.query':
-          return queries.logsQuery(request.payload as BossHelperAgentLogsQueryPayload | undefined)
-        case 'jobs.list':
-          return queries.jobsList(request.payload as BossHelperAgentJobsListPayload | undefined)
-        case 'jobs.detail':
-          return queries.jobsDetail(request.payload as BossHelperAgentJobDetailPayload | undefined)
-        case 'jobs.review':
-          return queries.jobsReview(request.payload as BossHelperAgentJobReviewPayload | undefined)
-        case 'config.get':
-          return queries.getConfig()
-        case 'config.update':
-          return queries.updateConfig(request.payload as BossHelperAgentConfigUpdatePayload | undefined)
-      }
-    },
-  }
+  const controller = createAgentController({ batchRunner, queries })
 
   return {
     controller,
     pauseBatch,
-    registerWindowAgentBridge() {
-      if (import.meta.env.DEV) {
-        window.__bossHelperAgent = controller
-      }
-      const stopAgentEventBridge = onBossHelperAgentEvent((payload) => {
-        const plainPayload = jsonClone(payload)
-        postBossHelperWindowMessage(
-          window,
-          {
-            type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
-            payload: plainPayload,
-          },
-        )
-      })
-
-      const onMessage = (event: MessageEvent) => {
-        if (!isBossHelperSameOriginWindowMessage(event) || !isBossHelperAgentBridgeRequest(event.data)) {
-          return
-        }
-
-        void controller
-          .handle(event.data.payload)
-          .catch((error) => {
-            return createBossHelperAgentResponse(
-              false,
-              'controller-error',
-              error instanceof Error ? error.message : '未知错误',
-            )
-          })
-          .then((payload) => {
-            const plainPayload = jsonClone(payload)
-            postBossHelperWindowMessage(
-              window,
-              {
-                type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
-                requestId: event.data.requestId,
-                payload: plainPayload,
-              },
-            )
-          })
-      }
-
-      window.addEventListener('message', onMessage)
-
-      return () => {
-        stopAgentEventBridge()
-        if (import.meta.env.DEV && window.__bossHelperAgent === controller) {
-          delete window.__bossHelperAgent
-        }
-        window.removeEventListener('message', onMessage)
-      }
-    },
+    registerWindowAgentBridge: () =>
+      setupWindowAgentBridge({ controller, onEvent: onBossHelperAgentEvent }),
     resetFilter,
     resumeBatch,
     startBatch,

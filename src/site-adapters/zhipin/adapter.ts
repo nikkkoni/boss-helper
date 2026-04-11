@@ -1,8 +1,7 @@
+import { sendPublishReq } from '@/composables/useApplying/utils'
 import type { BossHelperAgentNavigatePayload } from '@/message/agent'
 import type { MyJobListData } from '@/stores/jobs'
 import { getZhipinRouteKind, zhipinSelectors } from '@/utils/selectors'
-
-import { sendPublishReq } from '@/composables/useApplying/utils'
 
 import type { SiteAdapter } from '../type'
 
@@ -19,7 +18,11 @@ function buildZhipinNavigateUrl(
     if (targetUrl.origin !== origin) {
       throw new Error('navigate.url 必须与当前站点同源')
     }
-    if (!zhipinSelectors.supportedPaths.some((path) => targetUrl.pathname === path || targetUrl.pathname.startsWith(`${path}/`))) {
+    if (
+      !zhipinSelectors.supportedPaths.some(
+        (path) => targetUrl.pathname === path || targetUrl.pathname.startsWith(`${path}/`),
+      )
+    ) {
       throw new Error('navigate.url 必须指向 Boss 职位搜索页')
     }
     return targetUrl.toString()
@@ -99,7 +102,9 @@ export function createZhipinAdapter(): SiteAdapter<bossZpJobItemData, bossZpDeta
     matches(url = location.href) {
       try {
         const { pathname } = new URL(url)
-        return zhipinSelectors.supportedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+        return zhipinSelectors.supportedPaths.some(
+          (path) => pathname === path || pathname.startsWith(`${path}/`),
+        )
       } catch {
         return false
       }
@@ -121,7 +126,9 @@ export function createZhipinAdapter(): SiteAdapter<bossZpJobItemData, bossZpDeta
       const routeKind = getZhipinRouteKind(pathname)
       const useSearchAction = routeKind === 'job-recommend' || routeKind === 'jobs'
       return {
-        pageChangeMethodKeys: useSearchAction ? ['searchJobAction', 'onSearch'] : ['pageChangeAction'],
+        pageChangeMethodKeys: useSearchAction
+          ? ['searchJobAction', 'onSearch']
+          : ['pageChangeAction'],
         pageChangeSelectorKey: useSearchAction ? 'all' : 'job',
         pageStateKey: 'pageVo',
         pageStateSelectorKey: 'all',

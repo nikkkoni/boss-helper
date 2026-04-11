@@ -54,14 +54,15 @@ export function createCustomGreetingSender(options: {
 
   return async (ctx: logData) => {
     const bossData = await ensureGreetingBossData(ctx)
-    const content = options.useVariables && ctx.listData.card
-      ? compiledTemplate({
-          data: ctx.listData,
-          boss: bossData,
-          card: ctx.listData.card,
-          amap: buildAmapTemplateData(ctx),
-        })
-      : options.template
+    const content =
+      options.useVariables && ctx.listData.card
+        ? compiledTemplate({
+            data: ctx.listData,
+            boss: bossData,
+            card: ctx.listData.card,
+            amap: buildAmapTemplateData(ctx),
+          })
+        : options.template
 
     await sendGreetingMessage({
       uid: options.uid,
@@ -99,9 +100,8 @@ export async function runAIGreeting(options: {
     return
   }
 
-  const content = typeof response.content === 'string'
-    ? response.content
-    : JSON.stringify(response.content)
+  const content =
+    typeof response.content === 'string' ? response.content : JSON.stringify(response.content)
 
   options.ctx.aiGreetingA = content
   options.ctx.aiGreetingR = response.reasoning_content

@@ -48,12 +48,15 @@ boss-helper/
 │   │   │   ├── index.ts       #     Entry: cache manager LRU, createHandle factory
 │   │   │   ├── handles.ts     #     Wires 16 named StepFactory instances
 │   │   │   ├── type.ts        #     Step, Pipeline, Handler types
-│   │   │   ├── utils.ts       #     zhipin API calls (requestCard, sendPublishReq, etc.)
+│   │   │   ├── utils.ts       #     Barrel: parseFiltering/errorHandle + compatibility exports
+│   │   │   ├── zhipinApi.ts   #     zhipin API calls (requestCard, sendPublishReq, etc.)
+│   │   │   ├── rangeMatch.ts  #     Range parsing/matching helpers
 │   │   │   └── services/      #     Pipeline sub-modules
 │   │   │       ├── aiFiltering.ts       # LLM-based job scoring
 │   │   │       ├── amapStep.ts          # Geocoding + distance calc
 │   │   │       ├── chatPrompt.ts        # Bridge to chat UI for AI prompts
-│   │   │       ├── filterSteps.ts       # 13 rule-based filter factories
+│   │   │       ├── filterSteps.ts       # Barrel for services/filters/*
+│   │   │       ├── filters/             # Rule-based filter groups (dedup/keyword/location/range/status/amap)
 │   │   │       ├── greeting.ts          # Message sending (template/AI/external)
 │   │   │       ├── greetingSteps.ts     # Greeting pipeline steps
 │   │   │       ├── pipelineCompiler.ts  # Compiles Pipeline -> before/after queues
@@ -82,7 +85,8 @@ boss-helper/
 │   │
 │   ├── message/               # Cross-context messaging (comctx RPC)
 │   │   ├── index.ts           #   Page-side proxy (InjectAdapter + ExtStorage)
-│   │   ├── agent.ts           #   Agent protocol definition (commands, events, types)
+│   │   ├── agent.ts           #   Barrel export for src/message/agent/*
+│   │   ├── agent/             #   Agent protocol modules (commands/events/types/guards/validation)
 │   │   ├── background.ts      #   Background RPC service (cookies, fetch, notify)
 │   │   ├── contentScript.ts   #   Content script bridge + agent forwarding
 │   │   └── window.ts          #   window.postMessage primitives
@@ -104,7 +108,9 @@ boss-helper/
 │   │   │   ├── useAgentQueries.ts      # Composition root for queries
 │   │   │   ├── useChatStream.ts        # WebSocket interception init
 │   │   │   ├── useDeliver.ts           # Per-page job iteration (Pinia store)
-│   │   │   ├── useDeliveryControl.ts   # *God object*: controller + window bridge
+│   │   │   ├── agentController.ts      # Command dispatch factory
+│   │   │   ├── agentWindowBridge.ts    # Window bridge registration
+│   │   │   ├── useDeliveryControl.ts   # Assembly layer for controller + bridge
 │   │   │   └── usePager.ts            # Pagination (Pinia store, host Vue hooks)
 │   │   ├── services/           #   Service layer
 │   │   │   ├── agentBatchPayload.ts    # Start payload normalization
@@ -304,7 +310,7 @@ Phase 2 (after): Post-Application Actions
 - Pipeline result cache (LRU, per-processor TTL: AI 7d, amap 5d, basic 3d)
 - Concurrency limiter (AI: max 1, DOM batch: max 1)
 
-### 4.2 Agent System (`src/pages/zhipin/hooks/`, `src/message/agent.ts`)
+### 4.2 Agent System (`src/pages/zhipin/hooks/`, `src/message/agent/`)
 
 **State Machine:**
 ```
@@ -322,8 +328,8 @@ idle → running → pausing → paused → (resume) → running → completed
 State changes, batch lifecycle, job outcomes (succeeded/filtered/failed/pending-review),
 rate limiting, limit reached, chat sent.
 
-**Key Architecture:** `useDeliveryControl.ts` is the "god object" - it wires together
-`useAgentBatchRunner`, all `useAgent*Queries`, and registers the window bridge.
+**Current Architecture:** `useDeliveryControl.ts` is now a thin assembly layer that wires
+`useAgentBatchRunner`, `useAgentQueries`, `agentController.ts`, and `agentWindowBridge.ts`.
 
 ### 4.3 Store Architecture (`src/stores/`)
 
@@ -449,13 +455,13 @@ Both define the same `TechwolfChatProtocol` message structure. `Message.send()` 
 
 ### Critical
 
-1. **`useDeliveryControl.ts` is a god object** - Wires together batch runner, all queries, event bridge, and window bridge. ~300 lines of tight coupling.
+1. **`useDeliveryControl.ts` is a god object** - 已于 2026-04-11 拆为 assembly/controller/window bridge 三层。
 
 2. **Dual protobuf schema** - `handler.ts` (runtime `.proto` parse) and `type.ts` (programmatic schema) define the same message structure independently. Drift risk.
 
 3. **Pinia store / composable identity confusion** - `useCommon`, `useModel`, `useStatistics`, `useDeliver`, `usePager` are Pinia stores defined as composables (naming convention suggests composable). Hard to know which is reactive-boundary-independent.
 
-4. **Agent protocol file is massive** - `message/agent.ts` (~600 lines) mixes protocol types, validation, factories, and type guards. Should be split.
+4. **Agent protocol file is massive** - 已于 2026-04-11 拆为 `src/message/agent/` 多文件协议模块。
 
 ### Significant
 
@@ -465,9 +471,9 @@ Both define the same `TechwolfChatProtocol` message structure. `Message.send()` 
 
 7. **Mixed error handling languages** - Error messages are split between Chinese and English. Some user-facing, some developer-facing - the boundary is unclear.
 
-8. **`useApplying/utils.ts` is overloaded** - Contains zhipin API calls, range matching, error handling, and auth token extraction. Multiple responsibilities.
+8. **`useApplying/utils.ts` is overloaded** - 已于 2026-04-11 拆出 `zhipinApi.ts` 与 `rangeMatch.ts`。
 
-9. **`filterSteps.ts` is too large** - 13 filter factories in one ~500 line file. Each has different dependencies and concerns.
+9. **`filterSteps.ts` is too large** - 已于 2026-04-11 改为 `services/filters/` 分组结构。
 
 10. **Scripts directory has no clear module boundary** - `agent-mcp-server.mjs` (39KB) is a monolith. No shared utilities between scripts.
 

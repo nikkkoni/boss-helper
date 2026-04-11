@@ -6,6 +6,12 @@
 
 BossHelper is a browser extension (WXT + Vue 3 + Pinia) that automates job application on zhipin.com. ~20K lines of TypeScript across 110+ source files.
 
+## Current Progress
+
+- 2026-04-11: Wave 1 已完成，`message/agent.ts`、`filterSteps.ts`、`useDeliveryControl.ts`、`useApplying/utils.ts` 已按任务单拆分。
+- 当前入口仍保持 barrel 兼容，现有 `@/message/agent` 与 `filterSteps.ts` consumer import 不需要迁移。
+- 下一步建议从 Wave 2 Task 2.1 开始，继续统一 store/composable 命名。
+
 ## Documents
 
 | Document | Purpose | When to Read |
@@ -23,8 +29,8 @@ BossHelper is a browser extension (WXT + Vue 3 + Pinia) that automates job appli
   main-world.ts (page context)   ← Vue Router hook, UI mount, page modules
 
 Core Systems:
-  useApplying/     ← Job pipeline engine (16 filter/greeting steps)
-  message/agent.ts ← Agent protocol (16 commands, 16 events)
+  useApplying/     ← Job pipeline engine (filters/, zhipinApi.ts, rangeMatch.ts)
+  message/agent.ts ← Barrel to message/agent/ protocol modules
   stores/          ← Pinia state (conf, jobs, log, user, agent, signedKey)
   useWebSocket/    ← Chat protocol (protobuf + MQTT)
   site-adapters/   ← Multi-site abstraction (currently zhipin only)
@@ -33,9 +39,9 @@ Core Systems:
 
 ## Top 4 Issues to Fix
 
-1. **`useDeliveryControl.ts`** — God object (~300 lines). Split into controller + window bridge + assembly layer.
-2. **`message/agent.ts`** — Protocol monolith (~600 lines). Split into commands/events/types/guards/validation.
-3. **`filterSteps.ts`** — 13 filters in one file (~500 lines). Group by concern: dedup, keyword, range, status.
+1. **`useDeliveryControl.ts`** — 已拆为 assembly + `agentController.ts` + `agentWindowBridge.ts`
+2. **`message/agent.ts`** — 已改为 barrel，协议拆入 `src/message/agent/`
+3. **`filterSteps.ts`** — 已改为 `services/filters/` barrel，按职责分组
 4. **Dual protobuf schema** — `handler.ts` + `type.ts` define the same structure independently. Merge to single `.proto` source.
 
 ## Execution Order
@@ -71,6 +77,6 @@ pnpm typecheck        # Type check (vue-tsc)
 
 ## Start Here
 
-1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 1.1 (split `agent.ts`)
-2. It's the lowest risk, highest value task — purely splitting types into sub-files with barrel re-export
-3. Then proceed through Wave 1 tasks in order
+1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 2.1
+2. Wave 1 已完成，接下来从命名统一与接口清理继续
+3. 保持 barrel 兼容策略，并在文件移动后继续执行 `pnpm test` 与 `pnpm check`
