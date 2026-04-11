@@ -11,8 +11,9 @@ BossHelper is a browser extension (WXT + Vue 3 + Pinia) that automates job appli
 - 2026-04-11: Wave 1 已完成，`message/agent.ts`、`filterSteps.ts`、`useDeliveryControl.ts`、`useApplying/utils.ts` 已按任务单拆分。
 - 2026-04-11: Wave 2 已完成，`useCommon` / `useStatistics` 已迁入 `src/stores/`，`elmGetter` 与 `ChatProtobufHandler` 已统一为 named export，并抽出 `src/utils/storageMigration.ts` 复用存储迁移逻辑。
 - 2026-04-11: Wave 3 已完成，聊天协议编码/解码统一改为 `chat.proto` 单一来源，`src/composables/useWebSocket/type.ts` 仅保留 TypeScript 接口，`AGENT_PROTOCOL_VERSION` 已通过 `shared/agentProtocol.js` 在扩展与 Node 脚本间共享。
+- 2026-04-11: Wave 4 Task 4.1 / 4.2 已完成，新增 `agentController`、`agentWindowBridge`、`filters/dedup.ts`、`filters/keyword.ts`、`filters/range.ts` 与 `zhipinApi.ts` 独立测试，根目录 `ARCHITECTURE.md` 已改为重定向，`review.md` 与 `todo.md` 已归档到 `docs/archive/`。
 - 当前入口仍保持 barrel 与兼容导出策略，现有 `@/message/agent`、`filterSteps.ts` 与页面级 `useDeliver` / `usePager` consumer import 不需要继续迁移。
-- 下一步建议从 Wave 4 Task 4.1 开始，补齐拆分后模块测试并清理根目录文档。
+- 下一步如需继续，可从 Wave 4 Task 4.3 开始，按低优先级整理 `scripts/` 目录结构。
 
 ## Documents
 
@@ -65,8 +66,8 @@ pnpm build:chrome     # Production build
 pnpm test             # Unit tests (vitest)
 pnpm test:e2e         # E2E tests (playwright)
 pnpm lint             # Lint (oxlint)
-pnpm format           # Format (oxfmt)
-pnpm typecheck        # Type check (vue-tsc)
+pnpm fmt              # Format (oxfmt)
+pnpm check            # Type check (vue-tsc + scripts tsconfig)
 ```
 
 ## Rules for Refactoring
@@ -75,10 +76,10 @@ pnpm typecheck        # Type check (vue-tsc)
 2. **Run `pnpm test` after every task.** No regressions.
 3. **Use barrel re-exports** when splitting files. Existing imports must not break.
 4. **Don't touch host page integration** (`useVue.ts`, selectors, WebSocket hooks) unless specifically tasked. These are fragile.
-5. **Verify with `pnpm typecheck`** after file moves or renames.
+5. **Verify with `pnpm check`** after file moves or renames.
 
 ## Start Here
 
-1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 4.1
-2. Wave 1 到 Wave 3 已完成，接下来进入测试覆盖与文档清理
-3. 保持当前 barrel、named export 与 shared constant 策略，并在补测后继续执行 `pnpm test`、`pnpm check`、`pnpm lint`
+1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 4.3
+2. Wave 1 到 Wave 3 与 Wave 4 Task 4.1 / 4.2 已完成，当前只剩低优先级的 `scripts/` 结构化收尾
+3. 保持当前 barrel、named export 与 shared constant 策略，并在继续拆分脚本前后执行 `pnpm test`、`pnpm check`、`pnpm lint`

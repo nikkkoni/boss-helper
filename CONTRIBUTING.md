@@ -59,7 +59,7 @@
 相关文档入口：
 
 - `README.md`
-- `ARCHITECTURE.md`
+- `docs/architecture-analysis.md`
 - `docs/bridge-mcp-deployment.md`
 - `docs/llm-agent-mcp.md`
 

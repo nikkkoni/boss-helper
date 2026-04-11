@@ -11,14 +11,20 @@ import {
 } from '@/message/agent'
 import { registerWindowAgentBridge } from '@/pages/zhipin/hooks/agentWindowBridge'
 
-function createSameOriginEvent(data: unknown) {
+function createWindowEvent(
+  data: unknown,
+  options: {
+    origin?: string
+    source?: Window | null
+  } = {},
+) {
   const event = new MessageEvent('message', {
     data,
-    origin: window.location.origin,
+    origin: options.origin ?? window.location.origin,
   })
   Object.defineProperty(event, 'source', {
     configurable: true,
-    value: window,
+    value: options.source ?? window,
   })
   return event
 }
@@ -88,7 +94,7 @@ describe('registerWindowAgentBridge', () => {
     )
 
     window.dispatchEvent(
-      createSameOriginEvent({
+      createWindowEvent({
         type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
         requestId: 'req-1',
         payload: {
@@ -129,7 +135,7 @@ describe('registerWindowAgentBridge', () => {
     })
 
     window.dispatchEvent(
-      createSameOriginEvent({
+      createWindowEvent({
         type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
         requestId: 'req-2',
         payload: {
@@ -155,5 +161,57 @@ describe('registerWindowAgentBridge', () => {
     })
 
     unregister()
+  })
+
+  it('ignores invalid or cross-origin messages and removes the listener on unregister', async () => {
+    const handle = vi.fn(async () => ({ code: 'stats', ok: true, message: 'ok' }))
+    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => {})
+    const unregister = registerWindowAgentBridge({
+      controller: createController(handle),
+      onEvent: () => vi.fn(),
+    })
+
+    window.dispatchEvent(
+      createWindowEvent(
+        {
+          type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+          requestId: 'req-cross-origin',
+          payload: {
+            channel: BOSS_HELPER_AGENT_CHANNEL,
+            command: 'stats',
+          },
+        },
+        { origin: 'https://evil.example' },
+      ),
+    )
+    window.dispatchEvent(
+      createWindowEvent({
+        type: 'ignored-message',
+        payload: {
+          channel: BOSS_HELPER_AGENT_CHANNEL,
+          command: 'stats',
+        },
+      }),
+    )
+
+    await Promise.resolve()
+    expect(handle).not.toHaveBeenCalled()
+    expect(postMessageSpy).not.toHaveBeenCalled()
+
+    unregister()
+
+    window.dispatchEvent(
+      createWindowEvent({
+        type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+        requestId: 'req-after-unregister',
+        payload: {
+          channel: BOSS_HELPER_AGENT_CHANNEL,
+          command: 'stats',
+        },
+      }),
+    )
+
+    await Promise.resolve()
+    expect(handle).not.toHaveBeenCalled()
   })
 })

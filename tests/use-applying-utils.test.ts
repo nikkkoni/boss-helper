@@ -32,22 +32,16 @@ vi.mock('axios', () => {
   }
 })
 
+import { rangeMatch, rangeMatchFormat } from '@/composables/useApplying/rangeMatch'
+import { errorHandle, parseFiltering } from '@/composables/useApplying/utils'
 import {
-  errorHandle,
-  parseFiltering,
-  rangeMatch,
-  rangeMatchFormat,
+  getBossToken,
   requestBossData,
   requestCard,
   requestDetail,
   sendPublishReq,
-} from '@/composables/useApplying/utils'
-import {
-  GreetError,
-  LimitError,
-  PublishError,
-  RateLimitError,
-} from '@/types/deliverError'
+} from '@/composables/useApplying/zhipinApi'
+import { GreetError, LimitError, PublishError, RateLimitError } from '@/types/deliverError'
 
 function createJob(overrides: Partial<bossZpJobItemData> = {}) {
   return {
@@ -77,14 +71,15 @@ describe('useApplying utils', () => {
   })
 
   it('reads bst token from page cookie helpers before extension cookies API', async () => {
-    axiosMock.mockResolvedValue({ data: { code: 0, zpData: { ok: true } } })
-
     window.Cookie = {
       get(name: string) {
         return name === 'bst' ? 'page-cookie-token' : ''
       },
     } as Window['Cookie']
 
+    await expect(getBossToken()).resolves.toBe('page-cookie-token')
+
+    axiosMock.mockResolvedValue({ data: { code: 0, zpData: { ok: true } } })
     await sendPublishReq(createJob())
 
     expect(axiosMock).toHaveBeenCalledWith(
@@ -97,9 +92,10 @@ describe('useApplying utils', () => {
   })
 
   it('reads bst token from document.cookie and extension cookies fallback', async () => {
-    axiosMock.mockResolvedValue({ data: { code: 0, zpData: { ok: true } } })
-
     document.cookie = 'bst=document-cookie-token; path=/'
+    await expect(getBossToken()).resolves.toBe('document-cookie-token')
+
+    axiosMock.mockResolvedValue({ data: { code: 0, zpData: { ok: true } } })
     await sendPublishReq(createJob({ encryptJobId: 'job-cookie' }))
     expect(axiosMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -108,7 +104,10 @@ describe('useApplying utils', () => {
     )
 
     document.cookie = 'bst=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
-    mockCookieGet.mockResolvedValueOnce(undefined).mockResolvedValueOnce({ value: 'extension-cookie-token' })
+    mockCookieGet.mockImplementation(async ({ url }: { url: string }) =>
+      url === 'https://zhipin.com' ? { value: 'extension-cookie-token' } : undefined,
+    )
+    await expect(getBossToken()).resolves.toBe('extension-cookie-token')
     await sendPublishReq(createJob({ encryptJobId: 'job-extension' }))
 
     expect(mockCookieGet).toHaveBeenNthCalledWith(1, {
@@ -436,7 +435,9 @@ describe('useApplying utils', () => {
 
   it('parses filtering summaries and normalizes non-error values', () => {
     expect(
-      parseFiltering('```json\n{"negative":[{"reason":"距离远","score":-20}],"positive":[{"reason":"双休","score":10}]}\n```'),
+      parseFiltering(
+        '```json\n{"negative":[{"reason":"距离远","score":-20}],"positive":[{"reason":"双休","score":10}]}\n```',
+      ),
     ).toEqual(
       expect.objectContaining({
         rating: -10,

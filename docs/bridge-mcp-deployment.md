@@ -2,7 +2,7 @@
 
 本文档聚焦本地 companion 链路的部署与运维：bridge、relay、CLI、MCP server、环境变量，以及聊天能力依赖的 protobuf schema。
 
-如果你想看外部 LLM Agent 应该怎样调用这些工具，请继续阅读 [llm-agent-mcp.md](./llm-agent-mcp.md)。如果你想先理解整个系统分层，请先看 [ARCHITECTURE.md](../ARCHITECTURE.md)。
+如果你想看外部 LLM Agent 应该怎样调用这些工具，请继续阅读 [llm-agent-mcp.md](./llm-agent-mcp.md)。如果你想先理解整个系统分层，请先看 [architecture-analysis.md](./architecture-analysis.md)。
 
 ## 组件关系
 
@@ -50,7 +50,7 @@ pnpm install
 pnpm build:chrome
 ```
 
-然后在 Chromium 浏览器开发者模式中加载 `chrome-mv3/`。
+然后在 Chromium 浏览器开发者模式中加载 `.output/chrome-mv3/`。
 
 ### 2. 打开 Boss 职位页
 
