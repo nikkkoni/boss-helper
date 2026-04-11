@@ -435,10 +435,13 @@ export function waitForRootUserInfo(
   return new Promise((resolve) => {
     let settled = false
     let stop = () => {}
+    let timeout: ReturnType<typeof setTimeout> | undefined
 
     const cleanup = () => {
       stop()
-      clearTimeout(timeout)
+      if (timeout !== undefined) {
+        clearTimeout(timeout)
+      }
     }
 
     const finish = (value: UserInfo | null | undefined) => {
@@ -469,7 +472,7 @@ export function waitForRootUserInfo(
       },
     )
 
-    const timeout = setTimeout(() => {
+    timeout = setTimeout(() => {
       if (!infoRef.value) {
         logger.error('获取用户信息失败', now, { rootState, info: infoRef })
       }

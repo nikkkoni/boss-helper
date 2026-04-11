@@ -141,4 +141,31 @@ describe('executeAgentBatchLoop', () => {
     expect(nextCalls).toBe(1)
     expect(result.stepMsg).toBe('投递结束, 无法继续下一页')
   })
+
+  it('stops immediately when an external pause is requested after handling jobs', async () => {
+    let stopRequested = false
+    const goNextPage = vi.fn(() => true)
+
+    const result = await executeAgentBatchLoop({
+      activeTargetJobIds: [],
+      consumeSeenJobIds: vi.fn(),
+      delayDeliveryPageNextMs: 0,
+      delayDeliveryStartsMs: 0,
+      getJobList: () => [{ encryptJobId: 'job-1' }],
+      getLocationHref: () => 'https://www.zhipin.com/web/geek/jobs',
+      getRemainingTargetJobIds: () => [],
+      goNextPage,
+      handleJobList: async () => {
+        stopRequested = true
+        return { seenJobIds: [] }
+      },
+      logDebug: vi.fn(),
+      resetSelectionStatuses: false,
+      shouldStop: () => stopRequested,
+      wait: async () => {},
+    })
+
+    expect(goNextPage).not.toHaveBeenCalled()
+    expect(result.stepMsg).toBe('投递已暂停')
+  })
 })

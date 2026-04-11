@@ -16,6 +16,19 @@ const inlineImageUrl = `data:image/svg+xml,${inlineSvg}`
 
 export const fixtureJobId = 'job-1'
 
+type FixtureRouteHandler = (route: Route) => Promise<void>
+
+interface FixtureJsonResponse {
+  body?: unknown
+  contentType?: string
+  status?: number
+}
+
+interface ZhipinFixtureOptions {
+  onApply?: FixtureRouteHandler
+  onChatRemind?: FixtureRouteHandler
+}
+
 const fixtureUserInfo = {
   userId: 1001,
   identity: 0,
@@ -212,7 +225,18 @@ function json(route: Route, data: unknown) {
   })
 }
 
-export async function registerZhipinFixtureRoutes(context: BrowserContext) {
+function jsonWithStatus(route: Route, response: FixtureJsonResponse) {
+  return route.fulfill({
+    body: JSON.stringify(response.body ?? {}),
+    contentType: response.contentType ?? 'application/json; charset=utf-8',
+    status: response.status ?? 200,
+  })
+}
+
+export async function registerZhipinFixtureRoutes(
+  context: BrowserContext,
+  options: ZhipinFixtureOptions = {},
+) {
   await context.addCookies([
     {
       name: 'bst',
@@ -233,6 +257,11 @@ export async function registerZhipinFixtureRoutes(context: BrowserContext) {
   })
 
   await context.route('https://www.zhipin.com/wapi/zpgeek/friend/add.json**', async (route) => {
+    if (options.onApply) {
+      await options.onApply(route)
+      return
+    }
+
     await json(route, {
       code: 0,
       message: 'ok',
@@ -245,6 +274,11 @@ export async function registerZhipinFixtureRoutes(context: BrowserContext) {
   await context.route(
     'https://www.zhipin.com/wapi/zpCommon/actionLog/geek/chatremind.json**',
     async (route) => {
+      if (options.onChatRemind) {
+        await options.onChatRemind(route)
+        return
+      }
+
       await json(route, {
         code: 0,
         message: 'ok',
@@ -260,4 +294,8 @@ export async function registerZhipinFixtureRoutes(context: BrowserContext) {
       status: 204,
     })
   })
+}
+
+export async function fulfillFixtureJson(route: Route, response: FixtureJsonResponse) {
+  await jsonWithStatus(route, response)
 }

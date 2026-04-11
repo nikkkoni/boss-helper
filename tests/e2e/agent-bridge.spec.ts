@@ -11,7 +11,12 @@ import {
   runAgentCli,
   startAgentBridge,
 } from './helpers/agent-bridge'
-import { getOrCreatePage, launchExtensionSession, waitForBossHelperReady } from './helpers/extension'
+import {
+  callAgentCommand,
+  getOrCreatePage,
+  launchExtensionSession,
+  waitForBossHelperReady,
+} from './helpers/extension'
 import { fixtureJobId, registerZhipinFixtureRoutes } from './helpers/zhipin-fixture'
 
 test('routes CLI commands through the relay page into the extension controller', async () => {
@@ -99,17 +104,10 @@ test('routes CLI commands through the relay page into the extension controller',
       }),
     )
 
-    await jobsPage.waitForFunction((encryptJobId) => {
-      const jobList = window.__q_jobList as {
-        list?: Array<{
-          encryptJobId: string
-          status: { status: string }
-        }>
-      } | undefined
-      return jobList?.list?.some(
-        (item) => item.encryptJobId === encryptJobId && item.status.status === 'success',
-      )
-    }, fixtureJobId)
+    await expect.poll(async () => {
+      const jobs = await callAgentCommand(jobsPage, 'jobs.list') as BossHelperAgentResponse<BossHelperAgentJobsListData>
+      return jobs.data?.jobs.find((item) => item.encryptJobId === fixtureJobId)?.status
+    }).toBe('success')
 
     await expect(relayPage.locator('#logs')).toContainText('收到实时事件 job-started')
     await expect(relayPage.locator('#logs')).toContainText('收到实时事件 batch-completed')

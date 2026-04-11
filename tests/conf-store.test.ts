@@ -36,10 +36,13 @@ vi.mock('@/stores/user', () => ({
 import { counter } from '@/message'
 import {
   applyFormDataMigrations,
+  amapKeyStorageKey,
   defaultFormData,
   formDataKey,
+  formDataTemplatesKey,
   useConf,
 } from '@/stores/conf'
+import type { FormData } from '@/types/formData'
 import { jsonClone } from '@/utils/deepmerge'
 
 describe('useConf store', () => {
@@ -147,5 +150,144 @@ describe('useConf store', () => {
 
     expect(conf.formData.salaryRange.value).toEqual([10, 20, false])
     expect(conf.formData.companySizeRange.value).toEqual([20, 99, false])
+  })
+
+  it('hydrates session amap keys, loads templates, and persists runtime patches', async () => {
+    await counter.storageSet(formDataKey, {
+      amap: {
+        key: 'legacy-amap',
+      },
+      deliveryLimit: {
+        value: 6,
+      },
+      version: '20250826',
+    })
+    await counter.storageSet(formDataTemplatesKey, {
+      Zebra: {
+        deliveryLimit: { value: 3 },
+      },
+      Alpha: {
+        useCache: { value: false },
+      },
+    })
+
+    const conf = useConf()
+    await conf.confInit()
+
+    expect(conf.isLoaded).toBe(true)
+    expect(conf.formData.deliveryLimit.value).toBe(6)
+    expect(conf.formData.amap.key).toBe('legacy-amap')
+    expect(conf.templateNames).toEqual(['Alpha', 'Zebra'])
+    expect(await counter.storageGet(amapKeyStorageKey)).toBe('legacy-amap')
+    expect((await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.amap?.key).toBe('')
+
+    const snapshot = await conf.applyRuntimeConfigPatch(
+      {
+        deliveryLimit: { value: 8 },
+        userId: 999,
+        version: 'override',
+      } as never,
+      { persist: true },
+    )
+
+    expect(snapshot.deliveryLimit.value).toBe(8)
+    expect(snapshot.userId).not.toBe(999)
+    expect((await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.deliveryLimit?.value).toBe(8)
+    expect((await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.amap?.key).toBe('')
+  })
+
+  it('saves, applies, deletes, reloads, exports, and imports templates and config', async () => {
+    const conf = useConf()
+    conf.formData.deliveryLimit.value = 7
+    conf.formData.amap.key = 'session-key'
+
+    await conf.saveTemplate('  Team A  ')
+    expect(conf.templateNames).toEqual(['Team A'])
+    expect(elMessageSuccess).toHaveBeenCalledWith('模板已保存: Team A')
+
+    conf.formData.deliveryLimit.value = 1
+    await conf.applyTemplate('Team A')
+    expect(conf.formData.deliveryLimit.value).toBe(7)
+    expect(conf.formData.amap.key).toBe('')
+
+    await conf.deleteTemplate('Team A')
+    expect(conf.templateNames).toEqual([])
+
+    await expect(conf.saveTemplate('   ')).rejects.toThrow('模板名称不能为空')
+    await expect(conf.applyTemplate('missing')).rejects.toThrow('模板不存在')
+    await expect(conf.deleteTemplate('missing')).rejects.toThrow('模板不存在')
+
+    conf.formData.deliveryLimit.value = 9
+    conf.formData.amap.key = 'session-key'
+    await conf.confSaving()
+    expect(await counter.storageGet(formDataKey, {})).toEqual(
+      expect.objectContaining({
+        deliveryLimit: expect.objectContaining({ value: 9 }),
+      }),
+    )
+    expect(await counter.storageGet(amapKeyStorageKey)).toBe('session-key')
+
+    conf.formData.deliveryLimit.value = 2
+    await conf.confReload()
+    expect(conf.formData.deliveryLimit.value).toBe(9)
+    expect(conf.formData.amap.key).toBe('session-key')
+  })
+
+  it('handles account switching, import cancellation, import failures, and save failures', async () => {
+    const conf = useConf()
+
+    mockUserStore.getUserId.mockReturnValue(2 as unknown as null)
+    await counter.storageSet(formDataKey, {
+      userId: 1,
+      version: '20250826',
+    })
+
+    await conf.confInit()
+    expect(mockUserStore.changeUser).not.toHaveBeenCalled()
+    expect(elMessageSuccess).toHaveBeenCalledWith('登录新账号')
+
+    mockUserStore.getUserId.mockReturnValue(3 as unknown as null)
+    await counter.storageSet(formDataKey, {
+      userId: 1,
+      version: '20250826',
+    })
+    vi.spyOn(counter, 'cookieInfo').mockResolvedValueOnce({
+      3: {
+        uid: '3',
+      },
+    } as never)
+
+    await conf.confInit()
+    expect(mockUserStore.changeUser).toHaveBeenCalledWith(expect.objectContaining({ uid: '3' }))
+    expect(elMessageSuccess).toHaveBeenCalledWith('匹配到账号配置 恢复中, 3s后刷新页面')
+
+    const exportJsonSpy = vi.spyOn(await import('@/utils/jsonImportExport'), 'exportJson').mockImplementation(() => undefined)
+    await conf.confExport()
+    expect(exportJsonSpy).toHaveBeenCalledWith(expect.objectContaining({ amap: expect.objectContaining({ key: '' }) }), '打招呼配置')
+
+    const importModule = await import('@/utils/jsonImportExport')
+    vi.spyOn(importModule, 'importJson').mockRejectedValueOnce(new importModule.ImportJsonCancelledError())
+    await expect(conf.confImport()).resolves.toBeUndefined()
+
+    vi.spyOn(importModule, 'importJson').mockResolvedValueOnce({
+      amap: {
+        key: 'new-key',
+      },
+      deliveryLimit: {
+        value: 11,
+      },
+      userId: 99,
+    } as never)
+    await conf.confImport()
+    expect(conf.formData.deliveryLimit.value).toBe(11)
+    expect(await counter.storageGet(amapKeyStorageKey)).toBe('new-key')
+
+    vi.spyOn(importModule, 'importJson').mockRejectedValueOnce(new Error('bad import'))
+    await conf.confImport()
+    expect(elMessageError).toHaveBeenCalledWith('bad import')
+
+    vi.spyOn(counter, 'storageSet').mockRejectedValueOnce(new Error('save failed'))
+    await conf.confSaving()
+    expect(elMessageError).toHaveBeenCalledWith('保存失败: save failed')
   })
 })

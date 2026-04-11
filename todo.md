@@ -122,11 +122,11 @@
 > 目标：让 review 中点名的关键模块都有独立测试，覆盖异常路径和并发场景。
 
 - [x] 在 `vitest.config.ts` 中开启 `restoreMocks: true`，并把 coverage include 改为目录规则而不是手工白名单。（测试覆盖缺口 7, 8）
-- [ ] 补充 review 点名缺测模块的独立单测：`useCommon.ts`、`useChat.ts`、`useStatistics.ts`、`useVue.ts`、`conf/index.ts`、`jobs.ts`、`user.ts`、`signedKey.ts`、`content.ts`、`main-world.ts`、`concurrency.ts`、`retry.ts`、`safeHtml.ts`、`useDeliveryControl.ts`、`useAgentBatchRunner.ts`。（测试覆盖缺口 9）
-- [ ] 拆分 `agent-mcp-server.test.ts` 巨型测试，按功能拆为多个小用例。（测试覆盖缺口 10）
-- [ ] 扩展 E2E 到异常场景：网络错误、限流响应、并发投递、导航中断、端口冲突、预构建产物缺失。（测试覆盖缺口 11, 12, 13）
-- [ ] 修复 `chat-stream.test.ts` 的 `WebSocket.prototype.send` 并行测试污染问题。（测试覆盖缺口 14）
-- [ ] 补齐 `goldHunterFilter`、`shouldStop: () => true`、组件交互边界、缓存并发写、batch 双启动、mock 保真度、DOMRect 补丁等基础测试缺口。（测试覆盖缺口 1, 2, 3, 4, 5, 6）
+- [x] 补充 review 点名缺测模块的独立单测：`useCommon.ts`、`useChat.ts`、`useStatistics.ts`、`useVue.ts`、`conf/index.ts`、`jobs.ts`、`user.ts`、`signedKey.ts`、`content.ts`、`main-world.ts`、`concurrency.ts`、`retry.ts`、`safeHtml.ts`、`useDeliveryControl.ts`、`useAgentBatchRunner.ts`。（测试覆盖缺口 9）
+- [x] 拆分 `agent-mcp-server.test.ts` 巨型测试，按功能拆为多个小用例。（测试覆盖缺口 10）
+- [x] 扩展 E2E 到异常场景：网络错误、限流响应、并发投递、导航中断、端口冲突、预构建产物缺失。（测试覆盖缺口 11, 12, 13）
+- [x] 修复 `chat-stream.test.ts` 的 `WebSocket.prototype.send` 并行测试污染问题。（测试覆盖缺口 14）
+- [x] 补齐 `goldHunterFilter`、`shouldStop: () => true`、组件交互边界、缓存并发写、batch 双启动、mock 保真度、DOMRect 补丁等基础测试缺口。（测试覆盖缺口 1, 2, 3, 4, 5, 6）
 
 ---
 

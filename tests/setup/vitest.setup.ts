@@ -41,7 +41,11 @@ if (typeof globalThis.DOMRect === 'undefined') {
   Object.defineProperty(globalThis, 'DOMRect', {
     configurable: true,
     value: class DOMRect {
+      bottom: number
       height: number
+      left: number
+      right: number
+      top: number
       width: number
       x: number
       y: number
@@ -51,6 +55,10 @@ if (typeof globalThis.DOMRect === 'undefined') {
         this.y = y
         this.width = width
         this.height = height
+        this.top = y
+        this.left = x
+        this.right = x + width
+        this.bottom = y + height
       }
 
       static fromRect(rect: Partial<DOMRect> = {}) {

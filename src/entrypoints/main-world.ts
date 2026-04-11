@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
@@ -24,6 +23,23 @@ type AxiosLoaderCarrier = {
   [axiosLoaderKey]?: AxiosLoaderStop
 }
 
+type AxiosLoaderClient = {
+  interceptors: {
+    request: {
+      use: (
+        onFulfilled: (config: AxiosLoaderCarrier) => AxiosLoaderCarrier | Promise<AxiosLoaderCarrier>,
+        onRejected?: (error: { config?: AxiosLoaderCarrier } | unknown) => Promise<never>,
+      ) => unknown
+    }
+    response: {
+      use: (
+        onFulfilled: (response: { config: AxiosLoaderCarrier }) => unknown,
+        onRejected?: (error: { config?: AxiosLoaderCarrier } | unknown) => Promise<never>,
+      ) => unknown
+    }
+  }
+}
+
 function attachAxiosLoader(config: AxiosLoaderCarrier) {
   if (typeof config.timeout === 'number' && Number.isFinite(config.timeout) && config.timeout > 0) {
     config[axiosLoaderKey] = loader({ ms: config.timeout, color: '#F79E63' })
@@ -43,25 +59,25 @@ function clearAxiosLoader(config?: AxiosLoaderCarrier | null) {
   stop?.()
 }
 
-export function installAxiosLoaderInterceptors(client: Pick<typeof axios, 'interceptors'> = axios) {
+export function installAxiosLoaderInterceptors(client: AxiosLoaderClient) {
   client.interceptors.request.use(
     (config) => {
-      attachAxiosLoader(config as AxiosLoaderCarrier)
+      attachAxiosLoader(config)
       return config
     },
-    async (error) => {
-      clearAxiosLoader(error?.config as AxiosLoaderCarrier | undefined)
+    async (error: { config?: AxiosLoaderCarrier } | unknown) => {
+      clearAxiosLoader((error as { config?: AxiosLoaderCarrier } | undefined)?.config)
       return Promise.reject(error)
     },
   )
 
   client.interceptors.response.use(
     (response) => {
-      clearAxiosLoader(response.config as AxiosLoaderCarrier)
+      clearAxiosLoader(response.config)
       return response
     },
-    async (error) => {
-      clearAxiosLoader(error?.config as AxiosLoaderCarrier | undefined)
+    async (error: { config?: AxiosLoaderCarrier } | unknown) => {
+      clearAxiosLoader((error as { config?: AxiosLoaderCarrier } | undefined)?.config)
       return Promise.reject(error)
     },
   )
@@ -126,7 +142,8 @@ async function start() {
   }
   afterHooks.push((nextRoute) => void main(nextRoute))
   void main(route)
-  installAxiosLoaderInterceptors()
+  const { default: axios } = await import('axios')
+  installAxiosLoaderInterceptors(axios as unknown as AxiosLoaderClient)
 }
 
 export default defineUnlistedScript(() => {

@@ -23,10 +23,17 @@ interface BridgeHealth {
   relayConnected: boolean
 }
 
-async function waitForBridgeHealth(httpBaseUrl: string): Promise<BridgeHealth> {
+async function waitForBridgeHealth(
+  httpBaseUrl: string,
+  child?: ChildProcessWithoutNullStreams,
+): Promise<BridgeHealth> {
   let lastError: unknown
 
   for (let attempt = 0; attempt < 80; attempt += 1) {
+    if (child && child.exitCode != null) {
+      throw new Error(`bridge 进程提前退出，exitCode=${child.exitCode}`)
+    }
+
     try {
       const response = await fetch(`${httpBaseUrl}/health`)
       if (response.ok) {
@@ -41,6 +48,12 @@ async function waitForBridgeHealth(httpBaseUrl: string): Promise<BridgeHealth> {
   throw new Error(
     `等待 agent bridge 启动超时: ${lastError instanceof Error ? lastError.message : 'unknown error'}`,
   )
+}
+
+async function waitForBridgeExit(child: ChildProcessWithoutNullStreams, timeoutMs = 5_000) {
+  const exitResult = once(child, 'exit').then(([code, signal]) => ({ code, signal }))
+  const timeoutResult = delay(timeoutMs).then(() => null)
+  return Promise.race([exitResult, timeoutResult])
 }
 
 export async function startAgentBridge(port: number): Promise<AgentBridgeServer> {
@@ -58,17 +71,30 @@ export async function startAgentBridge(port: number): Promise<AgentBridgeServer>
   })
 
   const output: string[] = []
+  const startupFailure = new Promise<never>((_, reject) => {
+    child.once('exit', (code, signal) => {
+      reject(new Error(`bridge 进程提前退出，exitCode=${code ?? 'null'} signal=${signal ?? 'null'}`))
+    })
+  })
+
   child.stdout.on('data', (chunk) => {
     output.push(String(chunk))
   })
   child.stderr.on('data', (chunk) => {
-    output.push(String(chunk))
+    const text = String(chunk)
+    output.push(text)
+    if (/EADDRINUSE|address already in use/i.test(text)) {
+      child.kill('SIGTERM')
+    }
   })
 
   try {
-    await waitForBridgeHealth(httpBaseUrl)
+    await Promise.race([waitForBridgeHealth(httpBaseUrl, child), startupFailure])
   } catch (error) {
-    child.kill('SIGTERM')
+    if (child.exitCode == null) {
+      child.kill('SIGTERM')
+      await waitForBridgeExit(child, 1_000)
+    }
     throw new Error(
       `agent bridge 启动失败: ${error instanceof Error ? error.message : 'unknown error'}\n${output.join('')}`,
     )

@@ -1,6 +1,19 @@
 import * as vue from 'vue'
 
 type EventListener<TArgs extends any[]> = (...args: TArgs) => unknown
+type RuntimeMessageSender = {
+  id?: string
+  tab?: {
+    id?: number
+    url?: string
+  }
+  url?: string | null
+}
+type RuntimeMessageListener = (
+  message: unknown,
+  sender: RuntimeMessageSender,
+  sendResponse: (response: unknown) => void,
+) => unknown
 
 function cloneValue<T>(value: T): T {
   if (value == null) {
@@ -38,6 +51,61 @@ function createEventEmitter<TArgs extends any[]>() {
   }
 }
 
+function createRuntimeMessageEmitter() {
+  const listeners = new Set<RuntimeMessageListener>()
+
+  return {
+    addListener(listener: RuntimeMessageListener) {
+      listeners.add(listener)
+    },
+    removeListener(listener: RuntimeMessageListener) {
+      listeners.delete(listener)
+    },
+    hasListener(listener: RuntimeMessageListener) {
+      return listeners.has(listener)
+    },
+    async __emit(
+      message: unknown,
+      sender: RuntimeMessageSender = { url: 'https://127.0.0.1/' },
+      sendResponse?: (response: unknown) => void,
+    ) {
+      let lastResult: unknown
+
+      for (const listener of [...listeners]) {
+        let responseSent = false
+        let resolveResponse: (response: unknown) => void = () => {}
+        const responsePromise = new Promise<unknown>((resolve) => {
+          resolveResponse = resolve
+        })
+
+        const wrappedSendResponse = (response: unknown) => {
+          responseSent = true
+          sendResponse?.(response)
+          resolveResponse(response)
+        }
+
+        const result = await listener(message, sender, wrappedSendResponse)
+        if (result === true) {
+          lastResult = await responsePromise
+          continue
+        }
+        if (result !== undefined) {
+          lastResult = result
+          continue
+        }
+        if (responseSent) {
+          lastResult = await responsePromise
+        }
+      }
+
+      return lastResult
+    },
+    __clear() {
+      listeners.clear()
+    },
+  }
+}
+
 type MockCookie = {
   domain?: string
   expirationDate?: number
@@ -53,7 +121,7 @@ type MockPortDisconnectListener = () => void
 const storageMap = new Map<string, unknown>()
 const cookiesByHost = new Map<string, MockCookie[]>()
 
-const runtimeOnMessage = createEventEmitter<[unknown]>()
+const runtimeOnMessage = createRuntimeMessageEmitter()
 const runtimeOnMessageExternal = createEventEmitter<[unknown, { url?: string | null }]>()
 const runtimeOnConnectExternal = createEventEmitter<[MockPort]>()
 
@@ -248,8 +316,12 @@ export function __setCookies(cookies: MockCookie[]) {
   }
 }
 
-export async function __emitRuntimeMessage(message: unknown) {
-  return runtimeOnMessage.__emit(message)
+export async function __emitRuntimeMessage(
+  message: unknown,
+  sender: RuntimeMessageSender = { url: 'https://127.0.0.1/' },
+  sendResponse?: (response: unknown) => void,
+) {
+  return runtimeOnMessage.__emit(message, sender, sendResponse)
 }
 
 export async function __emitRuntimeMessageExternal(

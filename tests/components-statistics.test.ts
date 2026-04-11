@@ -5,12 +5,18 @@ import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
+  mockCommonState,
   mockPauseBatch,
   mockResetFilter,
   mockResumeBatch,
   mockStartBatch,
   mockUpdateStatistics,
 } = vi.hoisted(() => ({
+  mockCommonState: {
+    deliverLock: false,
+    deliverState: 'idle',
+    deliverStop: false,
+  },
   mockPauseBatch: vi.fn(),
   mockResetFilter: vi.fn(),
   mockResumeBatch: vi.fn(),
@@ -19,11 +25,7 @@ const {
 }))
 
 vi.mock('@/composables/useCommon', () => ({
-  useCommon: () => ({
-    deliverLock: false,
-    deliverState: 'idle',
-    deliverStop: false,
-  }),
+  useCommon: () => mockCommonState,
 }))
 
 vi.mock('@/composables/useStatistics', () => ({
@@ -88,6 +90,9 @@ const StatisticStub = defineComponent({
 
 describe('Statistics.vue', () => {
   beforeEach(() => {
+    mockCommonState.deliverLock = false
+    mockCommonState.deliverState = 'idle'
+    mockCommonState.deliverStop = false
     mockPauseBatch.mockReset()
     mockResetFilter.mockReset()
     mockResumeBatch.mockReset()
@@ -120,5 +125,54 @@ describe('Statistics.vue', () => {
     expect(wrapper.text()).toContain('AI调用：4次')
     expect(wrapper.text()).toContain('Token总量：12000tok')
     expect(wrapper.text()).toContain('估算费用：0.123456')
+  })
+
+  it('routes start pause resume and reset controls to the delivery hooks', async () => {
+    const mountStatistics = () =>
+      mount(Statistics, {
+        global: {
+          stubs: {
+            Alert: true,
+            ElButton: passthrough('button'),
+            ElButtonGroup: passthrough('div'),
+            ElCol: passthrough('div'),
+            ElDropdown: passthrough('div'),
+            ElDropdownItem: passthrough('div'),
+            ElDropdownMenu: passthrough('div'),
+            ElIcon: passthrough('span'),
+            ElProgress: passthrough('div'),
+            ElRow: passthrough('div'),
+            ElStatistic: StatisticStub,
+          },
+        },
+      })
+
+    let wrapper = mountStatistics()
+    await wrapper.get('button').trigger('click')
+    expect(mockStartBatch).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+
+    mockCommonState.deliverState = 'paused'
+    wrapper = mountStatistics()
+    await flushPromises()
+    expect(wrapper.text()).toContain('继续')
+    await wrapper.get('button').trigger('click')
+    expect(mockResumeBatch).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+
+    mockCommonState.deliverState = 'idle'
+    mockCommonState.deliverLock = true
+    wrapper = mountStatistics()
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === '暂停')?.trigger('click')
+    expect(mockPauseBatch).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+
+    mockCommonState.deliverLock = false
+    mockCommonState.deliverStop = true
+    wrapper = mountStatistics()
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === '重置筛选')?.trigger('click')
+    expect(mockResetFilter).toHaveBeenCalledTimes(1)
   })
 })

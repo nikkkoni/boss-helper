@@ -18,4 +18,9 @@ describe('safeHtml utilities', () => {
       sanitizeSvgHtml('<svg viewBox="0 0 10 10"><path fill="#fff" d="M0 0h10v10H0z"></path></svg>'),
     ).toContain('viewBox="0 0 10 10"')
   })
+
+  it('treats nullish inputs as empty markup', () => {
+    expect(sanitizeRichHtml(null)).toBe('')
+    expect(sanitizeSvgHtml(undefined)).toBe('')
+  })
 })
