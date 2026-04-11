@@ -230,6 +230,8 @@
 
 ### Task 3.1: 合并 Protobuf Schema
 
+**状态:** [x] 已完成（2026-04-11）
+
 **现状:**
 - `handler.ts`：运行时解析 `chat.proto` 文件 (`protobuf.parse`)
 - `type.ts`：程序式构建 schema (`protobuf.Type` + `protobuf.Field`)
@@ -256,6 +258,8 @@
 ---
 
 ### Task 3.2: 提取 Agent Protocol Constants
+
+**状态:** [x] 已完成（2026-04-11）
 
 **现状:** `agent.ts` 中的常量（命令列表、事件类型列表、版本号、支持的路径）散布在类型定义中间。
 

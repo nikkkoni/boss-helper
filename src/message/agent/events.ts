@@ -5,6 +5,7 @@ import type {
   BossHelperAgentState,
 } from './types'
 
+/** Agent 运行时会广播的事件类型集合，供页面 bridge 与外部订阅端共用。 */
 export const bossHelperAgentEventTypes = [
   'state-changed',
   'batch-started',

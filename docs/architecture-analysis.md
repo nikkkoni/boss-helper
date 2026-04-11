@@ -16,7 +16,7 @@ BossHelper is a browser extension for the BOSS Zhipin (zhipin.com) job platform,
 | Language | TypeScript 5.9 + Vue JSX |
 | HTTP | Axios (host page), `fetch` (extension), `openapi-fetch` (typed API) |
 | AI/LLM | OpenAI SDK 4.x, `fetch-event-stream`, `partial-json` |
-| Chat Protocol | protobufjs (runtime proto parsing + programmatic schema) |
+| Chat Protocol | protobufjs (`chat.proto` runtime parsing + typed helper interfaces) |
 | Testing | Vitest 4.1 (unit, 80% coverage) + Playwright (E2E) |
 | Lint/Format | oxlint + oxfmt (Rust-based) |
 | Build Targets | Chrome MV3, Firefox MV2, Edge MV3 |
@@ -78,8 +78,7 @@ boss-helper/
 │   │       ├── handler.ts     #     Runtime proto parser (`ChatProtobufHandler`, named export)
 │   │       ├── mqtt.ts        #     MQTT packet codec (retained for chat stream decoding/tests)
 │   │       ├── protobuf.ts    #     Message class (send via 3 transport channels)
-│   │       ├── type.ts        #     Programmatic protobuf schema
-│   │       └── type.json      #     Proto field mappings
+│   │       └── type.ts        #     TypeScript interfaces aligned to `chat.proto`
 │   │
 │   ├── message/               # Cross-context messaging (comctx RPC)
 │   │   ├── index.ts           #   Page-side proxy (InjectAdapter + ExtStorage)
@@ -178,6 +177,9 @@ boss-helper/
 │   ├── agent-security.d.mts   #   Type declarations
 │   ├── types.d.ts             #   Shared type declarations
 │   └── submit.sh              #   Web store submission
+│
+├── shared/
+│   └── agentProtocol.js       #   Cross-runtime agent protocol version constant
 │
 ├── tests/                     # ~80 test files
 │   ├── setup/vitest.setup.ts
@@ -332,6 +334,9 @@ rate limiting, limit reached, chat sent.
 **Current Architecture:** `useDeliveryControl.ts` is now a thin assembly layer that wires
 `useAgentBatchRunner`, `useAgentQueries`, `agentController.ts`, and `agentWindowBridge.ts`.
 
+**Protocol Versioning:** `AGENT_PROTOCOL_VERSION` now lives in `shared/agentProtocol.js`,
+and is reused by extension-side messaging plus Node bridge/MCP scripts.
+
 ### 4.3 Store Architecture (`src/stores/`)
 
 ```
@@ -371,11 +376,12 @@ The extension deeply hooks into zhipin.com's internal Vue 2 instance:
 
 ### 4.5 WebSocket/Chat Protocol
 
-Dual protobuf schema approach (a known redundancy issue):
-1. **`handler.ts`**: Parses `.proto` file at runtime via `protobuf.parse(chatProto)`
-2. **`type.ts`**: Builds schema programmatically via `protobuf.Type` + `protobuf.Field`
+Single-schema protobuf approach:
+1. **`chat.proto`** is the only schema source
+2. **`handler.ts`** lazily parses the raw `.proto` once and exposes shared encode/decode helpers
+3. **`type.ts`** only keeps lightweight TypeScript interfaces for decoded/encoded payloads
 
-Both define the same `TechwolfChatProtocol` message structure. `Message.send()` tries 3 transport channels: `GeekChatCore` → `ChatWebsocket` → error.
+`Message.send()` and chat stream decoding now both reuse the same runtime protobuf type, avoiding schema drift. The send path still tries 3 transport channels: `GeekChatCore` → `ChatWebsocket` → error.
 
 ### 4.6 LLM Integration
 
@@ -421,7 +427,7 @@ Both define the same `TechwolfChatProtocol` message structure. `Message.send()` 
 | boss-helper backend | VIP LLM, remote config, resume | `signedKey.ts` via `openapi-fetch` |
 | AMap (Gaode Maps) | Geocoding, distance | `amap.ts` REST API |
 | Browser Extension APIs | Storage, cookies, notifications, tabs | via WXT `#imports` |
-| protobufjs | Chat message encoding | Runtime proto parse + programmatic schema |
+| protobufjs | Chat message encoding | Shared `.proto` runtime parse + object encode/decode |
 | mitem | Template compilation | Greeting message variables (`{{ card.jobName }}`) |
 
 ---
@@ -458,7 +464,7 @@ Both define the same `TechwolfChatProtocol` message structure. `Message.send()` 
 
 1. **`useDeliveryControl.ts` is a god object** - 已于 2026-04-11 拆为 assembly/controller/window bridge 三层。
 
-2. **Dual protobuf schema** - `handler.ts` (runtime `.proto` parse) and `type.ts` (programmatic schema) define the same message structure independently. Drift risk.
+2. **Dual protobuf schema** - 已于 2026-04-11 收敛为 `chat.proto` 单一来源；`handler.ts` / `protobuf.ts` / 聊天流解析共享同一 runtime type。
 
 3. **Pinia store / composable identity confusion** - 已于 2026-04-11 部分收敛：全局 store `useCommon` / `useStatistics` 已迁入 `src/stores/`，页面级 `useDeliver` / `usePager` 保留在 `hooks/` 并补充 Pinia store 注释；`useModel` 仍保持历史命名。
 

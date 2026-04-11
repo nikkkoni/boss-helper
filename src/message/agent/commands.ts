@@ -3,6 +3,7 @@ import type { FormData } from '@/types/formData'
 import { BOSS_HELPER_AGENT_BRIDGE_REQUEST, BOSS_HELPER_AGENT_CHANNEL } from './constants'
 import type { BossHelperAgentJobPipelineStatus } from './types'
 
+/** Agent 协议支持的命令集合，顺序保持与外部 bridge/MCP 工具目录一致。 */
 export const bossHelperAgentCommands = [
   'start',
   'pause',

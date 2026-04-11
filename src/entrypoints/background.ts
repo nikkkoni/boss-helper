@@ -1,7 +1,7 @@
 import type { Browser } from '#imports'
 import { browser, defineBackground } from '#imports'
 import {
-  BOSS_HELPER_AGENT_VERSION,
+  AGENT_PROTOCOL_VERSION,
   createBossHelperAgentResponse,
   hasValidBossHelperAgentBridgeToken,
   hasValidBossHelperAgentEventPort,
@@ -51,7 +51,7 @@ async function forwardAgentRequest(
     const response = await browser.tabs.sendMessage(targetTab.id, {
       ...request,
       requestId: request.requestId ?? crypto.randomUUID(),
-      version: request.version ?? BOSS_HELPER_AGENT_VERSION,
+      version: request.version ?? AGENT_PROTOCOL_VERSION,
     })
 
     if (response) {

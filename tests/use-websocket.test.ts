@@ -177,7 +177,9 @@ describe('websocket protobuf and mqtt helpers', () => {
   })
 
   it('round-trips protobuf image payloads with originImage metadata', async () => {
-    const { AwesomeMessage } = await import('@/composables/useWebSocket/type')
+    const { decodeChatProtocolToObject, encodeChatProtocol } = await import(
+      '@/composables/useWebSocket/handler'
+    )
 
     const payload = {
       messages: [
@@ -205,8 +207,8 @@ describe('websocket protobuf and mqtt helpers', () => {
       type: 1,
     }
 
-    const encoded = AwesomeMessage.encode(AwesomeMessage.create(payload)).finish()
-    const decoded = AwesomeMessage.toObject(AwesomeMessage.decode(encoded), {
+    const encoded = encodeChatProtocol(payload)
+    const decoded = decodeChatProtocolToObject(encoded, {
       defaults: false,
       longs: String,
     }) as {

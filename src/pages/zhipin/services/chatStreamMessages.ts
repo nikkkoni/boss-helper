@@ -1,7 +1,7 @@
 import { useChat, type ChatMessage } from '@/composables/useChat'
+import { decodeChatProtocolToObject } from '@/composables/useWebSocket/handler'
 import { mqtt } from '@/composables/useWebSocket/mqtt'
 import {
-  AwesomeMessage,
   type TechwolfChatProtocol,
   type TechwolfMessage,
   type TechwolfMessageBody,
@@ -13,7 +13,7 @@ function getSelfUserId() {
   return userId == null ? '' : String(userId)
 }
 
-function getMessageTimestamp(time?: string) {
+function getMessageTimestamp(time?: string | number) {
   const parsed = Number(time)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : Date.now()
 }
@@ -50,42 +50,40 @@ function extractMessageContent(body?: TechwolfMessageBody) {
     return ''
   }
 
-  const richBody = body as TechwolfMessageBody & Record<string, any>
-
-  if (richBody.text?.trim()) {
-    return richBody.text.trim()
+  if (body.text?.trim()) {
+    return body.text.trim()
   }
-  if (richBody.headTitle?.trim()) {
-    return richBody.headTitle.trim()
+  if (body.headTitle?.trim()) {
+    return body.headTitle.trim()
   }
-  if (richBody.notify?.text?.trim()) {
-    return richBody.notify.text.trim()
+  if (body.notify?.text?.trim()) {
+    return body.notify.text.trim()
   }
-  if (richBody.dialog?.text?.trim()) {
-    return richBody.dialog.text.trim()
+  if (body.dialog?.text?.trim()) {
+    return body.dialog.text.trim()
   }
-  if (richBody.interview?.text?.trim()) {
-    return richBody.interview.text.trim()
+  if (body.interview?.text?.trim()) {
+    return body.interview.text.trim()
   }
-  if (richBody.hyperLink?.text?.trim()) {
-    return richBody.hyperLink.text.trim()
+  if (body.hyperLink?.text?.trim()) {
+    return body.hyperLink.text.trim()
   }
-  if (richBody.jobDesc?.title?.trim()) {
-    return `[职位卡片] ${richBody.jobDesc.title.trim()}`
+  if (body.jobDesc?.title?.trim()) {
+    return `[职位卡片] ${body.jobDesc.title.trim()}`
   }
-  if (richBody.resume?.position?.trim()) {
-    return `[简历卡片] ${richBody.resume.position.trim()}`
+  if (body.resume?.position?.trim()) {
+    return `[简历卡片] ${body.resume.position.trim()}`
   }
-  if (richBody.image) {
+  if (body.image) {
     return '[图片]'
   }
-  if (richBody.sticker) {
+  if (body.sticker) {
     return '[表情]'
   }
-  if (richBody.video) {
+  if (body.video) {
     return '[视频]'
   }
-  if (richBody.sound) {
+  if (body.sound) {
     return '[语音]'
   }
 
@@ -141,9 +139,9 @@ function toChatMessage(message: TechwolfMessage): ChatMessage | null {
 function parseProtocol(bytes: Uint8Array) {
   const tryDecode = (payload: Uint8Array): TechwolfChatProtocol | null => {
     try {
-      return AwesomeMessage.toObject(AwesomeMessage.decode(payload), {
+      return decodeChatProtocolToObject(payload, {
         longs: String,
-      }) as TechwolfChatProtocol
+      })
     } catch {
       return null
     }

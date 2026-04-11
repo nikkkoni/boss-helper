@@ -10,8 +10,9 @@ BossHelper is a browser extension (WXT + Vue 3 + Pinia) that automates job appli
 
 - 2026-04-11: Wave 1 已完成，`message/agent.ts`、`filterSteps.ts`、`useDeliveryControl.ts`、`useApplying/utils.ts` 已按任务单拆分。
 - 2026-04-11: Wave 2 已完成，`useCommon` / `useStatistics` 已迁入 `src/stores/`，`elmGetter` 与 `ChatProtobufHandler` 已统一为 named export，并抽出 `src/utils/storageMigration.ts` 复用存储迁移逻辑。
+- 2026-04-11: Wave 3 已完成，聊天协议编码/解码统一改为 `chat.proto` 单一来源，`src/composables/useWebSocket/type.ts` 仅保留 TypeScript 接口，`AGENT_PROTOCOL_VERSION` 已通过 `shared/agentProtocol.js` 在扩展与 Node 脚本间共享。
 - 当前入口仍保持 barrel 与兼容导出策略，现有 `@/message/agent`、`filterSteps.ts` 与页面级 `useDeliver` / `usePager` consumer import 不需要继续迁移。
-- 下一步建议从 Wave 3 Task 3.1 开始，合并 protobuf schema 来源。
+- 下一步建议从 Wave 4 Task 4.1 开始，补齐拆分后模块测试并清理根目录文档。
 
 ## Documents
 
@@ -43,7 +44,7 @@ Core Systems:
 1. **`useDeliveryControl.ts`** — 已拆为 assembly + `agentController.ts` + `agentWindowBridge.ts`
 2. **`message/agent.ts`** — 已改为 barrel，协议拆入 `src/message/agent/`
 3. **`filterSteps.ts`** — 已改为 `services/filters/` barrel，按职责分组
-4. **Dual protobuf schema** — `handler.ts` + `type.ts` define the same structure independently. Merge to single `.proto` source.
+4. **Dual protobuf schema** — 已统一为 `.proto` 单一来源，`type.ts` 仅保留接口定义，`Message` / 聊天流解析复用同一套 runtime type。
 
 ## Execution Order
 
@@ -78,6 +79,6 @@ pnpm typecheck        # Type check (vue-tsc)
 
 ## Start Here
 
-1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 3.1
-2. Wave 1 与 Wave 2 已完成，接下来进入 protobuf 统一与类型安全增强
-3. 保持 barrel 与 named export 策略，并在 schema 调整后继续执行 `pnpm test`、`pnpm check` 与必要的聊天链路验证
+1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 4.1
+2. Wave 1 到 Wave 3 已完成，接下来进入测试覆盖与文档清理
+3. 保持当前 barrel、named export 与 shared constant 策略，并在补测后继续执行 `pnpm test`、`pnpm check`、`pnpm lint`

@@ -1,0 +1,1 @@
+export const AGENT_PROTOCOL_VERSION: 1

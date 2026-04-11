@@ -35,6 +35,7 @@ describe('agent mcp server catalog', () => {
 
       const context = (contextCall.result?.structuredContent ?? {}) as Record<string, any>
       expect(context.ok).toBe(true)
+      expect(context.agentProtocolVersion).toBe(1)
       expect(context.readiness).toEqual(
         expect.objectContaining({
           bridgeOnline: true,
@@ -72,6 +73,7 @@ describe('agent mcp server catalog', () => {
       })
       const runtimeContents = runtimeResource.result?.contents as Array<{ text: string }>
       const runtimeContext = JSON.parse(runtimeContents[0].text) as Record<string, any>
+      expect(runtimeContext.agentProtocolVersion).toBe(1)
       expect(runtimeContext.readiness).toEqual(
         expect.objectContaining({
           bridgeOnline: true,

@@ -5,9 +5,9 @@ import type { StorageItemKey } from '#imports'
 import { browser, storage } from '#imports'
 
 import {
+  AGENT_PROTOCOL_VERSION,
   BOSS_HELPER_AGENT_BRIDGE_REQUEST,
   BOSS_HELPER_AGENT_EVENT_FORWARD,
-  BOSS_HELPER_AGENT_VERSION,
   createBossHelperAgentResponse,
   isBossHelperAgentEventBridgeMessage,
   isBossHelperAgentBridgeResponse,
@@ -180,7 +180,7 @@ async function forwardAgentRequestToPage(
       payload: {
         ...request,
         requestId,
-        version: request.version ?? BOSS_HELPER_AGENT_VERSION,
+        version: request.version ?? AGENT_PROTOCOL_VERSION,
       },
     }
 

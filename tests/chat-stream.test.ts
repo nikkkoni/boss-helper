@@ -3,13 +3,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useChat } from '@/composables/useChat'
+import { encodeChatProtocol } from '@/composables/useWebSocket/handler'
 import { mqtt } from '@/composables/useWebSocket/mqtt'
-import { AwesomeMessage } from '@/composables/useWebSocket/type'
+import type { TechwolfChatProtocol } from '@/composables/useWebSocket/type'
 import { initBossChatStream } from '@/pages/zhipin/hooks/useChatStream'
 import { logger } from '@/utils/logger'
 
 function encodeProtocol(payload: Record<string, unknown>) {
-  return AwesomeMessage.encode(payload).finish()
+  return encodeChatProtocol(payload as unknown as TechwolfChatProtocol)
 }
 
 describe('initBossChatStream', () => {

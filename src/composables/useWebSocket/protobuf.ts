@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import { createMonotonicIdGenerator } from '@/utils/monotonicId'
 
 import type { TechwolfChatProtocol } from './type'
-import { AwesomeMessage } from './type'
+import { encodeChatProtocol, getSharedChatProtobufHandler } from './handler'
 
 const nextWebSocketMessageId = createMonotonicIdGenerator()
 const MID_OFFSET = 68_256_432_452_609
@@ -53,7 +53,7 @@ export class Message {
       type: 1,
     }
 
-    this.msg = AwesomeMessage.encode(data).finish().slice()
+    this.msg = encodeChatProtocol(data)
     this.hex = [...this.msg].map((b) => b.toString(16).padStart(2, '0')).join('')
   }
 
@@ -72,3 +72,6 @@ export class Message {
     }
   }
 }
+
+// Initialize the shared runtime eagerly so window globals can be used directly in page scripts.
+void getSharedChatProtobufHandler().init()

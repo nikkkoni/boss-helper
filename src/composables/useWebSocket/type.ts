@@ -1,108 +1,74 @@
-import protobuf from 'protobufjs'
-
 export interface TechwolfUser {
-  //  @int64
-  uid: string // 1
-  name?: string // 2
-  //  @int32
-  source?: number // 7
+  uid: number | string
+  name?: string
+  source?: number
 }
 
 export interface TechwolfImageInfo {
-  url: string // 1
-  // @int32
-  width: number // 1
-  // @int32
-  height: number // 1
+  url: string
+  width: number
+  height: number
 }
 
 export interface TechwolfImage {
-  // @int64
-  iid?: number // 1 测试为空
-  tinyImage?: TechwolfImageInfo // 2
-  originImage?: TechwolfImageInfo // 3
+  iid?: number | string
+  tinyImage?: TechwolfImageInfo
+  originImage?: TechwolfImageInfo
+}
+
+export interface TechwolfNotifyBody {
+  text?: string
+}
+
+export interface TechwolfDialogBody {
+  text?: string
+}
+
+export interface TechwolfInterviewBody {
+  text?: string
+}
+
+export interface TechwolfHyperLinkBody {
+  text?: string
+}
+
+export interface TechwolfJobDescBody {
+  title?: string
+}
+
+export interface TechwolfResumeBody {
+  position?: string
 }
 
 export interface TechwolfMessageBody {
-  //  @int32
-  type: number // 1
-  //  @int32
-  templateId: number // 2
-  headTitle?: string // 11
-  text?: string // 3
-  image?: TechwolfImage // 5
+  type: number
+  templateId: number
+  headTitle?: string
+  text?: string
+  image?: TechwolfImage
+  notify?: TechwolfNotifyBody
+  dialog?: TechwolfDialogBody
+  hyperLink?: TechwolfHyperLinkBody
+  interview?: TechwolfInterviewBody
+  jobDesc?: TechwolfJobDescBody
+  resume?: TechwolfResumeBody
+  sound?: Record<string, unknown>
+  sticker?: Record<string, unknown>
+  video?: Record<string, unknown>
 }
 
 export interface TechwolfMessage {
-  from: TechwolfUser // 1
-  to: TechwolfUser // 2
-  //  @int32
-  type?: number // 3
-  //  @int64
-  mid?: string // 4
-  //  @int64
-  time?: string // 5
-  body: TechwolfMessageBody // 6
-  //  @int64
-  cmid?: string // 11
+  from: TechwolfUser
+  to: TechwolfUser
+  type?: number
+  mid?: number | string
+  time?: number | string
+  body: TechwolfMessageBody
+  cmid?: number | string
 }
 
 export interface TechwolfChatProtocol {
-  //  @int32
-  type: number // 1
-  messages: TechwolfMessage[] // 3
+  type: number
+  version?: string
+  messages: TechwolfMessage[]
 }
-
-const Root = protobuf.Root
-const Type = protobuf.Type
-const Field = protobuf.Field
-
-// "double" | "float" | "int32" | "uint32" | "sint32" |
-// "fixed32" | "sfixed32" | "int64" | "uint64" |
-// "sint64" | "fixed64" | "sfixed64" | "string" |
-// "bool" | "bytes" | Object
-const root = new Root()
-  .define('cn.techwolf.boss.chat')
-  .add(
-    new Type('TechwolfUser')
-      .add(new Field('uid', 1, 'int64'))
-      .add(new Field('name', 2, 'string', 'optional'))
-      .add(new Field('source', 7, 'int32', 'optional')),
-  )
-  .add(
-    new Type('TechwolfImageInfo')
-      .add(new Field('url', 1, 'string'))
-      .add(new Field('width', 2, 'int32'))
-      .add(new Field('height', 3, 'int32')),
-  )
-  .add(
-    new Type('TechwolfImage')
-      .add(new Field('iid', 1, 'int64', 'optional'))
-      .add(new Field('tinyImage', 2, 'TechwolfImageInfo', 'optional'))
-      .add(new Field('originImage', 3, 'TechwolfImageInfo', 'optional')),
-  )
-  .add(
-    new Type('TechwolfMessageBody')
-      .add(new Field('type', 1, 'int32'))
-      .add(new Field('templateId', 2, 'int32', 'optional'))
-      .add(new Field('headTitle', 11, 'string'))
-      .add(new Field('text', 3, 'string'))
-      .add(new Field('image', 5, 'TechwolfImage', 'optional')),
-  )
-  .add(
-    new Type('TechwolfMessage')
-      .add(new Field('from', 1, 'TechwolfUser'))
-      .add(new Field('to', 2, 'TechwolfUser'))
-      .add(new Field('type', 3, 'int32'))
-      .add(new Field('mid', 4, 'int64', 'optional'))
-      .add(new Field('time', 5, 'int64', 'optional'))
-      .add(new Field('body', 6, 'TechwolfMessageBody'))
-      .add(new Field('cmid', 11, 'int64', 'optional')),
-  )
-  .add(
-    new Type('TechwolfChatProtocol')
-      .add(new Field('type', 1, 'int32'))
-      .add(new Field('messages', 3, 'TechwolfMessage', 'repeated')),
-  )
-
-export const AwesomeMessage = root.lookupType('TechwolfChatProtocol')

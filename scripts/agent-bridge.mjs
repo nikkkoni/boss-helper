@@ -7,6 +7,7 @@ import { createServer as createHttpsServer } from 'node:https'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { AGENT_PROTOCOL_VERSION } from '../shared/agentProtocol.js'
 import {
   AGENT_BRIDGE_AUTH_HEADER,
   getAgentBridgeCertificate,
@@ -312,7 +313,7 @@ function queueCommand(command, timeoutMs = COMMAND_TIMEOUT_MS) {
     requestId,
     request: {
       channel: '__boss_helper_agent__',
-      version: 1,
+      version: AGENT_PROTOCOL_VERSION,
       ...command,
       requestId,
     },

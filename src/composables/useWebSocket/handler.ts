@@ -2,65 +2,49 @@ import protobuf from 'protobufjs'
 
 import chatProto from '@/assets/chat.proto?raw'
 
-// User 相关类型定义
-interface TechwolfUser {
-  uid: number
-  name?: string
-  avatar?: string
-  company?: string
-  headImg?: number
-  certification?: number
-  source: number
+import type {
+  TechwolfChatProtocol,
+  TechwolfImage,
+  TechwolfMessage,
+  TechwolfMessageBody,
+  TechwolfUser,
+} from './type'
+
+type ProtobufFactory = {
+  create(properties?: Record<string, unknown>): unknown
 }
 
-// Image 相关类型定义
+type ChatProtobufBuild = {
+  body: ProtobufFactory
+  chatProtocol: ProtobufFactory
+  clientInfo: ProtobufFactory
+  iq: ProtobufFactory
+  iqResponse: ProtobufFactory
+  kvEntry: ProtobufFactory
+  message: ProtobufFactory
+  messageRead: ProtobufFactory
+  messageSync: ProtobufFactory
+  presence: ProtobufFactory
+  user: ProtobufFactory
+}
+
+type ChatProtobufRuntime = {
+  build: ChatProtobufBuild
+  chatProto: protobuf.Root
+}
+
 interface TechwolfImageInfo {
   url: string
   width: number
   height: number
 }
 
-interface TechwolfImage {
-  iid?: number
+interface TechwolfWritableImage extends TechwolfImage {
+  iid?: number | string
   tinyImage?: TechwolfImageInfo
   originImage?: TechwolfImageInfo
 }
 
-// MessageBody 类型定义
-interface TechwolfMessageBody {
-  type: number
-  templateId: number
-  headTitle?: string
-  text?: string
-  sound?: any
-  image?: TechwolfImage
-  action?: any
-  articles?: Array<any>
-  notify?: any
-  dialog?: any
-  jobDesc?: any
-  resume?: any
-  redEnvelope?: any
-  orderDetail?: any
-  hyperLink?: any
-  video?: any
-  interview?: any
-  jobShare?: any
-  resumeShare?: any
-  atInfo?: any
-  sticker?: any
-  chatShare?: any
-  interviewShare?: any
-  listCard?: any
-  starRate?: any
-  frame?: any
-  multiImage?: any
-  extend?: string
-  style?: number
-  comDesc?: any
-}
-
-// 创建文本消息的参数类型
 interface CreateTextMessageData {
   tempID: number
   isSelf: boolean
@@ -86,7 +70,6 @@ interface CreateTextMessageData {
   type: number
 }
 
-// 创建图片消息的参数类型
 interface CreateImageMessageData {
   tempID: number
   isSelf: boolean
@@ -124,8 +107,37 @@ interface CreateImageMessageData {
   type: number
 }
 
+let sharedChatProtobufRuntime: ChatProtobufRuntime | undefined
+let sharedChatProtobufHandler: ChatProtobufHandler | undefined
+
+function createChatProtobufRuntime(): ChatProtobufRuntime {
+  const chatProtoRoot = protobuf.parse(chatProto).root
+
+  return {
+    chatProto: chatProtoRoot,
+    build: {
+      chatProtocol: chatProtoRoot.lookupType('TechwolfChatProtocol'),
+      message: chatProtoRoot.lookupType('TechwolfMessage'),
+      messageSync: chatProtoRoot.lookupType('TechwolfMessageSync'),
+      messageRead: chatProtoRoot.lookupType('TechwolfMessageRead'),
+      presence: chatProtoRoot.lookupType('TechwolfPresence'),
+      user: chatProtoRoot.lookupType('TechwolfUser'),
+      body: chatProtoRoot.lookupType('TechwolfMessageBody'),
+      clientInfo: chatProtoRoot.lookupType('TechwolfClientInfo'),
+      kvEntry: chatProtoRoot.lookupType('TechwolfKVEntry'),
+      iq: chatProtoRoot.lookupType('TechwolfIq'),
+      iqResponse: chatProtoRoot.lookupType('TechwolfIqResponse'),
+    },
+  }
+}
+
+export function getSharedChatProtobufRuntime() {
+  sharedChatProtobufRuntime ??= createChatProtobufRuntime()
+  return sharedChatProtobufRuntime
+}
+
 export class ChatProtobufHandler {
-  build: any
+  build: Partial<ChatProtobufBuild>
   chatProto?: protobuf.Root
 
   constructor() {
@@ -133,26 +145,23 @@ export class ChatProtobufHandler {
   }
 
   async init() {
-    this.chatProto = protobuf.parse(chatProto).root
-    if (this.chatProto) {
-      this.build = {
-        chatProtocol: this.chatProto.lookupType('TechwolfChatProtocol'),
-        message: this.chatProto.lookupType('TechwolfMessage'),
-        messageSync: this.chatProto.lookupType('TechwolfMessage'),
-        messageRead: this.chatProto.lookupType('TechwolfMessageRead'),
-        presence: this.chatProto.lookupType('TechwolfPresence'),
-        user: this.chatProto.lookupType('TechwolfUser'),
-        body: this.chatProto.lookupType('TechwolfMessageBody'),
-        clientInfo: this.chatProto.lookupType('TechwolfClientInfo'),
-        kvEntry: this.chatProto.lookupType('TechwolfKVEntry'),
-        iq: this.chatProto.lookupType('TechwolfIq'),
-        iqResponse: this.chatProto.lookupType('TechwolfIqResponse'),
-      }
+    const runtime = getSharedChatProtobufRuntime()
+    this.chatProto = runtime.chatProto
+    this.build = runtime.build
+    return this
+  }
+
+  getChatProtocolType() {
+    if (!this.build.chatProtocol) {
+      const runtime = getSharedChatProtobufRuntime()
+      this.build = runtime.build
+      this.chatProto = runtime.chatProto
     }
+    return this.build.chatProtocol as protobuf.Type
   }
 
   createChatProtocol(type: number) {
-    const protocol = this.build.chatProtocol.create()
+    const protocol = this.build.chatProtocol?.create() as unknown as TechwolfChatProtocol
     protocol.type = type
     return protocol
   }
@@ -164,7 +173,7 @@ export class ChatProtobufHandler {
     to: TechwolfUser,
     body: TechwolfMessageBody,
   ) {
-    const message = this.build.message.create()
+    const message = this.build.message?.create() as unknown as TechwolfMessage
     message.type = type
     message.mid = messageId
     message.cmid = messageId
@@ -175,7 +184,7 @@ export class ChatProtobufHandler {
   }
 
   createUser(uid: number, name?: string, source = 0): TechwolfUser {
-    const user = this.build.user.create()
+    const user = this.build.user?.create() as unknown as TechwolfUser
     user.source = source
     user.uid = uid || 0
     if (uid && name) {
@@ -185,7 +194,7 @@ export class ChatProtobufHandler {
   }
 
   createBody(type: number, templateId = 1): TechwolfMessageBody {
-    const body = this.build.body.create()
+    const body = this.build.body?.create() as unknown as TechwolfMessageBody
     body.type = type
     body.templateId = templateId
     return body
@@ -210,7 +219,7 @@ export class ChatProtobufHandler {
     const to = this.createUser(data.to.uid, data.to.encryptUid, data.to.source)
     const body = this.createBody(3, 1)
 
-    body.image = data.body.image
+    body.image = data.body.image as TechwolfWritableImage
 
     const message = this.createMessage(data.type || 1, data.tempID, from, to, body)
     const protocol = this.createChatProtocol(1)
@@ -218,4 +227,31 @@ export class ChatProtobufHandler {
 
     return protocol
   }
+}
+
+export function getSharedChatProtobufHandler() {
+  if (!sharedChatProtobufHandler) {
+    sharedChatProtobufHandler = new ChatProtobufHandler()
+    void sharedChatProtobufHandler.init()
+  }
+  return sharedChatProtobufHandler
+}
+
+export function encodeChatProtocol(data: TechwolfChatProtocol) {
+  return getSharedChatProtobufHandler().getChatProtocolType().encode(data).finish().slice()
+}
+
+export function decodeChatProtocol(data: Uint8Array | ArrayBufferLike) {
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data)
+  return getSharedChatProtobufHandler().getChatProtocolType().decode(bytes)
+}
+
+export function decodeChatProtocolToObject(
+  data: Uint8Array | ArrayBufferLike,
+  options: protobuf.IConversionOptions = { longs: String },
+) {
+  return getSharedChatProtobufHandler().getChatProtocolType().toObject(
+    decodeChatProtocol(data),
+    options,
+  ) as TechwolfChatProtocol
 }

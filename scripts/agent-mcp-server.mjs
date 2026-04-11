@@ -5,6 +5,7 @@
 import { Buffer } from 'node:buffer'
 import { stdin, stdout, stderr, env } from 'node:process'
 
+import { AGENT_PROTOCOL_VERSION } from '../shared/agentProtocol.js'
 import {
   createAgentBridgeAuthHeaders,
   getAgentBridgeRuntime,
@@ -676,6 +677,7 @@ async function buildBridgeContextResource() {
   const status = await safeBridgeSection('/status')
 
   return {
+    agentProtocolVersion: AGENT_PROTOCOL_VERSION,
     bridge: {
       host: bridgeRuntime.host,
       httpBaseUrl: BRIDGE_BASE_URL,
@@ -820,6 +822,7 @@ async function readAgentContext(args = {}) {
 
   return {
     ok: true,
+    agentProtocolVersion: AGENT_PROTOCOL_VERSION,
     bridge: {
       httpBaseUrl: BRIDGE_BASE_URL,
       httpsRelayUrl: `${bridgeRuntime.httpsBaseUrl}/`,
