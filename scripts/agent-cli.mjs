@@ -1,5 +1,7 @@
 // @ts-check
 
+import { pathToFileURL } from 'node:url'
+
 import {
   createAgentBridgeAuthHeaders,
   getAgentBridgeRuntime,
@@ -28,11 +30,22 @@ options:
   --timeout <ms>      command timeout for POST /command
   --payload <json>    JSON payload for command or batch array
   --stop-on-error     stop remaining batch commands after first failure
-  --no-wait-relay     fail immediately when relay is not connected`)
+   --no-wait-relay     fail immediately when relay is not connected`)
+}
+
+function parseJsonArg(raw, fieldName) {
+  try {
+    return JSON.parse(raw)
+  } catch (error) {
+    throw new Error(
+      `${fieldName} 必须是合法 JSON: ${error instanceof Error ? error.message : 'unknown error'}`,
+    )
+  }
 }
 
 /** @param {string[]} argv @returns {AgentCliOptions} */
-function parseArgs(argv) {
+export function parseArgs(argv) {
+  const hasExplicitCommand = typeof argv[0] === 'string' && !argv[0].startsWith('-')
   const options = {
     host: '127.0.0.1',
     port: 4317,
@@ -40,10 +53,10 @@ function parseArgs(argv) {
     payload: undefined,
     stopOnError: false,
     waitForRelay: true,
-    command: argv[0] ?? 'stats',
+    command: hasExplicitCommand ? argv[0] : 'stats',
   }
 
-  for (let index = 1; index < argv.length; index += 1) {
+  for (let index = hasExplicitCommand ? 1 : 0; index < argv.length; index += 1) {
     const token = argv[index]
     const next = argv[index + 1]
 
@@ -63,7 +76,7 @@ function parseArgs(argv) {
       continue
     }
     if (token === '--payload' && next) {
-      options.payload = JSON.parse(next)
+      options.payload = parseJsonArg(next, '--payload')
       index += 1
       continue
     }
@@ -84,7 +97,7 @@ function parseArgs(argv) {
   return options
 }
 
-const options = parseArgs(args)
+let options
 
 /** @returns {string} */
 function buildBaseUrl() {
@@ -243,14 +256,19 @@ async function run() {
   }
 }
 
-try {
-  await run()
-} catch (error) {
-  printJson({
-    ok: false,
-    code: 'cli-request-failed',
-    message: error instanceof Error ? error.message : 'unknown error',
-  })
-  console.error('\nHint: 如果 companion 服务未启动，请先运行 node ./scripts/agent-bridge.mjs。')
-  process.exitCode = 1
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    options = parseArgs(args)
+    await run()
+  } catch (error) {
+    printJson({
+      ok: false,
+      code: options ? 'cli-request-failed' : 'cli-invalid-args',
+      message: error instanceof Error ? error.message : 'unknown error',
+    })
+    if (options) {
+      console.error('\nHint: 如果 companion 服务未启动，请先运行 node ./scripts/agent-bridge.mjs。')
+    }
+    process.exitCode = 1
+  }
 }

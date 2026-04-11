@@ -133,7 +133,7 @@ class ChatProtobufHandler {
   }
 
   async init() {
-    this.chatProto = await protobuf.load(chatProto)
+    this.chatProto = protobuf.parse(chatProto).root
     if (this.chatProto) {
       this.build = {
         chatProtocol: this.chatProto.lookupType('TechwolfChatProtocol'),

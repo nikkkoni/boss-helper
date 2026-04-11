@@ -1,5 +1,7 @@
 // @ts-check
 
+import { pathToFileURL } from 'node:url'
+
 import {
   createAgentBridgeAuthHeaders,
   getAgentBridgeRuntime,
@@ -36,7 +38,11 @@ options:
   --review-mode <mode>         none | heuristic | accept | reject, default heuristic
   --greeting-template <text>   template for accepted review greeting, supports {{jobName}} {{brandName}}
   --print-resume               print resume text summary
-  --help                       show help`)
+   --help                       show help`)
+}
+
+function getResponseData(data) {
+  return data && typeof data === 'object' ? data.data : undefined
 }
 
 /** @param {string | undefined} value */
@@ -57,7 +63,7 @@ function normalizeReviewMode(value) {
 }
 
 /** @param {string[]} argv @returns {AgentOrchestratorOptions} */
-function parseArgs(argv) {
+export function parseArgs(argv) {
   /** @type {AgentOrchestratorOptions} */
   const options = {
     host: '127.0.0.1',
@@ -86,7 +92,11 @@ function parseArgs(argv) {
     const token = argv[index]
     const next = argv[index + 1]
 
-    if ((token === '--host' || token === '-h') && next) {
+    if (token === '--help' || token === '-h') {
+      options.help = true
+      continue
+    }
+    if (token === '--host' && next) {
       options.host = next
       index += 1
       continue
@@ -177,9 +187,6 @@ function parseArgs(argv) {
     if (token === '--print-resume') {
       options.printResume = true
       continue
-    }
-    if (token === '--help') {
-      options.help = true
     }
   }
 
@@ -297,7 +304,10 @@ function renderGreeting(job) {
 
 async function readJobs(detailLimit) {
   const jobsList = await sendCommand('jobs.list')
-  const jobs = jobsList.data.jobs.slice(0, Math.max(options.jobLimit, detailLimit))
+  const jobsListData = getResponseData(jobsList)
+  const jobs = Array.isArray(jobsListData?.jobs)
+    ? jobsListData.jobs.slice(0, Math.max(options.jobLimit, detailLimit))
+    : []
   const details = []
 
   for (const summary of jobs.slice(0, detailLimit)) {
@@ -479,8 +489,10 @@ async function main() {
   }
 
   const resume = await sendCommand('resume.get')
+  const resumeData = getResponseData(resume) ?? {}
+  const resumeText = typeof resumeData.resumeText === 'string' ? resumeData.resumeText : ''
   if (options.printResume) {
-    console.log(resume.data.resumeText)
+    console.log(resumeText)
   }
 
   const { jobs, details } = await readJobs(options.detailLimit)
@@ -495,8 +507,8 @@ async function main() {
     JSON.stringify(
       {
         resume: {
-          userId: resume.data.userId,
-          resumeTextLength: resume.data.resumeText.length,
+          userId: resumeData.userId ?? null,
+          resumeTextLength: resumeText.length,
         },
         jobsOnPage: jobs.length,
         analysed: analyses.map((item) => ({
@@ -547,17 +559,19 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.log(
-    JSON.stringify(
-      {
-        ok: false,
-        code: 'agent-orchestrator-failed',
-        message: error instanceof Error ? error.message : 'unknown error',
-      },
-      null,
-      2,
-    ),
-  )
-  process.exitCode = 1
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.log(
+      JSON.stringify(
+        {
+          ok: false,
+          code: 'agent-orchestrator-failed',
+          message: error instanceof Error ? error.message : 'unknown error',
+        },
+        null,
+        2,
+      ),
+    )
+    process.exitCode = 1
+  })
+}

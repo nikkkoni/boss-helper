@@ -1,10 +1,10 @@
 // @ts-check
 
-import { openSync } from 'node:fs'
+import { closeSync, openSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { getAgentBridgeRuntime } from './agent-security.mjs'
 
@@ -13,8 +13,8 @@ import { getAgentBridgeRuntime } from './agent-security.mjs'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = dirname(scriptDir)
 const bridgeScript = join(scriptDir, 'agent-bridge.mjs')
-const pidFile = join(repoRoot, '.boss-helper-agent-bridge.pid')
-const logFile = join(repoRoot, '.boss-helper-agent-bridge.log')
+const pidFile = process.env.BOSS_HELPER_AGENT_PID_FILE ?? join(repoRoot, '.boss-helper-agent-bridge.pid')
+const logFile = process.env.BOSS_HELPER_AGENT_LOG_FILE ?? join(repoRoot, '.boss-helper-agent-bridge.log')
 
 /** @param {string[]} argv @returns {AgentLaunchOptions} */
 function parseArgs(argv) {
@@ -83,29 +83,36 @@ async function isBridgeHealthy() {
   }
 }
 
-function startBridgeProcess() {
+export function startBridgeProcess() {
   const logFd = openSync(logFile, 'a')
-  const child = spawn(process.execPath, [bridgeScript], {
-    cwd: repoRoot,
-    detached: true,
-    env: {
-      ...process.env,
-      BOSS_HELPER_AGENT_HOST: options.host,
-      BOSS_HELPER_AGENT_PORT: String(options.port),
-    },
-    stdio: ['ignore', logFd, logFd],
-  })
+  try {
+    const child = spawn(process.execPath, [bridgeScript], {
+      cwd: repoRoot,
+      detached: true,
+      env: {
+        ...process.env,
+        BOSS_HELPER_AGENT_HOST: options.host,
+        BOSS_HELPER_AGENT_PORT: String(options.port),
+      },
+      stdio: ['ignore', logFd, logFd],
+    })
 
-  child.unref()
-  return child.pid
+    child.unref()
+    return child.pid ?? null
+  } finally {
+    closeSync(logFd)
+  }
 }
 
-async function ensureBridge() {
+export async function ensureBridge() {
   if (await isBridgeHealthy()) {
     return { started: false }
   }
 
   const pid = startBridgeProcess()
+  if (pid == null) {
+    throw new Error('bridge 启动失败，未获取到子进程 pid')
+  }
   await writeFile(pidFile, `${pid}\n`, 'utf8')
 
   for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -150,7 +157,7 @@ function openRelayPage(url) {
   spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref()
 }
 
-async function main() {
+export async function main() {
   const bridge = await ensureBridge()
   const relayUrl = buildRelayUrl()
 
@@ -174,18 +181,20 @@ async function main() {
   console.error('\nNext: 在 Chromium 浏览器中先信任本地证书，再保持 relay 页面打开；如果 URL 里带了 extensionId，页面会自动预填。')
 }
 
-main().catch((error) => {
-  console.log(
-    JSON.stringify(
-      {
-        ok: false,
-        code: 'agent-launch-failed',
-        message: error instanceof Error ? error.message : 'unknown error',
-        logFile,
-      },
-      null,
-      2,
-    ),
-  )
-  process.exitCode = 1
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.log(
+      JSON.stringify(
+        {
+          ok: false,
+          code: 'agent-launch-failed',
+          message: error instanceof Error ? error.message : 'unknown error',
+          logFile,
+        },
+        null,
+        2,
+      ),
+    )
+    process.exitCode = 1
+  })
+}
