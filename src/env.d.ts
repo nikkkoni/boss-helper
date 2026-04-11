@@ -61,7 +61,6 @@ declare global {
     __q_log?: unknown
     __q_useSignedKey?: unknown
     __q_useUser?: unknown
-    __q_parseGptJson?: unknown
     _q_ChatProtobufHandler?: unknown
     _q_ChatProtobufMessage?: unknown
     [key: string]: any

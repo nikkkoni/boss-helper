@@ -11,7 +11,6 @@ describe('debug global exposure', () => {
   it('keeps agent and __q_* globals behind import.meta.env.DEV guards', () => {
     const deliveryControlSource = readSource('src/pages/zhipin/hooks/useDeliveryControl.ts')
     const appSource = readSource('src/App.vue')
-    const parseSource = readSource('src/utils/parse.ts')
     const confStoreSource = readSource('src/stores/conf/index.ts')
     const jobsStoreSource = readSource('src/stores/jobs.ts')
     const logStoreSource = readSource('src/stores/log.tsx')
@@ -20,7 +19,6 @@ describe('debug global exposure', () => {
 
     expect(deliveryControlSource).toContain('if (import.meta.env.DEV) {\n        window.__bossHelperAgent = controller\n      }')
     expect(appSource).toContain('if (import.meta.env.DEV) {\n  window.__q_openStore = () => {')
-    expect(parseSource).toContain("if (import.meta.env.DEV && typeof window !== 'undefined') {")
     expect(confStoreSource).toContain('if (import.meta.env.DEV) {\n  window.__q_useConf = useConf\n}')
     expect(jobsStoreSource).toContain('if (import.meta.env.DEV) {\n  window.__q_jobList = jobList\n}')
     expect(logStoreSource).toContain('window.__q_log = () => useLog().data.value')

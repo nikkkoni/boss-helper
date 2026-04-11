@@ -45,6 +45,9 @@ describe('ConfigLLM.vue', () => {
     setupPinia()
     mockExportJson.mockReset()
     mockImportJson.mockReset()
+    vi.stubGlobal('crypto', {
+      randomUUID: vi.fn(() => 'mock-uuid'),
+    })
   })
 
   it('copies and deletes model entries through component actions', async () => {
@@ -64,6 +67,7 @@ describe('ConfigLLM.vue', () => {
 
     state.copy(store.modelData[0] as ReturnType<typeof createModelItem>)
     expect(store.modelData).toHaveLength(2)
+    expect(store.modelData[1].key).toBe('mock-uuid')
     expect(store.modelData[1].name).toBe('Primary 副本')
 
     state.del(store.modelData[0] as ReturnType<typeof createModelItem>)
@@ -128,6 +132,7 @@ describe('ConfigLLM.vue', () => {
       ...createModelItem('', 'New Item'),
     })
     expect(store.modelData).toHaveLength(2)
+    expect(store.modelData[1].key).toBe('mock-uuid')
     expect(store.modelData[1].name).toBe('New Item')
   })
 

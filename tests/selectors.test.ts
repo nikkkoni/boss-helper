@@ -36,6 +36,7 @@ describe('selectors', () => {
   it('builds route specific selector groups', () => {
     expect(getMountContainerSelectors('/web/geek/jobs')).toContain('.page-jobs-main')
     expect(getVueContainerSelectors('/web/geek/job')).toEqual(['#wrap .page-job-wrapper'])
+    expect(zhipinSelectors.extension.jobPanelWrapId).toBe('boss-helper-job-wrap')
   })
 
   it('reports selector health for supported routes', () => {

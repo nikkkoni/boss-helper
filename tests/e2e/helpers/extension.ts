@@ -122,7 +122,7 @@ export async function callAgentCommand<TCommand extends BossHelperAgentCommand>(
 export async function waitForBossHelperReady(page: Page) {
   await page.locator('#boss-helper').waitFor()
   await page.locator('#boss-helper-job').waitFor()
-  await page.locator('#boss-helper-job-warp').waitFor()
+  await page.locator('#boss-helper-job-wrap').waitFor()
   await expect.poll(async () => {
     const jobs = await callAgentCommand(page, 'jobs.list')
     return jobs.data && typeof jobs.data === 'object' && 'totalOnPage' in jobs.data

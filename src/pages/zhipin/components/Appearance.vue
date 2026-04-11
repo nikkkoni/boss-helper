@@ -97,7 +97,7 @@ watch(
 watch(
   () => conf.value.listSink,
   (val) => {
-    const h = document.getElementById('boss-helper-job-warp')
+    const h = document.getElementById('boss-helper-job-wrap')
     if (!h) return
     h.style.marginBottom = val ? '300px' : 'unset'
   },

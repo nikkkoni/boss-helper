@@ -66,7 +66,7 @@ test('loads the extension on a Boss jobs page and completes a targeted apply flo
   const { page, session } = await prepareReadyBossPage()
 
   try {
-    await expect(page.locator('#boss-helper-job-warp')).toBeVisible()
+    await expect(page.locator('#boss-helper-job-wrap')).toBeVisible()
     await expect(page.locator('#boss-helper-job')).toContainText('Helper')
 
     const initialJobs = await callAgentCommand(page, 'jobs.list') as BossHelperAgentResponse<BossHelperAgentJobsListData>

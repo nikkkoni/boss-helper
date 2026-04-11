@@ -46,8 +46,8 @@ export const zhipinSelectors: SelectorRegistry<Exclude<ZhipinRouteKind, 'unknown
     appRootId: 'boss-helper',
     jobPanel: '#boss-helper-job',
     jobPanelId: 'boss-helper-job',
-    jobPanelWrap: '#boss-helper-job-warp',
-    jobPanelWrapId: 'boss-helper-job-warp',
+    jobPanelWrap: '#boss-helper-job-wrap',
+    jobPanelWrapId: 'boss-helper-job-wrap',
   },
   mountContainers: {
     job: ['.job-search-wrapper'],

@@ -394,7 +394,7 @@ function openStore() {
         文案不理解的可以提供建议进行调整
       </ElTabPane>
     </ElTabs>
-    <Teleport to="#boss-helper-job-warp,.page-job-inner .page-job-content">
+    <Teleport to="#boss-helper-job-wrap,.page-job-inner .page-job-content">
       <Card />
     </Teleport>
     <!-- <Teleport to=".page-job-wrapper">

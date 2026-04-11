@@ -47,12 +47,17 @@ export function animate({
     }),
   )
 }
-let delayLoadId: number | undefined
+const activeLoaderStops = new Set<() => void>()
 
 // 延迟
 export async function delay(s: number) {
-  loader({ ms: s * 1000 })
-  return new Promise((resolve) => setTimeout(resolve, s * 1000))
+  const stopLoading = loader({ ms: s * 1000 })
+  return new Promise((resolve) =>
+    setTimeout(() => {
+      stopLoading()
+      resolve(undefined)
+    }, s * 1000),
+  )
 }
 
 // 加载进度条
@@ -65,14 +70,32 @@ export function loader({ ms = 10000, color = '#54f98d', onDone = () => {} }) {
     load = l
   }
   load.style.background = color
-  if (delayLoadId != null) {
-    cancelAnimationFrame(delayLoadId)
-    delayLoadId = undefined
+  for (const stop of activeLoaderStops) {
+    stop()
   }
+
+  let animationId: number | undefined
+  let stopped = false
+
+  const stop = () => {
+    if (stopped) {
+      return
+    }
+    stopped = true
+    activeLoaderStops.delete(stop)
+    if (animationId != null) {
+      cancelAnimationFrame(animationId)
+      animationId = undefined
+    }
+    const load = document.querySelector<HTMLDivElement>('#loader')
+    if (load) load.style.width = '0%'
+  }
+
+  activeLoaderStops.add(stop)
   animate({
     duration: ms,
     callId(id) {
-      delayLoadId = id
+      animationId = id
     },
     timing(timeFraction) {
       return timeFraction
@@ -81,19 +104,15 @@ export function loader({ ms = 10000, color = '#54f98d', onDone = () => {} }) {
       load.style.width = `${progress * 100}%`
     },
     end() {
+      activeLoaderStops.delete(stop)
+      stopped = true
+      animationId = undefined
       load.style.width = '0%'
       onDone()
     },
   })
 
-  return () => {
-    if (delayLoadId != null) {
-      cancelAnimationFrame(delayLoadId)
-      delayLoadId = undefined
-    }
-    const load = document.querySelector<HTMLDivElement>('#loader')
-    if (load) load.style.width = '0%'
-  }
+  return stop
 }
 
 // 获取当前日期

@@ -16,8 +16,6 @@ import {
 import { h, onMounted, ref } from 'vue'
 
 import SafeHtml from '@/components/SafeHtml.vue'
-import logVue from '@/components/conf/Log.vue'
-import storeVue from '@/components/conf/Store.vue'
 import userVue from '@/components/conf/User.vue'
 import { store } from '@/components/icon/store'
 import { counter } from '@/message'
@@ -27,12 +25,10 @@ import { logger } from '@/utils/logger'
 const confBox = ref(false)
 
 const confs = {
-  store: { name: '存储配置', component: storeVue, disabled: true },
   user: { name: '账号配置', component: userVue, disabled: false },
-  log: { name: '日志配置', component: logVue, disabled: true },
 }
 
-const confKey = ref<keyof typeof confs>('store')
+const confKey = ref<keyof typeof confs>('user')
 const dark = ref(false)
 
 counter.storageGet('theme-dark', false).then((res) => {

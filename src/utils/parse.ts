@@ -21,7 +21,3 @@ export function parseGptJson<T = any>(json: string): Partial<T> | null {
   json = stripJsonFence(json)
   return parse(json, ALL)
 }
-
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  window.__q_parseGptJson = parseGptJson
-}

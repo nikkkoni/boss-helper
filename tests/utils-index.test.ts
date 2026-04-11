@@ -82,7 +82,7 @@ describe('utils/index', () => {
 
     stop()
 
-    expect(cancelAnimationFrameSpy).toHaveBeenLastCalledWith(2)
+    expect(cancelAnimationFrameSpy).toHaveBeenCalledTimes(1)
     expect(load?.style.width).toBe('0%')
   })
 
@@ -105,5 +105,31 @@ describe('utils/index', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('stops earlier loader instances when a new loader starts', () => {
+    document.body.innerHTML = '<div id="header"></div>'
+
+    const callbacks: FrameRequestCallback[] = []
+    const cancelAnimationFrameSpy = vi.fn()
+
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      callbacks.push(callback)
+      return callbacks.length
+    }))
+    vi.stubGlobal('cancelAnimationFrame', cancelAnimationFrameSpy)
+    vi.spyOn(performance, 'now').mockReturnValue(0)
+
+    const stopFirst = loader({ ms: 100 })
+    callbacks[0](50)
+    expect(document.querySelector<HTMLDivElement>('#loader')?.style.width).toBe('50%')
+
+    loader({ ms: 100 })
+
+    expect(cancelAnimationFrameSpy).toHaveBeenCalledWith(2)
+    expect(document.querySelector<HTMLDivElement>('#loader')?.style.width).toBe('0%')
+
+    stopFirst()
+    expect(cancelAnimationFrameSpy).toHaveBeenCalledTimes(1)
   })
 })

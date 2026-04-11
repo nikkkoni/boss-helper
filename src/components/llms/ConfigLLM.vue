@@ -29,6 +29,10 @@ const modelStore = useModel()
 
 const createBoxShow = ref(false)
 
+function createModelKey() {
+  return crypto.randomUUID()
+}
+
 function del(d: modelData) {
   modelStore.modelData = modelStore.modelData.filter((v) => d.key !== v.key)
   ElMessage.success('删除成功')
@@ -36,7 +40,7 @@ function del(d: modelData) {
 
 function copy(d: modelData) {
   d = jsonClone(d)
-  d.key = new Date().getTime().toString()
+  d.key = createModelKey()
   d.name = `${d.name} 副本`
   modelStore.modelData.push(d)
   ElMessage.success('复制成功')
@@ -60,11 +64,11 @@ function create(d: modelData) {
     if (old) {
       deepmerge(old, d, { clone: false })
     } else {
-      d.key = new Date().getTime().toString()
+      d.key = createModelKey()
       modelStore.modelData.push(d)
     }
   } else {
-    d.key = new Date().getTime().toString()
+    d.key = createModelKey()
     modelStore.modelData.push(d)
   }
   createBoxShow.value = false

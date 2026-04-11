@@ -94,8 +94,8 @@ describe('pages/zhipin index', () => {
         extension: {
           jobPanel: '#boss-helper-job',
           jobPanelId: 'boss-helper-job',
-          jobPanelWrap: '#boss-helper-job-warp',
-          jobPanelWrapId: 'boss-helper-job-warp',
+          jobPanelWrap: '#boss-helper-job-wrap',
+          jobPanelWrapId: 'boss-helper-job-wrap',
         },
         getRouteKind: vi.fn(() => 'jobs'),
       })),
@@ -108,7 +108,7 @@ describe('pages/zhipin index', () => {
     expect(zhipinIndexMocks.initBossChatStream).toHaveBeenCalledTimes(1)
     expect(zhipinIndexMocks.joinSelectors).toHaveBeenCalledWith(['.job-search-wrapper'])
     expect(zhipinIndexMocks.elmGetterRm).toHaveBeenCalledTimes(2)
-    expect(document.querySelector('#boss-helper-job-warp')).not.toBeNull()
+    expect(document.querySelector('#boss-helper-job-wrap')).not.toBeNull()
     expect(document.querySelector('#boss-helper-job')).not.toBeNull()
     expect(wrapper.getAttribute('help')).toBe('出界了哇!')
     expect(zhipinIndexMocks.createPinia).toHaveBeenCalledTimes(1)
@@ -132,8 +132,8 @@ describe('pages/zhipin index', () => {
         extension: {
           jobPanel: '#boss-helper-job',
           jobPanelId: 'boss-helper-job',
-          jobPanelWrap: '#boss-helper-job-warp',
-          jobPanelWrapId: 'boss-helper-job-warp',
+          jobPanelWrap: '#boss-helper-job-wrap',
+          jobPanelWrapId: 'boss-helper-job-wrap',
         },
         getRouteKind: vi.fn(() => 'job'),
       })),
