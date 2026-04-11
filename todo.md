@@ -134,10 +134,10 @@
 
 > 目标：合并处理 LOW bug 和脚本健壮性问题，避免主线修复期间被噪音打断。
 
-- [ ] 处理 ID 生成、锁和容量上限类问题：`chatPrompt.ts`、`useApplying/index.ts`、`useAgentBatchRunner.ts`、`agentReview.ts`、`usePager.ts`、`useWebSocket/protobuf.ts`。（B31, B32, B33, B34, B35, B36）
-- [ ] 校正协议/CLI/脚本健壮性问题：`handler.ts`、`agent-orchestrator.mjs`、`agent-cli.mjs`、`agent-launch.mjs`。（B37, B38, B70, B71, B72, B73）
-- [ ] 清理命名、key 生成、共享状态和调试暴露问题：`selectors.ts`、`ConfigLLM.vue`、`utils/index.ts`、`utils/parse.ts`、`components/conf/Log.vue`、`components/conf/Store.vue`。（B61, B62, B63, B64, B66）
-- [ ] 清理 `useWebSocket/protobuf.ts` 的死代码与魔法数字说明。（B67, B68）
+- [x] 处理 ID 生成、锁和容量上限类问题：`chatPrompt.ts`、`useApplying/index.ts`、`useAgentBatchRunner.ts`、`agentReview.ts`、`usePager.ts`、`useWebSocket/protobuf.ts`。（B31, B32, B33, B34, B35, B36）
+- [x] 校正协议/CLI/脚本健壮性问题：`handler.ts`、`agent-orchestrator.mjs`、`agent-cli.mjs`、`agent-launch.mjs`。（B37, B38, B70, B71, B72, B73）
+- [x] 清理命名、key 生成、共享状态和调试暴露问题：`selectors.ts`、`ConfigLLM.vue`、`utils/index.ts`、`utils/parse.ts`、`components/conf/Log.vue`、`components/conf/Store.vue`。（B61, B62, B63, B64, B66）
+- [x] 清理 `useWebSocket/protobuf.ts` 的死代码与魔法数字说明。（B67, B68）
 
 ---
 
