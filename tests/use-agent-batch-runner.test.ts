@@ -38,9 +38,8 @@ const runnerMocks = vi.hoisted(() => ({
     }),
     consumeSeenJobIds: vi.fn((seenJobIds: string[]) => {
       const seen = new Set(seenJobIds)
-      runnerMocks.agentRuntimeStore.remainingTargetJobIds = runnerMocks.agentRuntimeStore.remainingTargetJobIds.filter(
-        (jobId) => !seen.has(jobId),
-      )
+      runnerMocks.agentRuntimeStore.remainingTargetJobIds =
+        runnerMocks.agentRuntimeStore.remainingTargetJobIds.filter((jobId) => !seen.has(jobId))
       return runnerMocks.agentRuntimeStore.remainingTargetJobIds.length
     }),
     setStopRequestedByCommand: vi.fn((value: boolean) => {
@@ -78,7 +77,9 @@ const runnerMocks = vi.hoisted(() => ({
     error: vi.fn(),
   },
   abortAllPendingAIFilterReviews: vi.fn(),
-  executeAgentBatchLoop: vi.fn(async (_options?: { shouldStop: () => boolean }) => ({ stepMsg: 'loop completed' })),
+  executeAgentBatchLoop: vi.fn(async (_options?: { shouldStop: () => boolean }) => ({
+    stepMsg: 'loop completed',
+  })),
   applyAgentBatchStartPayload: vi.fn(async ({ agentRuntime, payload }) => {
     agentRuntime.setTargetJobIds(payload?.jobIds ?? [])
   }),
@@ -107,11 +108,11 @@ vi.mock('element-plus', () => ({
   },
 }))
 
-vi.mock('@/composables/useCommon', () => ({
+vi.mock('@/stores/common', () => ({
   useCommon: () => runnerMocks.commonStore,
 }))
 
-vi.mock('@/composables/useStatistics', () => ({
+vi.mock('@/stores/statistics', () => ({
   useStatistics: () => runnerMocks.statisticsStore,
 }))
 
@@ -218,9 +219,11 @@ describe('useAgentBatchRunner', () => {
     runnerMocks.executeAgentBatchLoop.mockReset()
     runnerMocks.executeAgentBatchLoop.mockResolvedValue({ stepMsg: 'loop completed' })
     runnerMocks.applyAgentBatchStartPayload.mockReset()
-    runnerMocks.applyAgentBatchStartPayload.mockImplementation(async ({ agentRuntime, payload }) => {
-      agentRuntime.setTargetJobIds(payload?.jobIds ?? [])
-    })
+    runnerMocks.applyAgentBatchStartPayload.mockImplementation(
+      async ({ agentRuntime, payload }) => {
+        agentRuntime.setTargetJobIds(payload?.jobIds ?? [])
+      },
+    )
     runnerMocks.useAgentBatchEvents.mockClear()
     for (const fn of Object.values(runnerMocks.batchEvents)) {
       fn.mockClear()
@@ -235,13 +238,15 @@ describe('useAgentBatchRunner', () => {
     const { useAgentBatchRunner } = await loadBatchRunner()
     const runner = useAgentBatchRunner({ ensureStoresLoaded, ensureSupportedPage })
 
-    runnerMocks.executeAgentBatchLoop.mockImplementation(async (options?: { shouldStop: () => boolean }) => {
-      const shouldStop = options?.shouldStop ?? (() => false)
-      while (!shouldStop()) {
-        await Promise.resolve()
-      }
-      return { stepMsg: 'loop completed' }
-    })
+    runnerMocks.executeAgentBatchLoop.mockImplementation(
+      async (options?: { shouldStop: () => boolean }) => {
+        const shouldStop = options?.shouldStop ?? (() => false)
+        while (!shouldStop()) {
+          await Promise.resolve()
+        }
+        return { stepMsg: 'loop completed' }
+      },
+    )
 
     const started = await runner.startBatch({ jobIds: ['job-1', 'job-2'], resetFiltered: true })
     expect(started).toEqual(expect.objectContaining({ ok: true, code: 'started' }))
@@ -251,7 +256,9 @@ describe('useAgentBatchRunner', () => {
     const pausing = await runner.pauseBatch()
     expect(pausing).toEqual(expect.objectContaining({ ok: true, code: 'pause-requested' }))
     expect(runnerMocks.commonStore.deliverStop).toBe(true)
-    expect(runnerMocks.batchEvents.emitBatchPausing).toHaveBeenCalledWith('正在暂停，等待当前岗位处理完成')
+    expect(runnerMocks.batchEvents.emitBatchPausing).toHaveBeenCalledWith(
+      '正在暂停，等待当前岗位处理完成',
+    )
 
     await flushBatch()
     expect(runnerMocks.batchEvents.emitBatchPaused).toHaveBeenCalledWith('loop completed')
@@ -269,10 +276,7 @@ describe('useAgentBatchRunner', () => {
     expect(stats).toEqual(expect.objectContaining({ ok: true, code: 'stats' }))
     expect(runnerMocks.statisticsStore.updateStatistics).toHaveBeenCalled()
 
-    runnerMocks.jobList.list = [
-      { status: { status: 'error' } },
-      { status: { status: 'success' } },
-    ]
+    runnerMocks.jobList.list = [{ status: { status: 'error' } }, { status: { status: 'success' } }]
     runner.resetFilter()
     expect(runnerMocks.resetJobStatuses).toHaveBeenCalledTimes(1)
 
@@ -292,14 +296,20 @@ describe('useAgentBatchRunner', () => {
     })
 
     runnerMocks.commonStore.deliverLock = true
-    await expect(runner.startBatch()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'already-running' }))
+    await expect(runner.startBatch()).resolves.toEqual(
+      expect.objectContaining({ ok: false, code: 'already-running' }),
+    )
 
     runnerMocks.commonStore.deliverLock = false
     runnerMocks.commonStore.deliverState = 'paused'
-    await expect(runner.pauseBatch()).resolves.toEqual(expect.objectContaining({ ok: true, code: 'already-paused' }))
+    await expect(runner.pauseBatch()).resolves.toEqual(
+      expect.objectContaining({ ok: true, code: 'already-paused' }),
+    )
 
     runnerMocks.commonStore.deliverState = 'idle'
-    await expect(runner.resumeBatch()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'not-paused' }))
+    await expect(runner.resumeBatch()).resolves.toEqual(
+      expect.objectContaining({ ok: false, code: 'not-paused' }),
+    )
   })
 
   it('distinguishes stop finalization from pause finalization', async () => {
@@ -309,19 +319,23 @@ describe('useAgentBatchRunner', () => {
       ensureSupportedPage: () => true,
     })
 
-    runnerMocks.executeAgentBatchLoop.mockImplementation(async (options?: { shouldStop: () => boolean }) => {
-      const shouldStop = options?.shouldStop ?? (() => false)
-      while (!shouldStop()) {
-        await Promise.resolve()
-      }
-      return { stepMsg: 'stopped by command' }
-    })
+    runnerMocks.executeAgentBatchLoop.mockImplementation(
+      async (options?: { shouldStop: () => boolean }) => {
+        const shouldStop = options?.shouldStop ?? (() => false)
+        while (!shouldStop()) {
+          await Promise.resolve()
+        }
+        return { stepMsg: 'stopped by command' }
+      },
+    )
 
     await runner.startBatch({ jobIds: ['job-7'] })
     const stopPromise = runner.stopBatch()
     await flushBatch()
 
-    await expect(stopPromise).resolves.toEqual(expect.objectContaining({ ok: true, code: 'stopped' }))
+    await expect(stopPromise).resolves.toEqual(
+      expect.objectContaining({ ok: true, code: 'stopped' }),
+    )
     expect(runnerMocks.abortAllPendingAIFilterReviews).toHaveBeenCalledWith('任务已停止')
     expect(runnerMocks.batchEvents.emitBatchStopped).toHaveBeenCalledTimes(1)
     expect(runnerMocks.batchEvents.emitBatchPaused).not.toHaveBeenCalled()
@@ -335,11 +349,21 @@ describe('useAgentBatchRunner', () => {
       ensureSupportedPage: () => false,
     })
 
-    await expect(runner.startBatch()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'unsupported-page' }))
-    await expect(runner.pauseBatch()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'unsupported-page' }))
-    await expect(runner.resumeBatch()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'unsupported-page' }))
-    await expect(runner.stopBatch()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'unsupported-page' }))
-    await expect(runner.stats()).resolves.toEqual(expect.objectContaining({ ok: false, code: 'unsupported-page' }))
+    await expect(runner.startBatch()).resolves.toEqual(
+      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+    )
+    await expect(runner.pauseBatch()).resolves.toEqual(
+      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+    )
+    await expect(runner.resumeBatch()).resolves.toEqual(
+      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+    )
+    await expect(runner.stopBatch()).resolves.toEqual(
+      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+    )
+    await expect(runner.stats()).resolves.toEqual(
+      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+    )
   })
 
   it('guards concurrent start requests before async setup finishes', async () => {
@@ -361,11 +385,15 @@ describe('useAgentBatchRunner', () => {
 
     await Promise.resolve()
 
-    await expect(secondStart).resolves.toEqual(expect.objectContaining({ ok: false, code: 'already-running' }))
+    await expect(secondStart).resolves.toEqual(
+      expect.objectContaining({ ok: false, code: 'already-running' }),
+    )
     expect(runnerMocks.applyAgentBatchStartPayload).not.toHaveBeenCalled()
 
     releaseEnsureStoresLoaded()
 
-    await expect(firstStart).resolves.toEqual(expect.objectContaining({ ok: true, code: 'started' }))
+    await expect(firstStart).resolves.toEqual(
+      expect.objectContaining({ ok: true, code: 'started' }),
+    )
   })
 })

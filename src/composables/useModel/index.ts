@@ -5,6 +5,7 @@ import { ref, toRaw, watch } from 'vue'
 import { counter } from '@/message'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
+import { migrateStorageKeys } from '@/utils/storageMigration'
 
 import type { openaiLLMConf } from './openai'
 import { openai } from './openai'
@@ -14,6 +15,9 @@ import type { Llm, Prompt } from './type'
 export const confModelKey = 'conf-model'
 const sessionConfModelKey = 'session:conf-model'
 const legacyConfModelKey = 'sync:conf-model'
+const modelStorageMigrations = [
+  { oldKey: legacyConfModelKey, newKey: sessionConfModelKey },
+] as const
 export const llms = [openai.info]
 export const llmIcon = llms.reduce(
   (acc, cur) => {
@@ -70,14 +74,8 @@ export const useModel = defineStore('model', () => {
   )
 
   async function init() {
-    let data = await counter.storageGet<modelData[]>(sessionConfModelKey)
-    if (data == null) {
-      data = await counter.storageGet<modelData[]>(legacyConfModelKey)
-      if (data != null) {
-        await counter.storageSet(sessionConfModelKey, data)
-        await counter.storageRm(legacyConfModelKey)
-      }
-    }
+    await migrateStorageKeys(modelStorageMigrations, counter)
+    const data = await counter.storageGet<modelData[]>(sessionConfModelKey)
     logger.debug('ai模型数据', data)
     const persistedModels = data ?? []
     const vipModels = modelData.value.filter((item) => item.vip != null)

@@ -7,19 +7,17 @@ import { counter } from '@/message'
 import { useUser } from '@/stores/user'
 import type { ConfigLevel, FormData } from '@/types/formData'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
-import {
-  exportJson,
-  ImportJsonCancelledError,
-  importJson,
-} from '@/utils/jsonImportExport'
+import { exportJson, ImportJsonCancelledError, importJson } from '@/utils/jsonImportExport'
 import { logger } from '@/utils/logger'
+import { migrateStorageKeys } from '@/utils/storageMigration'
 
-import { defaultFormData } from './info'
 import { registerUserConfigSnapshotGetter } from '../user'
+import { defaultFormData } from './info'
 import {
   amapKeyStorageKey,
   formDataKey,
   formDataTemplatesKey,
+  legacyAmapKeyStorageKey,
   sanitizeSensitiveFormData,
 } from './shared'
 
@@ -28,6 +26,9 @@ export * from './shared'
 
 type FormDataTemplates = Record<string, Partial<FormData>>
 export type FormDataMigration = [string, (from: Partial<FormData>) => Partial<FormData>]
+const confStorageMigrations = [
+  { oldKey: legacyAmapKeyStorageKey, newKey: amapKeyStorageKey },
+] as const
 
 export const FORM_DATA_MIGRATIONS: readonly FormDataMigration[] = [
   [
@@ -97,6 +98,7 @@ export const useConf = defineStore('conf', () => {
   }
 
   async function init() {
+    await migrateStorageKeys(confStorageMigrations, counter)
     let from = await counter.storageGet<Partial<FormData>>(formDataKey, {})
     const legacyAmapKey = typeof from.amap?.key === 'string' ? from.amap.key.trim() : ''
     let sessionAmapKey = await counter.storageGet<string>(amapKeyStorageKey)

@@ -13,14 +13,16 @@ const reviewMocks = vi.hoisted(() => ({
   createBossHelperAgentEvent: vi.fn((payload) => payload),
   emitBossHelperAgentEvent: vi.fn(),
   toAgentCurrentJob: vi.fn((job: Record<string, unknown>) => job),
-  toPendingReviewDetail: vi.fn((ctx: { listData: { encryptJobId: string } }, threshold: number, timeoutMs: number) => ({
-    encryptJobId: ctx.listData.encryptJobId,
-    threshold,
-    timeoutMs,
-  })),
+  toPendingReviewDetail: vi.fn(
+    (ctx: { listData: { encryptJobId: string } }, threshold: number, timeoutMs: number) => ({
+      encryptJobId: ctx.listData.encryptJobId,
+      threshold,
+      timeoutMs,
+    }),
+  ),
 }))
 
-vi.mock('@/composables/useCommon', () => ({
+vi.mock('@/stores/common', () => ({
   useCommon: () => reviewMocks.common,
 }))
 
@@ -50,10 +52,8 @@ describe('agentReview', () => {
   })
 
   it('emits pending review events and resolves matching external reviews', async () => {
-    const {
-      requestExternalAIFilterReview,
-      submitExternalAIFilterReview,
-    } = await import('@/pages/zhipin/hooks/agentReview')
+    const { requestExternalAIFilterReview, submitExternalAIFilterReview } =
+      await import('@/pages/zhipin/hooks/agentReview')
 
     const ctx = createLogContext(createJob({ encryptJobId: 'job-review-1', jobName: 'Frontend' }))
     const reviewPromise = requestExternalAIFilterReview(ctx, 60, 1_000)

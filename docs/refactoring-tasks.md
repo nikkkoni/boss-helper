@@ -126,6 +126,8 @@
 
 ### Task 2.1: 统一 Pinia Store 命名
 
+**状态:** [x] 已完成（2026-04-11）
+
 **现状:** 部分 Pinia store 使用 `use*` composable 命名 (`useCommon`, `useStatistics`, `useDeliver`, `usePager`)，与真正的 composable (`useChat`, `useVue`) 混淆。
 
 **涉及文件:**
@@ -153,6 +155,8 @@
 
 ### Task 2.2: 统一导出模式
 
+**状态:** [x] 已完成（2026-04-11）
+
 **现状:** 混合使用 default export 和 named export。部分 store 同时导出 composable 函数和 singleton accessor（`useJobs()` + `jobList`）。
 
 **涉及文件:**
@@ -178,6 +182,8 @@
 
 ### Task 2.3: 清理废弃代码
 
+**状态:** [x] 已完成（2026-04-11）
+
 **涉及文件及操作:**
 
 | 文件 | 操作 | 原因 |
@@ -199,6 +205,8 @@
 ---
 
 ### Task 2.4: 集中 Storage Key 迁移逻辑
+
+**状态:** [x] 已完成（2026-04-11）
 
 **现状:** `signedKey.ts`, `useModel/index.ts`, `confStore/index.ts` 各自包含 `sync:` → `session:` 迁移逻辑。
 

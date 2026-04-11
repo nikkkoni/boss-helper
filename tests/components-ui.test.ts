@@ -3,8 +3,8 @@
 import { readFileSync } from 'node:fs'
 
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 
 const {
   mockConf,
@@ -87,7 +87,7 @@ vi.mock('@/stores/signedKey', () => ({
   useSignedKey: () => mockSignedKey,
 }))
 
-vi.mock('@/composables/useStatistics', () => ({
+vi.mock('@/stores/statistics', () => ({
   useStatistics: () => ({
     todayData: {
       success: 3,
@@ -116,7 +116,7 @@ vi.mock('@/pages/zhipin/hooks/useDeliver', () => ({
 }))
 
 vi.mock('@/utils/elmGetter', () => ({
-  default: {
+  elmGetter: {
     get: mockElmGetterGet,
     rm: mockElmGetterRm,
   },

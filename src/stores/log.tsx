@@ -1,10 +1,7 @@
-import { computed, ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
+import { computed, ref } from 'vue'
 
-import type {
-  AIFilteringScoreDetail,
-  BossHelperError,
-} from '@/types/deliverError'
+import type { AIFilteringScoreDetail, BossHelperError } from '@/types/deliverError'
 import type { amapDistance, amapGeocode } from '@/utils/amap'
 
 import type { MyJobListData } from './jobs'
@@ -100,7 +97,8 @@ const useLogStore = defineStore('log', () => {
 
   function query(options: LogQueryOptions = {}) {
     const limit = Number.isInteger(options.limit) && (options.limit ?? 0) > 0 ? options.limit! : 50
-    const offset = Number.isInteger(options.offset) && (options.offset ?? 0) >= 0 ? options.offset! : 0
+    const offset =
+      Number.isInteger(options.offset) && (options.offset ?? 0) >= 0 ? options.offset! : 0
     const statusFilter = options.status?.length ? new Set(options.status) : null
     const fromTs = options.from ? Date.parse(options.from) : null
     const toTs = options.to ? Date.parse(options.to) : null
@@ -179,6 +177,11 @@ const useLogStore = defineStore('log', () => {
   }
 })
 
+/**
+ * 日志 store 的组件入口。
+ *
+ * 返回响应式字段与渲染列配置，适合在 Vue 组件中直接消费。
+ */
 export function useLog() {
   const store = useLogStore()
   const refs = storeToRefs(store)

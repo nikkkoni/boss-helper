@@ -14,9 +14,9 @@ import {
 import { computed, onMounted, ref } from 'vue'
 
 import Alert from '@/components/Alert'
-import { useCommon } from '@/composables/useCommon'
-import { useStatistics } from '@/composables/useStatistics'
+import { useCommon } from '@/stores/common'
 import { useConf } from '@/stores/conf'
+import { useStatistics } from '@/stores/statistics'
 
 import { useDeliveryControl } from '../hooks/useDeliveryControl'
 
@@ -192,20 +192,20 @@ onMounted(() => {
       />
     </ElCol>
     <ElCol :span="8">
-        <ElStatistic
-          data-help="统计当天累计消耗的 token 总量"
-          :value="aiTotalTokens"
-          title="Token总量："
-          suffix="tok"
-        />
+      <ElStatistic
+        data-help="统计当天累计消耗的 token 总量"
+        :value="aiTotalTokens"
+        title="Token总量："
+        suffix="tok"
+      />
     </ElCol>
     <ElCol :span="8">
-        <ElStatistic
-          data-help="根据模型单价估算的累计费用，未配置单价时始终为 0"
-          :precision="6"
-          :value="aiTotalCost"
-          title="估算费用："
-        />
+      <ElStatistic
+        data-help="根据模型单价估算的累计费用，未配置单价时始终为 0"
+        :precision="6"
+        :value="aiTotalCost"
+        title="估算费用："
+      />
     </ElCol>
   </ElRow>
   <div style="display: flex">

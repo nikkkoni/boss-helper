@@ -1,5 +1,4 @@
 import { useChat } from '@/composables/useChat'
-import { useCommon } from '@/composables/useCommon'
 import { Message } from '@/composables/useWebSocket'
 import {
   createBossHelperAgentResponse,
@@ -10,12 +9,16 @@ import {
   type BossHelperAgentChatMessage,
   type BossHelperAgentChatSendPayload,
 } from '@/message/agent'
+import { useCommon } from '@/stores/common'
 import { useUser } from '@/stores/user'
 
-import type { UseAgentQueriesOptions } from './agentQueryShared'
 import { createBossHelperAgentEvent, emitBossHelperAgentEvent } from './agentEvents'
+import type { UseAgentQueriesOptions } from './agentQueryShared'
 
-function toAgentChatMessage(conversationId: string, item: ReturnType<typeof useChat>['chatMessages']['value'][number]): BossHelperAgentChatMessage {
+function toAgentChatMessage(
+  conversationId: string,
+  item: ReturnType<typeof useChat>['chatMessages']['value'][number],
+): BossHelperAgentChatMessage {
   return {
     conversationId,
     id: item.id,

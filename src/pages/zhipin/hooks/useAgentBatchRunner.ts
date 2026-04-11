@@ -1,23 +1,25 @@
 import { ElMessage } from 'element-plus'
 
-import { useCommon } from '@/composables/useCommon'
-import { useStatistics } from '@/composables/useStatistics'
-import {
-  type BossHelperAgentStartPayload,
-} from '@/message/agent'
+import { type BossHelperAgentStartPayload } from '@/message/agent'
 import { useAgentRuntime } from '@/stores/agent'
+import { useCommon } from '@/stores/common'
 import { useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
+import { useStatistics } from '@/stores/statistics'
 import { delay, notification } from '@/utils'
 import { logger } from '@/utils/logger'
 
-import { abortAllPendingAIFilterReviews } from './agentReview'
-import { executeAgentBatchLoop } from './agentBatchLoop'
-import { createCurrentProgressSnapshot, createResponseHelpers, createStatsDataGetter } from './useAgentBatchState'
-import { resetJobStatuses } from '../shared/jobMapping'
 import { applyAgentBatchStartPayload } from '../services/agentBatchPayload'
+import { resetJobStatuses } from '../shared/jobMapping'
+import { executeAgentBatchLoop } from './agentBatchLoop'
+import { abortAllPendingAIFilterReviews } from './agentReview'
 import { useAgentBatchEvents } from './useAgentBatchEvents'
+import {
+  createCurrentProgressSnapshot,
+  createResponseHelpers,
+  createStatsDataGetter,
+} from './useAgentBatchState'
 import { useDeliver } from './useDeliver'
 import { usePager } from './usePager'
 
@@ -103,7 +105,10 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
         getJobList: () => jobList.list,
         getLocationHref: () => location.href,
         maxIterations: Math.max(agentRuntime.activeTargetJobIds.length * 5, 300),
-        maxRuntimeMs: Math.max(conf.formData.delay.deliveryPageNext * 1000 * 10, 3 * 60 * 60 * 1000),
+        maxRuntimeMs: Math.max(
+          conf.formData.delay.deliveryPageNext * 1000 * 10,
+          3 * 60 * 60 * 1000,
+        ),
         getRemainingTargetJobIds: () => [...agentRuntime.remainingTargetJobIds],
         goNextPage: () => next(),
         handleJobList: (loopOptions) => deliver.jobListHandle(loopOptions),
@@ -163,8 +168,8 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
 
     try {
       common.deliverLock = true
-    await options.ensureStoresLoaded()
-    if (!options.ensureSupportedPage()) {
+      await options.ensureStoresLoaded()
+      if (!options.ensureSupportedPage()) {
         common.deliverLock = false
         return fail('unsupported-page', '当前页面不支持自动投递')
       }

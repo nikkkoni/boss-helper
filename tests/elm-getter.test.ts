@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import elmGetter from '@/utils/elmGetter'
+import { elmGetter } from '@/utils/elmGetter'
 
 describe('elmGetter', () => {
   beforeEach(() => {
@@ -100,7 +100,9 @@ describe('elmGetter', () => {
   it('requires a callback for each and ignores duplicate observed nodes', async () => {
     document.body.innerHTML = '<div class="item"></div>'
 
-    expect(() => elmGetter.each('.item', null as never)).toThrow('elmGetter.each requires a callback')
+    expect(() => elmGetter.each('.item', null as never)).toThrow(
+      'elmGetter.each requires a callback',
+    )
 
     const callback = vi.fn()
     const parent = document.querySelector('.item') as HTMLDivElement

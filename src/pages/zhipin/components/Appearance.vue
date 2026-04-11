@@ -4,9 +4,9 @@ import { ElCheckbox } from 'element-plus'
 import { watch, watchEffect } from 'vue'
 
 import Alert from '@/components/Alert'
-import { useStatistics } from '@/composables/useStatistics'
 import { ExtStorage } from '@/message'
 import { useConf } from '@/stores/conf'
+import { useStatistics } from '@/stores/statistics'
 
 const title = useTitle(undefined, { observe: true })
 const { todayData } = useStatistics()

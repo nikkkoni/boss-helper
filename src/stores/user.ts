@@ -1,12 +1,12 @@
 import { ElMessage } from 'element-plus'
-import { computed, ref, watch, type Ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
+import { computed, ref, watch, type Ref } from 'vue'
 
-import { useStatistics } from '@/composables/useStatistics'
 import { getRootVue } from '@/composables/useVue'
 import { counter } from '@/message'
 import type { CookieInfo } from '@/message'
 import { amapKeyStorageKey, formDataKey, sanitizeSensitiveFormData } from '@/stores/conf/shared'
+import { useStatistics } from '@/stores/statistics'
 import type { FormData } from '@/types/formData'
 import { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
@@ -39,7 +39,10 @@ function toResumeValue(value: unknown) {
 }
 
 function joinResumeValues(values: unknown[], separator: string) {
-  return values.map((value) => toResumeValue(value)).filter(Boolean).join(separator)
+  return values
+    .map((value) => toResumeValue(value))
+    .filter(Boolean)
+    .join(separator)
 }
 
 function formatResumeRange(start?: string, end?: string) {
@@ -297,16 +300,16 @@ ${data.userDesc}
     if (options.工作经历 && data.workExpList != null && data.workExpList.length > 0) {
       const workExperiences = data.workExpList
         ?.map((item) => {
-          const heading = joinResumeValues([
-            item?.companyName,
-            item?.positionName ? `(${item.positionName})` : '',
-          ], ' ')
+          const heading = joinResumeValues(
+            [item?.companyName, item?.positionName ? `(${item.positionName})` : ''],
+            ' ',
+          )
           const emphasis = Array.isArray(item?.emphasis)
             ? item.emphasis
-              .map((entry) => toResumeValue(entry))
-              .filter(Boolean)
-              .map((entry) => `\`${entry}\``)
-              .join(' ')
+                .map((entry) => toResumeValue(entry))
+                .filter(Boolean)
+                .map((entry) => `\`${entry}\``)
+                .join(' ')
             : ''
           const sections = [
             heading ? `### ${heading}${formatResumeRange(item?.startDate, item?.endDate)}` : '',
@@ -323,10 +326,10 @@ ${workExperiences.join('\n\n')}`
     if (options.项目经历 && data.projectExpList && data.projectExpList.length > 0) {
       const projectExperiences = data.projectExpList
         ?.map((item) => {
-          const heading = joinResumeValues([
-            item?.name,
-            item?.roleName ? `(${item.roleName})` : '',
-          ], ' ')
+          const heading = joinResumeValues(
+            [item?.name, item?.roleName ? `(${item.roleName})` : ''],
+            ' ',
+          )
           const sections = [
             heading ? `### ${heading}${formatResumeRange(item?.startDate, item?.endDate)}` : '',
             formatResumeBlock('项目描述', item?.projectDesc),
@@ -341,10 +344,10 @@ ${projectExperiences.join('\n\n')}`
     if (options.教育经历 && data.educationExpList && data.educationExpList.length > 0) {
       const educationExperiences = data.educationExpList
         ?.map((item) => {
-          const firstLine = joinResumeValues([
-            item?.school,
-            joinResumeValues([item?.startYear, item?.endYear], '-'),
-          ], ' ')
+          const firstLine = joinResumeValues(
+            [item?.school, joinResumeValues([item?.startYear, item?.endYear], '-')],
+            ' ',
+          )
           const secondLine = toResumeValue(item?.degreeName)
           return [firstLine ? `- ${firstLine}` : '', secondLine].filter(Boolean).join('\n')
         })

@@ -9,8 +9,9 @@ BossHelper is a browser extension (WXT + Vue 3 + Pinia) that automates job appli
 ## Current Progress
 
 - 2026-04-11: Wave 1 已完成，`message/agent.ts`、`filterSteps.ts`、`useDeliveryControl.ts`、`useApplying/utils.ts` 已按任务单拆分。
-- 当前入口仍保持 barrel 兼容，现有 `@/message/agent` 与 `filterSteps.ts` consumer import 不需要迁移。
-- 下一步建议从 Wave 2 Task 2.1 开始，继续统一 store/composable 命名。
+- 2026-04-11: Wave 2 已完成，`useCommon` / `useStatistics` 已迁入 `src/stores/`，`elmGetter` 与 `ChatProtobufHandler` 已统一为 named export，并抽出 `src/utils/storageMigration.ts` 复用存储迁移逻辑。
+- 当前入口仍保持 barrel 与兼容导出策略，现有 `@/message/agent`、`filterSteps.ts` 与页面级 `useDeliver` / `usePager` consumer import 不需要继续迁移。
+- 下一步建议从 Wave 3 Task 3.1 开始，合并 protobuf schema 来源。
 
 ## Documents
 
@@ -31,7 +32,7 @@ BossHelper is a browser extension (WXT + Vue 3 + Pinia) that automates job appli
 Core Systems:
   useApplying/     ← Job pipeline engine (filters/, zhipinApi.ts, rangeMatch.ts)
   message/agent.ts ← Barrel to message/agent/ protocol modules
-  stores/          ← Pinia state (conf, jobs, log, user, agent, signedKey)
+  stores/          ← Pinia state (agent, common, conf, jobs, log, signedKey, statistics, user)
   useWebSocket/    ← Chat protocol (protobuf + MQTT)
   site-adapters/   ← Multi-site abstraction (currently zhipin only)
   scripts/         ← Node.js agent infrastructure (bridge, CLI, MCP server)
@@ -77,6 +78,6 @@ pnpm typecheck        # Type check (vue-tsc)
 
 ## Start Here
 
-1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 2.1
-2. Wave 1 已完成，接下来从命名统一与接口清理继续
-3. 保持 barrel 兼容策略，并在文件移动后继续执行 `pnpm test` 与 `pnpm check`
+1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 3.1
+2. Wave 1 与 Wave 2 已完成，接下来进入 protobuf 统一与类型安全增强
+3. 保持 barrel 与 named export 策略，并在 schema 调整后继续执行 `pnpm test`、`pnpm check` 与必要的聊天链路验证

@@ -3,13 +3,13 @@ import { signedKeyReqHandler, useSignedKey } from '@/stores/signedKey'
 import type { components } from '@/types/openapi'
 import { runBatchedAIRequest } from '@/utils/concurrency'
 
-import type { messageReps } from './type'
+import type { MessageResponse } from './type'
 
 function transformMessageReps(
   res: components['schemas']['LLMResponse'],
   prompt: string,
-): messageReps {
-  const ans: messageReps = { prompt }
+): MessageResponse {
+  const ans: MessageResponse = { prompt }
   ans.content = res.content
   ans.reasoning_content = res.reasoning_content
   ans.usage = {
@@ -48,7 +48,7 @@ export class SignedKeyLLM {
       boss?: bossZpBossData
       card: bossZpCardData
     }
-  }): Promise<messageReps> {
+  }): Promise<MessageResponse> {
     const batchKey = JSON.stringify({
       body: data,
       endpoint: '/v1/llm/invoke/greetings',
@@ -86,7 +86,7 @@ export class SignedKeyLLM {
       card: bossZpCardData
     }
     amap?: string
-  }): Promise<messageReps> {
+  }): Promise<MessageResponse> {
     const batchKey = JSON.stringify({
       amap: data.amap,
       body: data.data,
@@ -128,7 +128,7 @@ export class SignedKeyLLM {
       amap?: string
     },
     type: 'aiGreeting' | 'aiFiltering' | 'aiReply',
-  ): Promise<messageReps> {
+  ): Promise<MessageResponse> {
     if (type === 'aiGreeting') {
       return this.greetings(data)
     } else if (type === 'aiFiltering') {

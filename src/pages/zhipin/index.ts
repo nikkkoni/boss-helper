@@ -2,16 +2,12 @@ import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
 import { getActiveSiteAdapter } from '@/site-adapters'
-import elmGetter from '@/utils/elmGetter'
+import { elmGetter } from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
-import {
-  SELECTOR_TIMEOUT_MS,
-  getMountContainerSelectors,
-  joinSelectors,
-} from '@/utils/selectors'
+import { SELECTOR_TIMEOUT_MS, getMountContainerSelectors, joinSelectors } from '@/utils/selectors'
 
-import { initBossChatStream } from './hooks/useChatStream'
 import Ui from './components/Ui.vue'
+import { initBossChatStream } from './hooks/useChatStream'
 
 import './index.scss'
 

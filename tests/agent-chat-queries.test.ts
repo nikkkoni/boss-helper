@@ -3,8 +3,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useChat } from '@/composables/useChat'
-import { useCommon } from '@/composables/useCommon'
 import { useAgentChatQueries } from '@/pages/zhipin/hooks/useAgentChatQueries'
+import { useCommon } from '@/stores/common'
 
 import { setupPinia } from './helpers/pinia'
 
@@ -177,12 +177,16 @@ describe('useAgentChatQueries', () => {
     await expect(supportedQueries.chatHistory()).resolves.toEqual(
       expect.objectContaining({ code: 'missing-conversation-id', ok: false }),
     )
-    await expect(supportedQueries.chatSend({ content: ' ', to_name: 'Boss', to_uid: '1' })).resolves.toEqual({
+    await expect(
+      supportedQueries.chatSend({ content: ' ', to_name: 'Boss', to_uid: '1' }),
+    ).resolves.toEqual({
       code: 'missing-content',
       message: '缺少聊天内容',
       ok: false,
     })
-    await expect(supportedQueries.chatSend({ content: 'hello', to_name: ' ', to_uid: '' })).resolves.toEqual({
+    await expect(
+      supportedQueries.chatSend({ content: 'hello', to_name: ' ', to_uid: '' }),
+    ).resolves.toEqual({
       code: 'missing-chat-target',
       message: '缺少 to_uid 或 to_name',
       ok: false,

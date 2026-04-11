@@ -3,25 +3,22 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { cachePipelineResult, createHandle } from '@/composables/useApplying'
-import { useCommon } from '@/composables/useCommon'
-import { useStatistics } from '@/composables/useStatistics'
+import { useCommon } from '@/stores/common'
 import { useConf } from '@/stores/conf'
 import type { MyJobListData } from '@/stores/jobs'
 import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
+import { useStatistics } from '@/stores/statistics'
 import { notification } from '@/utils'
 import { logger } from '@/utils/logger'
 
-import { createBossHelperAgentEvent, emitBossHelperAgentEvent } from './agentEvents'
 import {
   createHandleResult,
   executeDeliverJob,
   finalizeDeliverIteration,
 } from '../services/deliverExecution'
-import {
-  resetJobStatuses,
-  toAgentCurrentJob,
-} from '../shared/jobMapping'
+import { resetJobStatuses, toAgentCurrentJob } from '../shared/jobMapping'
+import { createBossHelperAgentEvent, emitBossHelperAgentEvent } from './agentEvents'
 
 interface JobListHandleOptions {
   resetSelectionStatuses?: boolean
@@ -33,6 +30,11 @@ interface JobListHandleResult {
   seenJobIds: string[]
 }
 
+/**
+ * zhipin 页面级 Pinia store。
+ *
+ * 它依赖当前页面的 host-Vue 绑定与列表状态，因此保留在 `hooks/`，不作为通用 composable 使用。
+ */
 export const useDeliver = defineStore('zhipin/deliver', () => {
   const total = ref(0)
   const current = ref(0)
@@ -80,7 +82,10 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
     const seenJobIds = targetJobList.map((item) => item.encryptJobId)
 
     const shouldResetStatus = (item: MyJobListData) => {
-      return !selectedJobIds || Boolean(options.resetSelectionStatuses && selectedJobIds.has(item.encryptJobId))
+      return (
+        !selectedJobIds ||
+        Boolean(options.resetSelectionStatuses && selectedJobIds.has(item.encryptJobId))
+      )
     }
 
     resetJobStatuses(jobList.list, shouldResetStatus)

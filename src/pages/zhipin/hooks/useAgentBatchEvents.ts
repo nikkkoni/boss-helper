@@ -1,5 +1,5 @@
-import { useCommon } from '@/composables/useCommon'
 import type { BossHelperAgentState } from '@/message/agent'
+import { useCommon } from '@/stores/common'
 
 import { createBossHelperAgentEvent, emitBossHelperAgentEvent } from './agentEvents'
 

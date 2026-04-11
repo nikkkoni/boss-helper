@@ -1,12 +1,10 @@
 import { ElMessage } from 'element-plus'
 
 import { useModel } from '@/composables/useModel'
-import { useStatistics } from '@/composables/useStatistics'
 import { requestExternalAIFilterReview } from '@/pages/zhipin/hooks/agentReview'
 import { useConf } from '@/stores/conf'
-import {
-  AIFilteringError,
-} from '@/types/deliverError'
+import { useStatistics } from '@/stores/statistics'
+import { AIFilteringError } from '@/types/deliverError'
 
 import { SignedKeyLLM } from '../useModel/signedKey'
 import { runInternalAIFiltering, warmSignedKeyResume } from './services/aiFiltering'
@@ -35,11 +33,7 @@ import {
   createExternalGreetingStep,
 } from './services/greetingSteps'
 import type { StepFactory } from './type'
-import {
-  errorHandle,
-  sameCompanyKey,
-  sameHrKey,
-} from './utils'
+import { errorHandle, sameCompanyKey, sameHrKey } from './utils'
 
 export function handles() {
   const toCause = (error: unknown) => (error instanceof Error ? { cause: error } : undefined)
@@ -105,7 +99,8 @@ export function handles() {
             conf.formData.aiFiltering.externalTimeoutMs ?? 120000,
           )
           const rating = typeof review.rating === 'number' ? review.rating : undefined
-          const reason = review.reason?.trim() || (review.accepted ? '外部审核通过' : '外部审核未通过')
+          const reason =
+            review.reason?.trim() || (review.accepted ? '外部审核通过' : '外部审核未通过')
 
           ctx.aiFilteringAjson = {
             positive: review.positive ?? [],
@@ -172,11 +167,8 @@ export function handles() {
       return
     }
     return createAIGreetingStep({
-      getModel: () => model.getModel(
-        curModel,
-        conf.formData.aiGreeting.prompt,
-        conf.formData.aiGreeting.vip,
-      ),
+      getModel: () =>
+        model.getModel(curModel, conf.formData.aiGreeting.prompt, conf.formData.aiGreeting.vip),
       model: curModel,
       onPrompt: chatBossMessage,
     })()

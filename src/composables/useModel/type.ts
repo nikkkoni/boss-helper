@@ -130,13 +130,3 @@ export type Prompt = Array<{
   role: 'system' | 'user' | 'assistant'
   content: string
 }>
-
-export { Llm as llm }
-export type formElm = FormElm
-export type llmConf<M extends string, T> = LlmConf<M, T>
-export type llmInfo<T extends object> = LlmInfo<T>
-export type llmInfoVal<T, R> = LlmInfoVal<T, R>
-export type llmMessageArgs = LlmMessageArgs
-export type llmMessageData = LlmMessageData
-export type messageReps<T = string> = MessageResponse<T>
-export type prompt = Prompt

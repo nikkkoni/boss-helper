@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 
 const {
   mockCommonState,
@@ -24,11 +24,11 @@ const {
   mockUpdateStatistics: vi.fn(async () => {}),
 }))
 
-vi.mock('@/composables/useCommon', () => ({
+vi.mock('@/stores/common', () => ({
   useCommon: () => mockCommonState,
 }))
 
-vi.mock('@/composables/useStatistics', () => ({
+vi.mock('@/stores/statistics', () => ({
   useStatistics: () => ({
     statisticsData: [],
     todayData: {
@@ -164,7 +164,10 @@ describe('Statistics.vue', () => {
     mockCommonState.deliverLock = true
     wrapper = mountStatistics()
     await flushPromises()
-    await wrapper.findAll('button').find((button) => button.text() === '暂停')?.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '暂停')
+      ?.trigger('click')
     expect(mockPauseBatch).toHaveBeenCalledTimes(1)
     wrapper.unmount()
 
@@ -172,7 +175,10 @@ describe('Statistics.vue', () => {
     mockCommonState.deliverStop = true
     wrapper = mountStatistics()
     await flushPromises()
-    await wrapper.findAll('button').find((button) => button.text() === '重置筛选')?.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重置筛选')
+      ?.trigger('click')
     expect(mockResetFilter).toHaveBeenCalledTimes(1)
   })
 })

@@ -40,6 +40,7 @@ import {
   defaultFormData,
   formDataKey,
   formDataTemplatesKey,
+  legacyAmapKeyStorageKey,
   useConf,
 } from '@/stores/conf'
 import type { FormData } from '@/types/formData'
@@ -153,6 +154,7 @@ describe('useConf store', () => {
   })
 
   it('hydrates session amap keys, loads templates, and persists runtime patches', async () => {
+    await counter.storageSet(legacyAmapKeyStorageKey, 'legacy-sync-amap')
     await counter.storageSet(formDataKey, {
       amap: {
         key: 'legacy-amap',
@@ -176,9 +178,10 @@ describe('useConf store', () => {
 
     expect(conf.isLoaded).toBe(true)
     expect(conf.formData.deliveryLimit.value).toBe(6)
-    expect(conf.formData.amap.key).toBe('legacy-amap')
+    expect(conf.formData.amap.key).toBe('legacy-sync-amap')
     expect(conf.templateNames).toEqual(['Alpha', 'Zebra'])
-    expect(await counter.storageGet(amapKeyStorageKey)).toBe('legacy-amap')
+    expect(await counter.storageGet(amapKeyStorageKey)).toBe('legacy-sync-amap')
+    expect(await counter.storageGet(legacyAmapKeyStorageKey)).toBeNull()
     expect((await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.amap?.key).toBe('')
 
     const snapshot = await conf.applyRuntimeConfigPatch(
@@ -192,7 +195,9 @@ describe('useConf store', () => {
 
     expect(snapshot.deliveryLimit.value).toBe(8)
     expect(snapshot.userId).not.toBe(999)
-    expect((await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.deliveryLimit?.value).toBe(8)
+    expect(
+      (await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.deliveryLimit?.value,
+    ).toBe(8)
     expect((await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.amap?.key).toBe('')
   })
 
@@ -261,12 +266,19 @@ describe('useConf store', () => {
     expect(mockUserStore.changeUser).toHaveBeenCalledWith(expect.objectContaining({ uid: '3' }))
     expect(elMessageSuccess).toHaveBeenCalledWith('匹配到账号配置 恢复中, 3s后刷新页面')
 
-    const exportJsonSpy = vi.spyOn(await import('@/utils/jsonImportExport'), 'exportJson').mockImplementation(() => undefined)
+    const exportJsonSpy = vi
+      .spyOn(await import('@/utils/jsonImportExport'), 'exportJson')
+      .mockImplementation(() => undefined)
     await conf.confExport()
-    expect(exportJsonSpy).toHaveBeenCalledWith(expect.objectContaining({ amap: expect.objectContaining({ key: '' }) }), '打招呼配置')
+    expect(exportJsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ amap: expect.objectContaining({ key: '' }) }),
+      '打招呼配置',
+    )
 
     const importModule = await import('@/utils/jsonImportExport')
-    vi.spyOn(importModule, 'importJson').mockRejectedValueOnce(new importModule.ImportJsonCancelledError())
+    vi.spyOn(importModule, 'importJson').mockRejectedValueOnce(
+      new importModule.ImportJsonCancelledError(),
+    )
     await expect(conf.confImport()).resolves.toBeUndefined()
 
     vi.spyOn(importModule, 'importJson').mockResolvedValueOnce({

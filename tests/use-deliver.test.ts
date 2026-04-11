@@ -20,7 +20,10 @@ const deliverMocks = vi.hoisted(() => ({
   },
   createBossHelperAgentEvent: vi.fn((payload) => payload),
   createHandle: vi.fn(async () => ({ after: [], before: [] })),
-  createHandleResult: vi.fn((candidateCount: number, seenJobIds: string[]) => ({ candidateCount, seenJobIds })),
+  createHandleResult: vi.fn((candidateCount: number, seenJobIds: string[]) => ({
+    candidateCount,
+    seenJobIds,
+  })),
   emitBossHelperAgentEvent: vi.fn(),
   executeDeliverJob: vi.fn(async () => ({ extraDelaySeconds: 0, stopResult: null })),
   finalizeDeliverIteration: vi.fn(async () => undefined),
@@ -50,11 +53,11 @@ vi.mock('@/composables/useApplying', () => ({
   createHandle: deliverMocks.createHandle,
 }))
 
-vi.mock('@/composables/useCommon', () => ({
+vi.mock('@/stores/common', () => ({
   useCommon: () => deliverMocks.common,
 }))
 
-vi.mock('@/composables/useStatistics', () => ({
+vi.mock('@/stores/statistics', () => ({
   useStatistics: () => deliverMocks.statistics,
 }))
 
@@ -102,10 +105,12 @@ describe('useDeliver', () => {
     deliverMocks.createHandle.mockReset()
     deliverMocks.createHandle.mockResolvedValue({ after: [], before: [] })
     deliverMocks.createHandleResult.mockReset()
-    deliverMocks.createHandleResult.mockImplementation((candidateCount: number, seenJobIds: string[]) => ({
-      candidateCount,
-      seenJobIds,
-    }))
+    deliverMocks.createHandleResult.mockImplementation(
+      (candidateCount: number, seenJobIds: string[]) => ({
+        candidateCount,
+        seenJobIds,
+      }),
+    )
     deliverMocks.emitBossHelperAgentEvent.mockReset()
     deliverMocks.executeDeliverJob.mockReset()
     deliverMocks.executeDeliverJob.mockResolvedValue({ extraDelaySeconds: 0, stopResult: null })
@@ -125,8 +130,28 @@ describe('useDeliver', () => {
 
   it('handles selected job subsets, stop requests, and non-wait statuses', async () => {
     const { useDeliver } = await import('@/pages/zhipin/hooks/useDeliver')
-    const waitJob = createJob({ encryptJobId: 'job-wait', status: { msg: '等待中', setStatus(status, msg = '') { waitJob.status.status = status; waitJob.status.msg = msg }, status: 'wait' } })
-    const successJob = createJob({ encryptJobId: 'job-success', status: { msg: '成功', setStatus(status, msg = '') { successJob.status.status = status; successJob.status.msg = msg }, status: 'success' } })
+    const waitJob = createJob({
+      encryptJobId: 'job-wait',
+      status: {
+        msg: '等待中',
+        setStatus(status, msg = '') {
+          waitJob.status.status = status
+          waitJob.status.msg = msg
+        },
+        status: 'wait',
+      },
+    })
+    const successJob = createJob({
+      encryptJobId: 'job-success',
+      status: {
+        msg: '成功',
+        setStatus(status, msg = '') {
+          successJob.status.status = status
+          successJob.status.msg = msg
+        },
+        status: 'success',
+      },
+    })
     deliverMocks.jobList.list = [waitJob, successJob]
 
     const store = useDeliver()
@@ -142,8 +167,14 @@ describe('useDeliver', () => {
     expect(store.total).toBe(1)
     expect(store.current).toBe(0)
     expect(store.currentData).toStrictEqual(waitJob)
-    expect(deliverMocks.log.info).toHaveBeenCalledWith('获取岗位', '本次获取到 2 个，命中定向岗位 1 个')
-    expect(deliverMocks.resetJobStatuses).toHaveBeenCalledWith(deliverMocks.jobList.list, expect.any(Function))
+    expect(deliverMocks.log.info).toHaveBeenCalledWith(
+      '获取岗位',
+      '本次获取到 2 个，命中定向岗位 1 个',
+    )
+    expect(deliverMocks.resetJobStatuses).toHaveBeenCalledWith(
+      deliverMocks.jobList.list,
+      expect.any(Function),
+    )
     const predicate = deliverMocks.resetJobStatuses.mock.calls[0][1]
     expect(predicate(waitJob)).toBe(true)
     expect(predicate(successJob)).toBe(false)
@@ -167,7 +198,18 @@ describe('useDeliver', () => {
   it('reports unexpected execution errors and still finalizes the iteration', async () => {
     const { ElMessage } = await import('element-plus')
     const { useDeliver } = await import('@/pages/zhipin/hooks/useDeliver')
-    const waitJob = createJob({ encryptJobId: 'job-error', jobName: 'Broken Job', status: { msg: '等待中', setStatus(status, msg = '') { waitJob.status.status = status; waitJob.status.msg = msg }, status: 'wait' } })
+    const waitJob = createJob({
+      encryptJobId: 'job-error',
+      jobName: 'Broken Job',
+      status: {
+        msg: '等待中',
+        setStatus(status, msg = '') {
+          waitJob.status.status = status
+          waitJob.status.msg = msg
+        },
+        status: 'wait',
+      },
+    })
     deliverMocks.jobList.list = [waitJob]
     deliverMocks.executeDeliverJob.mockRejectedValueOnce(new Error('unexpected crash'))
 

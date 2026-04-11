@@ -1,5 +1,5 @@
-import { computed, ref, watch, type Ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
+import { computed, ref, watch, type Ref } from 'vue'
 
 import { checkJobCache, getReadyCacheManager } from '@/composables/useApplying'
 import { useHookVueData, useHookVueFn } from '@/composables/useVue'
@@ -81,9 +81,10 @@ const useJobsStore = defineStore('jobs', () => {
   const list = ref<Array<MyJobListData>>([])
   const useCache = ref(true)
   const map = computed<Record<EncryptJobId, MyJobListData>>(() => {
-    return Object.fromEntries(
-      list.value.map((item) => [item.encryptJobId, item]),
-    ) as Record<EncryptJobId, MyJobListData>
+    return Object.fromEntries(list.value.map((item) => [item.encryptJobId, item])) as Record<
+      EncryptJobId,
+      MyJobListData
+    >
   })
 
   let clickJobCardAction = async (_: bossZpJobItemData) => {}
@@ -176,9 +177,14 @@ const useJobsStore = defineStore('jobs', () => {
       vueContainerQuery,
       bindings.clickJobCardActionKey,
     )
-    const hookJobList = useHookVueData(vueContainerQuery, bindings.jobListKey, vueJobList, (value) => {
-      syncJobList(value)
-    })
+    const hookJobList = useHookVueData(
+      vueContainerQuery,
+      bindings.jobListKey,
+      vueJobList,
+      (value) => {
+        syncJobList(value)
+      },
+    )
 
     await hookJobDetail()
     clickJobCardAction = await hookClickJobCardAction()
@@ -199,6 +205,11 @@ const useJobsStore = defineStore('jobs', () => {
   }
 })
 
+/**
+ * Vue 组件中优先使用的 jobs store 入口。
+ *
+ * 它返回 `storeToRefs` 包装后的字段，适合模板绑定和组件生命周期内消费。
+ */
 export function useJobs() {
   const store = useJobsStore()
   const refs = storeToRefs(store)
@@ -215,6 +226,11 @@ export function useJobs() {
   }
 }
 
+/**
+ * 命令式代码中优先使用的 jobs store 入口。
+ *
+ * 它跨过 `storeToRefs` 包装，适合 service、hook 和测试里的同步读写。
+ */
 export const jobList = {
   get list() {
     return useJobsStore().list

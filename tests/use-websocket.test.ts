@@ -97,11 +97,13 @@ describe('websocket protobuf and mqtt helpers', () => {
 
     message.send()
 
-    expect(ElMessage.error).toHaveBeenCalledWith('无可用发送渠道，请等待作者修复。可暂时关闭招呼语功能')
+    expect(ElMessage.error).toHaveBeenCalledWith(
+      '无可用发送渠道，请等待作者修复。可暂时关闭招呼语功能',
+    )
   })
 
   it('builds chat protocol payloads for text and image messages', async () => {
-    const { default: ChatProtobufHandler } = await import('@/composables/useWebSocket/handler')
+    const { ChatProtobufHandler } = await import('@/composables/useWebSocket/handler')
     const handler = new ChatProtobufHandler()
 
     handler.build = {
@@ -164,7 +166,7 @@ describe('websocket protobuf and mqtt helpers', () => {
   })
 
   it('initializes protobuf handlers from the raw proto string', async () => {
-    const { default: ChatProtobufHandler } = await import('@/composables/useWebSocket/handler')
+    const { ChatProtobufHandler } = await import('@/composables/useWebSocket/handler')
     const handler = new ChatProtobufHandler()
 
     await handler.init()
@@ -225,9 +227,8 @@ describe('websocket protobuf and mqtt helpers', () => {
   })
 
   it('round-trips mqtt packets and decodes message ids', async () => {
-    const { decodeLength, decodeUTF8String, mqtt, parseMessageId } = await import(
-      '@/composables/useWebSocket/mqtt'
-    )
+    const { decodeLength, decodeUTF8String, mqtt, parseMessageId } =
+      await import('@/composables/useWebSocket/mqtt')
 
     const packet = mqtt.encode({
       messageId: 42,
@@ -245,22 +246,34 @@ describe('websocket protobuf and mqtt helpers', () => {
   })
 
   it('covers mqtt decode edge cases and malformed packets', async () => {
-    const { decodeLength, decodeUTF8String, decodeUint8Array, encodeLength, encodeUTF8String, mqtt, parseMessageId } =
-      await import('@/composables/useWebSocket/mqtt')
+    const {
+      decodeLength,
+      decodeUTF8String,
+      decodeUint8Array,
+      encodeLength,
+      encodeUTF8String,
+      mqtt,
+      parseMessageId,
+    } = await import('@/composables/useWebSocket/mqtt')
 
     expect(encodeLength(321)).toEqual([193, 2])
     expect(encodeUTF8String('chat', new TextEncoder()).slice(0, 2)).toEqual([0, 4])
     expect(decodeUTF8String(Uint8Array.from([0]), 0, new TextDecoder())).toBeUndefined()
     expect(decodeUint8Array(Uint8Array.from([0]), 1)).toBeUndefined()
     expect(() => parseMessageId(Uint8Array.from([0]), 0)).toThrow('Cannot parse messageId')
-    expect(() => decodeLength(Uint8Array.from([255, 255, 255, 255, 1]), 0)).toThrow('malformed length')
+    expect(() => decodeLength(Uint8Array.from([255, 255, 255, 255, 1]), 0)).toThrow(
+      'malformed length',
+    )
     expect(() => mqtt.decode(Uint8Array.from([0x33, 0x00, 0x00]), 3)).toThrow('Cannot parse topic')
 
     const qosPacket = Uint8Array.from([0x33, 0x06, 0x00, 0x04, 99, 104, 97, 116])
     const decoded = mqtt.decode(qosPacket, 3)
 
     expect(decoded.messageId).toBe(0)
-    expect(mockLoggerError).toHaveBeenCalledWith('错的id?: ', expect.objectContaining({ topic: 'chat' }))
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      '错的id?: ',
+      expect.objectContaining({ topic: 'chat' }),
+    )
   })
 
   it('exports handler and message to window on index import', async () => {

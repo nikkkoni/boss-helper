@@ -33,7 +33,10 @@ function createStatisticsSnapshot(date: string): Statistics {
   }
 }
 
-function normalizeStatistics(data: Partial<Statistics> | undefined, fallbackDate: string): Statistics {
+function normalizeStatistics(
+  data: Partial<Statistics> | undefined,
+  fallbackDate: string,
+): Statistics {
   return {
     ...createStatisticsSnapshot(fallbackDate),
     ...(data ?? {}),
@@ -65,9 +68,13 @@ function createRolloverStatisticsSnapshot(data?: Partial<Statistics>): Statistic
 export const todayKey = 'local:web-geek-job-Today'
 export const statisticsKey = 'local:web-geek-job-Statistics'
 
+/**
+ * 全局统计 store。
+ *
+ * 虽然命名是 `useStatistics`，这里依旧是应用级 Pinia store，不是一次性 composable。
+ */
 export const useStatistics = defineStore('statistics', () => {
   const todayData = reactive<Statistics>(createCurrentStatisticsSnapshot())
-
   const statisticsData = ref<Statistics[]>([])
   let hasLoadedPersistedState = false
 
@@ -122,9 +129,10 @@ export const useStatistics = defineStore('statistics', () => {
         return storedToday
       }
 
-      const nextToday = curData == null
-        ? createCurrentStatisticsSnapshot()
-        : createRolloverStatisticsSnapshot(curData)
+      const nextToday =
+        curData == null
+          ? createCurrentStatisticsSnapshot()
+          : createRolloverStatisticsSnapshot(curData)
       const newStatistics = [storedToday, ...history]
 
       await counter.storageSet(statisticsKey, newStatistics)
@@ -141,9 +149,10 @@ export const useStatistics = defineStore('statistics', () => {
     }
 
     const archivedToday = normalizeStatistics(jsonClone(todayData), todayData.date)
-    const nextToday = curData == null
-      ? createCurrentStatisticsSnapshot()
-      : createRolloverStatisticsSnapshot(curData)
+    const nextToday =
+      curData == null
+        ? createCurrentStatisticsSnapshot()
+        : createRolloverStatisticsSnapshot(curData)
     const newStatistics = [archivedToday, ...history]
 
     await counter.storageSet(statisticsKey, newStatistics)

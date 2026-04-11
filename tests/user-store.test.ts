@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ElMessage } from 'element-plus'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
 
 const { getRootVueMock } = vi.hoisted(() => ({
@@ -13,8 +13,9 @@ vi.mock('@/composables/useVue', () => ({
 }))
 
 import { counter } from '@/message'
-import { useUser, waitForRootUserInfo } from '@/stores/user'
 import { useConf } from '@/stores/conf'
+import { useUser, waitForRootUserInfo } from '@/stores/user'
+
 import { setupPinia } from './helpers/pinia'
 
 describe('stores/user', () => {
@@ -82,42 +83,44 @@ describe('stores/user', () => {
 
   it('keeps literal "undefined" text from resume content while skipping missing fields', async () => {
     const user = useUser()
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          code: 0,
-          message: 'ok',
-          zpData: {
-            applyStatus: 0,
-            baseInfo: {
-              age: '28',
-              gender: 0,
-              nickName: 'Alice',
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: 0,
+            message: 'ok',
+            zpData: {
+              applyStatus: 0,
+              baseInfo: {
+                age: '28',
+                gender: 0,
+                nickName: 'Alice',
+              },
+              projectExpList: [
+                {
+                  name: 'Parser',
+                  performance: 'fixed undefined handling',
+                  projectDesc: undefined,
+                  roleName: undefined,
+                  startDate: '2024.01',
+                },
+              ],
+              workExpList: [
+                {
+                  companyName: 'Acme',
+                  emphasis: undefined,
+                  endDate: undefined,
+                  positionName: 'Frontend',
+                  startDate: '2023.01',
+                  workContent: 'worked on undefined-safe parsing',
+                  workPerformance: undefined,
+                },
+              ],
             },
-            projectExpList: [
-              {
-                name: 'Parser',
-                performance: 'fixed undefined handling',
-                projectDesc: undefined,
-                roleName: undefined,
-                startDate: '2024.01',
-              },
-            ],
-            workExpList: [
-              {
-                companyName: 'Acme',
-                emphasis: undefined,
-                endDate: undefined,
-                positionName: 'Frontend',
-                startDate: '2023.01',
-                workContent: 'worked on undefined-safe parsing',
-                workPerformance: undefined,
-              },
-            ],
-          },
-        }),
-        { status: 200 },
-      ))
+          }),
+          { status: 200 },
+        ),
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     const resumeText = await user.getUserResumeString({})
@@ -130,21 +133,23 @@ describe('stores/user', () => {
 
   it('includes unknown gender in resume text when the API omits a known value', async () => {
     const user = useUser()
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          code: 0,
-          message: 'ok',
-          zpData: {
-            applyStatus: 0,
-            baseInfo: {
-              gender: undefined,
-              nickName: 'Alice',
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: 0,
+            message: 'ok',
+            zpData: {
+              applyStatus: 0,
+              baseInfo: {
+                gender: undefined,
+                nickName: 'Alice',
+              },
             },
-          },
-        }),
-        { status: 200 },
-      ))
+          }),
+          { status: 200 },
+        ),
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     const resumeText = await user.getUserResumeString({})
@@ -186,30 +191,53 @@ describe('stores/user', () => {
     })
     document.cookie = 'bst=document-token; path=/'
 
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          code: 0,
-          message: 'ok',
-          zpData: {
-            applyStatus: 1,
-            baseInfo: {
-              degreeCategory: '本科',
-              gender: 1,
-              nickName: 'Alice',
-              workYearDesc: '3年',
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: 0,
+            message: 'ok',
+            zpData: {
+              applyStatus: 1,
+              baseInfo: {
+                degreeCategory: '本科',
+                gender: 1,
+                nickName: 'Alice',
+                workYearDesc: '3年',
+              },
+              certificationList: [{ certName: 'PMP' }],
+              educationExpList: [
+                { degreeName: '本科', endYear: '2020', school: 'U', startYear: '2016' },
+              ],
+              expectList: [{ positionName: '前端工程师', positionType: 0, salaryDesc: '20-30K' }],
+              projectExpList: [
+                {
+                  endDate: '2024.02',
+                  name: 'Portal',
+                  performance: '上线',
+                  roleName: '负责人',
+                  startDate: '2024.01',
+                },
+              ],
+              userDesc: '个人优势',
+              volunteerExpList: [
+                { name: '社区服务', serviceLength: '20h', volunteerDescription: '帮助社区' },
+              ],
+              workExpList: [
+                {
+                  companyName: 'Acme',
+                  endDate: '2024.03',
+                  positionName: '前端',
+                  startDate: '2023.01',
+                  workContent: '开发页面',
+                  workPerformance: '性能优化',
+                },
+              ],
             },
-            certificationList: [{ certName: 'PMP' }],
-            educationExpList: [{ degreeName: '本科', endYear: '2020', school: 'U', startYear: '2016' }],
-            expectList: [{ positionName: '前端工程师', positionType: 0, salaryDesc: '20-30K' }],
-            projectExpList: [{ endDate: '2024.02', name: 'Portal', performance: '上线', roleName: '负责人', startDate: '2024.01' }],
-            userDesc: '个人优势',
-            volunteerExpList: [{ name: '社区服务', serviceLength: '20h', volunteerDescription: '帮助社区' }],
-            workExpList: [{ companyName: 'Acme', endDate: '2024.03', positionName: '前端', startDate: '2023.01', workContent: '开发页面', workPerformance: '性能优化' }],
-          },
-        }),
-        { status: 200 },
-      ))
+          }),
+          { status: 200 },
+        ),
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     const first = await user.getUserResumeData(false)
@@ -270,7 +298,7 @@ describe('stores/user', () => {
       },
     } as never)
 
-    const setStatisticsSpy = vi.spyOn(await import('@/composables/useStatistics'), 'useStatistics')
+    const setStatisticsSpy = vi.spyOn(await import('@/stores/statistics'), 'useStatistics')
     const statsStore = setStatisticsSpy()
     const setStatisticsMock = vi.spyOn(statsStore, 'setStatistics')
 

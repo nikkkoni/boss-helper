@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { Ref } from 'vue'
 import type { CheckboxValueType } from 'element-plus'
 import {
   ElButton,
@@ -10,12 +9,13 @@ import {
   ElTable,
   ElTableColumn,
 } from 'element-plus'
+import type { Ref } from 'vue'
 import { reactive, ref } from 'vue'
 
 import JobCard from '@/components/Jobcard.vue'
 import { parseFiltering } from '@/composables/useApplying/utils'
 import { useModel } from '@/composables/useModel'
-import type { prompt } from '@/composables/useModel/type'
+import type { Prompt } from '@/composables/useModel/type'
 import type { MyJobListData } from '@/stores/jobs'
 import { jobList } from '@/stores/jobs'
 import { logger } from '@/utils/logger'
@@ -24,7 +24,7 @@ const props = defineProps<{
   data: 'aiGreeting' | 'aiFiltering' | 'aiReply'
   state: {
     currentModel: Ref<string | undefined>
-    message: Ref<string | prompt>
+    message: Ref<string | Prompt>
     singleMode: Ref<'vip' | boolean>
   }
 }>()
@@ -92,10 +92,12 @@ async function testJob() {
   }
   testJobLoading.value = true
   testJobStop.value = false
-  const currentModelData = model.modelData.find((value) => props.state.currentModel.value === value.key)
+  const currentModelData = model.modelData.find(
+    (value) => props.state.currentModel.value === value.key,
+  )
   if (
-    props.state.singleMode.value !== 'vip'
-    && (!props.state.currentModel.value || !currentModelData)
+    props.state.singleMode.value !== 'vip' &&
+    (!props.state.currentModel.value || !currentModelData)
   ) {
     testJobLoading.value = false
     testJobStop.value = true
@@ -279,10 +281,7 @@ defineExpose({
       </ElTableColumn>
       <ElTableColumn prop="job.card.postDescription" label="内容">
         <template #default="scope">
-          <div
-            :title="scope.row.job.card.postDescription"
-            class="test-content-cell"
-          >
+          <div :title="scope.row.job.card.postDescription" class="test-content-cell">
             {{ scope.row.job.card.postDescription }}
           </div>
         </template>

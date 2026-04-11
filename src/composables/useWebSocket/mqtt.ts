@@ -1,4 +1,4 @@
-// 因为window.ChatWebsocket的出现,暂时用不到了
+// 仍保留 MQTT 编解码辅助，用于聊天流解析和协议测试。
 
 import { logger } from '@/utils/logger'
 

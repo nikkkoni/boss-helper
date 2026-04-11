@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { statisticsKey, todayKey, useStatistics } from '@/composables/useStatistics'
+import { statisticsKey, todayKey, useStatistics } from '@/stores/statistics'
 
 import { setupPinia } from './helpers/pinia'
 import { __getStorageItem, __setStorageItem } from './mocks/message'
@@ -100,13 +100,15 @@ describe('useStatistics', () => {
 
     const stats = useStatistics()
 
-    await stats.setStatistics(JSON.stringify({
-      s: { invalid: true },
-      t: {
-        success: 6,
-        total: 9,
-      },
-    }))
+    await stats.setStatistics(
+      JSON.stringify({
+        s: { invalid: true },
+        t: {
+          success: 6,
+          total: 9,
+        },
+      }),
+    )
 
     expect(stats.todayData).toEqual(
       expect.objectContaining({
@@ -178,19 +180,21 @@ describe('useStatistics', () => {
     vi.setSystemTime(new Date('2026-04-12T09:00:00'))
 
     const stats = useStatistics()
-    await stats.setStatistics(JSON.stringify({
-      s: [
-        {
-          success: 1,
-          total: 2,
+    await stats.setStatistics(
+      JSON.stringify({
+        s: [
+          {
+            success: 1,
+            total: 2,
+          },
+        ],
+        t: {
+          date: '2026-04-12',
+          success: 4,
+          total: 5,
         },
-      ],
-      t: {
-        date: '2026-04-12',
-        success: 4,
-        total: 5,
-      },
-    }))
+      }),
+    )
 
     const sameDay = await stats.updateStatistics()
     expect(sameDay).toBe(stats.todayData)

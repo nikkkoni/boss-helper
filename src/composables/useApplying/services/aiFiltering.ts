@@ -1,6 +1,6 @@
 import type { modelData } from '@/composables/useModel'
 import { SignedKeyLLM } from '@/composables/useModel/signedKey'
-import type { llm, messageReps } from '@/composables/useModel/type'
+import type { Llm, MessageResponse } from '@/composables/useModel/type'
 import type { logData } from '@/stores/log'
 import { AIFilteringError } from '@/types/deliverError'
 import { logger } from '@/utils/logger'
@@ -77,7 +77,7 @@ export function summarizeFilteringResult(result: Partial<FilteringResult> | null
 export async function runInternalAIFiltering(options: {
   amapPrompt: string
   ctx: logData
-  gpt: llm | SignedKeyLLM
+  gpt: Llm | SignedKeyLLM
   model?: Pick<modelData, 'data' | 'vip'>
   onPrompt: (s: string) => void
   threshold: number
@@ -105,7 +105,7 @@ export async function runInternalAIFiltering(options: {
       onPrompt: options.onPrompt,
     },
     'aiFiltering',
-  )) as messageReps<FilteringResult | string>
+  )) as MessageResponse<FilteringResult | string>
 
   recordAIUsage(response.usage, options.model)
 
@@ -114,9 +114,10 @@ export async function runInternalAIFiltering(options: {
     throw new Error('AI筛选未返回有效内容')
   }
 
-  const res = typeof response.content === 'string'
-    ? parseStructuredJson<FilteringResult>(response.content)
-    : response.content
+  const res =
+    typeof response.content === 'string'
+      ? parseStructuredJson<FilteringResult>(response.content)
+      : response.content
   const { message, rating } = summarizeFilteringResult(res)
 
   options.ctx.aiFilteringAjson = res || {}

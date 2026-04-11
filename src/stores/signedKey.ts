@@ -12,6 +12,7 @@ import { counter } from '@/message'
 import { useUser } from '@/stores/user'
 import type { components, paths } from '@/types/openapi'
 import { logger } from '@/utils/logger'
+import { migrateStorageKeys } from '@/utils/storageMigration'
 
 type SignedKeyInfo = components['schemas']['KeyInfo']
 type SignedKeyResponseLike = { error?: unknown } | null | undefined
@@ -72,7 +73,10 @@ function sdbmCode(str: string) {
   return hash.toString()
 }
 
-export function signedKeyReqHandler(data: SignedKeyResponseLike, message = true): string | undefined {
+export function signedKeyReqHandler(
+  data: SignedKeyResponseLike,
+  message = true,
+): string | undefined {
   // logger.debug('请求响应', data)
   const error = data?.error
   if (error != null) {
@@ -115,6 +119,10 @@ export const useSignedKey = defineStore('signedKey', () => {
   const signedKeyInfoStorageKey = 'session:signedKeyInfo'
   const legacySignedKeyStorageKey = 'sync:signedKey'
   const legacySignedKeyInfoStorageKey = 'sync:signedKeyInfo'
+  const signedKeyStorageMigrations = [
+    { oldKey: legacySignedKeyStorageKey, newKey: signedKeyStorageKey },
+    { oldKey: legacySignedKeyInfoStorageKey, newKey: signedKeyInfoStorageKey },
+  ] as const
   const user = useUser()
   const netConf = ref<NetConf>()
   let modelListPromise: Promise<modelData[] | undefined> | null = null
@@ -169,7 +177,8 @@ export const useSignedKey = defineStore('signedKey', () => {
       return modelListPromise
     }
 
-    modelListPromise = client.GET('/v1/llm/model_list')
+    modelListPromise = client
+      .GET('/v1/llm/model_list')
       .then(({ data }) => {
         const items = Array.isArray(data)
           ? data.map((item) => normalizeRemoteModel(item as ModelListEntry))
@@ -303,25 +312,12 @@ export const useSignedKey = defineStore('signedKey', () => {
   }
 
   async function initSignedKey() {
-    let key = await counter.storageGet<string>(signedKeyStorageKey)
-    if (key == null) {
-      key = await counter.storageGet<string>(legacySignedKeyStorageKey)
-      if (key != null) {
-        await counter.storageSet(signedKeyStorageKey, key)
-        await counter.storageRm(legacySignedKeyStorageKey)
-      }
-    }
+    await migrateStorageKeys(signedKeyStorageMigrations, counter)
+    const key = await counter.storageGet<string>(signedKeyStorageKey)
     if (key == null) {
       return
     }
-    let info = await counter.storageGet<SignedKeyInfo>(signedKeyInfoStorageKey)
-    if (info == null) {
-      info = await counter.storageGet<SignedKeyInfo>(legacySignedKeyInfoStorageKey)
-      if (info != null) {
-        await counter.storageSet(signedKeyInfoStorageKey, info)
-        await counter.storageRm(legacySignedKeyInfoStorageKey)
-      }
-    }
+    const info = await counter.storageGet<SignedKeyInfo>(signedKeyInfoStorageKey)
     if (info != null) {
       signedKeyInfo.value = info
     }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { useCommon } from '@/composables/useCommon'
+import { useCommon } from '@/stores/common'
 
 import { setupPinia } from './helpers/pinia'
 

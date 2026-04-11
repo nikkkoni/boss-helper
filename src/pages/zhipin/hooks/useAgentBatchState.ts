@@ -1,18 +1,24 @@
-import type { BossHelperAgentCurrentJob, BossHelperAgentResponse, BossHelperAgentStatsData } from '@/message/agent'
+import type {
+  BossHelperAgentCurrentJob,
+  BossHelperAgentResponse,
+  BossHelperAgentStatsData,
+} from '@/message/agent'
 import { createBossHelperAgentResponse } from '@/message/agent'
 import type { useAgentRuntime } from '@/stores/agent'
-import type { useCommon } from '@/composables/useCommon'
-import type { useStatistics } from '@/composables/useStatistics'
-import type { usePager } from './usePager'
-import type { useDeliver } from './useDeliver'
+import type { useCommon } from '@/stores/common'
+import type { useStatistics } from '@/stores/statistics'
 import { jsonClone } from '@/utils/deepmerge'
 
 import { toAgentCurrentJob } from '../shared/jobMapping'
+import type { useDeliver } from './useDeliver'
+import type { usePager } from './usePager'
 
 /**
  * 读取当前岗位的对外快照表示。
  */
-export function currentJobSnapshot(currentData: ReturnType<typeof useDeliver>['currentData']): BossHelperAgentCurrentJob | null {
+export function currentJobSnapshot(
+  currentData: ReturnType<typeof useDeliver>['currentData'],
+): BossHelperAgentCurrentJob | null {
   return toAgentCurrentJob(currentData)
 }
 
@@ -27,7 +33,8 @@ export function createCurrentProgressSnapshot(options: {
 }) {
   return () => ({
     activeTargetJobIds: [...options.agentRuntime.activeTargetJobIds],
-    current: options.deliver.total > 0 ? Math.min(options.deliver.current + 1, options.deliver.total) : 0,
+    current:
+      options.deliver.total > 0 ? Math.min(options.deliver.current + 1, options.deliver.total) : 0,
     currentJob: currentJobSnapshot(options.deliver.currentData),
     locked: options.common.deliverLock,
     message: options.common.deliverStatusMessage,
@@ -64,7 +71,10 @@ export function createStatsDataGetter(options: {
         page: options.page.page,
         pageSize: options.page.pageSize,
         total: options.deliver.total,
-        current: options.deliver.total > 0 ? Math.min(options.deliver.current + 1, options.deliver.total) : 0,
+        current:
+          options.deliver.total > 0
+            ? Math.min(options.deliver.current + 1, options.deliver.total)
+            : 0,
         message: options.common.deliverStatusMessage,
         currentJob: currentJobSnapshot(options.deliver.currentData),
         remainingTargetJobIds: [...options.agentRuntime.remainingTargetJobIds],

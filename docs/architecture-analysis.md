@@ -43,7 +43,7 @@ boss-helper/
 │   │   ├── Jobcard.vue        #   Job card display
 │   │   └── SafeHtml.vue       #   DOMPurify wrapper
 │   │
-│   ├── composables/           # Vue composables & Pinia stores (hybrid)
+│   ├── composables/           # Vue composables
 │   │   ├── useApplying/       #   *Core* job application pipeline engine
 │   │   │   ├── index.ts       #     Entry: cache manager LRU, createHandle factory
 │   │   │   ├── handles.ts     #     Wires 16 named StepFactory instances
@@ -65,7 +65,6 @@ boss-helper/
 │   │   │       └── zhipinRateLimit.ts   # 1200ms min-interval gate
 │   │   ├── useChat.ts         #   In-memory chat message store
 │   │   ├── useChatMessageId.ts#   Monotonic ID generator for chat
-│   │   ├── useCommon.ts       #   Global delivery state flags (Pinia store)
 │   │   ├── useModel/          #   LLM model management
 │   │   │   ├── index.ts       #     Pinia store: model persistence, VIP merge
 │   │   │   ├── openai.ts      #     OpenAI-compatible client (circuit breaker, batching)
@@ -73,12 +72,11 @@ boss-helper/
 │   │   │   ├── type.ts        #     Abstract Llm base class + types
 │   │   │   └── common.ts      #     Shared model config fields
 │   │   ├── usePipelineCache.ts#   Per-job result cache (LRU, TTL, persistent)
-│   │   ├── useStatistics.ts   #   Daily stats (Pinia store, auto-archive)
 │   │   ├── useVue.ts          #   Host page Vue 2 instance hooking
 │   │   └── useWebSocket/      #   Chat protocol (protobuf + MQTT)
 │   │       ├── index.ts       #     Entry: registers globals
-│   │       ├── handler.ts     #     Runtime proto parser
-│   │       ├── mqtt.ts        #     MQTT packet codec
+│   │       ├── handler.ts     #     Runtime proto parser (`ChatProtobufHandler`, named export)
+│   │       ├── mqtt.ts        #     MQTT packet codec (retained for chat stream decoding/tests)
 │   │       ├── protobuf.ts    #     Message class (send via 3 transport channels)
 │   │       ├── type.ts        #     Programmatic protobuf schema
 │   │       └── type.json      #     Proto field mappings
@@ -128,6 +126,7 @@ boss-helper/
 │   │
 │   ├── stores/                # Pinia stores
 │   │   ├── agent.ts           #   Batch runtime state
+│   │   ├── common.ts          #   Global delivery state flags
 │   │   ├── conf/              #   Configuration management
 │   │   │   ├── index.ts       #     Main store (load/save/migrate/template)
 │   │   │   ├── info.ts        #     Default values + UI metadata
@@ -137,6 +136,7 @@ boss-helper/
 │   │   ├── log.tsx            #   Delivery log (typed error entries)
 │   │   ├── logColumns.tsx     #   Log table column config (JSX)
 │   │   ├── signedKey.ts       #   Backend auth (signed key, remote config)
+│   │   ├── statistics.ts      #   Daily stats (auto-archive)
 │   │   └── user.ts            #   User identity + multi-account switching
 │   │
 │   ├── types/                 # Type definitions
@@ -152,7 +152,7 @@ boss-helper/
 │   │   ├── amap.ts            #   AMap geocoding + distance API
 │   │   ├── concurrency.ts     #   Concurrency limiter, task batcher, DOM scheduler
 │   │   ├── deepmerge.ts       #   Deep merge + jsonClone (prototype-pollution safe)
-│   │   ├── elmGetter.ts       #   DOM wait + MutationObserver utilities
+│   │   ├── elmGetter.ts       #   DOM wait + MutationObserver utilities (`elmGetter`, named export)
 │   │   ├── index.ts           #   UI helpers (notification, delay, loader, date format)
 │   │   ├── jsonImportExport.ts#   Browser JSON file I/O
 │   │   ├── logger.ts          #   Structured logger (clean console via iframe)
@@ -161,7 +161,8 @@ boss-helper/
 │   │   ├── request.ts         #   HTTP wrapper (fetch, background proxy, loader)
 │   │   ├── retry.ts           #   Retry, circuit breaker, min-interval gate
 │   │   ├── safeHtml.ts        #   DOMPurify wrappers (rich HTML + SVG)
-│   │   └── selectors.ts       #   CSS selector registry + route detection
+│   │   ├── selectors.ts       #   CSS selector registry + route detection
+│   │   └── storageMigration.ts#   Shared storage key migration helpers
 │   │
 │   └── assets/
 │       └── chat.proto         #   Chat protobuf schema
@@ -356,7 +357,7 @@ rate limiting, limit reached, chat sent.
 
 **Cross-Store Bridge:** `registerUserConfigSnapshotGetter` avoids circular dependency between `conf` and `user` stores.
 
-**Storage Key Convention:** Keys prefixed with `local:`, `session:`, `sync:`, `managed:` are routed through the `comctx` storage abstraction to different browser storage backends.
+**Storage Key Convention:** Keys prefixed with `local:`, `session:`, `sync:`, `managed:` are routed through the `comctx` storage abstraction to different browser storage backends. Legacy `sync:` → `session:` key migration is now centralized in `src/utils/storageMigration.ts`.
 
 ### 4.4 Host Page Integration
 
@@ -459,7 +460,7 @@ Both define the same `TechwolfChatProtocol` message structure. `Message.send()` 
 
 2. **Dual protobuf schema** - `handler.ts` (runtime `.proto` parse) and `type.ts` (programmatic schema) define the same message structure independently. Drift risk.
 
-3. **Pinia store / composable identity confusion** - `useCommon`, `useModel`, `useStatistics`, `useDeliver`, `usePager` are Pinia stores defined as composables (naming convention suggests composable). Hard to know which is reactive-boundary-independent.
+3. **Pinia store / composable identity confusion** - 已于 2026-04-11 部分收敛：全局 store `useCommon` / `useStatistics` 已迁入 `src/stores/`，页面级 `useDeliver` / `usePager` 保留在 `hooks/` 并补充 Pinia store 注释；`useModel` 仍保持历史命名。
 
 4. **Agent protocol file is massive** - 已于 2026-04-11 拆为 `src/message/agent/` 多文件协议模块。
 
@@ -479,10 +480,10 @@ Both define the same `TechwolfChatProtocol` message structure. `Message.send()` 
 
 ### Minor
 
-11. **Legacy storage key migration** - Multiple places handle `sync:` → `session:` migration. Should be centralized.
+11. **Legacy storage key migration** - 已于 2026-04-11 抽到 `src/utils/storageMigration.ts`，`conf` / `signedKey` / `useModel` 通过声明式配置复用。
 
-12. **`mqtt.ts` is unused** - File header says "currently unused due to window.ChatWebsocket" but still maintained.
+12. **`mqtt.ts` is unused** - 2026-04-11 重新核对后确认仍被聊天流解析与协议测试使用，问题转为“注释过时”并已修正。
 
-13. **Inconsistent export patterns** - Some modules use default exports, others named. Some stores export both composable and singleton accessor patterns.
+13. **Inconsistent export patterns** - 已于 2026-04-11 收敛：`ChatProtobufHandler` 与 `elmGetter` 改为 named export；`jobs.ts` / `log.tsx` 的 dual export 保留但补充了使用场景文档。
 
 14. **Coverage thresholds are moderate** - 80% lines/functions, 75% branches. Given the complexity, higher would be appropriate for the pipeline engine.

@@ -15,13 +15,13 @@ import {
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 
 import { useModel } from '@/composables/useModel'
-import { useStatistics } from '@/composables/useStatistics'
 import { getActiveSiteAdapter } from '@/site-adapters'
 import { useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
 import { useSignedKey } from '@/stores/signedKey'
+import { useStatistics } from '@/stores/statistics'
 import { useUser } from '@/stores/user'
-import elmGetter from '@/utils/elmGetter'
+import { elmGetter } from '@/utils/elmGetter'
 import { logger } from '@/utils/logger'
 import { SELECTOR_TIMEOUT_MS } from '@/utils/selectors'
 

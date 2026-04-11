@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import { ElMessage } from 'element-plus'
-
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
@@ -51,7 +50,12 @@ vi.mock('@/composables/useWebSocket', () => ({
   },
 }))
 
-import { cachePipelineResult, checkJobCache, createHandle, getCacheManager } from '@/composables/useApplying'
+import {
+  cachePipelineResult,
+  checkJobCache,
+  createHandle,
+  getCacheManager,
+} from '@/composables/useApplying'
 import { handles } from '@/composables/useApplying/handles'
 import type { Handler, Step } from '@/composables/useApplying/type'
 import { sameCompanyKey, sameHrKey } from '@/composables/useApplying/utils'
@@ -59,13 +63,18 @@ import { useChat } from '@/composables/useChat'
 import { useModel } from '@/composables/useModel'
 import type { modelData } from '@/composables/useModel'
 import { SignedKeyLLM } from '@/composables/useModel/signedKey'
-import type { llm } from '@/composables/useModel/type'
-import { useStatistics } from '@/composables/useStatistics'
+import type { Llm } from '@/composables/useModel/type'
 import { counter } from '@/message'
 import { useConf, defaultFormData } from '@/stores/conf'
 import type { logData } from '@/stores/log'
+import { useStatistics } from '@/stores/statistics'
 import { useUser } from '@/stores/user'
-import { AIFilteringError, FriendStatusError, JobAddressError, RepeatError } from '@/types/deliverError'
+import {
+  AIFilteringError,
+  FriendStatusError,
+  JobAddressError,
+  RepeatError,
+} from '@/types/deliverError'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 
 import { createJob, createJobCard, createLogContext } from './helpers/jobs'
@@ -177,9 +186,9 @@ describe('useApplying handles', () => {
 
     const handler = getObjectStep(handles().SameCompanyFilter())
     const duplicateJob = createJob({ encryptBrandId: 'brand-seen' })
-    await expect(handler.fn?.({ data: duplicateJob }, createLogContext(duplicateJob))).rejects.toBeInstanceOf(
-      RepeatError,
-    )
+    await expect(
+      handler.fn?.({ data: duplicateJob }, createLogContext(duplicateJob)),
+    ).rejects.toBeInstanceOf(RepeatError)
 
     for (const brandId of ['brand-a', 'brand-b', 'brand-c', 'brand-d']) {
       const job = createJob({ encryptBrandId: brandId })
@@ -200,7 +209,9 @@ describe('useApplying handles', () => {
     const handler = getObjectStep(handles().SameHrFilter())
     const job = createJob({ encryptBossId: 'boss-seen' })
 
-    await expect(handler.fn?.({ data: job }, createLogContext(job))).rejects.toBeInstanceOf(RepeatError)
+    await expect(handler.fn?.({ data: job }, createLogContext(job))).rejects.toBeInstanceOf(
+      RepeatError,
+    )
   })
 
   it('handles keyword and boundary filtering for title, content and friend status', async () => {
@@ -236,9 +247,9 @@ describe('useApplying handles', () => {
     )
 
     conf.formData.friendStatus.value = true
-    await expect(getHandler(handles().jobFriendStatus())({ data: job }, ctx)).rejects.toBeInstanceOf(
-      FriendStatusError,
-    )
+    await expect(
+      getHandler(handles().jobFriendStatus())({ data: job }, ctx),
+    ).rejects.toBeInstanceOf(FriendStatusError)
   })
 
   it('checks salary, company size, address, activity and amap boundaries', async () => {
@@ -280,7 +291,9 @@ describe('useApplying handles', () => {
     )
 
     conf.formData.activityFilter.value = true
-    await expect(getHandler(handles().activityFilter())({ data: job }, ctx)).rejects.toThrow('不活跃')
+    await expect(getHandler(handles().activityFilter())({ data: job }, ctx)).rejects.toThrow(
+      '不活跃',
+    )
 
     conf.formData.amap.enable = true
     conf.formData.amap.drivingDistance = 5
@@ -327,7 +340,9 @@ describe('useApplying handles', () => {
 
     conf.formData.companySizeRange.enable = true
     conf.formData.companySizeRange.value = [50, 500, false]
-    await expect(getHandler(handles().companySizeRange())({ data: job }, ctx)).resolves.toBeUndefined()
+    await expect(
+      getHandler(handles().companySizeRange())({ data: job }, ctx),
+    ).resolves.toBeUndefined()
 
     conf.formData.jobContent.enable = true
     conf.formData.jobContent.include = true
@@ -344,7 +359,9 @@ describe('useApplying handles', () => {
     await expect(getHandler(handles().jobAddress())({ data: job }, ctx)).resolves.toBeUndefined()
 
     conf.formData.friendStatus.value = true
-    await expect(getHandler(handles().jobFriendStatus())({ data: job }, ctx)).resolves.toBeUndefined()
+    await expect(
+      getHandler(handles().jobFriendStatus())({ data: job }, ctx),
+    ).resolves.toBeUndefined()
   })
 
   it('covers whitelist miss branches for title, company, content and hr position', async () => {
@@ -362,22 +379,30 @@ describe('useApplying handles', () => {
     conf.formData.jobTitle.enable = true
     conf.formData.jobTitle.include = true
     conf.formData.jobTitle.value = ['golang']
-    await expect(getHandler(handles().jobTitle())({ data: job }, ctx)).rejects.toThrow('岗位名不包含关键词')
+    await expect(getHandler(handles().jobTitle())({ data: job }, ctx)).rejects.toThrow(
+      '岗位名不包含关键词',
+    )
 
     conf.formData.company.enable = true
     conf.formData.company.include = true
     conf.formData.company.value = ['Other Corp']
-    await expect(getHandler(handles().company())({ data: job }, ctx)).rejects.toThrow('公司名不包含关键词')
+    await expect(getHandler(handles().company())({ data: job }, ctx)).rejects.toThrow(
+      '公司名不包含关键词',
+    )
 
     conf.formData.jobContent.enable = true
     conf.formData.jobContent.include = true
     conf.formData.jobContent.value = ['算法']
-    await expect(getHandler(handles().jobContent())({ data: job }, ctx)).rejects.toThrow('工作内容中不包含关键词')
+    await expect(getHandler(handles().jobContent())({ data: job }, ctx)).rejects.toThrow(
+      '工作内容中不包含关键词',
+    )
 
     conf.formData.hrPosition.enable = true
     conf.formData.hrPosition.include = true
     conf.formData.hrPosition.value = ['HR']
-    await expect(getHandler(handles().hrPosition())({ data: job }, ctx)).rejects.toThrow('Hr职位不在白名单中')
+    await expect(getHandler(handles().hrPosition())({ data: job }, ctx)).rejects.toThrow(
+      'Hr职位不在白名单中',
+    )
   })
 
   it('treats job content keywords as escaped precompiled literals', async () => {
@@ -473,19 +498,21 @@ describe('useApplying handles', () => {
     conf.formData.aiFiltering.model = 'model-1'
     conf.formData.aiFiltering.prompt = '筛选一下'
     conf.formData.aiFiltering.score = 5
-    model.modelData = [createModelItem({
-      data: {
-        advanced: {},
-        api_key: 'secret',
-        model: 'gpt-4o-mini',
-        mode: 'openai',
-        other: {
-          pricingInputPerMillion: 1,
-          pricingOutputPerMillion: 2,
+    model.modelData = [
+      createModelItem({
+        data: {
+          advanced: {},
+          api_key: 'secret',
+          model: 'gpt-4o-mini',
+          mode: 'openai',
+          other: {
+            pricingInputPerMillion: 1,
+            pricingOutputPerMillion: 2,
+          },
+          url: 'https://api.example.com',
         },
-        url: 'https://api.example.com',
-      },
-    })]
+      }),
+    ]
     vi.spyOn(model, 'getModel').mockReturnValue({
       message: vi.fn(async () => ({
         content: '```json\n{"negative":[],"positive":[{"reason":"双休","score":10}]}\n```',
@@ -497,7 +524,7 @@ describe('useApplying handles', () => {
           total_tokens: 1500,
         },
       })),
-    } as unknown as llm)
+    } as unknown as Llm)
 
     await expect(getHandler(handles().aiFiltering())({ data: job }, ctx)).resolves.toBeUndefined()
     expect(ctx.aiFilteringAjson).toEqual({
@@ -566,12 +593,12 @@ describe('useApplying handles', () => {
         prompt: 'null-content prompt',
         reasoning_content: null,
       })),
-    } as unknown as llm)
+    } as unknown as Llm)
 
     const nullCtx = createLogContext(createJob({ card: createJobCard() }))
-    await expect(getHandler(handles().aiFiltering())({ data: job }, nullCtx)).rejects.toBeInstanceOf(
-      AIFilteringError,
-    )
+    await expect(
+      getHandler(handles().aiFiltering())({ data: job }, nullCtx),
+    ).rejects.toBeInstanceOf(AIFilteringError)
     expect(nullCtx.aiFilteringQ).toBe('null-content prompt')
     expect(nullCtx.aiFilteringScore).toBeUndefined()
     expect(nullCtx.pipelineError).toBeUndefined()
@@ -582,12 +609,12 @@ describe('useApplying handles', () => {
         prompt: 'low-score prompt',
         reasoning_content: null,
       })),
-    } as unknown as llm)
+    } as unknown as Llm)
 
     const lowScoreCtx = createLogContext(createJob({ card: createJobCard() }))
-    await expect(getHandler(handles().aiFiltering())({ data: job }, lowScoreCtx)).rejects.toBeInstanceOf(
-      AIFilteringError,
-    )
+    await expect(
+      getHandler(handles().aiFiltering())({ data: job }, lowScoreCtx),
+    ).rejects.toBeInstanceOf(AIFilteringError)
     expect(lowScoreCtx.aiFilteringScore).toEqual(
       expect.objectContaining({
         accepted: false,
@@ -610,7 +637,9 @@ describe('useApplying handles', () => {
     getModelSpy.mockReturnValueOnce(signedKeyModel)
 
     const vipCtx = createLogContext(createJob({ card: createJobCard() }))
-    await expect(getHandler(handles().aiFiltering())({ data: job }, vipCtx)).resolves.toBeUndefined()
+    await expect(
+      getHandler(handles().aiFiltering())({ data: job }, vipCtx),
+    ).resolves.toBeUndefined()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(signedKeyModel.checkResume).toHaveBeenCalledTimes(1)
     expect(vipCtx.aiFilteringScore).toEqual(
@@ -625,11 +654,11 @@ describe('useApplying handles', () => {
       message: vi.fn(async () => {
         throw new Error('llm unavailable')
       }),
-    } as unknown as llm)
+    } as unknown as Llm)
 
-    await expect(getHandler(handles().aiFiltering())({ data: job }, createLogContext(job))).rejects.toThrow(
-      'llm unavailable',
-    )
+    await expect(
+      getHandler(handles().aiFiltering())({ data: job }, createLogContext(job)),
+    ).rejects.toThrow('llm unavailable')
   })
 
   it('handles missing amap straight distance data without throwing optional-chain errors', async () => {
@@ -670,7 +699,7 @@ describe('useApplying handles', () => {
           reasoning_content: null,
         }
       }),
-    } as unknown as llm)
+    } as unknown as Llm)
 
     await expect(getHandler(handles().aiFiltering())({ data: job }, ctx)).resolves.toBeUndefined()
     expect(ctx.aiFilteringScore).toEqual(
@@ -724,19 +753,21 @@ describe('useApplying handles', () => {
 
     conf.formData.aiGreeting.enable = true
     conf.formData.aiGreeting.model = 'model-1'
-    model.modelData = [createModelItem({
-      data: {
-        advanced: {},
-        api_key: 'secret',
-        model: 'gpt-4o-mini',
-        mode: 'openai',
-        other: {
-          pricingInputPerMillion: 2,
-          pricingOutputPerMillion: 4,
+    model.modelData = [
+      createModelItem({
+        data: {
+          advanced: {},
+          api_key: 'secret',
+          model: 'gpt-4o-mini',
+          mode: 'openai',
+          other: {
+            pricingInputPerMillion: 2,
+            pricingOutputPerMillion: 4,
+          },
+          url: 'https://api.example.com',
         },
-        url: 'https://api.example.com',
-      },
-    })]
+      }),
+    ]
 
     vi.spyOn(model, 'getModel').mockReturnValueOnce({
       message: vi.fn(async () => ({
@@ -749,7 +780,7 @@ describe('useApplying handles', () => {
           total_tokens: 3000,
         },
       })),
-    } as unknown as llm)
+    } as unknown as Llm)
 
     const greeting = getObjectStep(handles().greeting())
     const ctx = createLogContext(job, {
@@ -785,7 +816,9 @@ describe('useApplying handles', () => {
     const job = createJob({ card: createJobCard() })
 
     const noBaseGreeting = getObjectStep(handles().greeting())
-    await expect(noBaseGreeting.after?.({ data: job }, createLogContext(job))).resolves.toBeUndefined()
+    await expect(
+      noBaseGreeting.after?.({ data: job }, createLogContext(job)),
+    ).resolves.toBeUndefined()
     expect(messageSendSpy).not.toHaveBeenCalled()
 
     conf.formData.customGreeting.enable = true
@@ -820,7 +853,7 @@ describe('useApplying handles', () => {
         prompt: 'greeting prompt',
         reasoning_content: 'analysis',
       })),
-    } as unknown as llm)
+    } as unknown as Llm)
 
     const aiGreeting = getObjectStep(handles().greeting())
     const aiCtx = createLogContext(job, {
@@ -863,7 +896,9 @@ describe('useApplying handles', () => {
         },
       }),
     })
-    await expect(getHandler(handles().activityFilter())({ data: recentJob }, createLogContext(recentJob))).resolves.toBeUndefined()
+    await expect(
+      getHandler(handles().activityFilter())({ data: recentJob }, createLogContext(recentJob)),
+    ).resolves.toBeUndefined()
 
     const staleJob = createJob({
       card: createJobCard({
@@ -874,9 +909,9 @@ describe('useApplying handles', () => {
         },
       }),
     })
-    await expect(getHandler(handles().activityFilter())({ data: staleJob }, createLogContext(staleJob))).rejects.toThrow(
-      '不活跃',
-    )
+    await expect(
+      getHandler(handles().activityFilter())({ data: staleJob }, createLogContext(staleJob)),
+    ).rejects.toThrow('不活跃')
 
     const emptyJob = createJob({
       card: createJobCard({
@@ -887,12 +922,14 @@ describe('useApplying handles', () => {
         },
       }),
     })
-    await expect(getHandler(handles().activityFilter())({ data: emptyJob }, createLogContext(emptyJob))).rejects.toThrow(
-      '无活跃内容',
-    )
+    await expect(
+      getHandler(handles().activityFilter())({ data: emptyJob }, createLogContext(emptyJob)),
+    ).rejects.toThrow('无活跃内容')
 
     const amapHandler = getHandler(handles().amap())
-    await expect(amapHandler({ data: recentJob }, createLogContext(recentJob))).rejects.toThrow('高德地图api数据异常')
+    await expect(amapHandler({ data: recentJob }, createLogContext(recentJob))).rejects.toThrow(
+      '高德地图api数据异常',
+    )
 
     const uninitializedCtx = createLogContext(recentJob, {
       amap: {
@@ -903,7 +940,9 @@ describe('useApplying handles', () => {
         },
       },
     })
-    await expect(amapHandler({ data: recentJob }, uninitializedCtx)).rejects.toThrow('高德地图未初始化')
+    await expect(amapHandler({ data: recentJob }, uninitializedCtx)).rejects.toThrow(
+      '高德地图未初始化',
+    )
 
     conf.formData.amap.straightDistance = 0
     conf.formData.amap.drivingDistance = 0
@@ -974,7 +1013,9 @@ describe('useApplying handles', () => {
 
     const missingCardJob = createJob({
       card: undefined,
-      getCard: vi.fn(async () => null as unknown as NonNullable<ReturnType<typeof createJob>['card']>),
+      getCard: vi.fn(
+        async () => null as unknown as NonNullable<ReturnType<typeof createJob>['card']>,
+      ),
     })
     const missingCardCtx = createLogContext(missingCardJob)
     const loadCardPipeline = await createHandle()
@@ -1070,7 +1111,14 @@ describe('useApplying handles', () => {
   it('caches pipeline results and supports anonymous cache managers', async () => {
     const user = useUser()
 
-    await cachePipelineResult('job-cache', 'Frontend Engineer', 'Acme', 'success', 'AI 分数 88', 'aiFiltering')
+    await cachePipelineResult(
+      'job-cache',
+      'Frontend Engineer',
+      'Acme',
+      'success',
+      'AI 分数 88',
+      'aiFiltering',
+    )
     expect(checkJobCache('job-cache')).toEqual(
       expect.objectContaining({
         brandName: 'Acme',

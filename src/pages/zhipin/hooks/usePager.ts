@@ -11,6 +11,11 @@ function getVueContainerQuery(key: string) {
   return joinSelectors(selectors.vueContainers[key] ?? selectors.vueContainers.all)
 }
 
+/**
+ * zhipin 页面级 Pinia store。
+ *
+ * 它持有当前页面的翻页状态与宿主 Vue 方法绑定，因此保留在 `hooks/`。
+ */
 export const usePager = defineStore('zhipin/pager', () => {
   const page = ref({ page: 1, pageSize: 15 })
   const pageChange = ref<((value: number) => void) | null>(null)

@@ -2,7 +2,7 @@
 import { ElButton, ElDialog, ElInput, ElMessage, ElMessageBox } from 'element-plus'
 import { h, ref } from 'vue'
 
-import type { prompt } from '@/composables/useModel/type'
+import type { Prompt } from '@/composables/useModel/type'
 import { formInfoData, useConf } from '@/stores/conf'
 import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
@@ -35,7 +35,7 @@ let initialMessage = conf.formData[props.data].prompt
 if (Array.isArray(initialMessage)) {
   initialMessage = [...initialMessage].map((item) => ({ ...item }))
 }
-const message = ref<string | prompt>(initialMessage)
+const message = ref<string | Prompt>(initialMessage)
 const testDialog = ref(false)
 const editorState = {
   currentModel,
@@ -60,7 +60,7 @@ function changeMode(value: boolean | string | number | undefined) {
   }
 }
 
-function removeMessage(item: prompt[number]) {
+function removeMessage(item: Prompt[number]) {
   if (Array.isArray(message.value)) {
     message.value = message.value.filter((value) => value !== item)
   }
@@ -145,9 +145,5 @@ async function copyOnlineResume() {
     </template>
   </ElDialog>
 
-  <SelectllmTestDialog
-    v-model="testDialog"
-    :data="data"
-    :state="editorState"
-  />
+  <SelectllmTestDialog v-model="testDialog" :data="data" :state="editorState" />
 </template>

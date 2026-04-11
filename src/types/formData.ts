@@ -1,4 +1,4 @@
-import type { prompt } from '@/composables/useModel/type'
+import type { Prompt } from '@/composables/useModel/type'
 
 export interface Statistics {
   date: string
@@ -88,7 +88,7 @@ export type FormInfoData = {
 export interface FormInfoAi {
   label: string
   'data-help'?: string
-  example: [string, prompt]
+  example: [string, Prompt]
 }
 
 export interface FormDataSelect {
@@ -132,7 +132,7 @@ export interface FormDataCheckbox {
 export interface FormDataAi {
   model?: string
   vip?: boolean
-  prompt: string | prompt
+  prompt: string | Prompt
   enable: boolean
 }
 

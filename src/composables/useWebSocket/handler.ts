@@ -124,7 +124,7 @@ interface CreateImageMessageData {
   type: number
 }
 
-class ChatProtobufHandler {
+export class ChatProtobufHandler {
   build: any
   chatProto?: protobuf.Root
 
@@ -219,5 +219,3 @@ class ChatProtobufHandler {
     return protocol
   }
 }
-
-export default ChatProtobufHandler

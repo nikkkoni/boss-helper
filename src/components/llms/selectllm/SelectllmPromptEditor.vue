@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { Ref } from 'vue'
 import {
   ElButton,
   ElForm,
@@ -13,11 +12,12 @@ import {
   ElSpace,
   ElText,
 } from 'element-plus'
+import type { Ref } from 'vue'
 
 import Alert from '@/components/Alert'
 import SafeHtml from '@/components/SafeHtml.vue'
 import { llmIcon, useModel } from '@/composables/useModel'
-import type { prompt } from '@/composables/useModel/type'
+import type { Prompt } from '@/composables/useModel/type'
 import { formInfoData } from '@/stores/conf'
 import { useSignedKey } from '@/stores/signedKey'
 
@@ -25,11 +25,11 @@ const props = defineProps<{
   copyOnlineResume: () => Promise<void>
   data: 'aiGreeting' | 'aiFiltering' | 'aiReply'
   inputExample: () => void
-  removeMessage: (item: prompt[number]) => void
+  removeMessage: (item: Prompt[number]) => void
   roleOptions: { label: string; value: string }[]
   state: {
     currentModel: Ref<string | undefined>
-    message: Ref<string | prompt>
+    message: Ref<string | Prompt>
     score: Ref<number>
     singleMode: Ref<'vip' | boolean>
   }
@@ -65,7 +65,9 @@ const model = useModel()
       <ElRadioButton label="多对话模式" :value="false" />
     </ElRadioGroup>
     <ElSpace>
-      <ElButton v-if="state.singleMode.value !== 'vip'" @click="inputExample"> 填入示例值 </ElButton>
+      <ElButton v-if="state.singleMode.value !== 'vip'" @click="inputExample">
+        填入示例值
+      </ElButton>
       <ElButton @click="copyOnlineResume"> 复制在线简历 </ElButton>
     </ElSpace>
     <ElSelectV2
@@ -149,7 +151,7 @@ const model = useModel()
     type="textarea"
   />
   <ElForm v-else label-width="auto" class="demo-dynamic">
-    <ElFormItem v-for="(item, index) in state.message.value as prompt" :key="index">
+    <ElFormItem v-for="(item, index) in state.message.value as Prompt" :key="index">
       <template #label>
         <ElSelectV2 v-model="item.role" :options="roleOptions" style="width: 140px" />
       </template>

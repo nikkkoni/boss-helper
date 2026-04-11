@@ -1,14 +1,8 @@
 <script lang="ts" setup>
-import {
-  ElCollapse,
-  ElCollapseItem,
-  ElForm,
-  ElFormItem,
-  ElInputNumber,
-} from 'element-plus'
+import { ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElInputNumber } from 'element-plus'
 
 import Alert from '@/components/Alert'
-import { useCommon } from '@/composables/useCommon'
+import { useCommon } from '@/stores/common'
 import { formInfoData, useConf } from '@/stores/conf'
 
 import Ai from './Ai.vue'

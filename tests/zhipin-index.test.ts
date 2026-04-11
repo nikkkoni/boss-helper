@@ -42,7 +42,7 @@ vi.mock('@/site-adapters', () => ({
 }))
 
 vi.mock('@/utils/elmGetter', () => ({
-  default: {
+  elmGetter: {
     get: zhipinIndexMocks.elmGetterGet,
     rm: zhipinIndexMocks.elmGetterRm,
   },

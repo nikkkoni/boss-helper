@@ -36,15 +36,17 @@ function isElement(value: unknown): value is Element {
 function isQueryParent(value: unknown): value is QueryParent {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      'nodeType' in value &&
-      'querySelector' in value &&
-      typeof (value as QueryParent).querySelector === 'function',
+    typeof value === 'object' &&
+    'nodeType' in value &&
+    'querySelector' in value &&
+    typeof (value as QueryParent).querySelector === 'function',
   )
 }
 
 function isOptions(value: unknown): value is ElmGetterOptions {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && !isQueryParent(value))
+  return Boolean(
+    value && typeof value === 'object' && !Array.isArray(value) && !isQueryParent(value),
+  )
 }
 
 function describeParent(parent: QueryParent) {
@@ -132,7 +134,10 @@ function normalizeOptions(args: unknown[]) {
   }
 }
 
-function waitForSelector<E extends Element = Element>(selector: string, options: Required<ElmGetterOptions>) {
+function waitForSelector<E extends Element = Element>(
+  selector: string,
+  options: Required<ElmGetterOptions>,
+) {
   return new Promise<E>((resolve, reject) => {
     let settled = false
     const cleanups: Array<() => void> = []
@@ -186,7 +191,10 @@ function waitForSelector<E extends Element = Element>(selector: string, options:
   })
 }
 
-function get<E extends Element = Element>(selector: readonly string[], options?: ElmGetterOptions): Promise<E[]>
+function get<E extends Element = Element>(
+  selector: readonly string[],
+  options?: ElmGetterOptions,
+): Promise<E[]>
 function get<E extends Element = Element>(selector: string, options?: ElmGetterOptions): Promise<E>
 function get<E extends Element = Element>(
   selector: readonly string[],
@@ -207,12 +215,7 @@ function get<E extends Element = Element>(
   return waitForSelector<E>(selector, options)
 }
 
-function each(
-  selector: string,
-  ...args:
-    | [QueryParent, EachCallback]
-    | [EachCallback]
-) {
+function each(selector: string, ...args: [QueryParent, EachCallback] | [EachCallback]) {
   const parent = isQueryParent(args[0]) ? args[0] : doc
   const callback = (isQueryParent(args[0]) ? args[1] : args[0]) as EachCallback
 
@@ -263,11 +266,17 @@ async function rm(
 ) {
   try {
     if (typeof selector !== 'string') {
-      const targets = await get(selector, ...(args as [QueryParent, number] | [number] | [QueryParent] | []))
+      const targets = await get(
+        selector,
+        ...(args as [QueryParent, number] | [number] | [QueryParent] | []),
+      )
       targets.forEach((target) => target.remove())
       return
     }
-    const targets = await get(selector, ...(args as [QueryParent, number] | [number] | [QueryParent] | []))
+    const targets = await get(
+      selector,
+      ...(args as [QueryParent, number] | [number] | [QueryParent] | []),
+    )
     targets.remove()
   } catch (error) {
     if (error instanceof SelectorTimeoutError) {
@@ -277,7 +286,7 @@ async function rm(
   }
 }
 
-export default {
+export const elmGetter = {
   each,
   get,
   rm,

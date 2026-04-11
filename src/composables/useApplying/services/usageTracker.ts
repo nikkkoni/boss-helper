@@ -1,9 +1,9 @@
 import type { modelData } from '@/composables/useModel'
-import type { messageReps } from '@/composables/useModel/type'
-import { useStatistics } from '@/composables/useStatistics'
+import type { MessageResponse } from '@/composables/useModel/type'
+import { useStatistics } from '@/stores/statistics'
 
 export function calculateUsageCost(
-  usage: NonNullable<messageReps['usage']> | undefined,
+  usage: NonNullable<MessageResponse['usage']> | undefined,
   model?: Pick<modelData, 'data' | 'vip'>,
 ) {
   if (!usage || !model?.data) {
@@ -24,7 +24,7 @@ export function calculateUsageCost(
 }
 
 export function recordAIUsage(
-  usage: NonNullable<messageReps['usage']> | undefined,
+  usage: NonNullable<MessageResponse['usage']> | undefined,
   model?: Pick<modelData, 'data' | 'vip'>,
 ) {
   if (!usage) {
@@ -33,11 +33,16 @@ export function recordAIUsage(
 
   const statistics = useStatistics()
   statistics.todayData.aiRequestCount = (statistics.todayData.aiRequestCount ?? 0) + 1
-  statistics.todayData.aiInputTokens = (statistics.todayData.aiInputTokens ?? 0) + (usage.input_tokens ?? 0)
-  statistics.todayData.aiOutputTokens = (statistics.todayData.aiOutputTokens ?? 0) + (usage.output_tokens ?? 0)
-  statistics.todayData.aiTotalTokens = (statistics.todayData.aiTotalTokens ?? 0) + (usage.total_tokens ?? 0)
+  statistics.todayData.aiInputTokens =
+    (statistics.todayData.aiInputTokens ?? 0) + (usage.input_tokens ?? 0)
+  statistics.todayData.aiOutputTokens =
+    (statistics.todayData.aiOutputTokens ?? 0) + (usage.output_tokens ?? 0)
+  statistics.todayData.aiTotalTokens =
+    (statistics.todayData.aiTotalTokens ?? 0) + (usage.total_tokens ?? 0)
 
   const cost = calculateUsageCost(usage, model)
-  statistics.todayData.aiTotalCost = Number(((statistics.todayData.aiTotalCost ?? 0) + cost).toFixed(6))
+  statistics.todayData.aiTotalCost = Number(
+    ((statistics.todayData.aiTotalCost ?? 0) + cost).toFixed(6),
+  )
   return cost
 }

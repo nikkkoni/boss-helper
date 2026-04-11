@@ -142,7 +142,7 @@ interface bossZpJobItemData {
 /**
  * 职位卡片信息,在模板中通常使用 card 获取
  * 如 {{ card.activeTimeDesc }} 获取活跃时间描述
- * @deprecated 此接口已弃用，请使用 bossZpDetailData 替代
+ * @deprecated 仅为兼容旧模板与旧调用保留；新代码请改用 bossZpDetailData。
  */
 interface bossZpCardData {
   /** 职位名称，例如："电脑技术员" */

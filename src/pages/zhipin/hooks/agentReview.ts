@@ -1,5 +1,5 @@
 import type { BossHelperAgentJobReviewPayload } from '@/message/agent'
-import { useCommon } from '@/composables/useCommon'
+import { useCommon } from '@/stores/common'
 import type { logData } from '@/stores/log'
 import { AIFilteringError } from '@/types/deliverError'
 
@@ -67,21 +67,23 @@ export function requestExternalAIFilterReview(
   const common = useCommon()
 
   if (!pendingReviews.has(encryptJobId) && pendingReviews.size >= MAX_PENDING_REVIEWS) {
-    return Promise.reject(createPendingReviewOverflowError('外部审核队列已满，请稍后重试', threshold))
+    return Promise.reject(
+      createPendingReviewOverflowError('外部审核队列已满，请稍后重试', threshold),
+    )
   }
 
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       pendingReviews.delete(encryptJobId)
-      reject(
-        createPendingReviewOverflowError('外部审核超时', threshold),
-      )
+      reject(createPendingReviewOverflowError('外部审核超时', threshold))
     }, timeoutMs)
 
     const existing = pendingReviews.get(encryptJobId)
     if (existing) {
       window.clearTimeout(existing.timeout)
-      existing.reject(createPendingReviewOverflowError('外部审核请求已被新的请求替换', existing.threshold))
+      existing.reject(
+        createPendingReviewOverflowError('外部审核请求已被新的请求替换', existing.threshold),
+      )
     }
 
     pendingReviews.set(encryptJobId, {

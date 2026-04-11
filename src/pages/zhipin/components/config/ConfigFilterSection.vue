@@ -1,19 +1,11 @@
 <script lang="ts" setup>
-import {
-  ElAlert,
-  ElButton,
-  ElCheckbox,
-  ElInput,
-  ElLink,
-  ElPopover,
-  ElSpace,
-} from 'element-plus'
+import { ElAlert, ElButton, ElCheckbox, ElInput, ElLink, ElPopover, ElSpace } from 'element-plus'
 
 import Alert from '@/components/Alert'
 import formItem from '@/components/form/FormItem.vue'
 import formSelect from '@/components/form/FormSelect.vue'
 import SalaryRangeComponent from '@/components/form/SalaryRange.vue'
-import { useCommon } from '@/composables/useCommon'
+import { useCommon } from '@/stores/common'
 import { formInfoData, useConf } from '@/stores/conf'
 
 const conf = useConf()
@@ -66,7 +58,10 @@ function syncSalaryRange() {
       v-model:include="conf.formData.company.include"
       :disabled="deliverLock"
     >
-      <formSelect v-model:value="conf.formData.company.value" :options="conf.formData.company.options" />
+      <formSelect
+        v-model:value="conf.formData.company.value"
+        :options="conf.formData.company.options"
+      />
     </form-item>
     <form-item
       v-bind="formInfoData.jobTitle"
@@ -74,7 +69,10 @@ function syncSalaryRange() {
       v-model:include="conf.formData.jobTitle.include"
       :disabled="deliverLock"
     >
-      <form-select v-model:value="conf.formData.jobTitle.value" :options="conf.formData.jobTitle.options" />
+      <form-select
+        v-model:value="conf.formData.jobTitle.value"
+        :options="conf.formData.jobTitle.options"
+      />
     </form-item>
     <form-item
       v-bind="formInfoData.jobContent"
@@ -124,12 +122,7 @@ function syncSalaryRange() {
         unit="K"
         :show="false"
       />
-      <ElPopover
-        v-if="conf.config_level.advanced"
-        placement="top"
-        :width="400"
-        trigger="click"
-      >
+      <ElPopover v-if="conf.config_level.advanced" placement="top" :width="400" trigger="click">
         <template #reference>
           <ElButton style="margin-left: 5px"> 高级 </ElButton>
         </template>

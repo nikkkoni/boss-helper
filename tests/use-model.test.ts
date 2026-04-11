@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { modelData } from '@/composables/useModel'
 
-import { setupPinia } from './helpers/pinia'
 import { createJob, createJobCard } from './helpers/jobs'
+import { setupPinia } from './helpers/pinia'
 import { __setStorageItem } from './mocks/message'
 
 function createModelItem(overrides: Partial<modelData> = {}): modelData {
@@ -37,7 +37,9 @@ const {
   mockRunLimitedAIRequest: vi.fn(async (task: () => unknown) => task()),
   mockSignedKeyGet: vi.fn(),
   mockSignedKeyPost: vi.fn(),
-  mockSignedKeyReqHandler: vi.fn((payload: { error?: string | null }) => payload.error ?? undefined),
+  mockSignedKeyReqHandler: vi.fn(
+    (payload: { error?: string | null }) => payload.error ?? undefined,
+  ),
 }))
 
 vi.mock('@/utils/concurrency', () => ({
@@ -88,10 +90,10 @@ vi.mock('@/utils/logger', () => ({
 
 import { sortModelEntries, useModel } from '@/composables/useModel'
 import { SignedKeyLLM } from '@/composables/useModel/signedKey'
-import { llm } from '@/composables/useModel/type'
+import { Llm } from '@/composables/useModel/type'
 import { RequestError } from '@/utils/request'
 
-class TestLLM extends llm<Record<string, never>> {
+class TestLLM extends Llm<Record<string, never>> {
   async chat(message: string) {
     return message
   }
@@ -111,7 +113,9 @@ describe('useModel', () => {
     mockRunLimitedAIRequest.mockClear()
     mockLoggerWarn.mockReset()
     mockSignedKeyReqHandler.mockReset()
-    mockSignedKeyReqHandler.mockImplementation((payload: { error?: string | null }) => payload.error ?? undefined)
+    mockSignedKeyReqHandler.mockImplementation(
+      (payload: { error?: string | null }) => payload.error ?? undefined,
+    )
     mockSignedKeyGet.mockReset()
     mockSignedKeyGet.mockResolvedValue({
       data: {
@@ -126,18 +130,20 @@ describe('useModel', () => {
       error: null,
     })
     mockSignedKeyPost.mockReset()
-    mockSignedKeyPost.mockImplementation(async (_path: string, { body }: { body: { user_request: string } }) => ({
-      data: {
-        content: `reply:${body.user_request}`,
-        reasoning_content: 'analysis',
-        token_usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-          total_tokens: 15,
+    mockSignedKeyPost.mockImplementation(
+      async (_path: string, { body }: { body: { user_request: string } }) => ({
+        data: {
+          content: `reply:${body.user_request}`,
+          reasoning_content: 'analysis',
+          token_usage: {
+            input_tokens: 10,
+            output_tokens: 5,
+            total_tokens: 15,
+          },
         },
-      },
-      error: null,
-    }))
+        error: null,
+      }),
+    )
   })
 
   it('builds prompts for string and multi-turn templates', () => {
@@ -149,13 +155,10 @@ describe('useModel', () => {
       },
     ])
 
-    const multi = new TestLLM(
-      {},
-      [
-        { content: '系统提示', role: 'system' },
-        { content: '岗位 {{ data.jobName }}', role: 'user' },
-      ],
-    )
+    const multi = new TestLLM({}, [
+      { content: '系统提示', role: 'system' },
+      { content: '岗位 {{ data.jobName }}', role: 'user' },
+    ])
     expect(multi.buildPrompt({ data: createJob({ jobName: '后端工程师' }) })).toEqual([
       { content: '系统提示', role: 'system' },
       { content: '岗位 后端工程师', role: 'user' },
@@ -313,19 +316,27 @@ describe('useModel', () => {
         },
       }),
       '你好 {{ data.jobName }}',
-    ) as llm
+    ) as Llm
 
-    mockRequestPost.mockImplementationOnce(async ({ onStream }: { onStream?: (reader: AsyncIterable<{ data?: string }>) => Promise<void> }) => {
-      await onStream?.((async function* () {
-        yield { data: '{"choices":[{"delta":{"content":"Hello"}}]}' }
-        yield { data: '{"choices":[{"delta":{"content":" world"}}]}' }
-        yield { data: '[DONE]' }
-      })())
+    mockRequestPost.mockImplementationOnce(
+      async ({
+        onStream,
+      }: {
+        onStream?: (reader: AsyncIterable<{ data?: string }>) => Promise<void>
+      }) => {
+        await onStream?.(
+          (async function* () {
+            yield { data: '{"choices":[{"delta":{"content":"Hello"}}]}' }
+            yield { data: '{"choices":[{"delta":{"content":" world"}}]}' }
+            yield { data: '[DONE]' }
+          })(),
+        )
 
-      return {
-        choices: [],
-      }
-    })
+        return {
+          choices: [],
+        }
+      },
+    )
 
     const response = await openaiModel.message(
       {
@@ -356,7 +367,7 @@ describe('useModel', () => {
         },
       }),
       '你好 {{ data.jobName }}',
-    ) as llm
+    ) as Llm
 
     const choices = [
       {
@@ -385,7 +396,7 @@ describe('useModel', () => {
         },
       }),
       '你好 {{ data.jobName }}',
-    ) as llm
+    ) as Llm
 
     mockRequestPost.mockResolvedValueOnce({ choices: undefined })
 
@@ -487,7 +498,9 @@ describe('useModel', () => {
       ),
     ).rejects.toThrow('筛选失败')
 
-    mockSignedKeyReqHandler.mockImplementation((payload: { error?: string | null }) => payload.error ?? undefined)
+    mockSignedKeyReqHandler.mockImplementation(
+      (payload: { error?: string | null }) => payload.error ?? undefined,
+    )
     mockSignedKeyPost.mockResolvedValueOnce({ data: null, error: null })
     await expect(
       vip.message(
@@ -578,8 +591,8 @@ describe('useModel', () => {
 
     await store.saveModel()
 
-    expect(await import('@/message').then((mod) => mod.counter.storageGet('session:conf-model'))).toEqual([
-      expect.objectContaining({ key: 'normal' }),
-    ])
+    expect(
+      await import('@/message').then((mod) => mod.counter.storageGet('session:conf-model')),
+    ).toEqual([expect.objectContaining({ key: 'normal' })])
   })
 })

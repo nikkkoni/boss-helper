@@ -1,4 +1,4 @@
-import type { llmInfo } from './type'
+import type { LlmInfo } from './type'
 
 export interface other {
   other: {
@@ -9,7 +9,7 @@ export interface other {
   }
 }
 
-export const other: llmInfo<other>['other'] = {
+export const other: LlmInfo<other>['other'] = {
   value: {
     timeout: {
       value: 1800,
