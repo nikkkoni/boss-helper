@@ -12,8 +12,9 @@ BossHelper is a browser extension (WXT + Vue 3 + Pinia) that automates job appli
 - 2026-04-11: Wave 2 已完成，`useCommon` / `useStatistics` 已迁入 `src/stores/`，`elmGetter` 与 `ChatProtobufHandler` 已统一为 named export，并抽出 `src/utils/storageMigration.ts` 复用存储迁移逻辑。
 - 2026-04-11: Wave 3 已完成，聊天协议编码/解码统一改为 `chat.proto` 单一来源，`src/composables/useWebSocket/type.ts` 仅保留 TypeScript 接口，`AGENT_PROTOCOL_VERSION` 已通过 `shared/agentProtocol.js` 在扩展与 Node 脚本间共享。
 - 2026-04-11: Wave 4 Task 4.1 / 4.2 已完成，新增 `agentController`、`agentWindowBridge`、`filters/dedup.ts`、`filters/keyword.ts`、`filters/range.ts` 与 `zhipinApi.ts` 独立测试，根目录 `ARCHITECTURE.md` 已改为重定向，`review.md` 与 `todo.md` 已归档到 `docs/archive/`。
+- 2026-04-11: Wave 4 Task 4.3 已完成，新增 `scripts/shared/{protocol,logging,security}.mjs` 作为公共层，`scripts/agent-mcp-server.mjs` 现为兼容入口，MCP 主体已拆入 `scripts/mcp/{server,handlers,catalog,bridge-client,context,...}.mjs`；`agent-bridge`、`agent-cli`、`agent-launch` 与 `agent-orchestrator` 已复用 shared helpers。
 - 当前入口仍保持 barrel 与兼容导出策略，现有 `@/message/agent`、`filterSteps.ts` 与页面级 `useDeliver` / `usePager` consumer import 不需要继续迁移。
-- 下一步如需继续，可从 Wave 4 Task 4.3 开始，按低优先级整理 `scripts/` 目录结构。
+- 当前任务单内所有 Wave 已完成；如需继续，可在计划外进一步细拆 `scripts/agent-bridge.mjs` 与 `scripts/agent-orchestrator.mjs`。
 
 ## Documents
 
@@ -37,7 +38,7 @@ Core Systems:
   stores/          ← Pinia state (agent, common, conf, jobs, log, signedKey, statistics, user)
   useWebSocket/    ← Chat protocol (protobuf + MQTT)
   site-adapters/   ← Multi-site abstraction (currently zhipin only)
-  scripts/         ← Node.js agent infrastructure (bridge, CLI, MCP server)
+  scripts/         ← Node.js agent infrastructure (bridge, CLI, orchestrator, MCP split modules)
 ```
 
 ## Top 4 Issues to Fix
@@ -80,6 +81,6 @@ pnpm check            # Type check (vue-tsc + scripts tsconfig)
 
 ## Start Here
 
-1. Read [refactoring-tasks.md](./refactoring-tasks.md) Task 4.3
-2. Wave 1 到 Wave 3 与 Wave 4 Task 4.1 / 4.2 已完成，当前只剩低优先级的 `scripts/` 结构化收尾
-3. 保持当前 barrel、named export 与 shared constant 策略，并在继续拆分脚本前后执行 `pnpm test`、`pnpm check`、`pnpm lint`
+1. 当前任务单内 Wave 1 到 Wave 4 已全部完成，先阅读 [refactoring-tasks.md](./refactoring-tasks.md) 了解已交付边界。
+2. 如需继续演进，优先把新增需求单独建任务，不要混入本轮 refactor 验收范围。
+3. 在任何后续脚本重构前后，继续执行 `pnpm test`、`pnpm check`、`pnpm lint`，并保留兼容入口策略。

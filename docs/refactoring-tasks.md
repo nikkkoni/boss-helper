@@ -326,11 +326,17 @@
 
 ### Task 4.3: scripts/ 目录结构化
 
-**现状:** `agent-mcp-server.mjs` (39KB) 是单体文件，scripts 之间无共享模块。
+**状态:** [x] 已完成（2026-04-11）
+
+**现状:** 已完成拆分，`agent-mcp-server.mjs` 保留为兼容入口，核心 MCP 逻辑迁入 `scripts/mcp/`，公共逻辑迁入 `scripts/shared/`。
 
 **涉及文件:**
 - `scripts/agent-mcp-server.mjs`
+- `scripts/mcp/`
+- `scripts/shared/`
 - `scripts/agent-bridge.mjs`
+- `scripts/agent-cli.mjs`
+- `scripts/agent-launch.mjs`
 - `scripts/agent-orchestrator.mjs`
 
 **步骤:**
@@ -348,6 +354,7 @@
 **验收标准:**
 - `agent-mcp-server.mjs` 拆分后每个文件 < 400 行
 - 共享模块可被多个 script 使用
+- `scripts/agent-mcp-server.mjs` 入口兼容保留，现仅负责启动 `scripts/mcp/server.mjs`
 
 ---
 

@@ -170,11 +170,24 @@ boss-helper/
 │   ├── agent-bridge.mjs       #   HTTPS bridge (localhost <-> extension)
 │   ├── agent-cli.mjs          #   CLI interface
 │   ├── agent-launch.mjs       #   Process launcher
-│   ├── agent-mcp-server.mjs   #   MCP server (39KB, largest script)
+│   ├── agent-mcp-server.mjs   #   MCP compatibility entrypoint
 │   ├── agent-orchestrator.mjs #   Multi-step orchestration
 │   ├── agent-relay.html       #   Browser relay page
 │   ├── agent-security.mjs     #   Token generation + TLS cert management
 │   ├── agent-security.d.mts   #   Type declarations
+│   ├── mcp/                   #   MCP transport / catalog / handlers split modules
+│   │   ├── bridge-client.mjs
+│   │   ├── catalog.mjs
+│   │   ├── context.mjs
+│   │   ├── handlers.mjs
+│   │   ├── prompt-definitions.mjs
+│   │   ├── resource-definitions.mjs
+│   │   ├── server.mjs
+│   │   └── tool-definitions.mjs
+│   ├── shared/                #   Shared Node-side helpers
+│   │   ├── logging.mjs
+│   │   ├── protocol.mjs
+│   │   └── security.mjs
 │   ├── types.d.ts             #   Shared type declarations
 │   └── submit.sh              #   Web store submission
 │

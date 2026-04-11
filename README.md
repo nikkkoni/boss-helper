@@ -67,7 +67,7 @@ CLI / MCP / 外部 Agent
 | `src/composables/useApplying/services/pipelineFactory.ts` | 投递 pipeline 编排 |
 | `src/site-adapters/zhipin/adapter.ts` | Zhipin 站点适配 |
 | `scripts/agent-bridge.mjs` | 本地 companion 服务 |
-| `scripts/agent-mcp-server.mjs` | stdio MCP server |
+| `scripts/agent-mcp-server.mjs` | stdio MCP 兼容入口，实际启动 `scripts/mcp/server.mjs` |
 
 ## 快速开始
 
@@ -200,6 +200,8 @@ pnpm zip
 | `src/message/` | 跨上下文消息协议和代理 |
 | `src/stores/` | Pinia stores：配置、职位、日志、统计、agent 状态 |
 | `scripts/` | bridge、CLI、MCP、orchestrator、本地运维脚本 |
+| `scripts/mcp/` | MCP transport、catalog、handler、context 拆分模块 |
+| `scripts/shared/` | Node agent 侧共享协议、安全与日志辅助 |
 | `tests/` | 单元测试与集成测试 |
 
 ## 已知边界

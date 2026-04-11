@@ -1,3 +1,4 @@
+export const repoRoot: string
 export const AGENT_BRIDGE_TOKEN_ENV: string
 export const AGENT_BRIDGE_HOST_ENV: string
 export const AGENT_BRIDGE_PORT_ENV: string

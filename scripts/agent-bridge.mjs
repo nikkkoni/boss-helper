@@ -9,16 +9,20 @@ import { fileURLToPath } from 'node:url'
 
 import { AGENT_PROTOCOL_VERSION } from '../shared/agentProtocol.js'
 import {
+  createPrefixedLogger,
+} from './shared/logging.mjs'
+import {
   AGENT_BRIDGE_AUTH_HEADER,
   getAgentBridgeCertificate,
   getAgentBridgeEventPortName,
   getAgentBridgeRuntime,
-} from './agent-security.mjs'
+} from './shared/security.mjs'
 
 /** @typedef {import('node:net').Socket} NetSocket */
 /** @typedef {import('node:tls').TLSSocket} TLSSocket */
 
 const runtime = getAgentBridgeRuntime()
+const logger = createPrefixedLogger('boss-helper-agent-bridge')
 const HOST = runtime.host
 const PORT = runtime.port
 const HTTPS_PORT = runtime.httpsPort
@@ -693,11 +697,11 @@ const httpsServer = createHttpsServer(
 )
 
 server.listen(PORT, HOST, () => {
-  console.log(`[boss-helper-agent-bridge] listening on http://${HOST}:${PORT}`)
-  console.log(`[boss-helper-agent-bridge] open https://${HOST}:${HTTPS_PORT}/ in a Chromium browser and connect the extension relay`)
-  console.log(`[boss-helper-agent-bridge] authenticate API clients with header ${AGENT_BRIDGE_AUTH_HEADER}`)
+  logger.log(`listening on http://${HOST}:${PORT}`)
+  logger.log(`open https://${HOST}:${HTTPS_PORT}/ in a Chromium browser and connect the extension relay`)
+  logger.log(`authenticate API clients with header ${AGENT_BRIDGE_AUTH_HEADER}`)
 })
 
 httpsServer.listen(HTTPS_PORT, HOST, () => {
-  console.log(`[boss-helper-agent-bridge] listening on https://${HOST}:${HTTPS_PORT}`)
+  logger.log(`listening on https://${HOST}:${HTTPS_PORT}`)
 })

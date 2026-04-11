@@ -3,9 +3,12 @@
 import { pathToFileURL } from 'node:url'
 
 import {
+  printJson,
+} from './shared/logging.mjs'
+import {
   createAgentBridgeAuthHeaders,
   getAgentBridgeRuntime,
-} from './agent-security.mjs'
+} from './shared/security.mjs'
 
 /** @typedef {import('./types.d.ts').AgentBridgeRuntime} AgentBridgeRuntime */
 /** @typedef {import('./types.d.ts').AgentOrchestratorOptions} AgentOrchestratorOptions */
@@ -455,18 +458,12 @@ async function autoReviewPendingJob(eventPayload, detailsCache) {
   }
 
   const reviewResponse = await sendCommand('jobs.review', payload)
-  console.log(
-    JSON.stringify(
-      {
-        type: 'review-submitted',
-        encryptJobId,
-        accepted,
-        response: reviewResponse,
-      },
-      null,
-      2,
-    ),
-  )
+  printJson({
+    type: 'review-submitted',
+    encryptJobId,
+    accepted,
+    response: reviewResponse,
+  })
 }
 
 async function main() {
@@ -503,38 +500,32 @@ async function main() {
   const analyses = details.map(analyzeJob).sort((left, right) => right.score - left.score)
   const selected = analyses.filter((item) => item.accepted)
 
-  console.log(
-    JSON.stringify(
-      {
-        resume: {
-          userId: resumeData.userId ?? null,
-          resumeTextLength: resumeText.length,
-        },
-        jobsOnPage: jobs.length,
-        analysed: analyses.map((item) => ({
-          encryptJobId: item.detail.job.encryptJobId,
-          jobName: item.detail.job.jobName,
-          brandName: item.detail.job.brandName,
-          score: item.score,
-          accepted: item.accepted,
-          reason: item.reason,
-        })),
-        selectedJobIds: selected.map((item) => item.detail.job.encryptJobId),
-      },
-      null,
-      2,
-    ),
-  )
+  printJson({
+    resume: {
+      userId: resumeData.userId ?? null,
+      resumeTextLength: resumeText.length,
+    },
+    jobsOnPage: jobs.length,
+    analysed: analyses.map((item) => ({
+      encryptJobId: item.detail.job.encryptJobId,
+      jobName: item.detail.job.jobName,
+      brandName: item.detail.job.brandName,
+      score: item.score,
+      accepted: item.accepted,
+      reason: item.reason,
+    })),
+    selectedJobIds: selected.map((item) => item.detail.job.encryptJobId),
+  })
 
   let streamPromise = null
   if (options.watch) {
     streamPromise = streamAgentEvents(async ({ event, data, controller }) => {
       if (event === 'history') {
-        console.log(JSON.stringify({ type: 'event-history', recent: data?.recent?.length ?? 0 }, null, 2))
+        printJson({ type: 'event-history', recent: data?.recent?.length ?? 0 })
         return
       }
 
-      console.log(JSON.stringify({ type: 'event', event: data?.type, message: data?.message }, null, 2))
+      printJson({ type: 'event', event: data?.type, message: data?.message })
 
       if (data?.type === 'job-pending-review') {
         await autoReviewPendingJob(data, detailsCache)
@@ -551,7 +542,7 @@ async function main() {
       jobIds: selected.map((item) => item.detail.job.encryptJobId),
       resetFiltered: true,
     })
-    console.log(JSON.stringify({ type: 'start', response: startResponse }, null, 2))
+    printJson({ type: 'start', response: startResponse })
   }
 
   if (streamPromise) {
@@ -561,17 +552,11 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
-    console.log(
-      JSON.stringify(
-        {
-          ok: false,
-          code: 'agent-orchestrator-failed',
-          message: error instanceof Error ? error.message : 'unknown error',
-        },
-        null,
-        2,
-      ),
-    )
+    printJson({
+      ok: false,
+      code: 'agent-orchestrator-failed',
+      message: error instanceof Error ? error.message : 'unknown error',
+    })
     process.exitCode = 1
   })
 }

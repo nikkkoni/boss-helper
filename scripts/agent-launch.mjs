@@ -6,7 +6,8 @@ import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { getAgentBridgeRuntime } from './agent-security.mjs'
+import { printJson } from './shared/logging.mjs'
+import { getAgentBridgeRuntime } from './shared/security.mjs'
 
 /** @typedef {import('./types.d.ts').AgentLaunchOptions} AgentLaunchOptions */
 
@@ -163,38 +164,26 @@ export async function main() {
 
   openRelayPage(relayUrl)
 
-  console.log(
-    JSON.stringify(
-      {
-        ok: true,
-        bridgeStarted: bridge.started,
-        host: options.host,
-        logFile,
-        pid: bridge.pid ?? null,
-        relayUrl,
-      },
-      null,
-      2,
-    ),
-  )
+  printJson({
+    ok: true,
+    bridgeStarted: bridge.started,
+    host: options.host,
+    logFile,
+    pid: bridge.pid ?? null,
+    relayUrl,
+  })
 
   console.error('\nNext: 在 Chromium 浏览器中先信任本地证书，再保持 relay 页面打开；如果 URL 里带了 extensionId，页面会自动预填。')
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
-    console.log(
-      JSON.stringify(
-        {
-          ok: false,
-          code: 'agent-launch-failed',
-          message: error instanceof Error ? error.message : 'unknown error',
-          logFile,
-        },
-        null,
-        2,
-      ),
-    )
+    printJson({
+      ok: false,
+      code: 'agent-launch-failed',
+      message: error instanceof Error ? error.message : 'unknown error',
+      logFile,
+    })
     process.exitCode = 1
   })
 }

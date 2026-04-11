@@ -3,9 +3,12 @@
 import { pathToFileURL } from 'node:url'
 
 import {
+  printJson,
+} from './shared/logging.mjs'
+import {
   createAgentBridgeAuthHeaders,
   getAgentBridgeRuntime,
-} from './agent-security.mjs'
+} from './shared/security.mjs'
 
 /** @typedef {import('./types.d.ts').AgentBridgeRuntime} AgentBridgeRuntime */
 /** @typedef {import('./types.d.ts').AgentCliOptions} AgentCliOptions */
@@ -120,10 +123,6 @@ async function requestJson(path, init = undefined) {
   })
   const data = await response.json()
   return { response, data }
-}
-
-function printJson(data) {
-  console.log(JSON.stringify(data, null, 2))
 }
 
 function printHint(data) {
