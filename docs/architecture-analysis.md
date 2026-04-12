@@ -1,6 +1,6 @@
 # BossHelper Architecture Analysis
 
-> Generated: 2026-04-11 | Source: ~20,400 lines across 110+ source files | Version: 0.4.4
+> Generated: 2026-04-12 | Source: ~20,400 lines across 110+ source files | Version: 0.4.4
 
 ## 1. Project Overview
 
@@ -167,12 +167,12 @@ boss-helper/
 │       └── chat.proto         #   Chat protobuf schema
 │
 ├── scripts/                   # Node.js agent infrastructure
-│   ├── agent-bridge.mjs       #   HTTPS bridge (localhost <-> extension)
+│   ├── agent-bridge.mjs       #   Localhost HTTP/HTTPS/SSE bridge
 │   ├── agent-cli.mjs          #   CLI interface
 │   ├── agent-launch.mjs       #   Process launcher
 │   ├── agent-mcp-server.mjs   #   MCP compatibility entrypoint
 │   ├── agent-orchestrator.mjs #   Multi-step orchestration
-│   ├── agent-relay.html       #   Browser relay page
+│   ├── agent-relay.html       #   Browser relay page (command forward + event uplink + keepalive)
 │   ├── agent-security.mjs     #   Token generation + TLS cert management
 │   ├── agent-security.d.mts   #   Type declarations
 │   ├── mcp/                   #   MCP transport / catalog / handlers split modules
@@ -213,21 +213,38 @@ boss-helper/
 
 ---
 
-## 3. Three-Layer Entry Point Architecture
+## 3. Companion + Three-Layer Entry Point Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  External Agent (localhost HTTPS)                │
-│  scripts/agent-bridge.mjs                       │
+│  External Caller                                 │
+│  CLI / MCP / orchestrator / custom HTTP client   │
 └──────────────┬──────────────────────────────────┘
-               │ chrome.runtime.sendMessageExternal
-               │ (bridgeToken auth)
+               │ HTTP / HTTPS / SSE
+┌──────────────▼──────────────────────────────────┐
+│  Companion Bridge                               │
+│  scripts/agent-bridge.mjs                       │
+│  - /command, /batch                             │
+│  - /events (bridge -> relay)                    │
+│  - /agent-events (relay -> external watchers)   │
+└──────────────┬──────────────────────────────────┘
+               │ HTTPS session cookie + EventSource
+┌──────────────▼──────────────────────────────────┐
+│  Relay Page                                     │
+│  scripts/agent-relay.html                       │
+│  - Reads commands from /events                  │
+│  - Calls chrome.runtime.sendMessage(...)        │
+│  - Holds external event Port to extension       │
+│  - Sends 20s keepalive for MV3 worker lifetime  │
+└──────────────┬──────────────────────────────────┘
+               │ chrome.runtime.sendMessage /
+               │ chrome.runtime.connect
 ┌──────────────▼──────────────────────────────────┐
 │  Layer 1: Background Service Worker             │
 │  src/entrypoints/background.ts                  │
-│  - Agent relay (external <-> content script)    │
+│  - Relay origin + token validation              │
 │  - Tab discovery (findAgentTargetTab)            │
-│  - Event port broadcasting                      │
+│  - External event port broadcasting             │
 │  - Session storage init                         │
 │  comctx RPC: BackgroundCounter                  │
 │  (cookies, fetch proxy, notifications)          │
@@ -255,25 +272,31 @@ boss-helper/
 └─────────────────────────────────────────────────┘
 ```
 
-### Message Flow (Agent Command)
+### Command Flow (External Caller -> Page Controller)
 
 ```
-External Agent
-  → chrome.runtime.sendMessageExternal (with bridgeToken)
-    → background.ts: forwardAgentRequest
-      → browser.tabs.sendMessage
-        → contentScript.ts: registerAgentMessageBridge
-          → window.postMessage (BossHelperAgentBridgeRequest)
-            → main-world: useDeliveryControl.registerWindowAgentBridge
-              → controller.handle(request)
-            → window.postMessage (BossHelperAgentBridgeResponse)
-          ← contentScript.ts: forward response
-        ← browser.runtime.sendMessage response
-      ← background.ts: return to external caller
-    ← chrome.runtime.sendMessageExternal response
+External Caller
+  → bridge: POST /command (or /batch)
+    → bridge queueCommand()
+      → relay page: /events SSE "command"
+        → relay page: handleCommand()
+          → chrome.runtime.sendMessage(extensionId, { bridgeToken, ...request })
+            → background.ts: onMessageExternal / forwardAgentRequest
+              → browser.tabs.sendMessage(targetTab, request)
+                → contentScript.ts: registerAgentMessageBridge
+                  → window.postMessage (BossHelperAgentBridgeRequest)
+                    → main-world: useDeliveryControl.registerWindowAgentBridge
+                      → controller.handle(request)
+                    → window.postMessage (BossHelperAgentBridgeResponse)
+                  ← contentScript.ts: forward response
+                ← browser.tabs.sendMessage response
+              ← background.ts: return response to relay page
+          → relay page: POST /responses
+        ← bridge: resolve pending response
+  ← bridge HTTP response
 ```
 
-### Event Flow (Page to External)
+### Event Flow (Page -> External Watchers)
 
 ```
 Page: emitBossHelperAgentEvent(event)
@@ -281,8 +304,18 @@ Page: emitBossHelperAgentEvent(event)
     → window.postMessage (BossHelperAgentEventBridgeMessage)
       → contentScript.ts: registerAgentMessageBridge
         → browser.runtime.sendMessage (AGENT_EVENT_FORWARD)
-          → background.ts: broadcast to all event ports
+          → background.ts: broadcast to all connected external event ports
+            → relay page: runtime.connect(...eventPortName).onMessage
+              → relay page: POST /agent-events
+                → bridge: fan-out to /agent-events SSE subscribers
 ```
+
+### Runtime Semantics
+
+- `GET /health` and `GET /status` expose `relayConnected`, but this only means bridge currently has at least one relay page connected to `/events`. It does not prove the target Boss tab is ready, nor that the relay page's extension event port is healthy.
+- relay page上的 `events: connected` 徽标表示 `agent-relay.html` 已通过 `chrome.runtime.connect(...)` 连上扩展 background 的外部事件端口。这和 `/status.eventSubscribers` 不是一个指标。
+- `/status.eventSubscribers` 统计的是谁在订阅 bridge 的 `GET /agent-events` SSE，例如 orchestrator、MCP watcher 或外部脚本；它不统计 relay 页本身。
+- relay page 现在会每 20 秒通过外部事件端口发送一次 keepalive，以降低 Chrome MV3 service worker 因空闲超时而周期性断开连接的概率。
 
 ---
 

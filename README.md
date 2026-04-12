@@ -56,6 +56,11 @@ CLI / MCP / 外部 Agent
   -> Boss 页面 DOM 与接口
 ```
 
+补充两点运行语义：
+
+- `relayConnected` 只表示 bridge 当前有 relay 页面连着 `/events` SSE，不等于目标 Boss 页一定可控。
+- relay 页面里的 `events` 徽标表示 relay 是否持有扩展 background 的外部事件端口；当前会通过 20 秒 keepalive 维持，降低 Chrome MV3 空闲回收导致的周期性断开。
+
 关键入口文件：
 
 | 路径 | 作用 |
@@ -67,6 +72,7 @@ CLI / MCP / 外部 Agent
 | `src/composables/useApplying/services/pipelineFactory.ts` | 投递 pipeline 编排 |
 | `src/site-adapters/zhipin/adapter.ts` | Zhipin 站点适配 |
 | `scripts/agent-bridge.mjs` | 本地 companion 服务 |
+| `scripts/agent-relay.html` | relay 页面，负责 bridge 命令转发、事件回传与 MV3 keepalive |
 | `scripts/agent-mcp-server.mjs` | stdio MCP 兼容入口，实际启动 `scripts/mcp/server.mjs` |
 
 ## 快速开始
@@ -106,14 +112,15 @@ pnpm build:chrome
 pnpm agent:start -- --extension-id <你的扩展ID>
 ```
 
-3. 首次打开 relay 页面时接受本地自签名证书，并保持页面常驻。
-4. 运行诊断：
+3. `pnpm agent:start` 会优先复用已健康运行的 bridge；如果你手动执行 `pnpm agent:bridge`，而 4317/4318 已被占用，则会直接报 `EADDRINUSE`。
+4. 首次打开 relay 页面时接受本地自签名证书，并保持页面常驻；建议确认页面状态至少为 `bridge: connected` 和 `events: connected`。
+5. 运行诊断：
 
 ```bash
 pnpm agent:doctor
 ```
 
-5. 然后按需要选择：
+6. 然后按需要选择：
 
 ```bash
 pnpm agent:cli -- stats

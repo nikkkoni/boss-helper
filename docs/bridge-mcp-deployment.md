@@ -10,7 +10,7 @@
 
 1. 浏览器扩展：真正执行 Boss 页面内的投递、过滤、翻页、聊天发送。
 2. `agent-bridge.mjs`：监听 localhost HTTP / HTTPS / SSE，对外暴露命令接口。
-3. `agent-relay.html`：在浏览器普通页面里运行，把 bridge 命令转发给扩展。
+3. `agent-relay.html`：在浏览器普通页面里运行，把 bridge 命令转发给扩展，把扩展事件回传给 bridge，并通过 keepalive 维持 MV3 事件端口。
 4. CLI / orchestrator：对 bridge HTTP 的命令行封装。
 5. `agent-mcp-server.mjs`：把 bridge HTTP 封装为 stdio MCP tools。
 
@@ -81,7 +81,7 @@ pnpm agent:start -- --extension-id <你的扩展ID>
 pnpm agent:doctor
 ```
 
-如果 `relayConnected` 为 `true`，说明 bridge -> relay -> 扩展 这段链路已经接通。
+如果 `relayConnected` 为 `true`，说明 bridge 当前至少有一个 relay 页面连上了 `/events` SSE。它不等于“Boss 页面一定可控”，也不等于 relay 页的扩展事件端口一定健康。
 
 ### 5. 启动 MCP server
 
@@ -135,12 +135,19 @@ pnpm agent:cli -- status
 pnpm agent:doctor
 ```
 
+### 状态语义
+
+- `relayConnected`：bridge 当前至少有一个 relay 页面连上 `GET /events`。这代表 bridge -> relay 页在线，但不代表目标 Boss 标签页已经可控。
+- relay 页 `events: connected`：relay 已通过 `chrome.runtime.connect(...)` 连上扩展 background 的外部事件端口。这是 relay -> extension 的单独链路。
+- `eventSubscribers`：bridge 当前有多少客户端订阅了 `GET /agent-events`。这通常是 orchestrator、MCP watcher 或外部脚本，不是 relay 页本身。
+- relay 页现在会每 20 秒往扩展事件端口发送 keepalive，减少 Chrome MV3 service worker 空闲回收造成的周期性断线。
+
 ## 脚本清单
 
 | 命令 | 作用 |
 | --- | --- |
-| `pnpm agent:start` | 一键拉起 bridge 并打开 relay 页面 |
-| `pnpm agent:bridge` | 只启动 bridge |
+| `pnpm agent:start` | 一键拉起 bridge 并打开 relay 页面；若 bridge 已健康运行则直接复用 |
+| `pnpm agent:bridge` | 只启动 bridge；如果端口已被占用会直接报 `EADDRINUSE` |
 | `pnpm agent:cli -- <command>` | 通过 CLI 调 bridge |
 | `pnpm agent:doctor` | 检查 bridge、relay 和扩展连接状态 |
 | `pnpm agent:mcp` | 暴露 stdio MCP tools |
@@ -301,10 +308,16 @@ bridge 当前对外暴露这些接口：
 | --- | --- |
 | `GET /` | relay 页面，建立 session cookie |
 | `GET /health` | 检查 bridge 是否存活 |
-| `GET /status` | 检查 relay、队列和事件订阅状态 |
+| `GET /status` | 检查 relay、队列和 `agent-events` 订阅状态 |
 | `POST /command` | 发送单条命令 |
 | `POST /batch` | 顺序执行一组命令 |
 | `GET /agent-events` | 订阅实时投递事件 |
+
+其中需要特别区分：
+
+- `relayConnected` 反映的是 relay 页到 `/events` 的 SSE 连接。
+- `eventSubscribers` 反映的是谁在订阅 `GET /agent-events`。
+- relay 页自己的 `events` 徽标反映的是 relay 到扩展 background 的外部事件端口。
 
 除 `/` 和 `/health` 外，其余接口都需要认证：
 
@@ -391,6 +404,7 @@ message TechwolfMessageBody {
 2. `background.ts` 只接受来自 `localhost` / `127.0.0.1` 的 HTTPS relay 页面。
 3. bridge 请求必须附带共享 token。
 4. 事件订阅端口名带 token，防止普通页面误连。
+5. relay 页会通过 keepalive 保持外部事件端口活跃，降低 MV3 background 空闲超时引发的周期性断连。
 
 这套方案只适合本机使用，不应该直接暴露到公网。
 
@@ -424,6 +438,17 @@ relay 没有在超时时间内返回响应。常见原因：
 - relay 页面被关闭
 - Boss 页面未初始化完成
 - `jobs.detail` 正在等待职位详情卡片加载
+
+### relay 页持续出现“扩展事件连接断开”
+
+如果 relay 页日志里反复出现“扩展事件连接断开，3s 后重连”，通常说明 relay -> extension 这条事件端口没有稳定保持。
+
+处理方式：
+
+1. 如果刚修改过 `background.ts` 或 relay 相关代码，先执行 `pnpm build:chrome`，然后在浏览器扩展管理页重新加载本地扩展。
+2. 刷新 relay 页面，必要时重新填写扩展 ID 后点击“保存并重连”。
+3. 确认 relay 页状态最终停在 `bridge: connected` 和 `events: connected`。
+4. 如果 `relayConnected=true` 但 relay 页 `events` 仍在反复重连，命令链路可能还能工作，但 `/agent-events` 驱动的观察和审核闭环会不稳定。
 
 ### `unauthorized-bridge-token`
 
