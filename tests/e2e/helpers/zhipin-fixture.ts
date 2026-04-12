@@ -25,8 +25,11 @@ interface FixtureJsonResponse {
 }
 
 interface ZhipinFixtureOptions {
+  jobDetails?: Record<string, unknown>
+  jobList?: Array<(typeof fixtureJobList)[number]>
   onApply?: FixtureRouteHandler
   onChatRemind?: FixtureRouteHandler
+  userInfo?: typeof fixtureUserInfo
 }
 
 const fixtureUserInfo = {
@@ -55,7 +58,7 @@ const fixtureUserInfo = {
   multiExpect: false,
 }
 
-const fixtureJobList = [
+export const fixtureJobList = [
   {
     securityId: 'security-1',
     bossAvatar: inlineImageUrl,
@@ -109,7 +112,7 @@ const fixtureJobList = [
   },
 ]
 
-const fixtureJobDetails: Record<string, unknown> = {
+export const fixtureJobDetails: Record<string, unknown> = {
   [fixtureJobId]: {
     pageType: 0,
     selfAccess: false,
@@ -203,12 +206,15 @@ const fixtureJobDetails: Record<string, unknown> = {
   },
 }
 
-function fixtureHtml() {
+function fixtureHtml(options: ZhipinFixtureOptions = {}) {
+  const jobList = options.jobList ?? fixtureJobList
+  const jobDetails = options.jobDetails ?? fixtureJobDetails
+  const userInfo = options.userInfo ?? fixtureUserInfo
   const payload = JSON.stringify(
     {
-      jobDetails: fixtureJobDetails,
-      jobList: fixtureJobList,
-      userInfo: fixtureUserInfo,
+      jobDetails,
+      jobList,
+      userInfo,
     },
     null,
     2,
@@ -250,7 +256,7 @@ export async function registerZhipinFixtureRoutes(
 
   await context.route('https://www.zhipin.com/web/geek/jobs**', async (route) => {
     await route.fulfill({
-      body: fixtureHtml(),
+      body: fixtureHtml(options),
       contentType: 'text/html; charset=utf-8',
       status: 200,
     })

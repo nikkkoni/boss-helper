@@ -188,7 +188,7 @@ describe('useDeliver', () => {
     const stopped = await store.jobListHandle()
     expect(stopped).toEqual({
       candidateCount: 2,
-      seenJobIds: ['job-wait', 'job-success'],
+      seenJobIds: [],
     })
     expect(deliverMocks.log.info).toHaveBeenCalledWith('暂停投递', '剩余 2 个未处理')
     expect(deliverMocks.executeDeliverJob).not.toHaveBeenCalled()

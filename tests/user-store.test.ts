@@ -81,6 +81,28 @@ describe('stores/user', () => {
     expect(setIntervalSpy).not.toHaveBeenCalled()
   })
 
+  it('falls back to encryptUserId for account-scoped operations when numeric ids are unavailable', () => {
+    const user = useUser()
+
+    user.info.value = {
+      encryptUserId: 'encrypted-info-user',
+      userId: undefined,
+    } as any
+    expect(user.getUserScopeId()).toBe('encrypted-info-user')
+
+    user.info.value = undefined
+    window._PAGE = {
+      encryptUserId: 'encrypted-page-user',
+    } as Window['_PAGE']
+    expect(user.getUserScopeId()).toBe('encrypted-page-user')
+
+    user.info.value = {
+      encryptUserId: 'encrypted-info-user',
+      userId: 42,
+    } as any
+    expect(user.getUserScopeId()).toBe(42)
+  })
+
   it('keeps literal "undefined" text from resume content while skipping missing fields', async () => {
     const user = useUser()
     const fetchMock = vi.fn(

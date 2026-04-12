@@ -20,6 +20,8 @@ function createControllerDeps() {
   }
 
   const queries = {
+    planPreview: vi.fn(async (payload?: unknown) => response('plan.preview', payload)),
+    readinessGet: vi.fn(async () => response('readiness.get')),
     resumeGet: vi.fn(async () => response('resume.get')),
     navigate: vi.fn(async (payload?: unknown) => response('navigate', payload)),
     chatList: vi.fn(async (payload?: unknown) => response('chat.list', payload)),
@@ -28,6 +30,7 @@ function createControllerDeps() {
     jobsReview: vi.fn(async (payload?: unknown) => response('jobs.review', payload)),
     logsQuery: vi.fn(async (payload?: unknown) => response('logs.query', payload)),
     jobsList: vi.fn(async (payload?: unknown) => response('jobs.list', payload)),
+    jobsRefresh: vi.fn(async () => response('jobs.refresh')),
     jobsDetail: vi.fn(async (payload?: unknown) => response('jobs.detail', payload)),
     getConfig: vi.fn(async () => response('config.get')),
     updateConfig: vi.fn(async (payload?: unknown) => response('config.update', payload)),
@@ -92,6 +95,18 @@ describe('createAgentController', () => {
         payload: undefined,
       },
       {
+        code: 'plan.preview',
+        command: 'plan.preview',
+        handler: deps.queries.planPreview,
+        payload: { jobIds: ['job-9'] },
+      },
+      {
+        code: 'readiness.get',
+        command: 'readiness.get',
+        handler: deps.queries.readinessGet,
+        payload: undefined,
+      },
+      {
         code: 'navigate',
         command: 'navigate',
         handler: deps.queries.navigate,
@@ -126,6 +141,12 @@ describe('createAgentController', () => {
         command: 'jobs.list',
         handler: deps.queries.jobsList,
         payload: { statusFilter: ['success'] },
+      },
+      {
+        code: 'jobs.refresh',
+        command: 'jobs.refresh',
+        handler: deps.queries.jobsRefresh,
+        payload: undefined,
       },
       {
         code: 'jobs.detail',
@@ -188,15 +209,30 @@ describe('createAgentController', () => {
     await expect(controller.resumeGet()).resolves.toEqual(
       expect.objectContaining({ code: 'resume.get' }),
     )
+    await expect(controller.readinessGet()).resolves.toEqual(
+      expect.objectContaining({ code: 'readiness.get' }),
+    )
+    await expect(controller.planPreview({ jobIds: ['job-9'] })).resolves.toEqual(
+      expect.objectContaining({
+        code: 'plan.preview',
+        data: { jobIds: ['job-9'] },
+      }),
+    )
     await expect(controller.jobsList({ statusFilter: ['success'] })).resolves.toEqual(
       expect.objectContaining({
         code: 'jobs.list',
         data: { statusFilter: ['success'] },
       }),
     )
+    await expect(controller.jobsRefresh()).resolves.toEqual(
+      expect.objectContaining({ code: 'jobs.refresh' }),
+    )
 
     expect(deps.batchRunner.startBatch).toHaveBeenCalledWith({ jobIds: ['job-3'] })
     expect(deps.queries.resumeGet).toHaveBeenCalledTimes(1)
+    expect(deps.queries.readinessGet).toHaveBeenCalledTimes(1)
+    expect(deps.queries.planPreview).toHaveBeenCalledWith({ jobIds: ['job-9'] })
     expect(deps.queries.jobsList).toHaveBeenCalledWith({ statusFilter: ['success'] })
+    expect(deps.queries.jobsRefresh).toHaveBeenCalledTimes(1)
   })
 })

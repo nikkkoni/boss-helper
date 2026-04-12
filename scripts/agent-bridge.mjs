@@ -7,7 +7,10 @@ import { createServer as createHttpsServer } from 'node:https'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { AGENT_PROTOCOL_VERSION } from '../shared/agentProtocol.js'
+import {
+  AGENT_PROTOCOL_VERSION,
+  resolveBossHelperAgentErrorMeta,
+} from '../shared/agentProtocol.js'
 import {
   createPrefixedLogger,
 } from './shared/logging.mjs'
@@ -59,14 +62,35 @@ function getCommandTimeoutMs(command, override) {
   switch (command) {
     case 'start':
     case 'jobs.list':
+    case 'jobs.refresh':
     case 'navigate':
     case 'chat.send':
       return 10_000
+    case 'plan.preview':
+      return 120_000
     case 'stop':
     case 'jobs.detail':
       return 65_000
     default:
       return COMMAND_TIMEOUT_MS
+  }
+}
+
+function shouldWaitForRelay(command, value) {
+  if (command === 'readiness.get') {
+    return false
+  }
+
+  return value !== false
+}
+
+function createBridgeErrorResponse(code, message, extra = undefined) {
+  return {
+    ok: false,
+    code,
+    message,
+    ...resolveBossHelperAgentErrorMeta(code),
+    ...(extra ?? {}),
   }
 }
 
@@ -326,11 +350,7 @@ function queueCommand(command, timeoutMs = COMMAND_TIMEOUT_MS) {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       pendingResponses.delete(requestId)
-      resolve({
-        ok: false,
-        code: 'bridge-timeout',
-        message: 'relay 页面未在超时时间内返回结果',
-      })
+      resolve(createBridgeErrorResponse('bridge-timeout', 'relay 页面未在超时时间内返回结果'))
       broadcastQueueState()
     }, timeoutMs)
 
@@ -434,11 +454,12 @@ async function createAppServer() {
       }
 
       if (!shouldSkipAuth(req, url) && !isAuthorizedRequest(req)) {
-        sendJson(req, res, 401, {
-          ok: false,
-          code: 'unauthorized-bridge-token',
-          message: '缺少或错误的 bridge token',
-        })
+        sendJson(
+          req,
+          res,
+          401,
+          createBridgeErrorResponse('unauthorized-bridge-token', '缺少或错误的 bridge token'),
+        )
         return
       }
 
@@ -452,11 +473,12 @@ async function createAppServer() {
 
       if (req.method === 'GET' && url.pathname === '/relay/bootstrap') {
         if (!secureRequest) {
-          sendJson(req, res, 400, {
-            ok: false,
-            code: 'relay-bootstrap-requires-https',
-            message: 'relay bootstrap 仅支持 HTTPS',
-          })
+          sendJson(
+            req,
+            res,
+            400,
+            createBridgeErrorResponse('relay-bootstrap-requires-https', 'relay bootstrap 仅支持 HTTPS'),
+          )
           return
         }
 
@@ -561,11 +583,7 @@ async function createAppServer() {
         const event = body?.event ?? body
 
         if (!event || typeof event !== 'object') {
-          sendJson(req, res, 400, {
-            ok: false,
-            code: 'invalid-agent-event',
-            message: '缺少 event 数据',
-          })
+          sendJson(req, res, 400, createBridgeErrorResponse('invalid-agent-event', '缺少 event 数据'))
           return
         }
 
@@ -594,23 +612,23 @@ async function createAppServer() {
 
       if (req.method === 'POST' && url.pathname === '/command') {
         const body = await readJson(req)
-        const waitForRelay = body.waitForRelay !== false
-
-        if (relayClients.size === 0 && !waitForRelay) {
-          sendJson(req, res, 503, {
-            ok: false,
-            code: 'relay-not-connected',
-            message: '没有已连接的 relay 页面，请先打开 companion 页面并连接扩展',
-          })
+        if (!body.command || typeof body.command !== 'string') {
+          sendJson(req, res, 400, createBridgeErrorResponse('invalid-command', '缺少 command 字段'))
           return
         }
 
-        if (!body.command || typeof body.command !== 'string') {
-          sendJson(req, res, 400, {
-            ok: false,
-            code: 'invalid-command',
-            message: '缺少 command 字段',
-          })
+        const waitForRelay = shouldWaitForRelay(body.command, body.waitForRelay)
+
+        if (relayClients.size === 0 && !waitForRelay) {
+          sendJson(
+            req,
+            res,
+            503,
+            createBridgeErrorResponse(
+              'relay-not-connected',
+              '没有已连接的 relay 页面，请先打开 companion 页面并连接扩展',
+            ),
+          )
           return
         }
 
@@ -631,29 +649,38 @@ async function createAppServer() {
         const waitForRelay = body.waitForRelay !== false
 
         if (relayClients.size === 0 && !waitForRelay) {
-          sendJson(req, res, 503, {
-            ok: false,
-            code: 'relay-not-connected',
-            message: '没有已连接的 relay 页面，请先打开 companion 页面并连接扩展',
-          })
+          sendJson(
+            req,
+            res,
+            503,
+            createBridgeErrorResponse(
+              'relay-not-connected',
+              '没有已连接的 relay 页面，请先打开 companion 页面并连接扩展',
+            ),
+          )
           return
         }
 
         if (!Array.isArray(body.commands) || body.commands.length === 0) {
-          sendJson(req, res, 400, {
-            ok: false,
-            code: 'invalid-batch-commands',
-            message: 'commands 必须是非空数组',
-          })
+          sendJson(
+            req,
+            res,
+            400,
+            createBridgeErrorResponse('invalid-batch-commands', 'commands 必须是非空数组'),
+          )
           return
         }
 
         if (body.commands.some((command) => !command?.command || typeof command.command !== 'string')) {
-          sendJson(req, res, 400, {
-            ok: false,
-            code: 'invalid-batch-command-item',
-            message: 'commands 中的每一项都必须包含 command 字段',
-          })
+          sendJson(
+            req,
+            res,
+            400,
+            createBridgeErrorResponse(
+              'invalid-batch-command-item',
+              'commands 中的每一项都必须包含 command 字段',
+            ),
+          )
           return
         }
 
@@ -668,19 +695,27 @@ async function createAppServer() {
       sendJson(req, res, 404, { ok: false, message: 'not found' })
     } catch (error) {
       if (error instanceof Error && error.name === 'BridgeBodyTooLargeError') {
-        sendJson(req, res, 413, {
-          ok: false,
-          code: 'request-body-too-large',
-          message: `请求体超过限制（${MAX_JSON_BODY_BYTES} bytes）`,
-        })
+        sendJson(
+          req,
+          res,
+          413,
+          createBridgeErrorResponse(
+            'request-body-too-large',
+            `请求体超过限制（${MAX_JSON_BODY_BYTES} bytes）`,
+          ),
+        )
         return
       }
 
-      sendJson(req, res, 500, {
-        ok: false,
-        code: 'bridge-server-error',
-        message: error instanceof Error ? error.message : 'unknown error',
-      })
+      sendJson(
+        req,
+        res,
+        500,
+        createBridgeErrorResponse(
+          'bridge-server-error',
+          error instanceof Error ? error.message : 'unknown error',
+        ),
+      )
     }
   })
 }

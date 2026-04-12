@@ -3,7 +3,9 @@ import { ElMessage } from 'element-plus'
 import { useModel } from '@/composables/useModel'
 import { requestExternalAIFilterReview } from '@/pages/zhipin/hooks/agentReview'
 import { useConf } from '@/stores/conf'
+import type { logData } from '@/stores/log'
 import { useStatistics } from '@/stores/statistics'
+import type { Statistics, FormData } from '@/types/formData'
 import { AIFilteringError } from '@/types/deliverError'
 
 import { SignedKeyLLM } from '../useModel/signedKey'
@@ -35,17 +37,28 @@ import {
 import type { StepFactory } from './type'
 import { errorHandle, sameCompanyKey, sameHrKey } from './utils'
 
-export function handles() {
-  const toCause = (error: unknown) => (error instanceof Error ? { cause: error } : undefined)
-  const { chatBossMessage } = useChatPromptBridge()
-  const model = useModel()
-  const conf = useConf()
-  const statistics = useStatistics()
+export interface ApplyingHandleOptions {
+  currentUserId?: number | string | null
+  formData?: FormData
+  getModelStore?: () => ReturnType<typeof useModel>
+  onChatPrompt?: (ctx: logData, s: string) => void
+  requestExternalReview?: typeof requestExternalAIFilterReview
+  statistics?: { todayData: Statistics }
+}
 
-  const currentUserId = getCurrentApplyingUserId()
+export function handles(options: ApplyingHandleOptions = {}) {
+  const toCause = (error: unknown) => (error instanceof Error ? { cause: error } : undefined)
+  const conf = useConf()
+  const formData = options.formData ?? conf.formData
+  const statistics = options.statistics ?? useStatistics()
+  const getModelStore = () => options.getModelStore?.() ?? useModel()
+  const getChatBossMessage = () => options.onChatPrompt ?? useChatPromptBridge().chatBossMessage
+  const requestExternalReview = options.requestExternalReview ?? requestExternalAIFilterReview
+
+  const currentUserId = options.currentUserId ?? getCurrentApplyingUserId()
   const communicated = createCommunicatedStep(statistics)
   const SameCompanyFilter = createDuplicateFilter({
-    enabled: () => conf.formData.sameCompanyFilter.value,
+    enabled: () => formData.sameCompanyFilter.value,
     storageKey: sameCompanyKey,
     getId: (data) => data.encryptBrandId,
     errorMessage: '相同公司已投递',
@@ -53,37 +66,38 @@ export function handles() {
     userId: currentUserId,
   })
   const SameHrFilter = createDuplicateFilter({
-    enabled: () => conf.formData.sameHrFilter.value,
+    enabled: () => formData.sameHrFilter.value,
     storageKey: sameHrKey,
     getId: (data) => data.encryptBossId,
     errorMessage: '相同hr已投递',
     statistics,
     userId: currentUserId,
   })
-  const jobTitle = createJobTitleStep(conf.formData, statistics, toCause)
-  const goldHunterFilter = createGoldHunterFilterStep(conf.formData, statistics)
-  const company = createCompanyStep(conf.formData, statistics, toCause)
-  const salaryRange = createSalaryRangeStep(conf.formData, statistics, toCause)
-  const companySizeRange = createCompanySizeRangeStep(conf.formData, statistics, toCause)
-  const jobContent = createJobContentStep(conf.formData, statistics, toCause)
-  const hrPosition = createHrPositionStep(conf.formData, statistics, toCause)
-  const jobAddress = createJobAddressStep(conf.formData, statistics, toCause)
-  const jobFriendStatus = createJobFriendStatusStep(conf.formData)
-  const activityFilter = createActivityFilterStep(conf.formData, statistics, toCause)
-  const amap = createAmapStep(conf.formData)
+  const jobTitle = createJobTitleStep(formData, statistics, toCause)
+  const goldHunterFilter = createGoldHunterFilterStep(formData, statistics)
+  const company = createCompanyStep(formData, statistics, toCause)
+  const salaryRange = createSalaryRangeStep(formData, statistics, toCause)
+  const companySizeRange = createCompanySizeRangeStep(formData, statistics, toCause)
+  const jobContent = createJobContentStep(formData, statistics, toCause)
+  const hrPosition = createHrPositionStep(formData, statistics, toCause)
+  const jobAddress = createJobAddressStep(formData, statistics, toCause)
+  const jobFriendStatus = createJobFriendStatusStep(formData)
+  const activityFilter = createActivityFilterStep(formData, statistics, toCause)
+  const amap = createAmapStep(formData)
 
   const aiFiltering: StepFactory = () => {
-    if (!conf.formData.aiFiltering.enable) {
+    if (!formData.aiFiltering.enable) {
       return
     }
+    const model = getModelStore()
     const curModel = model.modelData.find((v) => conf.formData.aiFiltering.model === v.key)
-    if (!curModel && !conf.formData.aiFiltering.vip) {
+    if (!curModel && !formData.aiFiltering.vip) {
       throw new AIFilteringError('没有找到AI筛选的模型')
     }
     const gpt = model.getModel(
       curModel,
-      conf.formData.aiFiltering.prompt,
-      conf.formData.aiFiltering.vip,
+      formData.aiFiltering.prompt,
+      formData.aiFiltering.vip,
     )
     if (gpt instanceof SignedKeyLLM) {
       warmSignedKeyResume(gpt, 'aiFiltering')
@@ -91,12 +105,12 @@ export function handles() {
     return async (_, ctx) => {
       // const chatInput = chatInputInit(model)
       try {
-        const threshold = conf.formData.aiFiltering.score ?? 10
-        if (conf.formData.aiFiltering.externalMode) {
-          const review = await requestExternalAIFilterReview(
+        const threshold = formData.aiFiltering.score ?? 10
+        if (formData.aiFiltering.externalMode) {
+          const review = await requestExternalReview(
             ctx,
             threshold,
-            conf.formData.aiFiltering.externalTimeoutMs ?? 120000,
+            formData.aiFiltering.externalTimeoutMs ?? 120000,
           )
           const rating = typeof review.rating === 'number' ? review.rating : undefined
           const reason =
@@ -142,11 +156,11 @@ export function handles() {
         }
 
         await runInternalAIFiltering({
-          amapPrompt: buildAmapPrompt(ctx, conf.formData.amap.enable),
+          amapPrompt: buildAmapPrompt(ctx, formData.amap.enable),
           ctx,
           gpt,
           model: curModel,
-          onPrompt: (s) => chatBossMessage(ctx, s),
+          onPrompt: (s) => getChatBossMessage()(ctx, s),
           threshold,
         })
       } catch (e) {
@@ -161,27 +175,28 @@ export function handles() {
   }
 
   const aiGreeting: StepFactory = () => {
+    const model = getModelStore()
     const curModel = model.modelData.find((v) => conf.formData.aiGreeting.model === v.key)
-    if (!curModel && !conf.formData.aiGreeting.vip) {
+    if (!curModel && !formData.aiGreeting.vip) {
       ElMessage.warning('没有找到招呼语的模型')
       return
     }
     return createAIGreetingStep({
       getModel: () =>
-        model.getModel(curModel, conf.formData.aiGreeting.prompt, conf.formData.aiGreeting.vip),
+        model.getModel(curModel, formData.aiGreeting.prompt, formData.aiGreeting.vip),
       model: curModel,
-      onPrompt: chatBossMessage,
+      onPrompt: getChatBossMessage(),
     })()
   }
 
   const greeting: StepFactory = () => {
     const externalGreetingAfter = createExternalGreetingStep()
-    const base = conf.formData.aiGreeting.enable
+    const base = formData.aiGreeting.enable
       ? aiGreeting()
-      : conf.formData.customGreeting.enable
+      : formData.customGreeting.enable
         ? createCustomGreetingStep({
-            template: conf.formData.customGreeting.value,
-            useVariables: conf.formData.greetingVariable.value,
+            template: formData.customGreeting.value,
+            useVariables: formData.greetingVariable.value,
           })()
         : undefined
 

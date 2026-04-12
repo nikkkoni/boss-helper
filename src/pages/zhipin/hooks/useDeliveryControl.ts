@@ -1,6 +1,8 @@
 import { useChat } from '@/composables/useChat'
 import { createBossHelperAgentResponse } from '@/message/agent'
+import type { BossHelperAgentResponseMeta } from '@/message/agent'
 import { isSupportedSiteUrl } from '@/site-adapters'
+import { useAgentRuntime } from '@/stores/agent'
 import { useConf } from '@/stores/conf'
 import { useLog } from '@/stores/log'
 
@@ -9,6 +11,8 @@ import { onBossHelperAgentEvent } from './agentEvents'
 import { registerWindowAgentBridge as setupWindowAgentBridge } from './agentWindowBridge'
 import { useAgentBatchRunner } from './useAgentBatchRunner'
 import { useAgentQueries } from './useAgentQueries'
+
+let runSummaryTrackingRegistered = false
 
 /**
  * 页面侧 agent 控制器入口。
@@ -21,11 +25,14 @@ export function useDeliveryControl() {
   useChat()
   useLog()
   const conf = useConf()
+  const agentRuntime = useAgentRuntime()
 
   async function ensureStoresLoaded() {
     if (!conf.isLoaded) {
       await conf.confInit()
     }
+
+    await agentRuntime.ensureRunSummaryLoaded()
   }
 
   const batchRunner = useAgentBatchRunner({
@@ -46,11 +53,18 @@ export function useDeliveryControl() {
     currentProgressSnapshot,
     ensureStoresLoaded,
     ensureSupportedPage,
-    ok: async (code, message) =>
-      createBossHelperAgentResponse(true, code, message, await batchRunner.getStatsData()),
-    fail: async (code, message) =>
-      createBossHelperAgentResponse(false, code, message, await batchRunner.getStatsData()),
+    ok: async (code, message, meta?: BossHelperAgentResponseMeta) =>
+      createBossHelperAgentResponse(true, code, message, await batchRunner.getStatsData(), meta),
+    fail: async (code, message, meta?: BossHelperAgentResponseMeta) =>
+      createBossHelperAgentResponse(false, code, message, await batchRunner.getStatsData(), meta),
   })
+
+  if (!runSummaryTrackingRegistered) {
+    runSummaryTrackingRegistered = true
+    onBossHelperAgentEvent((event) => {
+      void agentRuntime.recordEvent(event, currentProgressSnapshot())
+    })
+  }
 
   const controller = createAgentController({ batchRunner, queries })
 

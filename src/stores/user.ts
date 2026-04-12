@@ -149,6 +149,16 @@ const useUserStore = defineStore('user', () => {
     return info.value?.userId ?? window?._PAGE?.uid ?? window?._PAGE?.userId
   }
 
+  function getUserScopeId(): number | string | null {
+    const userId = getUserId()
+    if (userId != null && userId !== '') {
+      return userId
+    }
+
+    const encryptUserId = info.value?.encryptUserId ?? window?._PAGE?.encryptUserId
+    return encryptUserId ? encryptUserId : null
+  }
+
   async function initUser() {
     const v = await getRootVue()
     const now = Date.now()
@@ -419,6 +429,7 @@ ${volunteerExperiences.join('\n')}`
     getUserResumeString,
     getUserResumeData,
     getUserId,
+    getUserScopeId,
     initUser,
     saveUser,
     clearUser,
@@ -493,6 +504,7 @@ export function useUser() {
     getUserResumeString: store.getUserResumeString,
     getUserResumeData: store.getUserResumeData,
     getUserId: store.getUserId,
+    getUserScopeId: store.getUserScopeId,
     initUser: store.initUser,
     saveUser: store.saveUser,
     clearUser: store.clearUser,

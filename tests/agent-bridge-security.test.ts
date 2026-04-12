@@ -249,4 +249,31 @@ describe('agent bridge security', () => {
       }),
     )
   })
+
+  it('fails readiness.get fast when no relay is connected', async () => {
+    const { bridge, port, token } = await startBridge()
+    activeBridge = bridge
+
+    const response = await requestText(`http://127.0.0.1:${port}/command`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-boss-helper-agent-token': token,
+      },
+      body: JSON.stringify({
+        command: 'readiness.get',
+      }),
+    })
+    const payload = JSON.parse(response.body) as Record<string, unknown>
+
+    expect(response.statusCode).toBe(503)
+    expect(payload).toEqual(
+      expect.objectContaining({
+        ok: false,
+        code: 'relay-not-connected',
+        retryable: true,
+        suggestedAction: 'reconnect-relay',
+      }),
+    )
+  })
 })

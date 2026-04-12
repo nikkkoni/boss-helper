@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useChat } from '@/composables/useChat'
+import { resolveBossHelperAgentErrorMeta, type BossHelperAgentResponseMeta } from '@/message/agent'
 import { useAgentChatQueries } from '@/pages/zhipin/hooks/useAgentChatQueries'
 import { useCommon } from '@/stores/common'
 
@@ -54,8 +55,19 @@ function createOptions(overrides: Partial<Parameters<typeof useAgentChatQueries>
     currentProgressSnapshot: () => ({ current: 1, total: 2 }),
     ensureStoresLoaded: vi.fn(async () => undefined),
     ensureSupportedPage: () => true,
-    fail: async (code: string, message: string) => ({ code, message, ok: false }),
-    ok: async (code: string, message: string) => ({ code, message, ok: true }),
+    fail: async (code: string, message: string, meta?: BossHelperAgentResponseMeta) => ({
+      code,
+      message,
+      ok: false,
+      ...resolveBossHelperAgentErrorMeta(code, meta),
+      ...meta,
+    }),
+    ok: async (code: string, message: string, meta?: BossHelperAgentResponseMeta) => ({
+      code,
+      message,
+      ok: true,
+      ...meta,
+    }),
     ...overrides,
   }
 }
@@ -63,6 +75,16 @@ function createOptions(overrides: Partial<Parameters<typeof useAgentChatQueries>
 describe('useAgentChatQueries', () => {
   beforeEach(() => {
     setupPinia()
+    window.history.replaceState({}, '', '/web/geek/job')
+    document.title = 'Boss Jobs'
+    document.body.innerHTML = `
+      <div id="wrap">
+        <div class="job-search-wrapper"></div>
+        <div class="page-job-wrapper"></div>
+      </div>
+      <div id="boss-helper"></div>
+      <div id="boss-helper-job"></div>
+    `
     useChat().chatMessages.value = []
     useCommon().deliverState = 'running'
     chatQueryMocks.sentPayloads.length = 0
@@ -152,7 +174,13 @@ describe('useAgentChatQueries', () => {
   })
 
   it('guards unsupported pages and invalid chat payloads', async () => {
-    const fail = vi.fn(async (code: string, message: string) => ({ code, message, ok: false }))
+    const fail = vi.fn(async (code: string, message: string, meta?: BossHelperAgentResponseMeta) => ({
+      code,
+      message,
+      ok: false,
+      ...resolveBossHelperAgentErrorMeta(code, meta),
+      ...meta,
+    }))
     const queries = useAgentChatQueries(
       createOptions({
         ensureSupportedPage: () => false,
@@ -170,6 +198,8 @@ describe('useAgentChatQueries', () => {
       code: 'unsupported-page',
       message: '当前页面不支持自动投递',
       ok: false,
+      retryable: true,
+      suggestedAction: 'navigate',
     })
 
     const supportedQueries = useAgentChatQueries(createOptions({ fail }))
@@ -183,6 +213,8 @@ describe('useAgentChatQueries', () => {
       code: 'missing-content',
       message: '缺少聊天内容',
       ok: false,
+      retryable: false,
+      suggestedAction: 'fix-input',
     })
     await expect(
       supportedQueries.chatSend({ content: 'hello', to_name: ' ', to_uid: '' }),
@@ -190,6 +222,8 @@ describe('useAgentChatQueries', () => {
       code: 'missing-chat-target',
       message: '缺少 to_uid 或 to_name',
       ok: false,
+      retryable: false,
+      suggestedAction: 'fix-input',
     })
 
     chatQueryMocks.getUserId.mockReturnValueOnce(null as unknown as string)
@@ -199,11 +233,18 @@ describe('useAgentChatQueries', () => {
       code: 'missing-form-uid',
       message: '缺少 form_uid，且当前页面未获取到用户 ID',
       ok: false,
+      retryable: false,
+      suggestedAction: 'fix-input',
     })
   })
 
   it('sends chat messages and emits structured events', async () => {
-    const ok = vi.fn(async (code: string, message: string) => ({ code, message, ok: true }))
+    const ok = vi.fn(async (code: string, message: string, meta?: BossHelperAgentResponseMeta) => ({
+      code,
+      message,
+      ok: true,
+      ...meta,
+    }))
     const queries = useAgentChatQueries(createOptions({ ok }))
 
     const response = await queries.chatSend({
@@ -237,7 +278,13 @@ describe('useAgentChatQueries', () => {
   })
 
   it('returns chat-send-failed when the websocket sender throws', async () => {
-    const fail = vi.fn(async (code: string, message: string) => ({ code, message, ok: false }))
+    const fail = vi.fn(async (code: string, message: string, meta?: BossHelperAgentResponseMeta) => ({
+      code,
+      message,
+      ok: false,
+      ...resolveBossHelperAgentErrorMeta(code, meta),
+      ...meta,
+    }))
     chatQueryMocks.sendMock.mockImplementation(() => {
       throw new Error('socket down')
     })
@@ -249,6 +296,8 @@ describe('useAgentChatQueries', () => {
       code: 'chat-send-failed',
       message: 'socket down',
       ok: false,
+      retryable: true,
+      suggestedAction: 'retry',
     })
   })
 })

@@ -16,7 +16,7 @@
 - Typecheck: `pnpm check`
 - Lint: `pnpm lint`
 - Unit tests: `pnpm test`
-- Agent-chain checks: `pnpm agent:doctor` and `pnpm agent:cli -- status`
+- Agent-chain checks: `pnpm agent:doctor` and `pnpm agent:cli status`
 
 ## MCP And Relay Rules
 

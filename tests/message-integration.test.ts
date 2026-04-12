@@ -127,6 +127,14 @@ describe('agent message integration', () => {
       },
       { url: 'http://127.0.0.1/' },
     )
+    const unsupportedCommandResponse = await __emitRuntimeMessageExternal(
+      {
+        bridgeToken: BOSS_HELPER_AGENT_BRIDGE_TOKEN,
+        channel: BOSS_HELPER_AGENT_CHANNEL,
+        command: 'unknown.command',
+      },
+      { url: 'https://127.0.0.1/' },
+    )
 
     expect(statsResponse).toEqual(
       expect.objectContaining({
@@ -138,6 +146,14 @@ describe('agent message integration', () => {
       expect.objectContaining({
         code: 'unauthorized-bridge',
         ok: false,
+      }),
+    )
+    expect(unsupportedCommandResponse).toEqual(
+      expect.objectContaining({
+        code: 'invalid-command',
+        ok: false,
+        retryable: true,
+        suggestedAction: 'refresh-page',
       }),
     )
 

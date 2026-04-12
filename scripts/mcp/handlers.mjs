@@ -1,6 +1,10 @@
 // @ts-check
 
-import { MCP_PROTOCOL_VERSION, MCP_SERVER_INFO } from '../shared/protocol.mjs'
+import {
+  MCP_PROTOCOL_VERSION,
+  MCP_SERVER_INFO,
+  resolveBossHelperAgentErrorMeta,
+} from '../shared/protocol.mjs'
 
 function toErrorMessage(error) {
   return error instanceof Error ? error.message : 'unknown error'
@@ -93,6 +97,7 @@ export function createMcpRequestHandler({ bridgeBaseUrl, catalog, sendError, sen
         ok: false,
         code: 'mcp-tool-failed',
         message: error instanceof Error ? error.message : 'unknown error',
+        ...resolveBossHelperAgentErrorMeta('mcp-tool-failed'),
         bridge: bridgeBaseUrl,
         tool: name,
       }

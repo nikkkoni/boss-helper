@@ -6,8 +6,11 @@ import type {
   BossHelperAgentConfigUpdateData,
   BossHelperAgentJobDetailData,
   BossHelperAgentJobsListData,
+  BossHelperAgentJobsRefreshData,
   BossHelperAgentLogsQueryData,
   BossHelperAgentNavigateData,
+  BossHelperAgentPlanPreviewData,
+  BossHelperAgentReadinessData,
   BossHelperAgentResponse,
   BossHelperAgentResumeData,
   BossHelperAgentStatsData,
@@ -20,12 +23,15 @@ export type BossHelperAgentResponseDataMap = {
   'resume.get': BossHelperAgentResumeData
   stop: BossHelperAgentStatsData
   stats: BossHelperAgentStatsData
+  'plan.preview': BossHelperAgentPlanPreviewData
+  'readiness.get': BossHelperAgentReadinessData
   navigate: BossHelperAgentNavigateData
   'chat.list': BossHelperAgentChatListData
   'chat.history': BossHelperAgentChatHistoryData
   'chat.send': BossHelperAgentStatsData
   'logs.query': BossHelperAgentLogsQueryData
   'jobs.list': BossHelperAgentJobsListData
+  'jobs.refresh': BossHelperAgentJobsRefreshData
   'jobs.detail': BossHelperAgentJobDetailData
   'jobs.review': BossHelperAgentStatsData
   'config.get': BossHelperAgentConfigSnapshot

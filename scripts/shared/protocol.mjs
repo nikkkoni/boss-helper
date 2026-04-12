@@ -1,6 +1,10 @@
 // @ts-check
 
-export { AGENT_PROTOCOL_VERSION } from '../../shared/agentProtocol.js'
+export {
+  AGENT_PROTOCOL_VERSION,
+  BOSS_HELPER_AGENT_SUGGESTED_ACTIONS,
+  resolveBossHelperAgentErrorMeta,
+} from '../../shared/agentProtocol.js'
 
 export const MCP_PROTOCOL_VERSION = '2024-11-05'
 
@@ -19,6 +23,7 @@ export const JOB_STATUS_FILTERS = Object.freeze([
 ])
 
 export const AGENT_CONTEXT_SECTIONS = Object.freeze([
+  'readiness',
   'config',
   'events',
   'jobs',
@@ -28,6 +33,7 @@ export const AGENT_CONTEXT_SECTIONS = Object.freeze([
 ])
 
 export const DEFAULT_AGENT_CONTEXT_SECTIONS = Object.freeze([
+  'readiness',
   'config',
   'events',
   'jobs',

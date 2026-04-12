@@ -11,12 +11,15 @@ export const bossHelperAgentCommands = [
   'resume.get',
   'stop',
   'stats',
+  'plan.preview',
+  'readiness.get',
   'navigate',
   'chat.list',
   'chat.history',
   'chat.send',
   'logs.query',
   'jobs.list',
+  'jobs.refresh',
   'jobs.detail',
   'jobs.review',
   'config.get',
@@ -56,6 +59,12 @@ export interface BossHelperAgentStartPayload {
 export interface BossHelperAgentConfigUpdatePayload {
   configPatch: BossHelperAgentConfigPatch
   persist?: boolean
+}
+
+export interface BossHelperAgentPlanPreviewPayload {
+  configPatch?: BossHelperAgentConfigPatch
+  jobIds?: string[]
+  resetFiltered?: boolean
 }
 
 export interface BossHelperAgentNavigatePayload {
@@ -116,12 +125,15 @@ export interface BossHelperAgentRequestPayloadMap {
   'resume.get': undefined
   stop: undefined
   stats: undefined
+  'plan.preview': BossHelperAgentPlanPreviewPayload | undefined
+  'readiness.get': undefined
   navigate: BossHelperAgentNavigatePayload | undefined
   'chat.list': BossHelperAgentChatListPayload | undefined
   'chat.history': BossHelperAgentChatHistoryPayload
   'chat.send': BossHelperAgentChatSendPayload
   'logs.query': BossHelperAgentLogsQueryPayload | undefined
   'jobs.list': BossHelperAgentJobsListPayload | undefined
+  'jobs.refresh': undefined
   'jobs.detail': BossHelperAgentJobDetailPayload
   'jobs.review': BossHelperAgentJobReviewPayload
   'config.get': undefined

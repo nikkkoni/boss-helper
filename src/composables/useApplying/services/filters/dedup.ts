@@ -73,5 +73,5 @@ export function createDuplicateFilter(options: {
 }
 
 export function getCurrentApplyingUserId() {
-  return useUser().getUserId()
+  return useUser().getUserScopeId()
 }

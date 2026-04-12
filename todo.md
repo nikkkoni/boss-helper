@@ -14,12 +14,37 @@
 - `boss_helper_health` 可用
 - `boss_helper_status` 可用
 - `boss_helper_agent_context` 可用
+- `boss_helper_agent_context` 在 `relayConnected=false` 时可快速返回结构化 readiness 与恢复建议（实际 MCP 调用已验证）
 - `boss_helper_stats` 可用
 - `boss_helper_config_get` 可用
 - `boss_helper_jobs_list` 可用
 - `boss_helper_jobs_detail` 可用
+- `jobs.refresh` / `boss_helper_jobs_refresh` 已完成仓库侧实现；它会在受支持职位页只刷新当前列表 URL，不改变现有搜索条件，并通过 `tests/agent-job-queries.test.ts`、`tests/agent-controller.test.ts`、`tests/use-delivery-control.test.ts`、`tests/agent-mcp-server.catalog.test.ts`
+- 真实 stdio MCP 已验证 `boss_helper_jobs_refresh`：live Boss jobs 页接受刷新请求后，`boss_helper_agent_context` 仍返回 `readiness.ready=true` / `suggestedAction=continue`，`boss_helper_jobs_list` 继续可读
+- 真实 live 样本已验证 3 个 `jobs.detail`：在 refresh 前后对同一批岗位连续读取详情，均返回 `code=job-detail` 且 `hasCard=true`，当前尚未复现 detail 失败样本
+- `tests/use-deliver.test.ts` 已对齐当前 `seenJobIds` 语义；`pnpm test -- --run` 现已恢复全绿（85 files / 346 tests）
+- `boss_helper_plan_preview` 已完成仓库侧实现，并通过 `pnpm lint && pnpm check && pnpm test -- --run`、`tests/agent-plan-preview.test.ts`、`tests/agent-mcp-server.catalog.test.ts` 与 page/controller 集成测试
+- 受控 Playwright fresh-build 扩展链路已验证 `plan.preview` / `boss_helper_plan_preview`：`pnpm check && pnpm build:chrome && pnpm exec playwright test tests/e2e/plan-preview.spec.ts` 通过，CLI 与真实 stdio MCP 均能经 `bridge -> relay -> extension -> page controller` 返回 ready 预演结果
+- `plan.preview` 现会在自身内部按需尝试初始化 user store，并在 numeric uid 缺失时回退到 `encryptUserId` 作为账号隔离 key，避免 live Boss 页上的同公司/同 HR 过滤因 `没有获取到uid` 短路
 - `boss_helper_logs_query` 可用
 - `boss_helper_events_recent` 可用
+- 真实 stdio MCP 已验证 `boss_helper_health`、`boss_helper_status`、`boss_helper_agent_context`、`boss_helper_events_recent`、`boss_helper_jobs_list`、`boss_helper_jobs_detail` 可用，live Boss jobs 页返回 `readiness.suggestedAction=continue`，并能读取首个岗位详情
+- 真实 live Boss jobs 页已完成最终验证：`pnpm agent:doctor` / `pnpm agent:cli status` 正常，CLI `plan.preview` 与 stdio MCP `boss_helper_plan_preview` 对同一真实岗位均返回 `decision=ready`，不再出现 `没有获取到uid`
+- `navigate`、`resume.get`、`jobs.detail`、`chat.send` 以及 bridge 的 `relay-not-connected` / `bridge-timeout` / `page-timeout` 失败响应，现已统一附带 `code` / `message` / `retryable` / `suggestedAction`
+- `events_recent`、`wait_for_event`、`config.update`、`start / pause / resume / stop` 的失败响应，现已在 page / bridge / MCP 聚合层统一附带 `code` / `message` / `retryable` / `suggestedAction`
+- `boss_helper_agent_context.sections.*` 现会透传底层命令的 `code` / `message` / `retryable` / `suggestedAction`，外部 Agent 不必再依赖中文文案做恢复分支
+- 隔离 bridge 实例上，`readiness.get` 在 relay 未连接时会快速返回 `relay-not-connected`，不再默认等待超时
+- 受控 Playwright 场景下，`readiness.get` 已验证 `continue` / `wait-login` / `stop` 三类 page-level snapshot，并覆盖 extension + relay + bridge 链路
+- 默认 4317 bridge 已恢复真实 relay 连接，`pnpm agent:cli status` 可返回 live relay / extension 元数据
+- 真实 Boss jobs 页上，`pnpm agent:cli readiness.get` 已返回 live page-level snapshot，并在页面恢复后给出 `suggestedAction=continue`
+- 真实 Boss jobs 页上，`pnpm agent:cli jobs.list`、`pnpm agent:cli jobs.detail` 已验证可用
+- MCP 聚合层 `agent_context` 已通过 `scripts/mcp/context.mjs` 的 live bridge 调用验证，聚合 readiness 与页面快照一致
+- `stats` / `boss_helper_stats` 现已在仓库侧附带 `run.current` / `run.recent` checkpoint 摘要，`boss_helper_agent_context.summary` 也会聚合 `hasActiveRun` / `currentRunId` / `recentRunState` / `resumableRun`；已通过 `tests/agent-runtime-store.test.ts`、`tests/use-agent-batch-runner.test.ts`、`tests/use-delivery-control.test.ts`、`tests/agent-mcp-server.catalog.test.ts`、`tests/agent-mcp-context.test.ts` 与 `pnpm lint && pnpm check && pnpm test -- --run`
+- `pnpm build:chrome` 通过；真实 `pnpm agent:doctor` / `pnpm agent:cli status` / `pnpm agent:cli stats` 与 stdio MCP `boss_helper_agent_context` 已验证 bridge/MCP 链路可用，且 `summary.todayDelivered` 已兼容 `todayData.success`；当前 live 浏览器扩展尚未 reload 到本轮 build，`stats.data.run` 现场字段仍待 reload 后补验证
+- fresh-build 扩展链路已新增 `tests/e2e/run-summary.spec.ts`，通过 `bridge -> relay -> extension -> page controller -> MCP` 验证了 `stats.data.run` 与 `boss_helper_agent_context.summary` 在 `paused -> resumed -> completed` 与 `batch-error -> error` 两条边界上的输出
+- `useDeliver.jobListHandle()` 现在只会在岗位已处理或已明确跳过后才消费定向 `seenJobIds`；pause 后未处理的 target 不会再被误判为“已完成”，resume 可继续处理剩余岗位
+- `boss_helper_bootstrap_guide` 已完成仓库侧实现；它会只读汇总 bridge、relay、extension ID、Boss 页存在性与页面 readiness，并稳定返回 `summary.stage` / `summary.nextAction` / `steps` / `nextSteps`，区分当前步骤应由 `user` 还是 `agent` 执行
+- `boss-helper://runtime/bridge-context` 现复用 bootstrap guide payload；`tests/agent-mcp-server.catalog.test.ts`、`tests/agent-mcp-context.test.ts` 已验证 ready 与 relay-offline 场景，真实 `pnpm agent:doctor`、`pnpm agent:cli status` 与 stdio MCP `boss_helper_bootstrap_guide` 也已在 live bridge 上验证返回 `stage=ready` / `nextAction=continue`
 
 以下能力本轮未验证，不要假设其无人值守可用性已经足够：
 
@@ -36,6 +61,7 @@
 
 - `tests/agent-bridge-security.test.ts` 现在使用独立临时 `BOSS_HELPER_AGENT_TOKEN_FILE`
 - 后续测试或工具脚本不得再把测试 token 写回仓库根目录 `.boss-helper-agent-token`
+- background 现在会把“扩展不认识该 agent command”与“relay/token 认证失败”区分开；在旧扩展上调用新命令时，将返回更准确的 `invalid-command` / `refresh-page` 信号，而不是混淆成 `unauthorized-bridge`
 
 ## Hard Constraints For The Next Agent
 
@@ -67,6 +93,67 @@
 - 复杂 UI 重构
 - 非 MCP 主路径的新自动化入口
 - 与无人值守无关的样式或面板优化
+
+## Continuous Execution Workflow
+
+这条流程用于让下一位 agent 不需要重新规划，就能沿着同一条主线持续推进。默认规则：一次只推进一个阶段，一次只交付一个最小可验证增量；如果当前环境不满足只读诊断前提，则本轮只修复阻塞，不并行推进新能力。
+
+1. 恢复现场
+
+- 先读完 `Goal`、`Current Baseline`、`Hard Constraints For The Next Agent`、`Validation Checklist`
+- 先执行只读观测链路：`boss_helper_health` -> `boss_helper_status` -> `boss_helper_agent_context`
+- 如果这一步已经不能稳定返回，本轮目标自动降级为“恢复 readiness”，不要继续做新 feature
+
+2. 选择当前阶段
+
+- 严格按 `Suggested Implementation Order` 选择最靠前、且交付标准尚未满足的 phase
+- 在进入下一阶段前，先确认上一阶段的“交付标准”已经满足，而不是只完成部分代码
+- 当前默认激活阶段是 `Phase 1: Readiness And Diagnostics`
+
+3. 切最小增量
+
+- 每轮只做一个最小可连续交付单元，优先级如下：
+- 一个稳定 schema
+- 一个只读诊断能力
+- 一组结构化错误码
+- 一个 dry-run / checkpoint / report 查询接口
+- 如果一个需求同时包含“读”和“写”，先只落只读部分，写操作延后到下一轮
+
+4. 按固定落地顺序实现
+
+- 先定返回结构和错误模型，再改页面控制器 / background / bridge / MCP 映射
+- 优先复用已有实现边界，不新增平行编排
+- 任何会触发真实投递、真实聊天发送的能力，都必须晚于只读诊断、dry-run 和安全护栏
+
+5. 做分层验证
+
+- 先跑与本轮改动直接相关的单元或集成验证
+- 再跑 `Validation Checklist` 里的最小验证集
+- 如果改动涉及 bridge / relay / MCP，再补 `pnpm agent:doctor`、`pnpm agent:cli status` 和至少一条真实 MCP 调用
+- 如果验证失败，不切换 phase，继续留在当前 phase 修完为止
+
+6. 更新文档与基线
+
+- 如果本轮改了 tools、端点、命令、事件、错误模型或默认行为，立即同步 `README.md`、`docs/bridge-mcp-deployment.md`、`docs/llm-agent-mcp.md`
+- 把本轮新验证通过的能力回写到 `Current Baseline`
+- 如果某个 phase 的交付标准已满足，把下一个 phase 升级为当前阶段
+
+7. 回写交接信息
+
+- 每轮结束前，必须更新本文件中的 `Execution Ledger`
+- 至少写清楚：当前阶段、刚完成的最小增量、实际验证结果、下一步最小动作、已知阻塞
+- 如果没有更新 ledger，不算完成交接
+
+## Execution Ledger
+
+用于跨轮次连续执行，后续 agent 每次完成一轮后都应更新这些字段。
+
+- Current Active Phase: `Phase 6: Fine-Grained Control Primitives`
+- Current Smallest Executable Increment: `已完成 live jobs.detail 样本采集：对 3 个真实岗位在 refresh 前后连续调用 jobs.detail，均成功返回 code=job-detail / hasCard=true；当前仍未复现 detail 失败样本，因此暂不新增 retry-detail-load`
+- Promotion Gate: `当前“至少交付一个不会扩大默认风险面的细粒度原语，并完成 live 恢复验证与样本采集”已满足；若继续留在 Phase 6，下一 gate 是拿到至少一个真实 jobs.detail 失败样本，或证明需要通过更细错误码而不是新原语解决恢复问题`
+- Next Step After Current Increment: `继续收集真实 jobs.detail 失败样本；在没有可复现场景前，不新增平行原语。若后续观察到失败，优先细化 job-detail-load-failed 的错误分类，或只在 jobs.detail 上增加受控重试/clear-cache 参数`
+- Known Blockers: `start / pause / resume / stop / chat.send 仍未做真实 live Boss 页无人值守验证；目前仅采到 jobs.detail 成功样本，仍缺真实 failure 样本来证明 retry-detail-load 或更细恢复增强的必要性；当前 live 浏览器扩展是否已 reload 到最新 build 仍需人工控制`
+- Last Verified Baseline: `恢复现场只读观测已通过：pnpm agent:cli health / status 正常，relayConnected=true；pnpm agent:cli readiness.get、jobs.list、jobs.detail 均在 live Boss jobs 页返回成功；本轮新增 jobs.refresh / boss_helper_jobs_refresh 已通过单测与 catalog 测试，并已通过真实 stdio MCP 调用 boss_helper_jobs_refresh -> boss_helper_agent_context -> boss_helper_jobs_list 验证刷新后页面仍为 readiness.ready=true / suggestedAction=continue；随后又对 3 个真实岗位在 refresh 前后连续调用 jobs.detail，全部返回 code=job-detail / hasCard=true，暂未复现 detail failure；pnpm lint 与 pnpm check 通过；`tests/use-deliver.test.ts` 已修正为与当前 seenJobIds 契约一致，`pnpm test -- --run` 现已全绿（85 files / 346 tests）；pnpm agent:doctor 通过；当前结论仍为“暂不新增 retry-detail-load，优先继续收集真实 failure 样本”`
 
 ## Phase 1: Readiness And Diagnostics
 
@@ -290,7 +377,7 @@
 如果改动涉及 bridge / relay / MCP，还要补：
 
 - `pnpm agent:doctor`
-- `pnpm agent:cli -- status`
+- `pnpm agent:cli status`
 - 至少一条真实 MCP 工具调用验证
 
 如果改动涉及页面自动化、诊断、职位读取，还要补：

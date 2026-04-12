@@ -19,9 +19,18 @@ const runnerMocks = vi.hoisted(() => ({
   },
   agentRuntimeStore: {
     batchPromise: null as Promise<void> | null,
+    currentRun: null as Record<string, unknown> | null,
     activeTargetJobIds: [] as string[],
+    ensureRunSummaryLoaded: vi.fn(async () => undefined),
+    getRunSummarySnapshot: vi.fn(() => ({
+      current: runnerMocks.agentRuntimeStore.currentRun,
+      recent: runnerMocks.agentRuntimeStore.recentRun,
+    })),
     remainingTargetJobIds: [] as string[],
+    recentRun: null as Record<string, unknown> | null,
+    recordEvent: vi.fn(async () => undefined),
     stopRequestedByCommand: false,
+    updateRunProgress: vi.fn(async () => undefined),
     get hasPendingBatch() {
       return this.batchPromise != null
     },
@@ -197,14 +206,20 @@ describe('useAgentBatchRunner', () => {
     runnerMocks.statisticsStore.updateStatistics.mockReset()
     runnerMocks.statisticsStore.updateStatistics.mockResolvedValue(undefined)
     runnerMocks.agentRuntimeStore.batchPromise = null
+    runnerMocks.agentRuntimeStore.currentRun = null
     runnerMocks.agentRuntimeStore.activeTargetJobIds = []
     runnerMocks.agentRuntimeStore.remainingTargetJobIds = []
+    runnerMocks.agentRuntimeStore.recentRun = null
     runnerMocks.agentRuntimeStore.stopRequestedByCommand = false
+    runnerMocks.agentRuntimeStore.ensureRunSummaryLoaded.mockClear()
+    runnerMocks.agentRuntimeStore.getRunSummarySnapshot.mockClear()
     runnerMocks.agentRuntimeStore.setBatchPromise.mockClear()
     runnerMocks.agentRuntimeStore.setTargetJobIds.mockClear()
     runnerMocks.agentRuntimeStore.clearTargetJobState.mockClear()
     runnerMocks.agentRuntimeStore.consumeSeenJobIds.mockClear()
+    runnerMocks.agentRuntimeStore.recordEvent.mockClear()
     runnerMocks.agentRuntimeStore.setStopRequestedByCommand.mockClear()
+    runnerMocks.agentRuntimeStore.updateRunProgress.mockClear()
     runnerMocks.pagerStore.next.mockReset()
     runnerMocks.pagerStore.next.mockReturnValue(true)
     runnerMocks.deliverStore.jobListHandle.mockReset()
@@ -297,18 +312,45 @@ describe('useAgentBatchRunner', () => {
 
     runnerMocks.commonStore.deliverLock = true
     await expect(runner.startBatch()).resolves.toEqual(
-      expect.objectContaining({ ok: false, code: 'already-running' }),
+      expect.objectContaining({
+        ok: false,
+        code: 'already-running',
+        retryable: false,
+        suggestedAction: 'continue',
+      }),
     )
 
     runnerMocks.commonStore.deliverLock = false
+    await expect(runner.pauseBatch()).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        code: 'not-running',
+        retryable: false,
+        suggestedAction: 'continue',
+      }),
+    )
+
     runnerMocks.commonStore.deliverState = 'paused'
+    await expect(runner.startBatch()).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        code: 'paused',
+        retryable: false,
+        suggestedAction: 'resume',
+      }),
+    )
     await expect(runner.pauseBatch()).resolves.toEqual(
       expect.objectContaining({ ok: true, code: 'already-paused' }),
     )
 
     runnerMocks.commonStore.deliverState = 'idle'
     await expect(runner.resumeBatch()).resolves.toEqual(
-      expect.objectContaining({ ok: false, code: 'not-paused' }),
+      expect.objectContaining({
+        ok: false,
+        code: 'not-paused',
+        retryable: false,
+        suggestedAction: 'continue',
+      }),
     )
   })
 
@@ -350,19 +392,44 @@ describe('useAgentBatchRunner', () => {
     })
 
     await expect(runner.startBatch()).resolves.toEqual(
-      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+      expect.objectContaining({
+        ok: false,
+        code: 'unsupported-page',
+        retryable: true,
+        suggestedAction: 'navigate',
+      }),
     )
     await expect(runner.pauseBatch()).resolves.toEqual(
-      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+      expect.objectContaining({
+        ok: false,
+        code: 'unsupported-page',
+        retryable: true,
+        suggestedAction: 'navigate',
+      }),
     )
     await expect(runner.resumeBatch()).resolves.toEqual(
-      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+      expect.objectContaining({
+        ok: false,
+        code: 'unsupported-page',
+        retryable: true,
+        suggestedAction: 'navigate',
+      }),
     )
     await expect(runner.stopBatch()).resolves.toEqual(
-      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+      expect.objectContaining({
+        ok: false,
+        code: 'unsupported-page',
+        retryable: true,
+        suggestedAction: 'navigate',
+      }),
     )
     await expect(runner.stats()).resolves.toEqual(
-      expect.objectContaining({ ok: false, code: 'unsupported-page' }),
+      expect.objectContaining({
+        ok: false,
+        code: 'unsupported-page',
+        retryable: true,
+        suggestedAction: 'navigate',
+      }),
     )
   })
 

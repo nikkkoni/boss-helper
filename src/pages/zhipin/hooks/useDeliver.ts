@@ -79,7 +79,7 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
     )
     total.value = targetJobList.length
     const chandle = await createHandle()
-    const seenJobIds = targetJobList.map((item) => item.encryptJobId)
+    const seenJobIds: string[] = []
 
     const shouldResetStatus = (item: MyJobListData) => {
       return (
@@ -96,7 +96,12 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
         log.info('暂停投递', `剩余 ${targetJobList.length - index} 个未处理`)
         return createHandleResult(targetJobList.length, seenJobIds)
       }
-      if (data.status.status !== 'wait') continue
+      if (data.status.status !== 'wait') {
+        seenJobIds.push(data.encryptJobId)
+        continue
+      }
+
+      seenJobIds.push(data.encryptJobId)
 
       let extraDelaySeconds = 0
       let stopResult: JobListHandleResult | null = null

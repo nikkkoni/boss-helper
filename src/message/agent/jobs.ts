@@ -1,5 +1,7 @@
 import type { Statistics } from '@/types/formData'
 
+import type { BossHelperAgentSuggestedAction } from '../../../shared/agentProtocol.js'
+
 export type BossHelperAgentJobPipelineStatus =
   | 'pending'
   | 'wait'
@@ -33,6 +35,10 @@ export interface BossHelperAgentJobsListData {
   jobs: BossHelperAgentJobSummary[]
   total: number
   totalOnPage: number
+}
+
+export interface BossHelperAgentJobsRefreshData {
+  targetUrl: string
 }
 
 export interface BossHelperAgentJobDetail extends BossHelperAgentJobSummary {
@@ -92,8 +98,67 @@ export interface BossHelperAgentProgress {
   total: number
 }
 
+export type BossHelperAgentRunState =
+  | 'running'
+  | 'pausing'
+  | 'paused'
+  | 'completed'
+  | 'stopped'
+  | 'error'
+
+export interface BossHelperAgentRunDecision {
+  at: string
+  job: BossHelperAgentCurrentJob | null
+  message: string
+  type: string
+}
+
+export interface BossHelperAgentRunError {
+  at: string
+  code: string
+  job: BossHelperAgentCurrentJob | null
+  message: string
+}
+
+export interface BossHelperAgentRunRecovery {
+  reason: string
+  requiresPageReload: boolean
+  resumable: boolean
+  suggestedAction: BossHelperAgentSuggestedAction
+}
+
+export interface BossHelperAgentRunPageSnapshot {
+  page: number | null
+  pageSize: number | null
+  routeKind: string
+  url: string
+}
+
+export interface BossHelperAgentRunSnapshot {
+  activeTargetJobIds: string[]
+  analyzedJobIds: string[]
+  currentJob: BossHelperAgentCurrentJob | null
+  finishedAt: string | null
+  lastDecision: BossHelperAgentRunDecision | null
+  lastError: BossHelperAgentRunError | null
+  page: BossHelperAgentRunPageSnapshot
+  processedJobIds: string[]
+  recovery: BossHelperAgentRunRecovery
+  remainingTargetJobIds: string[]
+  runId: string
+  startedAt: string
+  state: BossHelperAgentRunState
+  updatedAt: string
+}
+
+export interface BossHelperAgentRunSummaryData {
+  current: BossHelperAgentRunSnapshot | null
+  recent: BossHelperAgentRunSnapshot | null
+}
+
 export interface BossHelperAgentStatsData {
   historyData: Statistics[]
   progress: BossHelperAgentProgress
+  run: BossHelperAgentRunSummaryData
   todayData: Statistics
 }

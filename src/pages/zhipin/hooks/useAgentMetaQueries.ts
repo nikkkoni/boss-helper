@@ -5,6 +5,9 @@ import {
   type BossHelperAgentConfigUpdatePayload,
   type BossHelperAgentNavigateData,
   type BossHelperAgentNavigatePayload,
+  type BossHelperAgentPlanPreviewData,
+  type BossHelperAgentPlanPreviewPayload,
+  type BossHelperAgentReadinessData,
   type BossHelperAgentResponse,
   type BossHelperAgentResumeData,
   type BossHelperAgentValidationError,
@@ -15,7 +18,10 @@ import { useUser } from '@/stores/user'
 import { jsonClone } from '@/utils/deepmerge'
 
 import { buildBossHelperNavigateUrl } from './agentNavigate'
+import { resolveBossHelperAgentCommandFailureMeta } from './agentCommandMeta'
+import { collectAgentPageReadiness } from './agentReadiness'
 import type { UseAgentQueriesOptions } from './agentQueryShared'
+import { previewAgentPlan } from '../services/agentPlanPreview'
 
 export function useAgentMetaQueries(options: UseAgentQueriesOptions) {
   const conf = useConf()
@@ -64,8 +70,22 @@ export function useAgentMetaQueries(options: UseAgentQueriesOptions) {
         false,
         'resume-load-failed',
         error instanceof Error ? error.message : '简历读取失败',
+        undefined,
+        resolveBossHelperAgentCommandFailureMeta('resume-load-failed', { preferReadiness: true }),
       )
     }
+  }
+
+  async function readinessGet() {
+    await options.ensureStoresLoaded()
+
+    const readiness = collectAgentPageReadiness()
+    return createBossHelperAgentResponse<BossHelperAgentReadinessData>(
+      true,
+      'readiness',
+      '已返回当前页面就绪状态',
+      readiness,
+    )
   }
 
   async function navigate(payload?: BossHelperAgentNavigatePayload) {
@@ -101,6 +121,39 @@ export function useAgentMetaQueries(options: UseAgentQueriesOptions) {
     return configOk('config', '已返回当前配置', conf.getRuntimeConfigSnapshot())
   }
 
+  async function planPreview(payload?: BossHelperAgentPlanPreviewPayload) {
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+      return createBossHelperAgentResponse<BossHelperAgentPlanPreviewData>(
+        false,
+        'unsupported-page',
+        '当前页面不支持自动投递',
+      )
+    }
+
+    if (payload?.configPatch && Object.keys(payload.configPatch).length > 0) {
+      const validationErrors = validateConfigPatch(payload.configPatch)
+      if (validationErrors.length > 0) {
+        return createBossHelperAgentResponse<BossHelperAgentPlanPreviewData>(
+          false,
+          'validation-failed',
+          '配置校验失败',
+        )
+      }
+    }
+
+    try {
+      const data = await previewAgentPlan(payload)
+      return createBossHelperAgentResponse(true, 'plan-preview', '已返回当前只读执行预演', data)
+    } catch (error) {
+      return createBossHelperAgentResponse<BossHelperAgentPlanPreviewData>(
+        false,
+        'controller-error',
+        error instanceof Error ? error.message : '只读预演失败',
+      )
+    }
+  }
+
   async function updateConfig(payload?: BossHelperAgentConfigUpdatePayload) {
     await options.ensureStoresLoaded()
     if (!payload?.configPatch || Object.keys(payload.configPatch).length === 0) {
@@ -124,6 +177,8 @@ export function useAgentMetaQueries(options: UseAgentQueriesOptions) {
   }
 
   return {
+    planPreview,
+    readinessGet,
     resumeGet,
     navigate,
     getConfig,

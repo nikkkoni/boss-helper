@@ -6,6 +6,7 @@ import {
   type BossHelperAgentJobReviewPayload,
   type BossHelperAgentJobsListData,
   type BossHelperAgentJobsListPayload,
+  type BossHelperAgentJobsRefreshData,
   type BossHelperAgentLogEntry,
   type BossHelperAgentLogsQueryData,
   type BossHelperAgentLogsQueryPayload,
@@ -15,6 +16,7 @@ import { useLog } from '@/stores/log'
 
 import type { UseAgentQueriesOptions } from './agentQueryShared'
 import { submitExternalAIFilterReview } from './agentReview'
+import { resolveBossHelperAgentCommandFailureMeta } from './agentCommandMeta'
 import { toAgentJobDetail, toAgentJobSummary } from '../shared/jobMapping'
 
 function normalizeJobStatusFilter(statusFilter?: BossHelperAgentJobPipelineStatus[]) {
@@ -69,6 +71,26 @@ export function useAgentJobQueries(options: UseAgentQueriesOptions) {
       jobs: jobs.map(toAgentJobSummary),
       total: jobs.length,
       totalOnPage: allJobs.length,
+    })
+  }
+
+  async function jobsRefresh() {
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+      return createBossHelperAgentResponse<BossHelperAgentJobsRefreshData>(
+        false,
+        'unsupported-page',
+        '当前页面不支持自动投递',
+      )
+    }
+
+    const targetUrl = location.href
+    window.setTimeout(() => {
+      window.location.href = targetUrl
+    }, 50)
+
+    return createBossHelperAgentResponse(true, 'jobs-refresh-accepted', '已接受职位列表刷新请求', {
+      targetUrl,
     })
   }
 
@@ -144,6 +166,10 @@ export function useAgentJobQueries(options: UseAgentQueriesOptions) {
           false,
           'job-detail-unavailable',
           '岗位详情暂不可用',
+          undefined,
+          resolveBossHelperAgentCommandFailureMeta('job-detail-unavailable', {
+            preferReadiness: true,
+          }),
         )
       }
 
@@ -155,12 +181,17 @@ export function useAgentJobQueries(options: UseAgentQueriesOptions) {
         false,
         'job-detail-load-failed',
         error instanceof Error ? error.message : '岗位详情加载失败',
+        undefined,
+        resolveBossHelperAgentCommandFailureMeta('job-detail-load-failed', {
+          preferReadiness: true,
+        }),
       )
     }
   }
 
   return {
     jobsList,
+    jobsRefresh,
     logsQuery,
     jobsReview,
     jobsDetail,

@@ -3,9 +3,10 @@ import type { JobStatus } from '@/stores/jobs'
 import { useUser } from '@/stores/user'
 import type { PipelineCacheItem, ProcessorType } from '@/types/pipelineCache'
 
-import { createApplyingPipeline } from './services/pipelineFactory'
+import { createApplyingPipeline, type CreateApplyingPipelineOptions } from './services/pipelineFactory'
 
 export * from './utils'
+export type { CreateApplyingPipelineOptions } from './services/pipelineFactory'
 
 const cacheManagers = new Map<string, PipelineCacheManager>()
 const cacheManagerAccessQueue: string[] = []
@@ -35,7 +36,7 @@ function evictCacheManagerIfNeeded(activeCacheKey: string) {
 
 function getCurrentUserId() {
   try {
-    return useUser().getUserId()
+    return useUser().getUserScopeId()
   } catch {
     return null
   }
@@ -45,11 +46,11 @@ function resolveCacheManagerKey(userId?: string | number | null): string {
   return userId == null ? 'anonymous' : String(userId)
 }
 
-export async function createHandle(): Promise<{
+export async function createHandle(options: CreateApplyingPipelineOptions = {}): Promise<{
   before: Awaited<ReturnType<typeof createApplyingPipeline>>['before']
   after: Awaited<ReturnType<typeof createApplyingPipeline>>['after']
 }> {
-  return createApplyingPipeline()
+  return createApplyingPipeline(options)
 }
 
 /**

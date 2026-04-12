@@ -283,8 +283,179 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
             code: 'stats',
             message: 'stats snapshot',
             data: {
-              today: { delivered: 2 },
-              total: { delivered: 8 },
+              historyData: [],
+              progress: {
+                activeTargetJobIds: ['job-1'],
+                current: 1,
+                currentJob: {
+                  brandName: 'Acme',
+                  encryptJobId: 'job-1',
+                  jobName: 'Frontend Engineer',
+                  message: '处理中',
+                  status: 'running',
+                },
+                locked: true,
+                message: '投递进行中',
+                page: 1,
+                pageSize: 15,
+                remainingTargetJobIds: ['job-1'],
+                state: 'running',
+                stopRequested: false,
+                total: 1,
+              },
+              run: {
+                current: {
+                  activeTargetJobIds: ['job-1'],
+                  analyzedJobIds: ['job-1'],
+                  currentJob: {
+                    brandName: 'Acme',
+                    encryptJobId: 'job-1',
+                    jobName: 'Frontend Engineer',
+                    message: '处理中',
+                    status: 'running',
+                  },
+                  finishedAt: null,
+                  lastDecision: {
+                    at: '2026-04-10T00:00:02.000Z',
+                    job: {
+                      brandName: 'Acme',
+                      encryptJobId: 'job-1',
+                      jobName: 'Frontend Engineer',
+                      message: '处理中',
+                      status: 'running',
+                    },
+                    message: '开始处理岗位: Frontend Engineer',
+                    type: 'job-started',
+                  },
+                  lastError: null,
+                  page: {
+                    page: 1,
+                    pageSize: 15,
+                    routeKind: 'jobs',
+                    url: 'https://www.zhipin.com/web/geek/jobs',
+                  },
+                  processedJobIds: [],
+                  recovery: {
+                    reason: '运行仍在当前页面上下文中。',
+                    requiresPageReload: false,
+                    resumable: true,
+                    suggestedAction: 'continue',
+                  },
+                  remainingTargetJobIds: ['job-1'],
+                  runId: 'run-1',
+                  startedAt: '2026-04-10T00:00:00.000Z',
+                  state: 'running',
+                  updatedAt: '2026-04-10T00:00:02.000Z',
+                },
+                recent: {
+                  activeTargetJobIds: ['job-1'],
+                  analyzedJobIds: ['job-1'],
+                  currentJob: {
+                    brandName: 'Acme',
+                    encryptJobId: 'job-1',
+                    jobName: 'Frontend Engineer',
+                    message: '处理中',
+                    status: 'running',
+                  },
+                  finishedAt: null,
+                  lastDecision: {
+                    at: '2026-04-10T00:00:02.000Z',
+                    job: {
+                      brandName: 'Acme',
+                      encryptJobId: 'job-1',
+                      jobName: 'Frontend Engineer',
+                      message: '处理中',
+                      status: 'running',
+                    },
+                    message: '开始处理岗位: Frontend Engineer',
+                    type: 'job-started',
+                  },
+                  lastError: null,
+                  page: {
+                    page: 1,
+                    pageSize: 15,
+                    routeKind: 'jobs',
+                    url: 'https://www.zhipin.com/web/geek/jobs',
+                  },
+                  processedJobIds: [],
+                  recovery: {
+                    reason: '运行仍在当前页面上下文中。',
+                    requiresPageReload: false,
+                    resumable: true,
+                    suggestedAction: 'continue',
+                  },
+                  remainingTargetJobIds: ['job-1'],
+                  runId: 'run-1',
+                  startedAt: '2026-04-10T00:00:00.000Z',
+                  state: 'running',
+                  updatedAt: '2026-04-10T00:00:02.000Z',
+                },
+              },
+              todayData: { success: 2 },
+            },
+          }
+          break
+        case 'plan.preview':
+          payload = {
+            ok: true,
+            code: 'plan-preview',
+            message: 'plan preview snapshot',
+            data: {
+              config: {
+                aiFilteringEnabled: true,
+                aiFilteringExternal: false,
+                aiFilteringModelReady: true,
+                aiFilteringThreshold: 15,
+                greetingMode: 'none',
+                greetingModelReady: true,
+                resetFiltered: false,
+                targetJobIds: ['job-1'],
+              },
+              items: [
+                {
+                  decision: 'needs-manual-review',
+                  explain: 'preview intentionally skipped internal ai filtering',
+                  issues: [
+                    {
+                      code: 'internal-ai-filtering-pending',
+                      message: 'still needs ai filtering',
+                      severity: 'info',
+                      step: 'aiFiltering',
+                    },
+                  ],
+                  job: {
+                    areaDistrict: 'Pudong',
+                    bossName: 'Alice',
+                    bossTitle: 'HR',
+                    brandName: 'Acme',
+                    brandScaleName: '100-499人',
+                    cityName: 'Shanghai',
+                    contact: false,
+                    encryptJobId: 'job-1',
+                    goldHunter: false,
+                    hasCard: true,
+                    jobLabels: [],
+                    jobName: 'Frontend Engineer',
+                    salaryDesc: '20-30K',
+                    skills: [],
+                    status: 'wait',
+                    statusMsg: '等待中',
+                    welfareList: [],
+                  },
+                  remainingSteps: ['ai-filtering', 'apply'],
+                  stage: 'ai-filtering',
+                },
+              ],
+              summary: {
+                missingInfoCount: 0,
+                needsExternalReviewCount: 0,
+                needsManualReviewCount: 1,
+                readyCount: 0,
+                scopedCount: 1,
+                skipCount: 0,
+                totalOnPage: 2,
+                unknownTargetJobIds: [],
+              },
             },
           }
           break
@@ -296,6 +467,51 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
             data: {
               resumeText: 'Vue engineer with extension experience',
               userId: 'user-1',
+            },
+          }
+          break
+        case 'readiness.get':
+          payload = {
+            ok: true,
+            code: 'readiness',
+            message: 'readiness snapshot',
+            data: {
+              account: {
+                loggedIn: true,
+                loginRequired: false,
+              },
+              blockers: [],
+              extension: {
+                initialized: true,
+                panelMounted: true,
+                panelWrapMounted: true,
+                rootMounted: true,
+                selectorHealth: {
+                  checks: [],
+                  ok: true,
+                  summary: 'ok',
+                },
+              },
+              page: {
+                active: true,
+                controllable: true,
+                exists: true,
+                pathname: '/web/geek/jobs',
+                routeKind: 'jobs',
+                supported: true,
+                title: 'Boss Jobs',
+                url: 'https://www.zhipin.com/web/geek/jobs',
+                visible: true,
+              },
+              ready: true,
+              risk: {
+                hasBlockingModal: false,
+                hasCaptcha: false,
+                hasRiskWarning: false,
+                signals: [],
+              },
+              snapshotAt: '2026-04-10T00:00:00.000Z',
+              suggestedAction: 'continue',
             },
           }
           break
@@ -315,6 +531,16 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
                   jobName: 'Fullstack Engineer',
                 },
               ],
+            },
+          }
+          break
+        case 'jobs.refresh':
+          payload = {
+            ok: true,
+            code: 'jobs-refresh-accepted',
+            message: 'refresh accepted',
+            data: {
+              targetUrl: 'https://www.zhipin.com/web/geek/jobs',
             },
           }
           break

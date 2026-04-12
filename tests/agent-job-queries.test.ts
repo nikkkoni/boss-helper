@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockJobList, mockLogStore } = vi.hoisted(() => {
@@ -134,6 +136,16 @@ function createJob(overrides: Partial<MyJobListData> = {}): MyJobListData {
 
 describe('useAgentJobQueries', () => {
   beforeEach(() => {
+    window.history.replaceState({}, '', '/web/geek/job')
+    document.title = 'Boss Jobs'
+    document.body.innerHTML = `
+      <div id="wrap">
+        <div class="job-search-wrapper"></div>
+        <div class="page-job-wrapper"></div>
+      </div>
+      <div id="boss-helper"></div>
+      <div id="boss-helper-job"></div>
+    `
     jobList.clear()
     useLog().clear()
   })
@@ -164,6 +176,40 @@ describe('useAgentJobQueries', () => {
     expect(response.data?.total).toBe(1)
     expect(response.data?.totalOnPage).toBe(2)
     expect(response.data?.jobs.map((item) => item.encryptJobId)).toEqual(['job-success'])
+  })
+
+  it('accepts jobs.refresh on supported pages and keeps unsupported-page guard', async () => {
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation(
+      ((..._args: Parameters<typeof window.setTimeout>) => 1) as unknown as typeof window.setTimeout,
+    )
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    await expect(queries.jobsRefresh()).resolves.toEqual(
+      expect.objectContaining({
+        code: 'jobs-refresh-accepted',
+        ok: true,
+        data: {
+          targetUrl: window.location.href,
+        },
+      }),
+    )
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 50)
+
+    const unsupportedQueries = useAgentJobQueries(
+      createQueryOptions({
+        ensureSupportedPage: () => false,
+      }),
+    )
+    await expect(unsupportedQueries.jobsRefresh()).resolves.toEqual(
+      expect.objectContaining({
+        code: 'unsupported-page',
+        ok: false,
+        retryable: true,
+        suggestedAction: 'navigate',
+      }),
+    )
+
+    setTimeoutSpy.mockRestore()
   })
 
   it('loads missing card data in jobs.detail and maps detail fields', async () => {
@@ -260,5 +306,30 @@ describe('useAgentJobQueries', () => {
     })
     expect(response.data?.items[1]?.encryptJobId).toBe('job-old')
     expect(response.data?.items[1]?.greeting).toBe('你好')
+  })
+
+  it('adds structured recovery hints when jobs.detail cannot load card data', async () => {
+    const job = createJob({
+      encryptJobId: 'job-fail',
+      getCard: async () => {
+        throw new Error('card missing')
+      },
+    })
+
+    jobList.replace([job])
+    jobList.set(job.encryptJobId, job)
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.jobsDetail({ encryptJobId: 'job-fail' })
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        code: 'job-detail-load-failed',
+        message: 'card missing',
+        ok: false,
+        retryable: true,
+        suggestedAction: 'retry',
+      }),
+    )
   })
 })

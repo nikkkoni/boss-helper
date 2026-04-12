@@ -63,13 +63,15 @@ function buildTargetedDeliveryPrompt(args = {}) {
 请按下面顺序工作：
 
 1. 先调用 \`boss_helper_health\`、\`boss_helper_status\`、\`boss_helper_agent_context\`，确认 bridge、relay、页面上下文和推荐下一步。
-2. 如果当前页面不在目标搜索场景，调用 \`boss_helper_navigate\`。
-3. 用 \`boss_helper_jobs_list\` 找候选岗位，只对少量高价值岗位调用 \`boss_helper_jobs_detail\`。
-4. 用 \`boss_helper_resume_get\` 校验岗位和真实简历的匹配度。
-5. 只有在明确选中岗位后，才调用 \`boss_helper_start\`，并传入明确的 \`jobIds\`。
-6. 运行中优先用 \`boss_helper_wait_for_event\` 或 \`boss_helper_events_recent\` 观察结果。
-7. 如果收到 \`job-pending-review\`，必须完成 \`boss_helper_jobs_review\` 的结构化审核闭环。
-8. 遇到 \`relay-not-connected\`、\`target-tab-not-found\`、\`validation-failed\` 时，先自我修正上下文或参数，再继续执行。
+2. 如果你还不确定环境是否已经搭好，优先插入一次 \`boss_helper_bootstrap_guide\`，确认当前缺的是 bridge、relay、extension ID、Boss 页还是登录/风控前置条件。
+3. 如果当前页面不在目标搜索场景，调用 \`boss_helper_navigate\`。
+4. 用 \`boss_helper_jobs_list\` 找候选岗位，只对少量高价值岗位调用 \`boss_helper_jobs_detail\`。
+5. 用 \`boss_helper_resume_get\` 校验岗位和真实简历的匹配度。
+6. 调用 \`boss_helper_plan_preview\` 先拿到只读执行预演，确认哪些岗位会被跳过、哪些仍需审核。
+7. 只有在明确选中岗位后，才调用 \`boss_helper_start\`，并传入明确的 \`jobIds\`。
+8. 运行中优先用 \`boss_helper_wait_for_event\` 或 \`boss_helper_events_recent\` 观察结果。
+9. 如果收到 \`job-pending-review\`，必须完成 \`boss_helper_jobs_review\` 的结构化审核闭环。
+10. 遇到 \`relay-not-connected\`、\`target-tab-not-found\`、\`validation-failed\` 时，先自我修正上下文或参数，再继续执行。
 
 每一步都先说明你的判断依据，再调用工具。不要无条件对整页岗位直接执行 \`boss_helper_start\`。`
 }

@@ -112,7 +112,7 @@ pnpm lint && pnpm check && pnpm test -- --run
 | 改动类型 | 额外建议验证 |
 | --- | --- |
 | 选择器 / adapter / DOM 自动化 | `pnpm build:chrome`，并在 Boss 页面手工验证 |
-| bridge / relay / MCP / CLI | `pnpm agent:doctor`、`pnpm agent:cli -- status` |
+| bridge / relay / MCP / CLI | `pnpm agent:doctor`、`pnpm agent:cli status` |
 | 扩展生命周期 / 浏览器集成 | `pnpm test:e2e` |
 | 覆盖率敏感重构 | `pnpm test:coverage` |
 | 构建或发布链路 | `pnpm build` 或至少相关浏览器的 build 命令 |

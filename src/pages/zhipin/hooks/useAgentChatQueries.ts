@@ -13,6 +13,7 @@ import { useCommon } from '@/stores/common'
 import { useUser } from '@/stores/user'
 
 import { createBossHelperAgentEvent, emitBossHelperAgentEvent } from './agentEvents'
+import { resolveBossHelperAgentCommandFailureMeta } from './agentCommandMeta'
 import type { UseAgentQueriesOptions } from './agentQueryShared'
 
 function toAgentChatMessage(
@@ -93,7 +94,11 @@ export function useAgentChatQueries(options: UseAgentQueriesOptions) {
 
     const userId = payload.form_uid ?? useUser().getUserId()
     if (userId == null || userId === '') {
-      return options.fail('missing-form-uid', '缺少 form_uid，且当前页面未获取到用户 ID')
+      return options.fail(
+        'missing-form-uid',
+        '缺少 form_uid，且当前页面未获取到用户 ID',
+        resolveBossHelperAgentCommandFailureMeta('missing-form-uid', { preferReadiness: true }),
+      )
     }
 
     try {
@@ -124,6 +129,7 @@ export function useAgentChatQueries(options: UseAgentQueriesOptions) {
       return options.fail(
         'chat-send-failed',
         error instanceof Error ? error.message : '消息发送失败',
+        resolveBossHelperAgentCommandFailureMeta('chat-send-failed', { preferReadiness: true }),
       )
     }
   }

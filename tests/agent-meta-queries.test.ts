@@ -2,6 +2,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { BossHelperAgentResponseMeta } from '@/message/agent'
+
 const metaQueryMocks = vi.hoisted(() => ({
   conf: {
     applyRuntimeConfigPatch: vi.fn(async (patch: Record<string, unknown>, _options?: { persist?: boolean }) => ({
@@ -43,14 +45,35 @@ function createOptions(overrides: Partial<Parameters<typeof import('@/pages/zhip
     currentProgressSnapshot: () => ({ current: 1 }),
     ensureStoresLoaded: vi.fn(async () => undefined),
     ensureSupportedPage: () => true,
-    fail: async (code: string, message: string) => ({ code, message, ok: false }),
-    ok: async (code: string, message: string) => ({ code, message, ok: true }),
+    fail: async (code: string, message: string, meta?: BossHelperAgentResponseMeta) => ({
+      code,
+      message,
+      ok: false,
+      ...meta,
+    }),
+    ok: async (code: string, message: string, meta?: BossHelperAgentResponseMeta) => ({
+      code,
+      message,
+      ok: true,
+      ...meta,
+    }),
     ...overrides,
   }
 }
 
 describe('useAgentMetaQueries', () => {
   beforeEach(() => {
+    window.history.replaceState({}, '', '/web/geek/job')
+    document.title = 'Boss Jobs'
+    document.body.innerHTML = `
+      <div id="wrap">
+        <div class="job-search-wrapper"></div>
+        <div class="page-job-wrapper"></div>
+      </div>
+      <div id="boss-helper"></div>
+      <div id="boss-helper-job"></div>
+    `
+
     metaQueryMocks.conf.applyRuntimeConfigPatch.mockReset()
     metaQueryMocks.conf.applyRuntimeConfigPatch.mockImplementation(async (patch: Record<string, unknown>) => ({
       delay: {
@@ -90,6 +113,8 @@ describe('useAgentMetaQueries', () => {
         code: 'resume-load-failed',
         message: 'resume missing',
         ok: false,
+        retryable: true,
+        suggestedAction: 'refresh-page',
       }),
     )
 
@@ -99,7 +124,93 @@ describe('useAgentMetaQueries', () => {
       }),
     )
     await expect(unsupportedQueries.resumeGet()).resolves.toEqual(
-      expect.objectContaining({ code: 'unsupported-page', ok: false }),
+      expect.objectContaining({
+        code: 'unsupported-page',
+        ok: false,
+        retryable: true,
+        suggestedAction: 'navigate',
+      }),
+    )
+  })
+
+  it('reports readiness snapshots and blocking signals', async () => {
+    window.history.replaceState({}, '', '/web/geek/job')
+    document.title = 'Boss Jobs'
+    document.body.innerHTML = `
+      <div id="wrap">
+        <div class="job-search-wrapper"></div>
+        <div class="page-job-wrapper"></div>
+      </div>
+      <div id="boss-helper"></div>
+      <div id="boss-helper-job"></div>
+    `
+
+    const { useAgentMetaQueries } = await import('@/pages/zhipin/hooks/useAgentMetaQueries')
+    const queries = useAgentMetaQueries(createOptions())
+
+    await expect(queries.readinessGet()).resolves.toEqual(
+      expect.objectContaining({
+        code: 'readiness',
+        ok: true,
+        data: expect.objectContaining({
+          ready: true,
+          suggestedAction: 'continue',
+          page: expect.objectContaining({
+            controllable: true,
+            routeKind: 'job',
+            supported: true,
+          }),
+          extension: expect.objectContaining({
+            initialized: true,
+          }),
+        }),
+      }),
+    )
+
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<button class="go-login-btn" style="display:none">隐藏登录</button><button class="go-login-btn">去登录</button>',
+    )
+
+    await expect(queries.readinessGet()).resolves.toEqual(
+      expect.objectContaining({
+        code: 'readiness',
+        ok: true,
+        data: expect.objectContaining({
+          ready: false,
+          suggestedAction: 'wait-login',
+          account: expect.objectContaining({
+            loggedIn: false,
+            loginRequired: true,
+          }),
+          blockers: expect.arrayContaining([
+            expect.objectContaining({ code: 'login-required' }),
+          ]),
+        }),
+      }),
+    )
+
+    document.querySelectorAll('.go-login-btn').forEach((element) => element.remove())
+
+    document.body.insertAdjacentHTML('beforeend', '<div role="dialog">请完成安全验证</div>')
+
+    await expect(queries.readinessGet()).resolves.toEqual(
+      expect.objectContaining({
+        code: 'readiness',
+        ok: true,
+        data: expect.objectContaining({
+          ready: false,
+          suggestedAction: 'stop',
+          risk: expect.objectContaining({
+            hasBlockingModal: true,
+            hasCaptcha: true,
+          }),
+          blockers: expect.arrayContaining([
+            expect.objectContaining({ code: 'captcha-required' }),
+            expect.objectContaining({ code: 'blocking-modal' }),
+          ]),
+        }),
+      }),
     )
   })
 
@@ -131,6 +242,8 @@ describe('useAgentMetaQueries', () => {
         code: 'navigate-invalid',
         message: 'bad target',
         ok: false,
+        retryable: false,
+        suggestedAction: 'fix-input',
       }),
     )
   })
@@ -150,6 +263,8 @@ describe('useAgentMetaQueries', () => {
       expect.objectContaining({
         code: 'empty-config-patch',
         ok: false,
+        retryable: false,
+        suggestedAction: 'fix-input',
       }),
     )
 
@@ -165,6 +280,8 @@ describe('useAgentMetaQueries', () => {
       expect.objectContaining({
         code: 'validation-failed',
         ok: false,
+        retryable: false,
+        suggestedAction: 'fix-input',
       }),
     )
 

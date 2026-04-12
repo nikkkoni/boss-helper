@@ -15,15 +15,17 @@ function buildAutonomyWorkflowResource() {
 
 把 Boss Helper 当成自主执行器时，推荐遵循下面的顺序，而不是直接调用 \`boss_helper_start\`。
 
-1. 先调用 \`boss_helper_health\`、\`boss_helper_status\`，确认 bridge 和 relay 在线。
-2. 再调用 \`boss_helper_agent_context\`，一次性读取运行上下文、最近事件和下一步建议。
-3. 如有必要，用 \`boss_helper_navigate\` 切换到目标搜索页。
-4. 用 \`boss_helper_jobs_list\` 获取候选岗位，再对少量高价值岗位调用 \`boss_helper_jobs_detail\`。
-5. 用 \`boss_helper_resume_get\` 把判断建立在真实简历上，而不是凭空猜测。
-6. 只对明确筛出的岗位调用 \`boss_helper_start\`，并显式传入 \`jobIds\`。
-7. 运行中优先通过 \`boss_helper_events_recent\`、\`boss_helper_wait_for_event\` 观察进度，不要盲轮询。
-8. 收到 \`job-pending-review\` 后，必须补完 \`boss_helper_jobs_review\` 审核闭环。
-9. 异常时优先调用 \`boss_helper_stop\`，不要把系统长期停在不确定状态。
+1. 如果还不确定环境是否已准备好，先调用 \`boss_helper_bootstrap_guide\`，确认 bridge、relay、extension ID 和 Boss 页前置条件。
+2. 再调用 \`boss_helper_health\`、\`boss_helper_status\`，确认 bridge 和 relay 在线。
+3. 然后调用 \`boss_helper_agent_context\`，一次性读取运行上下文、最近事件和下一步建议。
+4. 如有必要，用 \`boss_helper_navigate\` 切换到目标搜索页。
+5. 用 \`boss_helper_jobs_list\` 获取候选岗位，再对少量高价值岗位调用 \`boss_helper_jobs_detail\`。
+6. 用 \`boss_helper_resume_get\` 把判断建立在真实简历上，而不是凭空猜测。
+7. 在真正执行前，先调用 \`boss_helper_plan_preview\` 读取只读预演结果，确认哪些岗位会被跳过、哪些仍需 AI 审核或人工确认。
+8. 只对明确筛出的岗位调用 \`boss_helper_start\`，并显式传入 \`jobIds\`。
+9. 运行中优先通过 \`boss_helper_events_recent\`、\`boss_helper_wait_for_event\` 观察进度，不要盲轮询。
+10. 收到 \`job-pending-review\` 后，必须补完 \`boss_helper_jobs_review\` 审核闭环。
+11. 异常时优先调用 \`boss_helper_stop\`，不要把系统长期停在不确定状态。
 
 恢复策略：
 

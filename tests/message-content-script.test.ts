@@ -243,13 +243,28 @@ describe('message/contentScript', () => {
     await vi.runAllTimersAsync()
 
     await expect(startPromise).resolves.toEqual(
-      expect.objectContaining({ code: 'page-timeout', ok: false }),
+      expect.objectContaining({
+        code: 'page-timeout',
+        ok: false,
+        retryable: true,
+        suggestedAction: 'refresh-page',
+      }),
     )
     await expect(stopPromise).resolves.toEqual(
-      expect.objectContaining({ code: 'page-timeout', ok: false }),
+      expect.objectContaining({
+        code: 'page-timeout',
+        ok: false,
+        retryable: true,
+        suggestedAction: 'refresh-page',
+      }),
     )
     await expect(statsPromise).resolves.toEqual(
-      expect.objectContaining({ code: 'page-timeout', ok: false }),
+      expect.objectContaining({
+        code: 'page-timeout',
+        ok: false,
+        retryable: true,
+        suggestedAction: 'refresh-page',
+      }),
     )
     expect(postMessageSpy).toHaveBeenCalledTimes(3)
   })

@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 import { browser } from '#imports'
@@ -18,6 +17,15 @@ interface BossApiResponse<T> {
   code: number
   message: string
   zpData: T
+}
+
+type AxiosClient = typeof import('axios')['default']
+
+let axiosClientPromise: Promise<AxiosClient> | null = null
+
+async function getAxiosClient() {
+  axiosClientPromise ??= import('axios').then((module) => module.default)
+  return axiosClientPromise
 }
 
 function toErrorMessage(error: unknown) {
@@ -62,6 +70,7 @@ function ensureBossApiSuccess<T>(response: BossApiResponse<T>, action: string): 
 }
 
 export async function requestCard(params: { securityId: string; lid: string }) {
+  const axios = await getAxiosClient()
   const res = await runWithZhipinRateLimit(() =>
     axios.get<
       BossApiResponse<{
@@ -77,6 +86,7 @@ export async function requestCard(params: { securityId: string; lid: string }) {
 }
 
 export async function requestDetail(params: { securityId: string; lid: string }) {
+  const axios = await getAxiosClient()
   const token = await getBossToken()
   const res = await runWithZhipinRateLimit(() =>
     axios.get<BossApiResponse<bossZpDetailData>>(
@@ -101,6 +111,7 @@ export async function sendPublishReq(
   retries = 3,
   params: Record<string, unknown> = {},
 ) {
+  const axios = await getAxiosClient()
   if (retries === 0) {
     throw new PublishError(errorMsg ?? '重试多次失败')
   }
@@ -174,6 +185,7 @@ export async function requestBossData(
   errorMsg?: string,
   retries = 3,
 ): Promise<bossZpBossData> {
+  const axios = await getAxiosClient()
   if (retries === 0) {
     throw new GreetError(errorMsg ?? '重试多次失败')
   }

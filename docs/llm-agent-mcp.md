@@ -109,15 +109,18 @@ CLI 是 bridge HTTP 的一层轻量封装。
 
 - `boss_helper_health` -> `GET /health`
 - `boss_helper_status` -> `GET /status`
-- `boss_helper_agent_context` -> 聚合 `health` / `status` / `resume.get` / `jobs.list` / `stats` / `logs.query` / 最近事件，返回可直接规划下一步的运行上下文
+- `boss_helper_bootstrap_guide` -> 只读检查 bridge / relay / extensionId / Boss 页冷启动前置条件，并给出精确下一步
+- `boss_helper_agent_context` -> 聚合 `health` / `status` / `readiness.get` / `resume.get` / `jobs.list` / `stats` / `logs.query` / 最近事件，返回可直接规划下一步的运行上下文
+- `boss_helper_plan_preview` -> 在不触发真实 `start` 的前提下，只读预演当前岗位会如何被处理
 - `boss_helper_start` -> `start`
 - `boss_helper_pause` -> `pause`
 - `boss_helper_resume` -> `resume`
 - `boss_helper_stop` -> `stop`
-- `boss_helper_stats` -> `stats`
+- `boss_helper_stats` -> `stats`，现额外附带 `run.current` / `run.recent` checkpoint 摘要
 - `boss_helper_navigate` -> `navigate`
 - `boss_helper_resume_get` -> `resume.get`
 - `boss_helper_jobs_list` -> `jobs.list`
+- `boss_helper_jobs_refresh` -> `jobs.refresh`
 - `boss_helper_jobs_detail` -> `jobs.detail`
 - `boss_helper_jobs_review` -> `jobs.review`
 - `boss_helper_logs_query` -> `logs.query`
@@ -144,6 +147,48 @@ CLI 是 bridge HTTP 的一层轻量封装。
 
 ## 高层自主能力
 
+### `boss_helper_bootstrap_guide`
+
+这个 tool 面向“环境还没完全搭好”的冷启动阶段。
+
+它会只读汇总这些关键前置条件：
+
+- bridge 是否在线
+- relay 是否已连接
+- 当前在线 relay 是否已知 extension ID
+- Boss 职位页是否存在
+- 页面是否已经初始化、是否需要登录、是否存在验证码 / 风控 / 阻断模态框
+
+返回值会稳定包含：
+
+- `readiness`：上述冷启动与页面前置条件的布尔快照
+- `summary`：当前所处 bootstrap 阶段、下一步动作、是否必须人工介入
+- `steps`：逐步骤清单，明确这一步是 `user` 还是 `agent` 应执行
+- `nextSteps`：当前最小下一步
+
+当前 `summary.nextAction` 可能出现：
+
+- `start-bridge`
+- `open-relay`
+- `configure-extension-id`
+- `open-boss-page`
+- `navigate`
+- `wait-login`
+- `refresh-page`
+- `stop`
+- `continue`
+
+使用建议：
+
+1. 当你不确定本地环境是否已准备好时，先调用 `boss_helper_bootstrap_guide`
+2. 只有在它返回 `summary.ready=true` 后，再进入 `boss_helper_agent_context`
+3. 如果它指出 `actor=user` 的步骤，不要让外部 Agent 盲重试；应等待人工完成
+
+它和 `boss_helper_agent_context` 的边界是：
+
+- `boss_helper_bootstrap_guide` 负责回答“链路还缺哪一步、下一步谁来做”
+- `boss_helper_agent_context` 负责回答“当前页面上下文是什么、适合继续做什么”
+
 ### `boss_helper_agent_context`
 
 这是这次深度集成新增的高层 tool。
@@ -152,6 +197,8 @@ CLI 是 bridge HTTP 的一层轻量封装。
 
 - `health`
 - `status`
+- `readiness.get`
+- `plan.preview`
 - `config.get`
 - `resume.get`
 - `jobs.list`
@@ -163,19 +210,132 @@ CLI 是 bridge HTTP 的一层轻量封装。
 
 ```json
 {
-  "include": ["resume", "jobs", "events", "stats"],
+  "include": ["readiness", "resume", "jobs", "events", "stats"],
   "jobsLimit": 5,
   "eventTypes": ["job-pending-review", "job-succeeded"]
 }
 ```
 
+`readiness` section 现在会默认返回，即使你没有在 `include` 中显式写出它，外部 Agent 也仍然可以依赖同一套 readiness schema 做判断。
+
 返回值除了各 section 的原始结果，还会补：
 
-- `readiness`：bridge / relay / 页面是否可控
-- `summary`：岗位数、待审核事件数、当日投递数等摘要
+- `readiness`：bridge / relay / Boss 页面存在性、支持性、初始化状态、可控性、登录状态、验证码 / 风控 / 模态阻断，以及 `suggestedAction`
+- `summary`：岗位数、待审核事件数、当日投递数，以及 `hasActiveRun`、`currentRunId`、`recentRunState`、`resumableRun` 这类运行摘要
 - `recommendations`：下一步建议
 
+当前顶层 `readiness` 至少包含这些关键字段：
+
+- `bossPageFound`
+- `pageSupported`
+- `pageInitialized`
+- `pageControllable`
+- `loginRequired`
+- `hasCaptcha`
+- `hasRiskWarning`
+- `hasBlockingModal`
+- `suggestedAction`
+
+其中 `suggestedAction` 当前稳定收敛为：`navigate`、`wait-login`、`refresh-page`、`stop`、`continue`。外部 Agent 应优先依据这些结构化字段分支，而不是依赖中文错误文案。
+
 对于外部 Agent 来说，这个 tool 的价值在于先拿到“可执行态快照”，再决定是 `navigate`、`jobs.detail`、`start` 还是优先处理审核事件。
+
+### `boss_helper_stats`
+
+`boss_helper_stats` 现在不仅返回瞬时 `progress` 和统计数据，还会附带最小 run/session checkpoint：
+
+- `data.run.current`：当前或可恢复的运行摘要，包含 `runId`、目标岗位、已分析 / 已处理岗位、最近决策、最后错误、当前页码和当前岗位
+- `data.run.recent`：最近一次运行的摘要，即使当前 run 已结束，也可用于人工排障和自动恢复判断
+
+当前恢复边界建议如下：
+
+- `paused`：可直接尝试 `boss_helper_resume`
+- `error`：先读取 `boss_helper_agent_context.readiness`，必要时刷新 Boss 页面再恢复
+- `completed` / `stopped`：只把它们当作审计与排障摘要，不要直接当作可恢复会话
+
+如果你在 live 浏览器里刚更新了仓库代码，但 `boss_helper_stats` 仍只返回旧的 `progress` / `todayData` / `historyData` 结构，没有 `run` 字段，通常说明浏览器里的 unpacked extension 还没 reload 到当前 build，而不是 MCP server 本身失效。
+
+## `boss_helper_jobs_refresh`
+
+这个 tool 用于在当前已经位于受支持 Boss 职位搜索页时，做一次低风险页面刷新，帮助外部 Agent 从“页面未初始化完成”“详情卡片状态漂移”“需要重新挂载页面控制器”这类异常里恢复。
+
+它的边界是：
+
+- 相比 `boss_helper_navigate`，它不会修改现有 URL、搜索条件或页码，只会重载当前列表页
+- 相比 `boss_helper_jobs_detail`，它不读取任何职位详情
+- 相比 `boss_helper_start`，它不会触发真实投递，只负责恢复页面状态
+
+推荐在这些场景调用：
+
+- `boss_helper_agent_context.readiness.suggestedAction=refresh-page`
+- 某个命令失败并返回 `suggestedAction=refresh-page`
+- 已确认还在正确列表页，但页面控制器需要重新初始化
+
+## `boss_helper_plan_preview`
+
+这个 tool 用于在不触发真实 `start` 的前提下，预演当前页面里的岗位会怎样进入执行链路。它会复用当前页面岗位、当前配置和可选 `configPatch` / `jobIds` / `resetFiltered`，输出：
+
+- `ready`：当前只读前置过滤已通过，可直接进入执行链路
+- `skip`：会被现有状态或前置过滤直接跳过
+- `missing-info`：缺少卡片、地址、模型等关键输入，当前无法稳定预演
+- `needs-manual-review`：为保持 preview 无副作用，内部 AI 筛选没有真的执行
+- `needs-external-review`：当前配置要求走外部 AI 审核闭环
+
+推荐顺序是：
+
+1. `boss_helper_bootstrap_guide`
+2. `boss_helper_health`
+3. `boss_helper_status`
+4. `boss_helper_agent_context`
+5. 如返回 `suggestedAction=refresh-page`，先调用 `boss_helper_jobs_refresh`
+6. `boss_helper_jobs_list` / `boss_helper_jobs_detail`
+7. `boss_helper_plan_preview`
+8. `boss_helper_start`
+
+如果你只想判断“现在页面能不能操作”，读 `boss_helper_agent_context.readiness` 就够了；如果你要决定“现在 start 会处理哪些岗位以及为什么”，则优先调用 `boss_helper_plan_preview`。
+
+如果你在 bridge / CLI 层做低层排障，也可以直接调用 `readiness.get`：
+
+```bash
+pnpm agent:cli readiness.get
+```
+
+但对 MCP 客户端来说，仍然应该优先使用 `boss_helper_agent_context`，避免额外拼装 `health` / `status` / `readiness.get`。
+
+## 结构化错误模型
+
+除 `readiness` 这种只读快照外，关键命令失败时现在也会统一返回四个恢复字段：`code`、`message`、`retryable`、`suggestedAction`。
+
+当前优先覆盖这些路径：
+
+- `boss_helper_navigate`
+- `boss_helper_resume_get`
+- `boss_helper_jobs_detail`
+- `boss_helper_chat_send`
+- `boss_helper_events_recent`
+- `boss_helper_wait_for_event`
+- `boss_helper_config_update`
+- `boss_helper_start` / `boss_helper_pause` / `boss_helper_resume` / `boss_helper_stop`
+- bridge 侧的 `relay-not-connected`、`bridge-timeout`、`page-timeout`
+
+需要注意两层 `suggestedAction` 的语义边界：
+
+- `boss_helper_agent_context.readiness.suggestedAction` 仍然只用于 page-level readiness，稳定收敛为 `navigate`、`wait-login`、`refresh-page`、`stop`、`continue`
+- 命令失败响应里的 `suggestedAction` 会更宽一些，除上述值外，还可能出现 `retry`、`fix-input`、`reconnect-relay`、`resume`
+
+推荐外部 Agent 的分支方式如下：
+
+- `retryable=true` 且 `suggestedAction=retry`：可以直接重试当前命令
+- `suggestedAction=refresh-page`：优先调用 `boss_helper_jobs_refresh`；如果当前不在受支持职位页或没有 MCP 控制面，再手动刷新 Boss 页面后重试
+- `suggestedAction=navigate`：先切回受支持的职位搜索页
+- `suggestedAction=wait-login`：等待用户完成登录，不要盲重试
+- `suggestedAction=fix-input`：修改参数后再发起下一次调用
+- `suggestedAction=reconnect-relay`：先恢复 relay 页面与扩展链路
+- `suggestedAction=resume`：当前批次处于暂停态，先恢复再决定是否继续等待事件或发送控制命令
+
+如果你刚给仓库新增了一个 MCP tool 或 agent command，而 live 浏览器里加载的扩展还是旧版本，那么对应调用现在会优先返回 `code=invalid-command`，并伴随 `suggestedAction=refresh-page`。这种场景通常不是 bridge token 失效，而是需要先重新加载扩展 / relay，让浏览器运行到当前仓库版本。
+
+对于 direct MCP tools，这些字段会出现在对应命令返回的桥接 payload 中；对于 `boss_helper_agent_context`，这些字段会被透传到 `sections.<name>` 下，避免外部 Agent 只能读中文文案判断恢复动作。
 
 ## 推荐调用顺序
 
@@ -184,14 +344,15 @@ CLI 是 bridge HTTP 的一层轻量封装。
 1. `boss_helper_health`
 2. `boss_helper_status`
 3. `boss_helper_agent_context`
-4. `boss_helper_navigate`
-5. `boss_helper_jobs_list`
-6. `boss_helper_jobs_detail`
-7. `boss_helper_resume_get`
-8. 基于职位详情和简历做判断
-9. `boss_helper_start` 或 `boss_helper_stop`
-10. 运行中通过 `boss_helper_events_recent` / `boss_helper_wait_for_event` 观察结果
-11. 如果启用了外部 AI 审核模式，则处理 `job-pending-review` 并调用 `boss_helper_jobs_review`
+4. 必要时调用 `boss_helper_navigate`
+5. 如果返回 `refresh-page` 恢复信号，调用 `boss_helper_jobs_refresh`
+6. `boss_helper_jobs_list`
+7. `boss_helper_jobs_detail`
+8. `boss_helper_resume_get`
+9. 基于职位详情和简历做判断
+10. `boss_helper_start` 或 `boss_helper_stop`
+11. 运行中通过 `boss_helper_events_recent` / `boss_helper_wait_for_event` 观察结果
+12. 如果启用了外部 AI 审核模式，则处理 `job-pending-review` 并调用 `boss_helper_jobs_review`
 
 这条顺序的核心是：先观察，再决策，再执行，而不是把外部智能体退化成“只会发 start 的遥控器”。
 
@@ -445,7 +606,7 @@ bridge token 不匹配。请检查：
 - 遇到 `MCP`、`bridge`、`relay`、`OpenCode`、外部 agent 相关任务时，先读 `docs/llm-agent-mcp.md` 和 `docs/bridge-mcp-deployment.md`
 - 不要误以为 `pnpm agent:mcp` 会启动 bridge；它只暴露 stdio MCP tools
 - 默认调用顺序应是 `boss_helper_health` -> `boss_helper_status` -> `boss_helper_agent_context`
-- 只有在看过上下文后，才继续 `boss_helper_navigate`、`boss_helper_jobs_list`、`boss_helper_jobs_detail`、`boss_helper_start`
+- 只有在看过上下文后，才继续 `boss_helper_navigate`、`boss_helper_jobs_refresh`、`boss_helper_jobs_list`、`boss_helper_jobs_detail`、`boss_helper_start`
 - 如果启用了外部审核模式，必须补完 `job-pending-review` -> `boss_helper_jobs_review` 闭环
 
 给 OpenCode 的首轮任务提示词，可以直接写成：
@@ -471,7 +632,7 @@ bridge token 不匹配。请检查：
 
 1. 用 `boss_helper_health` / `boss_helper_status` 先确认链路可用
 2. 用 `boss_helper_agent_context` 先读取聚合上下文和推荐下一步
-3. 用 `boss_helper_navigate` 切换到正确搜索页
+3. 用 `boss_helper_navigate` 切换到正确搜索页；如果只需要恢复当前页初始化，改用 `boss_helper_jobs_refresh`
 4. 用 `boss_helper_jobs_list` 和 `boss_helper_jobs_detail` 做候选职位分析
 5. 用 `boss_helper_resume_get` 把判断建立在真实简历上
 6. 只对明确选中的岗位执行 `boss_helper_start`

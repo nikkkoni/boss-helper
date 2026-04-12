@@ -214,6 +214,26 @@ describe('useApplying handles', () => {
     )
   })
 
+  it('uses encryptUserId as duplicate-filter scope when numeric uid is unavailable', async () => {
+    const conf = useConf()
+    const user = useUser()
+    conf.formData.sameCompanyFilter.value = true
+
+    clearPageUser()
+    user.info.value = {
+      encryptUserId: 'encrypted-user-1',
+      userId: undefined,
+    } as any
+    await counter.storageSet(sameCompanyKey, { 'encrypted-user-1': ['brand-seen'] })
+
+    const handler = getObjectStep(handles().SameCompanyFilter())
+    const duplicateJob = createJob({ encryptBrandId: 'brand-seen' })
+
+    await expect(
+      handler.fn?.({ data: duplicateJob }, createLogContext(duplicateJob)),
+    ).rejects.toBeInstanceOf(RepeatError)
+  })
+
   it('handles keyword and boundary filtering for title, content and friend status', async () => {
     const conf = useConf()
     const job = createJob({
@@ -1134,6 +1154,16 @@ describe('useApplying handles', () => {
     const anonymousA = getCacheManager()
     const anonymousB = getCacheManager()
     expect(anonymousA).toBe(anonymousB)
+
+    user.info.value = {
+      encryptUserId: 'encrypted-cache-user',
+      userId: undefined,
+    } as any
+
+    const scopedA = getCacheManager()
+    const scopedB = getCacheManager()
+    expect(scopedA).toBe(scopedB)
+    expect(scopedA).not.toBe(anonymousA)
   })
 
   it('returns per-user cache managers', () => {

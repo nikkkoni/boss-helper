@@ -39,7 +39,7 @@ function scoreArraySchema() {
  */
 export function createToolDefinitions({ bridgeClient, contextService }) {
   const { batchCall, bridgeGet, commandCall, readRecentEvents, waitForNextEvent } = bridgeClient
-  const { readAgentContext } = contextService
+  const { readAgentContext, readBootstrapGuide } = contextService
 
   return [
     {
@@ -53,6 +53,12 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
       description: '获取 bridge、relay、事件订阅与排队状态。',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       handler: () => bridgeGet('/status'),
+    },
+    {
+      name: 'boss_helper_bootstrap_guide',
+      description: '只读检查自举前置条件，明确还缺哪一步以及下一步应由谁执行。',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      handler: () => readBootstrapGuide(),
     },
     {
       name: 'boss_helper_agent_context',
@@ -120,6 +126,22 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
       handler: (args) => commandCall('stats', args),
     },
     {
+      name: 'boss_helper_plan_preview',
+      description: '在不触发真实 start 的前提下，预演当前页面岗位会如何被处理。',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          jobIds: { type: 'array', items: { type: 'string' } },
+          configPatch: { type: 'object' },
+          resetFiltered: { type: 'boolean' },
+          timeoutMs: { type: 'number' },
+          waitForRelay: { type: 'boolean' },
+        },
+        additionalProperties: false,
+      },
+      handler: (args) => commandCall('plan.preview', args),
+    },
+    {
       name: 'boss_helper_navigate',
       description: '导航到 Boss 职位搜索页，支持 url、query、city、position、page。',
       inputSchema: {
@@ -159,6 +181,12 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
         additionalProperties: false,
       },
       handler: (args) => commandCall('jobs.list', args),
+    },
+    {
+      name: 'boss_helper_jobs_refresh',
+      description: '刷新当前受支持的 Boss 职位列表页，不改变现有搜索条件。',
+      inputSchema: simpleCommandSchema(),
+      handler: (args) => commandCall('jobs.refresh', args),
     },
     {
       name: 'boss_helper_jobs_detail',

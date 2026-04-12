@@ -9,6 +9,7 @@ import type {
   BossHelperAgentJobsListPayload,
   BossHelperAgentLogsQueryPayload,
   BossHelperAgentNavigatePayload,
+  BossHelperAgentPlanPreviewPayload,
   BossHelperAgentRequest,
   BossHelperAgentStartPayload,
 } from '@/message/agent'
@@ -36,6 +37,8 @@ export function createAgentController(options: {
     resumeGet: queries.resumeGet,
     stop: batchRunner.stopBatch,
     stats: batchRunner.stats,
+    planPreview: queries.planPreview,
+    readinessGet: queries.readinessGet,
     navigate: queries.navigate,
     chatList: queries.chatList,
     chatHistory: queries.chatHistory,
@@ -43,6 +46,7 @@ export function createAgentController(options: {
     jobsReview: queries.jobsReview,
     logsQuery: queries.logsQuery,
     jobsList: queries.jobsList,
+    jobsRefresh: queries.jobsRefresh,
     jobsDetail: queries.jobsDetail,
     configGet: queries.getConfig,
     configUpdate: queries.updateConfig,
@@ -60,6 +64,10 @@ export function createAgentController(options: {
           return batchRunner.stopBatch()
         case 'stats':
           return batchRunner.stats()
+        case 'plan.preview':
+          return queries.planPreview(request.payload as BossHelperAgentPlanPreviewPayload | undefined)
+        case 'readiness.get':
+          return queries.readinessGet()
         case 'navigate':
           return queries.navigate(request.payload as BossHelperAgentNavigatePayload | undefined)
         case 'chat.list':
@@ -74,6 +82,8 @@ export function createAgentController(options: {
           return queries.logsQuery(request.payload as BossHelperAgentLogsQueryPayload | undefined)
         case 'jobs.list':
           return queries.jobsList(request.payload as BossHelperAgentJobsListPayload | undefined)
+        case 'jobs.refresh':
+          return queries.jobsRefresh()
         case 'jobs.detail':
           return queries.jobsDetail(request.payload as BossHelperAgentJobDetailPayload | undefined)
         case 'jobs.review':

@@ -23,7 +23,41 @@ describe('agent mcp server catalog', () => {
 
       const tools = await server.client.request('tools/list')
       const toolNames = ((tools.result?.tools ?? []) as Array<{ name: string }>).map((tool) => tool.name)
+      expect(toolNames).toContain('boss_helper_bootstrap_guide')
       expect(toolNames).toContain('boss_helper_agent_context')
+      expect(toolNames).toContain('boss_helper_plan_preview')
+      expect(toolNames).toContain('boss_helper_jobs_refresh')
+
+      const bootstrapGuideCall = await server.client.request('tools/call', {
+        arguments: {},
+        name: 'boss_helper_bootstrap_guide',
+      })
+      const bootstrapGuide = (bootstrapGuideCall.result?.structuredContent ?? {}) as Record<string, any>
+      expect(bootstrapGuide).toEqual(
+        expect.objectContaining({
+          ok: true,
+          readiness: expect.objectContaining({
+            bridgeOnline: true,
+            relayConnected: true,
+            extensionIdConfigured: true,
+            ready: true,
+          }),
+          summary: expect.objectContaining({
+            nextAction: 'continue',
+            ready: true,
+            stage: 'ready',
+          }),
+        }),
+      )
+      expect(bootstrapGuide.steps).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'bridge', status: 'ready' }),
+          expect.objectContaining({ id: 'relay', status: 'ready' }),
+          expect.objectContaining({ id: 'extension-id', status: 'ready' }),
+          expect.objectContaining({ id: 'boss-page', status: 'ready' }),
+          expect.objectContaining({ id: 'page-ready', status: 'ready' }),
+        ]),
+      )
 
       const contextCall = await server.client.request('tools/call', {
         arguments: {
@@ -38,16 +72,25 @@ describe('agent mcp server catalog', () => {
       expect(context.agentProtocolVersion).toBe(1)
       expect(context.readiness).toEqual(
         expect.objectContaining({
+          bossPageFound: true,
           bridgeOnline: true,
           pageControllable: true,
+          pageInitialized: true,
+          pageSupported: true,
+          ready: true,
           relayConnected: true,
+          suggestedAction: 'continue',
         }),
       )
       expect(context.summary).toEqual(
         expect.objectContaining({
+          currentRunId: 'run-1',
+          hasActiveRun: true,
           hasResume: true,
           jobsVisibleCount: 1,
           pendingReviewCount: 1,
+          recentRunState: 'running',
+          resumableRun: true,
           todayDelivered: 2,
         }),
       )
@@ -56,7 +99,59 @@ describe('agent mcp server catalog', () => {
           userId: 'user-1',
         }),
       )
+      expect(context.sections.readiness.data).toEqual(
+        expect.objectContaining({
+          ready: true,
+          suggestedAction: 'continue',
+        }),
+      )
+      expect(context.sections.stats.data.run.current).toEqual(
+        expect.objectContaining({
+          runId: 'run-1',
+          state: 'running',
+        }),
+      )
       expect(context.sections.jobs.data.jobs).toHaveLength(1)
+
+      const planPreviewCall = await server.client.request('tools/call', {
+        arguments: {
+          jobIds: ['job-1'],
+        },
+        name: 'boss_helper_plan_preview',
+      })
+      const planPreview = (planPreviewCall.result?.structuredContent ?? {}) as Record<string, any>
+      expect(planPreview).toEqual(
+        expect.objectContaining({
+          ok: true,
+          command: 'plan.preview',
+          data: expect.objectContaining({
+            code: 'plan-preview',
+            data: expect.objectContaining({
+              summary: expect.objectContaining({
+                needsManualReviewCount: 1,
+              }),
+            }),
+          }),
+        }),
+      )
+
+      const refreshCall = await server.client.request('tools/call', {
+        arguments: {},
+        name: 'boss_helper_jobs_refresh',
+      })
+      const refresh = (refreshCall.result?.structuredContent ?? {}) as Record<string, any>
+      expect(refresh).toEqual(
+        expect.objectContaining({
+          ok: true,
+          command: 'jobs.refresh',
+          data: expect.objectContaining({
+            code: 'jobs-refresh-accepted',
+            data: expect.objectContaining({
+              targetUrl: 'https://www.zhipin.com/web/geek/jobs',
+            }),
+          }),
+        }),
+      )
 
       const resources = await server.client.request('resources/list')
       const resourceUris = ((resources.result?.resources ?? []) as Array<{ uri: string }>).map((resource) => resource.uri)
@@ -74,11 +169,25 @@ describe('agent mcp server catalog', () => {
       const runtimeContents = runtimeResource.result?.contents as Array<{ text: string }>
       const runtimeContext = JSON.parse(runtimeContents[0].text) as Record<string, any>
       expect(runtimeContext.agentProtocolVersion).toBe(1)
+      expect(runtimeContext.summary).toEqual(
+        expect.objectContaining({
+          nextAction: 'continue',
+          ready: true,
+          stage: 'ready',
+        }),
+      )
       expect(runtimeContext.readiness).toEqual(
         expect.objectContaining({
           bridgeOnline: true,
+          extensionIdConfigured: true,
           relayConnected: true,
         }),
+      )
+      expect(runtimeContext.steps).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'bridge', status: 'ready' }),
+          expect.objectContaining({ id: 'page-ready', status: 'ready' }),
+        ]),
       )
       expect(runtimeContext.recommendedTools).toContain('boss_helper_agent_context')
 
@@ -107,6 +216,10 @@ describe('agent mcp server catalog', () => {
           'GET /health',
           'GET /status',
           'GET /agent-events?',
+          'POST /command:readiness.get',
+          'POST /command:readiness.get',
+          'POST /command:plan.preview',
+          'POST /command:jobs.refresh',
           'POST /command:resume.get',
           'POST /command:jobs.list',
           'POST /command:stats',

@@ -119,6 +119,21 @@ export async function callAgentCommand<TCommand extends BossHelperAgentCommand>(
   ) as Promise<BossHelperAgentResponse<unknown>>
 }
 
+async function dismissProtocolNotice(page: Page) {
+  const agreeButton = page.getByRole('button', { name: '了解并同意!' })
+  const hasNotice = await agreeButton
+    .waitFor({ state: 'visible', timeout: 1_500 })
+    .then(() => true)
+    .catch(() => false)
+
+  if (!hasNotice) {
+    return
+  }
+
+  await agreeButton.click()
+  await expect(agreeButton).toBeHidden()
+}
+
 export async function waitForBossHelperReady(page: Page) {
   await page.locator('#boss-helper').waitFor()
   await page.locator('#boss-helper-job').waitFor()
@@ -129,4 +144,5 @@ export async function waitForBossHelperReady(page: Page) {
       ? Number((jobs.data as { totalOnPage?: number }).totalOnPage ?? 0)
       : 0
   }).toBeGreaterThan(0)
+  await dismissProtocolNotice(page)
 }

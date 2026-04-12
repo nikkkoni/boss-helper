@@ -18,6 +18,10 @@ export interface AgentBridgeServer {
   stop: () => Promise<void>
 }
 
+interface AgentBridgeLaunchOptions {
+  env?: NodeJS.ProcessEnv
+}
+
 interface BridgeHealth {
   ok: boolean
   relayConnected: boolean
@@ -56,13 +60,17 @@ async function waitForBridgeExit(child: ChildProcessWithoutNullStreams, timeoutM
   return Promise.race([exitResult, timeoutResult])
 }
 
-export async function startAgentBridge(port: number): Promise<AgentBridgeServer> {
+export async function startAgentBridge(
+  port: number,
+  options: AgentBridgeLaunchOptions = {},
+): Promise<AgentBridgeServer> {
   const httpBaseUrl = `http://127.0.0.1:${port}`
   const httpsBaseUrl = `https://127.0.0.1:${port + 1}`
   const child = spawn(process.execPath, ['./scripts/agent-bridge.mjs'], {
     cwd: repoRoot,
     env: {
       ...process.env,
+      ...options.env,
       BOSS_HELPER_AGENT_HOST: '127.0.0.1',
       BOSS_HELPER_AGENT_PORT: String(port),
       BOSS_HELPER_AGENT_HTTPS_PORT: String(port + 1),
@@ -125,6 +133,7 @@ export async function startAgentBridge(port: number): Promise<AgentBridgeServer>
 
 export async function runAgentCli<T = Record<string, unknown>>(args: {
   command: string
+  env?: NodeJS.ProcessEnv
   payload?: unknown
   port: number
 }) {
@@ -143,7 +152,10 @@ export async function runAgentCli<T = Record<string, unknown>>(args: {
 
   const result = await execFileAsync(process.execPath, cliArgs, {
     cwd: repoRoot,
-    env: process.env,
+    env: {
+      ...process.env,
+      ...args.env,
+    },
   })
 
   return {

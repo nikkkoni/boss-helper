@@ -1,6 +1,7 @@
 // @ts-check
 
 import { createAgentBridgeAuthHeaders, getAgentBridgeRuntime } from '../shared/security.mjs'
+import { resolveBossHelperAgentErrorMeta } from '../shared/protocol.mjs'
 
 function normalizeTypes(types) {
   if (!Array.isArray(types) || types.length === 0) {
@@ -16,6 +17,16 @@ function splitCommandArgs(args = {}) {
     timeoutMs,
     waitForRelay,
     payload: Object.keys(payload).length > 0 ? payload : undefined,
+  }
+}
+
+function createBridgeClientError(code, message, extra = undefined) {
+  return {
+    ok: false,
+    code,
+    message,
+    ...resolveBossHelperAgentErrorMeta(code),
+    ...(extra ?? {}),
   }
 }
 
@@ -70,25 +81,35 @@ export function createBridgeClient(env = process.env) {
   const baseUrl = bridgeRuntime.httpBaseUrl
 
   async function httpJson(path, init = undefined) {
-    const response = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      headers: createAgentBridgeAuthHeaders(bridgeRuntime.token, init?.headers ?? {}),
-    })
-    const text = await response.text()
-    let data
     try {
-      data = text ? JSON.parse(text) : null
-    } catch {
-      data = { ok: false, code: 'invalid-json', message: text || 'invalid json response' }
+      const response = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers: createAgentBridgeAuthHeaders(bridgeRuntime.token, init?.headers ?? {}),
+      })
+      const text = await response.text()
+      let data
+      try {
+        data = text ? JSON.parse(text) : null
+      } catch {
+        data = createBridgeClientError('invalid-json', text || 'invalid json response')
+      }
+      return { response, data }
+    } catch (error) {
+      return {
+        response: undefined,
+        data: createBridgeClientError(
+          'bridge-request-failed',
+          error instanceof Error ? error.message : 'bridge request failed',
+        ),
+      }
     }
-    return { response, data }
   }
 
   async function bridgeGet(path) {
     const { response, data } = await httpJson(path)
     return {
-      ok: response.ok && data?.ok !== false,
-      status: response.status,
+      ok: response?.ok === true && data?.ok !== false,
+      status: response?.status,
       data,
     }
   }
@@ -101,8 +122,8 @@ export function createBridgeClient(env = process.env) {
       body: JSON.stringify({ command, payload, timeoutMs, waitForRelay }),
     })
     return {
-      ok: response.ok && data?.ok !== false,
-      status: response.status,
+      ok: response?.ok === true && data?.ok !== false,
+      status: response?.status,
       command,
       data,
     }
@@ -116,8 +137,8 @@ export function createBridgeClient(env = process.env) {
       body: JSON.stringify({ commands, stopOnError, waitForRelay }),
     })
     return {
-      ok: response.ok && data?.ok !== false,
-      status: response.status,
+      ok: response?.ok === true && data?.ok !== false,
+      status: response?.status,
       data,
     }
   }
@@ -147,12 +168,21 @@ export function createBridgeClient(env = process.env) {
 
   async function readRecentEvents(args = {}) {
     const timeoutMs = Number.isFinite(args.timeoutMs) && args.timeoutMs > 0 ? args.timeoutMs : 10_000
-    const stream = await openEventStream(args.types, timeoutMs)
+    let stream
+
+    try {
+      stream = await openEventStream(args.types, timeoutMs)
+    } catch (error) {
+      return createBridgeClientError(
+        'event-request-failed',
+        error instanceof Error ? error.message : '无法连接事件流',
+      )
+    }
 
     try {
       const first = await readSseEvent(stream.reader, stream.controller)
       if (!first) {
-        return { ok: false, code: 'events-history-unavailable', message: '未收到 history 事件' }
+        return createBridgeClientError('events-history-unavailable', '未收到 history 事件')
       }
       return {
         ok: true,
@@ -167,13 +197,22 @@ export function createBridgeClient(env = process.env) {
 
   async function waitForNextEvent(args = {}) {
     const timeoutMs = Number.isFinite(args.timeoutMs) && args.timeoutMs > 0 ? args.timeoutMs : 30_000
-    const stream = await openEventStream(args.types, timeoutMs)
+    let stream
+
+    try {
+      stream = await openEventStream(args.types, timeoutMs)
+    } catch (error) {
+      return createBridgeClientError(
+        'event-request-failed',
+        error instanceof Error ? error.message : '无法连接事件流',
+      )
+    }
 
     try {
       while (true) {
         const next = await readSseEvent(stream.reader, stream.controller)
         if (!next) {
-          return { ok: false, code: 'event-stream-closed', message: '事件流已关闭' }
+          return createBridgeClientError('event-stream-closed', '事件流已关闭')
         }
         if (next.event === 'agent-event') {
           return {
@@ -185,7 +224,7 @@ export function createBridgeClient(env = process.env) {
       }
     } catch (error) {
       if (stream.controller.signal.aborted) {
-        return { ok: false, code: 'event-timeout', message: '等待事件超时' }
+        return createBridgeClientError('event-timeout', '等待事件超时')
       }
       throw error
     } finally {

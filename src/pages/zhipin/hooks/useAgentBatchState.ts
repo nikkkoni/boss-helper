@@ -1,6 +1,7 @@
 import type {
   BossHelperAgentCurrentJob,
   BossHelperAgentResponse,
+  BossHelperAgentResponseMeta,
   BossHelperAgentStatsData,
 } from '@/message/agent'
 import { createBossHelperAgentResponse } from '@/message/agent'
@@ -60,25 +61,31 @@ export function createStatsDataGetter(options: {
   statistics: ReturnType<typeof useStatistics>
 }) {
   return async (): Promise<BossHelperAgentStatsData> => {
+    await options.agentRuntime.ensureRunSummaryLoaded()
     await options.statistics.updateStatistics()
 
+    const progress = {
+      activeTargetJobIds: [...options.agentRuntime.activeTargetJobIds],
+      state: options.common.deliverState,
+      locked: options.common.deliverLock,
+      stopRequested: options.common.deliverStop,
+      page: options.page.page,
+      pageSize: options.page.pageSize,
+      total: options.deliver.total,
+      current:
+        options.deliver.total > 0
+          ? Math.min(options.deliver.current + 1, options.deliver.total)
+          : 0,
+      message: options.common.deliverStatusMessage,
+      currentJob: currentJobSnapshot(options.deliver.currentData),
+      remainingTargetJobIds: [...options.agentRuntime.remainingTargetJobIds],
+    }
+
+    await options.agentRuntime.updateRunProgress(progress)
+
     return {
-      progress: {
-        activeTargetJobIds: [...options.agentRuntime.activeTargetJobIds],
-        state: options.common.deliverState,
-        locked: options.common.deliverLock,
-        stopRequested: options.common.deliverStop,
-        page: options.page.page,
-        pageSize: options.page.pageSize,
-        total: options.deliver.total,
-        current:
-          options.deliver.total > 0
-            ? Math.min(options.deliver.current + 1, options.deliver.total)
-            : 0,
-        message: options.common.deliverStatusMessage,
-        currentJob: currentJobSnapshot(options.deliver.currentData),
-        remainingTargetJobIds: [...options.agentRuntime.remainingTargetJobIds],
-      },
+      progress,
+      run: options.agentRuntime.getRunSummarySnapshot(),
       todayData: jsonClone(options.statistics.todayData),
       historyData: jsonClone(options.statistics.statisticsData),
     }
@@ -90,11 +97,19 @@ export function createStatsDataGetter(options: {
  */
 export function createResponseHelpers(getStatsData: () => Promise<BossHelperAgentStatsData>) {
   return {
-    async ok(code: string, message: string): Promise<BossHelperAgentResponse> {
-      return createBossHelperAgentResponse(true, code, message, await getStatsData())
+    async ok(
+      code: string,
+      message: string,
+      meta?: BossHelperAgentResponseMeta,
+    ): Promise<BossHelperAgentResponse> {
+      return createBossHelperAgentResponse(true, code, message, await getStatsData(), meta)
     },
-    async fail(code: string, message: string): Promise<BossHelperAgentResponse> {
-      return createBossHelperAgentResponse(false, code, message, await getStatsData())
+    async fail(
+      code: string,
+      message: string,
+      meta?: BossHelperAgentResponseMeta,
+    ): Promise<BossHelperAgentResponse> {
+      return createBossHelperAgentResponse(false, code, message, await getStatsData(), meta)
     },
   }
 }

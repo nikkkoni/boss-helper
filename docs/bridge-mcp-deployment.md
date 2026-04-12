@@ -130,8 +130,9 @@ https://localhost:4318/
 ### 验证 bridge 和 relay
 
 ```bash
-pnpm agent:cli -- health
-pnpm agent:cli -- status
+pnpm agent:cli health
+pnpm agent:cli status
+pnpm agent:cli readiness.get
 pnpm agent:doctor
 ```
 
@@ -141,6 +142,7 @@ pnpm agent:doctor
 - relay 页 `events: connected`：relay 已通过 `chrome.runtime.connect(...)` 连上扩展 background 的外部事件端口。这是 relay -> extension 的单独链路。
 - `eventSubscribers`：bridge 当前有多少客户端订阅了 `GET /agent-events`。这通常是 orchestrator、MCP watcher 或外部脚本，不是 relay 页本身。
 - relay 页现在会每 20 秒往扩展事件端口发送 keepalive，减少 Chrome MV3 service worker 空闲回收造成的周期性断线。
+- 如果你需要区分“Boss 页不存在 / 页面不受支持 / 页面未初始化 / 需要登录 / 验证码或风控阻断 / 页面可继续分析”，不要只看 `health` 或 `status`，应改为调用 `readiness.get`，或在 MCP 侧直接读取 `boss_helper_agent_context.readiness`。
 
 ## 脚本清单
 
@@ -148,10 +150,40 @@ pnpm agent:doctor
 | --- | --- |
 | `pnpm agent:start` | 一键拉起 bridge 并打开 relay 页面；若 bridge 已健康运行则直接复用 |
 | `pnpm agent:bridge` | 只启动 bridge；如果端口已被占用会直接报 `EADDRINUSE` |
-| `pnpm agent:cli -- <command>` | 通过 CLI 调 bridge |
+| `pnpm agent:cli <command>` | 通过 CLI 调 bridge |
 | `pnpm agent:doctor` | 检查 bridge、relay 和扩展连接状态 |
 | `pnpm agent:mcp` | 暴露 stdio MCP tools |
 | `pnpm agent:orchestrate` | 内置的最小自动编排示例 |
+
+常用只读诊断命令：
+
+- `pnpm agent:cli health`
+- `pnpm agent:cli status`
+- `pnpm agent:cli readiness.get`
+- `pnpm agent:cli stats`
+- `pnpm agent:cli plan.preview`
+
+常用低风险恢复命令：
+
+- `pnpm agent:cli jobs.refresh`
+
+其中 `readiness.get` 会返回结构化页面快照，至少覆盖：Boss 页是否存在、URL、是否为支持页面、扩展面板是否完成初始化、页面是否可控、是否需要登录、是否出现验证码 / 风控提示、是否有阻断操作的模态框，以及建议动作 `suggestedAction`。
+
+如果你是通过 MCP 接入，而不是直接用 CLI 做本地排障，冷启动阶段更推荐先调用 `boss_helper_bootstrap_guide`。它会把 bridge、relay、extension ID、Boss 页存在性和页面 readiness 汇总成一个只读 bootstrap 结果，并明确告诉外部 Agent：当前下一步是 `start-bridge`、`open-relay`、`configure-extension-id`、`open-boss-page`、`navigate` 还是可以直接 `continue`。
+
+这个 tool 的重点不是替你自动执行冷启动动作，而是把“还缺哪一步”和“这一步是人工做还是 Agent 继续做”稳定结构化出来。当前通常仍需要人工完成的动作包括：启动本地浏览器扩展环境、打开 relay 页面、填写 extension ID、首次打开 Boss 职位页、完成登录和处理验证码 / 风控提示。
+
+`plan.preview` 则会在不触发真实投递的前提下，对当前岗位列表做只读执行预演。它适合放在 `jobs.list` / `jobs.detail` 之后、`start` 之前，用来判断：哪些岗位会被过滤，哪些仍需外部 AI 审核，哪些因为缺少卡片/地址/模型而不适合立刻执行。
+
+`jobs.refresh` 则会重新加载当前受支持的 Boss 职位列表页，但不会改动现有 URL、搜索条件或页码。它适合放在 `readiness.get` 或其他命令返回 `suggestedAction=refresh-page` 之后，用来恢复页面控制器、详情卡片状态或列表初始化；它和 `navigate` 的边界是“保留当前搜索上下文”，和 `start` 的边界是“不会触发真实投递”。
+
+`stats` 现在除了原有的 `progress` / `todayData` / `historyData` 之外，还会附带 `run.current` 与 `run.recent`。它们分别表示：当前或可恢复的运行摘要，以及最近一次运行的 checkpoint。外部 Agent 可优先据此判断是否已经存在进行中的 run、最近一次 run 是否处于 `paused` 可恢复状态，以及上一次失败是否要求先 `refresh-page`。当前恢复边界如下：`paused` 可直接 `resume`，`error` 应先刷新页面并重读 readiness，`completed` / `stopped` 仅保留排障摘要，不应直接当作可恢复会话。
+
+如果你刚刚更新了仓库并重新构建扩展，但浏览器里的 unpacked extension 还没有 reload，那么 `stats` 可能仍返回旧结构而看不到 `run` 字段。这不是 bridge/MCP 失效，而是当前 Boss 页仍在运行旧 build，先重新加载扩展并刷新页面再验证。
+
+除 `readiness.get` 外，bridge 现在也会为关键命令失败补统一错误元数据：`code`、`message`、`retryable`、`suggestedAction`。这意味着 CLI、MCP 和直接 HTTP 调用在遇到 `relay-not-connected`、`bridge-timeout`、`page-timeout`、`unsupported-page`、`navigate-invalid`、`job-detail-load-failed`、`event-timeout`、`events-history-unavailable`、`empty-config-patch`、`validation-failed`、`already-running`、`paused` 等失败时，不需要再依赖中文文案判断是否该重试、刷新页面、修参数、恢复批次或重连 relay。
+
+其中命令级 `suggestedAction` 当前可能出现：`navigate`、`wait-login`、`refresh-page`、`stop`、`retry`、`fix-input`、`reconnect-relay`、`resume`。如果你只想判断页面 readiness，仍应优先读 `readiness.get` 或 MCP 的 `boss_helper_agent_context.readiness`；如果你在处理命令失败恢复，则优先看对应错误 envelope 里的 `retryable` 和 `suggestedAction`。当 `suggestedAction=refresh-page` 且当前仍位于受支持职位页时，优先调用 `jobs.refresh` 或 MCP 的 `boss_helper_jobs_refresh`，而不是重新拼装一次 `navigate` 参数。
 
 ## 环境变量
 
@@ -420,6 +452,8 @@ message TechwolfMessageBody {
 
 bridge 在线，但 relay 页面没有连接扩展。
 
+结构化恢复信号：`retryable=true`，`suggestedAction=reconnect-relay`
+
 处理方式：
 
 1. 打开 `https://127.0.0.1:4318/`
@@ -431,6 +465,8 @@ bridge 在线，但 relay 页面没有连接扩展。
 
 扩展没有找到可用的 Boss 职位页。
 
+结构化恢复信号：`retryable=true`，`suggestedAction=navigate`
+
 处理方式：
 
 1. 打开支持的 Boss 职位页
@@ -441,9 +477,13 @@ bridge 在线，但 relay 页面没有连接扩展。
 
 relay 没有在超时时间内返回响应。常见原因：
 
+结构化恢复信号：`retryable=true`，`suggestedAction=retry`
+
 - relay 页面被关闭
 - Boss 页面未初始化完成
 - `jobs.detail` 正在等待职位详情卡片加载
+
+如果同时看到页面侧错误为 `page-timeout` 或 `tab-forward-failed`，通常应该优先调用 `jobs.refresh` 或 `boss_helper_jobs_refresh` 刷新 Boss 页面，再决定是否继续重试。
 
 ### `Operation timed out after 10000ms`
 
@@ -484,7 +524,7 @@ bridge token 不匹配。请检查：
 ```bash
 pnpm lint && pnpm check && pnpm test -- --run
 pnpm agent:doctor
-pnpm agent:cli -- status
+pnpm agent:cli status
 ```
 
 如果修改了扩展生命周期或跨端消息行为，再补充：

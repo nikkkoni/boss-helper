@@ -8,6 +8,7 @@ import type {
   BossHelperAgentJobsListPayload,
   BossHelperAgentLogsQueryPayload,
   BossHelperAgentNavigatePayload,
+  BossHelperAgentPlanPreviewPayload,
   BossHelperAgentRequest,
   BossHelperAgentStartPayload,
 } from './commands'
@@ -18,8 +19,11 @@ import type {
   BossHelperAgentConfigUpdateData,
   BossHelperAgentJobDetailData,
   BossHelperAgentJobsListData,
+  BossHelperAgentJobsRefreshData,
   BossHelperAgentLogsQueryData,
   BossHelperAgentNavigateData,
+  BossHelperAgentPlanPreviewData,
+  BossHelperAgentReadinessData,
   BossHelperAgentResponse,
   BossHelperAgentResumeData,
 } from './types'
@@ -36,6 +40,7 @@ export interface BossHelperAgentController {
   jobsList: (
     payload?: BossHelperAgentJobsListPayload,
   ) => Promise<BossHelperAgentResponse<BossHelperAgentJobsListData>>
+  jobsRefresh: () => Promise<BossHelperAgentResponse<BossHelperAgentJobsRefreshData>>
   jobsReview: (payload: BossHelperAgentJobReviewPayload) => Promise<BossHelperAgentResponse>
   logsQuery: (
     payload?: BossHelperAgentLogsQueryPayload,
@@ -43,6 +48,10 @@ export interface BossHelperAgentController {
   navigate: (
     payload?: BossHelperAgentNavigatePayload,
   ) => Promise<BossHelperAgentResponse<BossHelperAgentNavigateData>>
+  planPreview: (
+    payload?: BossHelperAgentPlanPreviewPayload,
+  ) => Promise<BossHelperAgentResponse<BossHelperAgentPlanPreviewData>>
+  readinessGet: () => Promise<BossHelperAgentResponse<BossHelperAgentReadinessData>>
   chatHistory: (
     payload: BossHelperAgentChatHistoryPayload,
   ) => Promise<BossHelperAgentResponse<BossHelperAgentChatHistoryData>>
