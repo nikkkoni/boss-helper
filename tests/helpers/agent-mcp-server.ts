@@ -125,10 +125,10 @@ export class McpClient {
   }
 }
 
-export function buildMcpFrame(message: Record<string, unknown>) {
+export function buildMcpFrame(message: Record<string, unknown>, separator = '\r\n\r\n') {
   const payload = Buffer.from(JSON.stringify(message), 'utf8')
   return Buffer.concat([
-    Buffer.from(`Content-Length: ${payload.length}\r\n\r\n`, 'utf8'),
+    Buffer.from(`Content-Length: ${payload.length}${separator}`, 'utf8'),
     payload,
   ])
 }

@@ -16,6 +16,7 @@ const repoRoot = dirname(scriptDir)
 const bridgeScript = join(scriptDir, 'agent-bridge.mjs')
 const pidFile = process.env.BOSS_HELPER_AGENT_PID_FILE ?? join(repoRoot, '.boss-helper-agent-bridge.pid')
 const logFile = process.env.BOSS_HELPER_AGENT_LOG_FILE ?? join(repoRoot, '.boss-helper-agent-bridge.log')
+const DEFAULT_MACOS_BROWSER = 'Google Chrome'
 
 /** @param {string[]} argv @returns {AgentLaunchOptions} */
 function parseArgs(argv) {
@@ -145,7 +146,8 @@ function openRelayPage(url) {
   }
 
   if (process.platform === 'darwin') {
-    const args = options.browser ? ['-a', options.browser, url] : [url]
+    const browser = options.browser || DEFAULT_MACOS_BROWSER
+    const args = ['-a', browser, url]
     spawn('open', args, { detached: true, stdio: 'ignore' }).unref()
     return
   }

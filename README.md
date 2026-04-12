@@ -112,7 +112,7 @@ pnpm build:chrome
 pnpm agent:start -- --extension-id <你的扩展ID>
 ```
 
-3. `pnpm agent:start` 会优先复用已健康运行的 bridge；如果你手动执行 `pnpm agent:bridge`，而 4317/4318 已被占用，则会直接报 `EADDRINUSE`。
+3. `pnpm agent:start` 会优先复用已健康运行的 bridge；在 macOS 下默认会用 `Google Chrome` 打开 relay 页面，也可以用 `--browser` 覆盖；如果你手动执行 `pnpm agent:bridge`，而 4317/4318 已被占用，则会直接报 `EADDRINUSE`。
 4. 首次打开 relay 页面时接受本地自签名证书，并保持页面常驻；建议确认页面状态至少为 `bridge: connected` 和 `events: connected`。
 5. 运行诊断：
 
@@ -127,6 +127,8 @@ pnpm agent:cli -- stats
 pnpm agent:mcp
 pnpm agent:orchestrate -- --query 前端 --include vue,react --start --watch
 ```
+
+补充说明：仓库内置的 MCP server 同时兼容 `Content-Length` framed stdio 和 newline-delimited JSON-RPC。像 OpenCode 1.4.x 这类按行发送 JSON-RPC 的客户端，也可以直接加载 `pnpm agent:mcp`。
 
 完整部署说明见 [docs/bridge-mcp-deployment.md](docs/bridge-mcp-deployment.md)。
 

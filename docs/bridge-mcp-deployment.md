@@ -71,7 +71,7 @@ pnpm agent:start -- --extension-id <你的扩展ID>
 - 检查 bridge 是否已在运行
 - 自动后台拉起 `agent-bridge.mjs`
 - 生成 relay URL
-- 尝试用本机默认浏览器打开 relay 页面
+- 尝试打开 relay 页面；在 macOS 下默认使用 `Google Chrome`，也可以用 `--browser` 覆盖
 
 首次打开 relay 页面时，请先接受本地自签名证书，然后保持页面常驻。
 
@@ -331,6 +331,12 @@ bridge 当前对外暴露这些接口：
 1. 读取 bridge 运行时配置和 token。
 2. 把 bridge 的 HTTP / SSE 能力包装成 MCP tools。
 
+stdio 传输兼容性说明：
+
+- 传统 MCP 客户端通常使用 `Content-Length` framed transport。
+- 部分本地客户端，例如 OpenCode 1.4.x，会通过 stdio 直接按行发送 JSON-RPC。
+- 当前仓库内置的 MCP server 同时兼容这两种输入输出格式，因此无需额外包一层代理。
+
 最小注册示例：
 
 ```json
@@ -438,6 +444,19 @@ relay 没有在超时时间内返回响应。常见原因：
 - relay 页面被关闭
 - Boss 页面未初始化完成
 - `jobs.detail` 正在等待职位详情卡片加载
+
+### `Operation timed out after 10000ms`
+
+这类报错通常发生在 MCP 客户端启动阶段，而不是 bridge 命令执行阶段。
+
+优先排查：
+
+1. 当前仓库代码是否包含最新的 MCP stdio 兼容修复。
+2. 是否从仓库根目录启动客户端，使其真正读到根目录下的 `opencode.json`。
+3. `pnpm agent:mcp` 是否能在终端里单独启动。
+4. 如果是 OpenCode，执行 `opencode mcp list` 查看是否仍然卡在 MCP 启动握手。
+
+如果 `pnpm agent:mcp` 能启动，但客户端仍提示 10 秒超时，最常见原因是客户端与 server 的 stdio 传输格式不匹配；当前版本已经兼容 `Content-Length` 和按行 JSON-RPC 两种模式。
 
 ### relay 页持续出现“扩展事件连接断开”
 
