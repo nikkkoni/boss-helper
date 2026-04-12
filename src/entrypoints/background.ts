@@ -17,6 +17,7 @@ import { isSupportedSiteUrl } from '@/site-adapters'
 const zhipinMatches = ['*://zhipin.com/*', '*://*.zhipin.com/*']
 const eventPorts = new Set<Browser.runtime.Port>()
 const trustedAgentRelayHosts = new Set(['localhost', '127.0.0.1'])
+const AGENT_RELAY_KEEPALIVE_TYPE = '__boss_helper_agent_keepalive__'
 
 function isTrustedAgentRelaySender(url?: string | null) {
   if (!url) {
@@ -29,6 +30,19 @@ function isTrustedAgentRelaySender(url?: string | null) {
   } catch {
     return false
   }
+}
+
+function isAgentRelayKeepaliveMessage(
+  value: unknown,
+): value is {
+  sentAt?: string
+  type: typeof AGENT_RELAY_KEEPALIVE_TYPE
+} {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    (value as { type?: string }).type === AGENT_RELAY_KEEPALIVE_TYPE
+  )
 }
 
 async function findAgentTargetTab() {
@@ -120,6 +134,11 @@ export default defineBackground({
       }
 
       eventPorts.add(port)
+      port.onMessage.addListener((message) => {
+        if (isAgentRelayKeepaliveMessage(message)) {
+          return
+        }
+      })
       port.onDisconnect.addListener(() => {
         eventPorts.delete(port)
       })

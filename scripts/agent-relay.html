@@ -172,6 +172,9 @@
       const responseEl = document.getElementById('response')
       const saveButton = document.getElementById('saveButton')
       const MAX_LOG_ENTRIES = 120
+      const EXTENSION_RECONNECT_DELAY_MS = 3000
+      const EXTENSION_KEEPALIVE_INTERVAL_MS = 20000
+      const EXTENSION_KEEPALIVE_MESSAGE_TYPE = '__boss_helper_agent_keepalive__'
       const relayClientId = localStorage.getItem(RELAY_CLIENT_ID_KEY) || crypto.randomUUID()
       const urlExtensionId = new URLSearchParams(location.search).get('extensionId') || ''
       const logEntries = []
@@ -221,8 +224,12 @@
         })
       }
 
-      async function ensureBridgeBootstrap() {
-        if (bridgeBootstrap) {
+      function resetBridgeBootstrap() {
+        bridgeBootstrap = null
+      }
+
+      async function ensureBridgeBootstrap(forceRefresh = false) {
+        if (bridgeBootstrap && !forceRefresh) {
           return bridgeBootstrap
         }
 
@@ -324,10 +331,65 @@
 
       let eventSource
       let extensionPort
+      let extensionReconnectTimer
+      let extensionKeepaliveTimer
 
-      async function connectExtensionEventPort() {
-        extensionPort?.disconnect()
+      function clearExtensionReconnectTimer() {
+        if (extensionReconnectTimer) {
+          window.clearTimeout(extensionReconnectTimer)
+          extensionReconnectTimer = undefined
+        }
+      }
+
+      function clearExtensionKeepaliveTimer() {
+        if (extensionKeepaliveTimer) {
+          window.clearInterval(extensionKeepaliveTimer)
+          extensionKeepaliveTimer = undefined
+        }
+      }
+
+      function startExtensionKeepalive(port) {
+        clearExtensionKeepaliveTimer()
+        extensionKeepaliveTimer = window.setInterval(() => {
+          if (extensionPort !== port) {
+            clearExtensionKeepaliveTimer()
+            return
+          }
+
+          try {
+            port.postMessage({
+              type: EXTENSION_KEEPALIVE_MESSAGE_TYPE,
+              sentAt: new Date().toISOString(),
+            })
+          } catch (error) {
+            clearExtensionKeepaliveTimer()
+            log('扩展事件 keepalive 发送失败', {
+              message: error instanceof Error ? error.message : String(error),
+            })
+          }
+        }, EXTENSION_KEEPALIVE_INTERVAL_MS)
+      }
+
+      function scheduleExtensionEventReconnect(reason) {
+        if (extensionReconnectTimer || !getExtensionId()) {
+          return
+        }
+
+        setExtensionEventsState('reconnecting')
+        log(`扩展事件连接断开，${EXTENSION_RECONNECT_DELAY_MS / 1000}s 后重连`, reason)
+        extensionReconnectTimer = window.setTimeout(() => {
+          extensionReconnectTimer = undefined
+          void connectExtensionEventPort(true)
+        }, EXTENSION_RECONNECT_DELAY_MS)
+      }
+
+      async function connectExtensionEventPort(forceBootstrapRefresh = false) {
+        clearExtensionReconnectTimer()
+        clearExtensionKeepaliveTimer()
+
+        const previousPort = extensionPort
         extensionPort = undefined
+        previousPort?.disconnect()
 
         const extensionId = getExtensionId()
         if (!extensionId) {
@@ -341,13 +403,15 @@
         }
 
         try {
-          const bootstrap = await ensureBridgeBootstrap()
-          extensionPort = window.chrome.runtime.connect(extensionId, {
+          const bootstrap = await ensureBridgeBootstrap(forceBootstrapRefresh)
+          const nextPort = window.chrome.runtime.connect(extensionId, {
             name: bootstrap.eventPortName,
           })
+          extensionPort = nextPort
           setExtensionEventsState('connected')
+          startExtensionKeepalive(nextPort)
 
-          extensionPort.onMessage.addListener((event) => {
+          nextPort.onMessage.addListener((event) => {
             log(`收到实时事件 ${event.type}`, event)
             void postJson('/agent-events', {
               clientId: relayClientId,
@@ -355,16 +419,26 @@
             })
           })
 
-          extensionPort.onDisconnect.addListener(() => {
+          nextPort.onDisconnect.addListener(() => {
+            if (extensionPort !== nextPort) {
+              return
+            }
             const error = window.chrome.runtime.lastError
-            setExtensionEventsState('disconnected')
-            log('扩展事件连接断开', {
-              message: error?.message ?? 'unknown',
+            extensionPort = undefined
+            clearExtensionKeepaliveTimer()
+            resetBridgeBootstrap()
+            scheduleExtensionEventReconnect({
+              message: error?.message ?? 'port disconnected without lastError',
             })
           })
         } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          extensionPort = undefined
+          clearExtensionKeepaliveTimer()
+          resetBridgeBootstrap()
           setExtensionEventsState('connect failed')
-          log('连接扩展事件端口失败', { message: String(error) })
+          log('连接扩展事件端口失败', { message })
+          scheduleExtensionEventReconnect({ message })
         }
       }
 
@@ -410,9 +484,10 @@
 
       saveButton.addEventListener('click', () => {
         localStorage.setItem(EXTENSION_ID_KEY, getExtensionId())
+        resetBridgeBootstrap()
         log('已保存扩展 ID，正在重连')
         connectEventSource()
-        void connectExtensionEventPort()
+        void connectExtensionEventPort(true)
       })
 
       connectEventSource()

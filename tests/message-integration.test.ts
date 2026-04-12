@@ -145,6 +145,10 @@ describe('agent message integration', () => {
       url: 'https://127.0.0.1/',
     })
     await __emitRuntimeConnectExternal(port)
+    port.__emitMessage({
+      type: '__boss_helper_agent_keepalive__',
+      sentAt: new Date().toISOString(),
+    })
 
     emitBossHelperAgentEvent(
       createBossHelperAgentEvent({
