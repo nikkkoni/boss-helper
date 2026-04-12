@@ -383,6 +383,32 @@ rate limiting, limit reached, chat sent.
 **Protocol Versioning:** `AGENT_PROTOCOL_VERSION` now lives in `shared/agentProtocol.js`,
 and is reused by extension-side messaging plus Node bridge/MCP scripts.
 
+**MCP Layer Status (2026-04-12):** the MCP stack is no longer just a thin transport wrapper.
+`scripts/mcp/` now provides a catalog-driven layer with:
+
+- low-level tool wrappers for bridge commands and event watching
+- a higher-level context aggregator via `boss_helper_agent_context`
+- reusable `resources` / `prompts` for autonomy workflow and external review closure
+
+The recommended external control loop is now:
+
+1. observe via `health` / `status` / `agent_context`
+2. decide via `jobs.list` / `jobs.detail` / `resume.get`
+3. execute via `start` / `stop` or `jobs.review`
+4. observe again via `events_recent` / `wait_for_event`
+
+However, the architecture still stops short of full unattended automation. The remaining gaps are
+not basic transport, but higher-level runtime capabilities:
+
+- cold-start bootstrap and environment self-checks
+- page/account risk diagnostics
+- structured recoverable error semantics
+- dry-run / planning without side effects
+- run session checkpointing and resumability
+- guardrails and auditability for unattended execution
+
+The implementation roadmap and handoff constraints for these gaps are tracked in [`../todo.md`](../todo.md).
+
 ### 4.3 Store Architecture (`src/stores/`)
 
 ```
@@ -528,7 +554,7 @@ Single-schema protobuf approach:
 
 9. **`filterSteps.ts` is too large** - 已于 2026-04-11 改为 `services/filters/` 分组结构。
 
-10. **Scripts directory has no clear module boundary** - `agent-mcp-server.mjs` (39KB) is a monolith. No shared utilities between scripts.
+10. **Autonomy layer is still fragmented** - MCP transport has already been split into `scripts/mcp/*`, but higher-level autonomy logic is still divided across bridge semantics, MCP tools/resources, and `agent-orchestrator`. The repo still lacks an MCP-native bootstrap / dry-run / checkpoint layer for unattended operation.
 
 ### Minor
 

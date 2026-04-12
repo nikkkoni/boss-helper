@@ -2,6 +2,9 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { once } from 'node:events'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -9,6 +12,7 @@ const repoRoot = '/Users/wang/Documents/boss/boss-helper'
 
 type BridgeProcess = {
   child: ChildProcessWithoutNullStreams
+  cleanup: () => void
   getStderr: () => string
   getStdout: () => string
 }
@@ -17,6 +21,8 @@ async function startBridge() {
   const port = 4600 + Math.floor(Math.random() * 200)
   const httpsPort = port + 1
   const token = `vitest-bridge-token-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  const tokenDir = mkdtempSync(join(tmpdir(), 'boss-helper-agent-bridge-security-'))
+  const tokenFile = join(tokenDir, '.boss-helper-agent-token')
 
   const child = spawn(process.execPath, ['./scripts/agent-bridge.mjs'], {
     cwd: repoRoot,
@@ -27,6 +33,7 @@ async function startBridge() {
       BOSS_HELPER_AGENT_PORT: String(port),
       BOSS_HELPER_AGENT_HTTPS_PORT: String(httpsPort),
       BOSS_HELPER_AGENT_MAX_BODY_BYTES: '128',
+      BOSS_HELPER_AGENT_TOKEN_FILE: tokenFile,
     },
     stdio: 'pipe',
   })
@@ -45,6 +52,7 @@ async function startBridge() {
   return {
     bridge: {
       child,
+      cleanup: () => rmSync(tokenDir, { force: true, recursive: true }),
       getStderr: () => stderr,
       getStdout: () => stdout,
     } satisfies BridgeProcess,
@@ -121,12 +129,18 @@ async function requestText(
 }
 
 async function stopBridge(bridge: BridgeProcess | null) {
-  if (!bridge || bridge.child.killed || bridge.child.exitCode != null) {
+  if (!bridge) {
     return
   }
 
-  bridge.child.kill()
-  await once(bridge.child, 'exit')
+  try {
+    if (!bridge.child.killed && bridge.child.exitCode == null) {
+      bridge.child.kill()
+      await once(bridge.child, 'exit')
+    }
+  } finally {
+    bridge.cleanup()
+  }
 }
 
 let activeBridge: BridgeProcess | null = null
