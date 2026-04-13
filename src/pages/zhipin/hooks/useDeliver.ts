@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { cachePipelineResult, createHandle } from '@/composables/useApplying'
+import { useAgentRuntime } from '@/stores/agent'
 import { useCommon } from '@/stores/common'
 import { useConf } from '@/stores/conf'
 import type { MyJobListData } from '@/stores/jobs'
@@ -43,9 +44,11 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
   const statistics = useStatistics()
   const common = useCommon()
   const conf = useConf()
+  const agentRuntime = useAgentRuntime()
 
   function createDeliverDeps() {
     return {
+      agentRuntime,
       cachePipelineResultFn: cachePipelineResult,
       common,
       conf,
@@ -136,6 +139,34 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
             },
           }),
         )
+
+        const failureGuardrail = agentRuntime.registerFailureGuardrail()
+        if (failureGuardrail) {
+          common.deliverStop = true
+          stopResult = createHandleResult(targetJobList.length, seenJobIds)
+          conf.formData.notification.value && (await notification(failureGuardrail.message))
+          ElMessage.error(failureGuardrail.message)
+          emitBossHelperAgentEvent(
+            createBossHelperAgentEvent({
+              type: 'limit-reached',
+              state: 'pausing',
+              message: failureGuardrail.message,
+              job: toAgentCurrentJob(data),
+              progress: {
+                current: current.value + 1,
+                total: targetJobList.length,
+              },
+              detail: {
+                source: 'consecutive-failure-limit',
+                consecutiveFailures: failureGuardrail.consecutiveFailures,
+                guardrailCode: failureGuardrail.code,
+                guardrailLimit: failureGuardrail.limit,
+                lastFailureCode: 'unexpected-deliver-error',
+                lastFailureMessage: error instanceof Error ? error.message : String(error),
+              },
+            }),
+          )
+        }
       } finally {
         await finalizeDeliverIteration({
           cachePipelineResultFn: cachePipelineResult,

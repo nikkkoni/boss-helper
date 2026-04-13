@@ -116,7 +116,7 @@ CLI 是 bridge HTTP 的一层轻量封装。
 - `boss_helper_pause` -> `pause`
 - `boss_helper_resume` -> `resume`
 - `boss_helper_stop` -> `stop`
-- `boss_helper_stats` -> `stats`，现额外附带 `run.current` / `run.recent` checkpoint 摘要
+- `boss_helper_stats` -> `stats`，现额外附带 `run.current` / `run.recent` checkpoint 摘要，以及 `risk` 安全护栏摘要
 - `boss_helper_navigate` -> `navigate`
 - `boss_helper_resume_get` -> `resume.get`
 - `boss_helper_jobs_list` -> `jobs.list`
@@ -221,7 +221,7 @@ CLI 是 bridge HTTP 的一层轻量封装。
 返回值除了各 section 的原始结果，还会补：
 
 - `readiness`：bridge / relay / Boss 页面存在性、支持性、初始化状态、可控性、登录状态、验证码 / 风控 / 模态阻断，以及 `suggestedAction`
-- `summary`：岗位数、待审核事件数、当日投递数，以及 `hasActiveRun`、`currentRunId`、`recentRunState`、`resumableRun` 这类运行摘要
+- `summary`：岗位数、待审核事件数、当日投递数，以及 `hasActiveRun`、`currentRunId`、`recentRunState`、`resumableRun`、`riskLevel`、`riskWarningCount`、`remainingDeliveryCapacity` 这类运行与护栏摘要
 - `recommendations`：下一步建议
 
 当前顶层 `readiness` 至少包含这些关键字段：
@@ -242,10 +242,16 @@ CLI 是 bridge HTTP 的一层轻量封装。
 
 ### `boss_helper_stats`
 
-`boss_helper_stats` 现在不仅返回瞬时 `progress` 和统计数据，还会附带最小 run/session checkpoint：
+`boss_helper_stats` 现在不仅返回瞬时 `progress` 和统计数据，还会附带最小 run/session checkpoint 与安全护栏摘要：
 
 - `data.run.current`：当前或可恢复的运行摘要，包含 `runId`、目标岗位、已分析 / 已处理岗位、最近决策、最后错误、当前页码和当前岗位
 - `data.run.recent`：最近一次运行的摘要，即使当前 run 已结束，也可用于人工排障和自动恢复判断
+- `data.risk`：当前 `deliveryLimit` 使用情况、剩余额度、去重/通知/缓存护栏是否开启、AI 自动回复等高风险开关，以及结构化 `warnings`
+
+其中与 Phase 7 主动护栏直接相关的 warning 目前至少包括：
+
+- `consecutive-failure-streak`：当前连续失败计数正在接近自动暂停阈值
+- `consecutive-failure-auto-stop`：连续失败已达到阈值，本轮已自动进入暂停收尾
 
 当前恢复边界建议如下：
 
@@ -254,6 +260,10 @@ CLI 是 bridge HTTP 的一层轻量封装。
 - `completed` / `stopped`：只把它们当作审计与排障摘要，不要直接当作可恢复会话
 
 如果你在 live 浏览器里刚更新了仓库代码，但 `boss_helper_stats` 仍只返回旧的 `progress` / `todayData` / `historyData` 结构，没有 `run` 字段，通常说明浏览器里的 unpacked extension 还没 reload 到当前 build，而不是 MCP server 本身失效。
+
+如果 `data.risk.level=high`，推荐把它当作“先复核配置再执行”的信号，而不是只因为页面 readiness 正常就直接 `start`。一个典型流程是：先看 `boss_helper_agent_context.summary.riskLevel`，必要时再展开 `boss_helper_stats.data.risk.warnings`，确认是否只是接近限额，还是确实关闭了关键去重护栏或打开了高风险聊天自动化。
+
+如果当前 run 处于 `paused`，且 `data.risk.warnings` 里出现 `consecutive-failure-auto-stop`，优先检查 `data.run.current.lastError` 或 `data.run.recent.lastError` 再决定是否 `boss_helper_resume`。MCP 聚合层 `boss_helper_agent_context.recommendations` 也会在这种场景下先提示“检查风险摘要和最近错误”，而不是默认建议直接恢复。
 
 ## `boss_helper_jobs_refresh`
 

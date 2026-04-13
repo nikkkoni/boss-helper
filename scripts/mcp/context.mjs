@@ -468,8 +468,13 @@ export function createAgentContextService(bridgeClient) {
     const recommendations = []
     const currentRun = sectionResults.stats?.data?.run?.current
     const recentRun = sectionResults.stats?.data?.run?.recent
+    const riskSummary = sectionResults.stats?.data?.risk
+    const pausedByFailureGuardrail = Array.isArray(riskSummary?.warnings)
+      && riskSummary.warnings.some((item) => item?.code === 'consecutive-failure-auto-stop')
 
-    if (currentRun?.state === 'paused' && currentRun.recovery?.resumable) {
+    if (currentRun?.state === 'paused' && pausedByFailureGuardrail) {
+      recommendations.push(`检测到 run ${currentRun.runId} 因连续失败自动暂停，先检查 boss_helper_stats.risk.warnings 与 run.lastError，再决定是否 resume。`)
+    } else if (currentRun?.state === 'paused' && currentRun.recovery?.resumable) {
       recommendations.push(`检测到暂停中的 run ${currentRun.runId}，如确认页面仍一致，可先调用 boss_helper_resume。`)
     } else if (currentRun?.state === 'running' || currentRun?.state === 'pausing') {
       recommendations.push(`检测到进行中的 run ${currentRun.runId}，优先观察 stats / events，再决定是否继续控制。`)
@@ -487,6 +492,14 @@ export function createAgentContextService(bridgeClient) {
 
     if (summary.pendingReviewCount > 0) {
       recommendations.push(`检测到 ${summary.pendingReviewCount} 个待审核事件，优先处理 job-pending-review -> boss_helper_jobs_review 闭环。`)
+    }
+
+    if (riskSummary?.delivery?.reached) {
+      recommendations.push(`今日投递已到达 deliveryLimit ${riskSummary.delivery.limit}，当前不应继续 start。`)
+    } else if (riskSummary?.level === 'high') {
+      recommendations.push(`当前安全护栏摘要为 high，建议先检查 boss_helper_stats.risk.warnings，再决定是否继续 start。`)
+    } else if (Array.isArray(riskSummary?.warnings) && riskSummary.warnings.length > 0) {
+      recommendations.push(`当前安全护栏摘要包含 ${riskSummary.warnings.length} 条提醒，可先读取 boss_helper_stats.risk 评估风险面。`)
     }
 
     if (summary.jobsVisibleCount > 0) {
@@ -570,6 +583,7 @@ export function createAgentContextService(bridgeClient) {
     const statsData = sectionResults.stats?.data
     const currentRun = statsData?.run?.current ?? null
     const recentRun = statsData?.run?.recent ?? null
+    const riskSummary = statsData?.risk ?? null
     const pageReadiness = sectionResults.readiness?.data
     const todayDelivered = Number.isFinite(statsData?.today?.delivered)
       ? statsData.today.delivered
@@ -619,9 +633,13 @@ export function createAgentContextService(bridgeClient) {
       hasActiveRun: currentRun != null,
       jobsVisibleCount,
       pendingReviewCount,
+      remainingDeliveryCapacity:
+        Number.isFinite(riskSummary?.delivery?.remainingToday) ? riskSummary.delivery.remainingToday : null,
       readinessBlockerCount: Array.isArray(pageReadiness?.blockers) ? pageReadiness.blockers.length : 0,
       recentEventCount: recentEvents.length,
       recentRunState: typeof recentRun?.state === 'string' ? recentRun.state : null,
+      riskLevel: typeof riskSummary?.level === 'string' ? riskSummary.level : null,
+      riskWarningCount: Array.isArray(riskSummary?.warnings) ? riskSummary.warnings.length : 0,
       resumableRun: recentRun?.recovery?.resumable === true,
       todayDelivered,
     }

@@ -196,6 +196,22 @@ function addJobId(list: string[], jobId: string | undefined) {
   return list.includes(jobId) ? list : [...list, jobId]
 }
 
+const consecutiveFailureGuardrailLimit = 3
+
+interface AgentFailureGuardrailTrigger {
+  at: string
+  code: 'consecutive-failure-auto-stop'
+  consecutiveFailures: number
+  limit: number
+  message: string
+}
+
+interface AgentFailureGuardrailSnapshot {
+  consecutiveFailures: number
+  limit: number
+  triggered: AgentFailureGuardrailTrigger | null
+}
+
 export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
   const batchPromise = shallowRef<Promise<void> | null>(null)
   const activeTargetJobIds = ref<string[]>([])
@@ -204,6 +220,8 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
   const currentRun = ref<BossHelperAgentRunSnapshot | null>(null)
   const recentRun = ref<BossHelperAgentRunSnapshot | null>(null)
   const runSummaryLoaded = ref(false)
+  const consecutiveFailures = ref(0)
+  const lastFailureGuardrailTrigger = ref<AgentFailureGuardrailTrigger | null>(null)
 
   const hasPendingBatch = computed(() => batchPromise.value != null)
   let loadRunSummaryPromise: Promise<void> | null = null
@@ -397,15 +415,22 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
       run.processedJobIds = addJobId(run.processedJobIds, jobId)
     }
 
-    if (event.type === 'job-failed' || event.type === 'batch-error') {
+    if (
+      event.type === 'job-failed'
+      || event.type === 'batch-error'
+      || (event.type === 'limit-reached' && typeof event.detail?.guardrailCode === 'string')
+    ) {
       run.lastError = {
         at: now,
-        code:
-          typeof event.detail?.errorName === 'string'
-            ? event.detail.errorName
-            : event.type === 'batch-error'
-              ? 'batch-error'
-              : 'job-failed',
+        code: (() => {
+          if (typeof event.detail?.guardrailCode === 'string') {
+            return event.detail.guardrailCode
+          }
+          if (typeof event.detail?.errorName === 'string') {
+            return event.detail.errorName
+          }
+          return event.type === 'batch-error' ? 'batch-error' : 'job-failed'
+        })(),
         job: cloneCurrentJob(event.job ?? run.currentJob),
         message: event.message,
       }
@@ -476,6 +501,39 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
     queuePersistRunSummary()
   }
 
+  function getFailureGuardrailSnapshot(): AgentFailureGuardrailSnapshot {
+    return {
+      consecutiveFailures: consecutiveFailures.value,
+      limit: consecutiveFailureGuardrailLimit,
+      triggered: cloneData(lastFailureGuardrailTrigger.value),
+    }
+  }
+
+  function clearFailureGuardrailState(options: { clearTrigger?: boolean } = {}) {
+    consecutiveFailures.value = 0
+    if (options.clearTrigger) {
+      lastFailureGuardrailTrigger.value = null
+    }
+  }
+
+  function registerFailureGuardrail(): AgentFailureGuardrailTrigger | null {
+    const nextCount = consecutiveFailures.value + 1
+    consecutiveFailures.value = nextCount
+    if (nextCount < consecutiveFailureGuardrailLimit) {
+      return null
+    }
+
+    const trigger: AgentFailureGuardrailTrigger = {
+      at: new Date().toISOString(),
+      code: 'consecutive-failure-auto-stop',
+      consecutiveFailures: nextCount,
+      limit: consecutiveFailureGuardrailLimit,
+      message: `连续失败达到 ${consecutiveFailureGuardrailLimit} 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。`,
+    }
+    lastFailureGuardrailTrigger.value = trigger
+    return cloneData(trigger)
+  }
+
   function setBatchPromise(promise: Promise<void> | null) {
     batchPromise.value = promise
   }
@@ -508,13 +566,16 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
 
   return {
     batchPromise,
+    clearFailureGuardrailState,
     currentRun,
     hasPendingBatch,
     ensureRunSummaryLoaded,
+    getFailureGuardrailSnapshot,
     getRunSummarySnapshot,
     activeTargetJobIds,
     recentRun,
     recordEvent,
+    registerFailureGuardrail,
     remainingTargetJobIds,
     stopRequestedByCommand,
     setBatchPromise,

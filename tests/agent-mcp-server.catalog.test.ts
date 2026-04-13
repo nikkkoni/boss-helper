@@ -89,7 +89,10 @@ describe('agent mcp server catalog', () => {
           hasResume: true,
           jobsVisibleCount: 1,
           pendingReviewCount: 1,
+          remainingDeliveryCapacity: 118,
           recentRunState: 'running',
+          riskLevel: 'medium',
+          riskWarningCount: 2,
           resumableRun: true,
           todayDelivered: 2,
         }),
@@ -109,6 +112,19 @@ describe('agent mcp server catalog', () => {
         expect.objectContaining({
           runId: 'run-1',
           state: 'running',
+        }),
+      )
+      expect(context.sections.stats.data.risk).toEqual(
+        expect.objectContaining({
+          level: 'medium',
+          delivery: expect.objectContaining({
+            limit: 120,
+            remainingToday: 118,
+            usedToday: 2,
+          }),
+          warnings: expect.arrayContaining([
+            expect.objectContaining({ code: 'same-company-filter-disabled' }),
+          ]),
         }),
       )
       expect(context.sections.jobs.data.jobs).toHaveLength(1)

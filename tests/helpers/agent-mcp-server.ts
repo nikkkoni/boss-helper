@@ -391,6 +391,50 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
                   updatedAt: '2026-04-10T00:00:02.000Z',
                 },
               },
+              risk: {
+                automation: {
+                  aiFilteringEnabled: true,
+                  aiFilteringExternal: false,
+                  aiGreetingEnabled: false,
+                  aiReplyEnabled: false,
+                  customGreetingEnabled: false,
+                },
+                delivery: {
+                  limit: 120,
+                  reached: false,
+                  remainingToday: 118,
+                  usedToday: 2,
+                },
+                guardrails: {
+                  friendStatus: true,
+                  notification: true,
+                  sameCompanyFilter: false,
+                  sameHrFilter: true,
+                  useCache: false,
+                },
+                level: 'medium',
+                observed: {
+                  deliveredToday: 2,
+                  processedToday: 5,
+                  repeatFilteredToday: 1,
+                },
+                runtime: {
+                  state: 'running',
+                  stopRequested: false,
+                },
+                warnings: [
+                  {
+                    code: 'same-company-filter-disabled',
+                    message: '相同公司过滤已关闭，跨岗位重复投递同公司时需要额外谨慎。',
+                    severity: 'info',
+                  },
+                  {
+                    code: 'cache-disabled',
+                    message: '本地缓存已关闭，页面刷新或重载后去重与恢复信息会更依赖实时页面状态。',
+                    severity: 'info',
+                  },
+                ],
+              },
               todayData: { success: 2 },
             },
           }

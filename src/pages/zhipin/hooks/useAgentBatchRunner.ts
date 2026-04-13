@@ -70,6 +70,7 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   const getStatsData = createStatsDataGetter({
     agentRuntime,
     common,
+    conf,
     deliver,
     page,
     statistics,
@@ -80,6 +81,7 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   async function runBatch(mode: 'start' | 'resume', options?: BossHelperAgentStartPayload) {
     common.deliverLock = true
     common.deliverStop = false
+    agentRuntime.clearFailureGuardrailState({ clearTrigger: true })
     agentRuntime.setStopRequestedByCommand(false)
     batchEvents.setDeliverState(
       'running',

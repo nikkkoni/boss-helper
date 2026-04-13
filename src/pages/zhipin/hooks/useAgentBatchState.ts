@@ -11,6 +11,7 @@ import type { useStatistics } from '@/stores/statistics'
 import { jsonClone } from '@/utils/deepmerge'
 
 import { toAgentCurrentJob } from '../shared/jobMapping'
+import { buildAgentRiskSummary } from '../shared/riskSummary'
 import type { useDeliver } from './useDeliver'
 import type { usePager } from './usePager'
 
@@ -56,6 +57,9 @@ export function createCurrentProgressSnapshot(options: {
 export function createStatsDataGetter(options: {
   agentRuntime: ReturnType<typeof useAgentRuntime>
   common: ReturnType<typeof useCommon>
+  conf: {
+    formData: Record<string, unknown>
+  }
   deliver: ReturnType<typeof useDeliver>
   page: ReturnType<typeof usePager>['page']
   statistics: ReturnType<typeof useStatistics>
@@ -83,9 +87,18 @@ export function createStatsDataGetter(options: {
 
     await options.agentRuntime.updateRunProgress(progress)
 
+    const run = options.agentRuntime.getRunSummarySnapshot()
+
     return {
       progress,
-      run: options.agentRuntime.getRunSummarySnapshot(),
+      risk: buildAgentRiskSummary({
+        config: options.conf.formData,
+        failureGuardrail: options.agentRuntime.getFailureGuardrailSnapshot(),
+        progress,
+        run,
+        todayData: options.statistics.todayData,
+      }),
+      run,
       todayData: jsonClone(options.statistics.todayData),
       historyData: jsonClone(options.statistics.statisticsData),
     }

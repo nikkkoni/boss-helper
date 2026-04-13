@@ -156,9 +156,53 @@ export interface BossHelperAgentRunSummaryData {
   recent: BossHelperAgentRunSnapshot | null
 }
 
+export type BossHelperAgentRiskLevel = 'low' | 'medium' | 'high'
+export type BossHelperAgentRiskSeverity = 'info' | 'warn'
+
+export interface BossHelperAgentRiskWarning {
+  code: string
+  message: string
+  severity: BossHelperAgentRiskSeverity
+}
+
+export interface BossHelperAgentRiskSummary {
+  automation: {
+    aiFilteringEnabled: boolean
+    aiFilteringExternal: boolean
+    aiGreetingEnabled: boolean
+    aiReplyEnabled: boolean
+    customGreetingEnabled: boolean
+  }
+  delivery: {
+    limit: number
+    reached: boolean
+    remainingToday: number
+    usedToday: number
+  }
+  guardrails: {
+    friendStatus: boolean
+    notification: boolean
+    sameCompanyFilter: boolean
+    sameHrFilter: boolean
+    useCache: boolean
+  }
+  level: BossHelperAgentRiskLevel
+  observed: {
+    deliveredToday: number
+    processedToday: number
+    repeatFilteredToday: number
+  }
+  runtime: {
+    state: BossHelperAgentState
+    stopRequested: boolean
+  }
+  warnings: BossHelperAgentRiskWarning[]
+}
+
 export interface BossHelperAgentStatsData {
   historyData: Statistics[]
   progress: BossHelperAgentProgress
+  risk: BossHelperAgentRiskSummary
   run: BossHelperAgentRunSummaryData
   todayData: Statistics
 }

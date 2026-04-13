@@ -177,7 +177,11 @@ pnpm agent:doctor
 
 `jobs.refresh` 则会重新加载当前受支持的 Boss 职位列表页，但不会改动现有 URL、搜索条件或页码。它适合放在 `readiness.get` 或其他命令返回 `suggestedAction=refresh-page` 之后，用来恢复页面控制器、详情卡片状态或列表初始化；它和 `navigate` 的边界是“保留当前搜索上下文”，和 `start` 的边界是“不会触发真实投递”。
 
-`stats` 现在除了原有的 `progress` / `todayData` / `historyData` 之外，还会附带 `run.current` 与 `run.recent`。它们分别表示：当前或可恢复的运行摘要，以及最近一次运行的 checkpoint。外部 Agent 可优先据此判断是否已经存在进行中的 run、最近一次 run 是否处于 `paused` 可恢复状态，以及上一次失败是否要求先 `refresh-page`。当前恢复边界如下：`paused` 可直接 `resume`，`error` 应先刷新页面并重读 readiness，`completed` / `stopped` 仅保留排障摘要，不应直接当作可恢复会话。
+`stats` 现在除了原有的 `progress` / `todayData` / `historyData` 之外，还会附带 `run.current`、`run.recent` 与 `risk`。前两者分别表示：当前或可恢复的运行摘要，以及最近一次运行的 checkpoint；`risk` 则会汇总当前 `deliveryLimit` 使用情况、剩余额度、去重/通知/缓存护栏是否开启、AI 自动回复等高风险开关，以及结构化 `warnings`。外部 Agent 可优先据此判断是否已经存在进行中的 run、最近一次 run 是否处于 `paused` 可恢复状态，以及本轮在护栏层面是否仍适合继续 `start`。当前恢复边界如下：`paused` 可直接 `resume`，`error` 应先刷新页面并重读 readiness，`completed` / `stopped` 仅保留排障摘要，不应直接当作可恢复会话。
+
+对应地，`boss_helper_agent_context.summary` 现在也会补充 `riskLevel`、`riskWarningCount`、`remainingDeliveryCapacity`。如果 MCP 聚合层已经提示风险摘要为 `high`，推荐先读取 `boss_helper_stats` 查看 `risk.warnings`，而不是直接推进真实执行。
+
+最新一层主动护栏是“连续失败自动暂停”：当批次连续 3 次出现非 warning 失败时，页面侧会自动把当前 run 切到暂停收尾流程，并发出 `limit-reached` 事件，`detail.guardrailCode` 固定为 `consecutive-failure-auto-stop`。同一原因也会写入 `stats.data.run.current/recent.lastError` 与 `stats.data.risk.warnings`，方便外部 Agent 在 bridge、CLI、MCP 三条链路上都用同一个结构化信号判断“先排障，再决定是否 resume”。
 
 如果你刚刚更新了仓库并重新构建扩展，但浏览器里的 unpacked extension 还没有 reload，那么 `stats` 可能仍返回旧结构而看不到 `run` 字段。这不是 bridge/MCP 失效，而是当前 Boss 页仍在运行旧 build，先重新加载扩展并刷新页面再验证。
 

@@ -22,6 +22,7 @@
 - `jobs.refresh` / `boss_helper_jobs_refresh` 已完成仓库侧实现；它会在受支持职位页只刷新当前列表 URL，不改变现有搜索条件，并通过 `tests/agent-job-queries.test.ts`、`tests/agent-controller.test.ts`、`tests/use-delivery-control.test.ts`、`tests/agent-mcp-server.catalog.test.ts`
 - 真实 stdio MCP 已验证 `boss_helper_jobs_refresh`：live Boss jobs 页接受刷新请求后，`boss_helper_agent_context` 仍返回 `readiness.ready=true` / `suggestedAction=continue`，`boss_helper_jobs_list` 继续可读
 - 真实 live 样本已验证 3 个 `jobs.detail`：在 refresh 前后对同一批岗位连续读取详情，均返回 `code=job-detail` 且 `hasCard=true`，当前尚未复现 detail 失败样本
+- 2026-04-13 继续执行 live 只读稳定性采样：对当前页前 10 个真实岗位按 `baseline -> jobs.refresh -> stability-check` 连续执行共 30 次 `jobs.detail`，全部返回 `code=job-detail` / `hasCard=true`；refresh 后 `readiness.ready=true` / `suggestedAction=continue`
 - `tests/use-deliver.test.ts` 已对齐当前 `seenJobIds` 语义；`pnpm test -- --run` 现已恢复全绿（85 files / 346 tests）
 - `boss_helper_plan_preview` 已完成仓库侧实现，并通过 `pnpm lint && pnpm check && pnpm test -- --run`、`tests/agent-plan-preview.test.ts`、`tests/agent-mcp-server.catalog.test.ts` 与 page/controller 集成测试
 - 受控 Playwright fresh-build 扩展链路已验证 `plan.preview` / `boss_helper_plan_preview`：`pnpm check && pnpm build:chrome && pnpm exec playwright test tests/e2e/plan-preview.spec.ts` 通过，CLI 与真实 stdio MCP 均能经 `bridge -> relay -> extension -> page controller` 返回 ready 预演结果
@@ -40,7 +41,9 @@
 - 真实 Boss jobs 页上，`pnpm agent:cli jobs.list`、`pnpm agent:cli jobs.detail` 已验证可用
 - MCP 聚合层 `agent_context` 已通过 `scripts/mcp/context.mjs` 的 live bridge 调用验证，聚合 readiness 与页面快照一致
 - `stats` / `boss_helper_stats` 现已在仓库侧附带 `run.current` / `run.recent` checkpoint 摘要，`boss_helper_agent_context.summary` 也会聚合 `hasActiveRun` / `currentRunId` / `recentRunState` / `resumableRun`；已通过 `tests/agent-runtime-store.test.ts`、`tests/use-agent-batch-runner.test.ts`、`tests/use-delivery-control.test.ts`、`tests/agent-mcp-server.catalog.test.ts`、`tests/agent-mcp-context.test.ts` 与 `pnpm lint && pnpm check && pnpm test -- --run`
-- `pnpm build:chrome` 通过；真实 `pnpm agent:doctor` / `pnpm agent:cli status` / `pnpm agent:cli stats` 与 stdio MCP `boss_helper_agent_context` 已验证 bridge/MCP 链路可用，且 `summary.todayDelivered` 已兼容 `todayData.success`；当前 live 浏览器扩展尚未 reload 到本轮 build，`stats.data.run` 现场字段仍待 reload 后补验证
+- `stats` / `boss_helper_stats` 现已在仓库侧附带 `risk` 安全护栏摘要，覆盖 `deliveryLimit` 使用情况、剩余额度、重复触达护栏、通知/缓存开关和高风险聊天自动化开关；`boss_helper_agent_context.summary` 也会聚合 `riskLevel` / `riskWarningCount` / `remainingDeliveryCapacity`，并在 recommendations 中提示先复核风险摘要；已通过 `tests/agent-risk-summary.test.ts`、`tests/use-agent-batch-runner.test.ts`、`tests/agent-mcp-server.catalog.test.ts`、`pnpm lint`、`pnpm check`、`pnpm test -- --run` 与 `pnpm build:chrome`
+- `连续失败自动暂停` 已完成仓库侧实现：批次连续 3 次出现非 warning 失败时，会发出 `limit-reached`（`detail.guardrailCode=consecutive-failure-auto-stop`），把触发原因写入 `run.lastError`，并同步暴露到 `stats.risk.warnings` 与 `boss_helper_agent_context.recommendations`；已通过 `tests/deliver-execution.test.ts`、`tests/use-deliver.test.ts`、`tests/agent-runtime-store.test.ts`、`tests/agent-risk-summary.test.ts`、`tests/agent-mcp-context.test.ts`、`tests/use-agent-batch-runner.test.ts`、`pnpm lint`、`pnpm check`、`pnpm test -- --run` 与 `pnpm build:chrome`
+- `pnpm build:chrome` 通过；真实 `pnpm agent:doctor` / `pnpm agent:cli status` / `pnpm agent:cli stats` 与 stdio MCP `boss_helper_agent_context` 已验证 bridge/MCP 链路可用，且 `summary.todayDelivered` 已兼容 `todayData.success`；在扩展 reload 后，live `pnpm agent:cli stats` 与 stdio MCP `boss_helper_agent_context(include=['readiness','stats'])` 已确认返回 `stats.data.risk`、`summary.riskLevel`、`summary.riskWarningCount` 与 `summary.remainingDeliveryCapacity`
 - fresh-build 扩展链路已新增 `tests/e2e/run-summary.spec.ts`，通过 `bridge -> relay -> extension -> page controller -> MCP` 验证了 `stats.data.run` 与 `boss_helper_agent_context.summary` 在 `paused -> resumed -> completed` 与 `batch-error -> error` 两条边界上的输出
 - `useDeliver.jobListHandle()` 现在只会在岗位已处理或已明确跳过后才消费定向 `seenJobIds`；pause 后未处理的 target 不会再被误判为“已完成”，resume 可继续处理剩余岗位
 - `boss_helper_bootstrap_guide` 已完成仓库侧实现；它会只读汇总 bridge、relay、extension ID、Boss 页存在性与页面 readiness，并稳定返回 `summary.stage` / `summary.nextAction` / `steps` / `nextSteps`，区分当前步骤应由 `user` 还是 `agent` 执行
@@ -148,12 +151,12 @@
 
 用于跨轮次连续执行，后续 agent 每次完成一轮后都应更新这些字段。
 
-- Current Active Phase: `Phase 6: Fine-Grained Control Primitives`
-- Current Smallest Executable Increment: `已完成 live jobs.detail 样本采集：对 3 个真实岗位在 refresh 前后连续调用 jobs.detail，均成功返回 code=job-detail / hasCard=true；当前仍未复现 detail 失败样本，因此暂不新增 retry-detail-load`
-- Promotion Gate: `当前“至少交付一个不会扩大默认风险面的细粒度原语，并完成 live 恢复验证与样本采集”已满足；若继续留在 Phase 6，下一 gate 是拿到至少一个真实 jobs.detail 失败样本，或证明需要通过更细错误码而不是新原语解决恢复问题`
-- Next Step After Current Increment: `继续收集真实 jobs.detail 失败样本；在没有可复现场景前，不新增平行原语。若后续观察到失败，优先细化 job-detail-load-failed 的错误分类，或只在 jobs.detail 上增加受控重试/clear-cache 参数`
-- Known Blockers: `start / pause / resume / stop / chat.send 仍未做真实 live Boss 页无人值守验证；目前仅采到 jobs.detail 成功样本，仍缺真实 failure 样本来证明 retry-detail-load 或更细恢复增强的必要性；当前 live 浏览器扩展是否已 reload 到最新 build 仍需人工控制`
-- Last Verified Baseline: `恢复现场只读观测已通过：pnpm agent:cli health / status 正常，relayConnected=true；pnpm agent:cli readiness.get、jobs.list、jobs.detail 均在 live Boss jobs 页返回成功；本轮新增 jobs.refresh / boss_helper_jobs_refresh 已通过单测与 catalog 测试，并已通过真实 stdio MCP 调用 boss_helper_jobs_refresh -> boss_helper_agent_context -> boss_helper_jobs_list 验证刷新后页面仍为 readiness.ready=true / suggestedAction=continue；随后又对 3 个真实岗位在 refresh 前后连续调用 jobs.detail，全部返回 code=job-detail / hasCard=true，暂未复现 detail failure；pnpm lint 与 pnpm check 通过；`tests/use-deliver.test.ts` 已修正为与当前 seenJobIds 契约一致，`pnpm test -- --run` 现已全绿（85 files / 346 tests）；pnpm agent:doctor 通过；当前结论仍为“暂不新增 retry-detail-load，优先继续收集真实 failure 样本”`
+- Current Active Phase: `Phase 7: Safety Guardrails`
+- Current Smallest Executable Increment: `本轮已在既有 risk 摘要之上补齐首个主动护栏：当批次连续 3 次出现非 warning 失败时，页面侧会自动进入暂停收尾，发出 limit-reached(detail.guardrailCode=consecutive-failure-auto-stop)，并把原因同步写入 risk / run / events，外部 Agent 不再只能从中文文案猜测为什么停下`
+- Promotion Gate: `当前这道 gate“至少交付一个真正降低默认风险面的主动护栏，并完成 lint/check/test + build + doctor/status + 实际 MCP tool 调用验证”已满足。下一 gate 是补另一个默认保守的执行上限，例如每轮上限、异常总次数上限，或把高风险自动化动作改成显式开关`
+- Next Step After Current Increment: `优先实现每轮上限或异常总次数上限，并继续沿 stats.risk / run.lastError / agent_context.recommendations 暴露结构化触发原因；如需引入新配置项，先补 config schema、validation 和 risk summary，再接入真实停止逻辑`
+- Known Blockers: `start / pause / resume / stop / chat.send 仍未做真实 live Boss 页无人值守验证；本轮“连续失败自动暂停”已完成 live build 装载后的只读链路验证，但仍未在 live Boss 页触发真实连续失败样本，以避免开发验证中产生真实投递，因此目前只能证明 risk/run/context 字段已现场生效，不能证明 auto-stop 分支已在 live 页面上被实际击中`
+- Last Verified Baseline: `2026-04-13 已完成本轮 P7 第二个增量验证并补齐 live reload 现场确认：pnpm lint、pnpm check、pnpm test -- --run（86 files / 354 tests）与 pnpm build:chrome 通过；新增/更新 tests/deliver-execution.test.ts、tests/use-deliver.test.ts、tests/agent-runtime-store.test.ts、tests/agent-risk-summary.test.ts、tests/agent-mcp-context.test.ts、tests/use-agent-batch-runner.test.ts 通过。真实 companion 链路方面，pnpm agent:doctor、pnpm agent:cli status、pnpm agent:cli stats 正常，relayConnected=true；扩展 reload 后，stdio MCP boss_helper_agent_context（include=['readiness','stats']）与 CLI stats 均已现场返回 stats.data.risk、summary.riskLevel、summary.riskWarningCount、summary.remainingDeliveryCapacity，证明新 build 已被 live 页面加载。此前 Phase 6 的 live readiness / jobs.refresh / jobs.detail 只读基线继续保持有效`
 
 ## Phase 1: Readiness And Diagnostics
 

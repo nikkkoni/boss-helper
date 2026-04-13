@@ -40,6 +40,10 @@ import { createJob, createLogContext } from './helpers/jobs'
 
 function createDeps(): DeliverExecutionDependencies {
   return {
+    agentRuntime: {
+      clearFailureGuardrailState: vi.fn(),
+      registerFailureGuardrail: vi.fn(() => null),
+    },
     cachePipelineResultFn: vi.fn(async () => undefined),
     common: {
       deliverState: 'running',
@@ -162,6 +166,41 @@ describe('deliverExecution', () => {
     })
     expect(data.status.status).toBe('error')
     expect(deps.common.deliverStop).toBe(false)
+  })
+
+  it('auto-pauses after hitting the consecutive failure guardrail', async () => {
+    const deps = createDeps()
+    const data = createJob({ encryptJobId: 'job-guardrail' })
+    const result = {
+      candidateCount: 2,
+      seenJobIds: [data.encryptJobId],
+    }
+    ;(deps.agentRuntime.registerFailureGuardrail as any).mockReturnValue({
+      code: 'consecutive-failure-auto-stop',
+      consecutiveFailures: 3,
+      limit: 3,
+      message: '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+    })
+
+    await expect(
+      handleDeliverFailure({
+        data,
+        error: new Error('network boom'),
+        ctx: createLogContext(data),
+        deps,
+        result,
+      }),
+    ).resolves.toEqual({
+      stopResult: result,
+    })
+
+    expect(deps.common.deliverStop).toBe(true)
+    expect(notificationMock).toHaveBeenCalledWith(
+      '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+    )
+    expect(ElMessage.error).toHaveBeenCalledWith(
+      '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+    )
   })
 
   it('runs before/apply/after hooks and reports apply errors as failures', async () => {

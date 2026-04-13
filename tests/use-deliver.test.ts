@@ -6,6 +6,9 @@ import { createJob } from './helpers/jobs'
 import { setupPinia } from './helpers/pinia'
 
 const deliverMocks = vi.hoisted(() => ({
+  agentRuntime: {
+    registerFailureGuardrail: vi.fn(() => null),
+  },
   cachePipelineResult: vi.fn(async () => undefined),
   common: {
     deliverState: 'running',
@@ -57,6 +60,10 @@ vi.mock('@/stores/common', () => ({
   useCommon: () => deliverMocks.common,
 }))
 
+vi.mock('@/stores/agent', () => ({
+  useAgentRuntime: () => deliverMocks.agentRuntime,
+}))
+
 vi.mock('@/stores/statistics', () => ({
   useStatistics: () => deliverMocks.statistics,
 }))
@@ -101,6 +108,8 @@ describe('useDeliver', () => {
   beforeEach(() => {
     setupPinia()
     deliverMocks.cachePipelineResult.mockReset()
+    deliverMocks.agentRuntime.registerFailureGuardrail.mockReset()
+    deliverMocks.agentRuntime.registerFailureGuardrail.mockReturnValue(null)
     deliverMocks.createBossHelperAgentEvent.mockClear()
     deliverMocks.createHandle.mockReset()
     deliverMocks.createHandle.mockResolvedValue({ after: [], before: [] })
@@ -242,5 +251,45 @@ describe('useDeliver', () => {
       }),
     )
     expect(deliverMocks.logger.error).toHaveBeenCalledWith('未知报错', expect.any(Error), waitJob)
+  })
+
+  it('emits a structured limit event when unexpected crashes hit the failure guardrail', async () => {
+    const { useDeliver } = await import('@/pages/zhipin/hooks/useDeliver')
+    const waitJob = createJob({
+      encryptJobId: 'job-guardrail',
+      jobName: 'Broken Job',
+      status: {
+        msg: '等待中',
+        setStatus(status, msg = '') {
+          waitJob.status.status = status
+          waitJob.status.msg = msg
+        },
+        status: 'wait',
+      },
+    })
+    deliverMocks.jobList.list = [waitJob]
+    deliverMocks.executeDeliverJob.mockRejectedValueOnce(new Error('unexpected crash'))
+    ;(deliverMocks.agentRuntime.registerFailureGuardrail as any).mockReturnValueOnce({
+      code: 'consecutive-failure-auto-stop',
+      consecutiveFailures: 3,
+      limit: 3,
+      message: '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+    })
+
+    const store = useDeliver()
+    await store.jobListHandle()
+
+    expect(deliverMocks.emitBossHelperAgentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          consecutiveFailures: 3,
+          guardrailCode: 'consecutive-failure-auto-stop',
+          source: 'consecutive-failure-limit',
+        }),
+        message: '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+        type: 'limit-reached',
+      }),
+    )
+    expect(deliverMocks.common.deliverStop).toBe(true)
   })
 })

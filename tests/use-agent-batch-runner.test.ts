@@ -19,9 +19,15 @@ const runnerMocks = vi.hoisted(() => ({
   },
   agentRuntimeStore: {
     batchPromise: null as Promise<void> | null,
+    clearFailureGuardrailState: vi.fn(),
     currentRun: null as Record<string, unknown> | null,
     activeTargetJobIds: [] as string[],
     ensureRunSummaryLoaded: vi.fn(async () => undefined),
+    getFailureGuardrailSnapshot: vi.fn(() => ({
+      consecutiveFailures: 0,
+      limit: 3,
+      triggered: null,
+    })),
     getRunSummarySnapshot: vi.fn(() => ({
       current: runnerMocks.agentRuntimeStore.currentRun,
       recent: runnerMocks.agentRuntimeStore.recentRun,
@@ -29,6 +35,7 @@ const runnerMocks = vi.hoisted(() => ({
     remainingTargetJobIds: [] as string[],
     recentRun: null as Record<string, unknown> | null,
     recordEvent: vi.fn(async () => undefined),
+    registerFailureGuardrail: vi.fn(() => null),
     stopRequestedByCommand: false,
     updateRunProgress: vi.fn(async () => undefined),
     get hasPendingBatch() {
@@ -57,12 +64,40 @@ const runnerMocks = vi.hoisted(() => ({
   },
   confStore: {
     formData: {
+      aiFiltering: {
+        enable: false,
+        externalMode: false,
+      },
+      aiGreeting: {
+        enable: false,
+      },
+      aiReply: {
+        enable: false,
+      },
+      customGreeting: {
+        enable: false,
+      },
       delay: {
         deliveryPageNext: 1,
         deliveryStarts: 1,
       },
+      deliveryLimit: {
+        value: 120,
+      },
+      friendStatus: {
+        value: true,
+      },
       notification: {
-        value: false,
+        value: true,
+      },
+      sameCompanyFilter: {
+        value: true,
+      },
+      sameHrFilter: {
+        value: true,
+      },
+      useCache: {
+        value: true,
       },
     },
   },
@@ -211,13 +246,16 @@ describe('useAgentBatchRunner', () => {
     runnerMocks.agentRuntimeStore.remainingTargetJobIds = []
     runnerMocks.agentRuntimeStore.recentRun = null
     runnerMocks.agentRuntimeStore.stopRequestedByCommand = false
+    runnerMocks.agentRuntimeStore.clearFailureGuardrailState.mockClear()
     runnerMocks.agentRuntimeStore.ensureRunSummaryLoaded.mockClear()
+    runnerMocks.agentRuntimeStore.getFailureGuardrailSnapshot.mockClear()
     runnerMocks.agentRuntimeStore.getRunSummarySnapshot.mockClear()
     runnerMocks.agentRuntimeStore.setBatchPromise.mockClear()
     runnerMocks.agentRuntimeStore.setTargetJobIds.mockClear()
     runnerMocks.agentRuntimeStore.clearTargetJobState.mockClear()
     runnerMocks.agentRuntimeStore.consumeSeenJobIds.mockClear()
     runnerMocks.agentRuntimeStore.recordEvent.mockClear()
+    runnerMocks.agentRuntimeStore.registerFailureGuardrail.mockClear()
     runnerMocks.agentRuntimeStore.setStopRequestedByCommand.mockClear()
     runnerMocks.agentRuntimeStore.updateRunProgress.mockClear()
     runnerMocks.pagerStore.next.mockReset()
@@ -267,6 +305,7 @@ describe('useAgentBatchRunner', () => {
     expect(started).toEqual(expect.objectContaining({ ok: true, code: 'started' }))
     expect(runnerMocks.applyAgentBatchStartPayload).toHaveBeenCalled()
     expect(runnerMocks.agentRuntimeStore.setTargetJobIds).toHaveBeenCalledWith(['job-1', 'job-2'])
+    expect(runnerMocks.agentRuntimeStore.clearFailureGuardrailState).toHaveBeenCalledWith({ clearTrigger: true })
 
     const pausing = await runner.pauseBatch()
     expect(pausing).toEqual(expect.objectContaining({ ok: true, code: 'pause-requested' }))
@@ -283,12 +322,28 @@ describe('useAgentBatchRunner', () => {
 
     const resumed = await runner.resumeBatch()
     expect(resumed).toEqual(expect.objectContaining({ ok: true, code: 'resumed' }))
+    expect(runnerMocks.agentRuntimeStore.clearFailureGuardrailState).toHaveBeenCalledWith({ clearTrigger: true })
 
     await flushBatch()
     expect(runnerMocks.batchEvents.emitBatchCompleted).toHaveBeenCalledWith('loop completed')
 
     const stats = await runner.stats()
-    expect(stats).toEqual(expect.objectContaining({ ok: true, code: 'stats' }))
+    expect(stats).toEqual(
+      expect.objectContaining({
+        ok: true,
+        code: 'stats',
+        data: expect.objectContaining({
+          risk: expect.objectContaining({
+            level: 'high',
+            delivery: expect.objectContaining({
+              limit: 120,
+              remainingToday: 120,
+              usedToday: 0,
+            }),
+          }),
+        }),
+      }),
+    )
     expect(runnerMocks.statisticsStore.updateStatistics).toHaveBeenCalled()
 
     runnerMocks.jobList.list = [{ status: { status: 'error' } }, { status: { status: 'success' } }]

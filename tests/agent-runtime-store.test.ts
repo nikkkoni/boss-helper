@@ -72,6 +72,95 @@ describe('useAgentRuntime', () => {
     expect(store.stopRequestedByCommand).toBe(false)
   })
 
+  it('tracks consecutive failure guardrails and persists auto-stop reasons into the run summary', async () => {
+    const store = useAgentRuntime()
+
+    expect(store.getFailureGuardrailSnapshot()).toEqual({
+      consecutiveFailures: 0,
+      limit: 3,
+      triggered: null,
+    })
+    expect(store.registerFailureGuardrail()).toBeNull()
+    expect(store.registerFailureGuardrail()).toBeNull()
+
+    const trigger = store.registerFailureGuardrail()
+    expect(trigger).toEqual(
+      expect.objectContaining({
+        code: 'consecutive-failure-auto-stop',
+        consecutiveFailures: 3,
+        limit: 3,
+      }),
+    )
+    expect(store.getFailureGuardrailSnapshot()).toEqual(
+      expect.objectContaining({
+        consecutiveFailures: 3,
+        triggered: expect.objectContaining({
+          code: 'consecutive-failure-auto-stop',
+        }),
+      }),
+    )
+
+    await store.ensureRunSummaryLoaded()
+    await store.recordEvent({
+      createdAt: '2026-04-12T09:59:00.000Z',
+      id: 'evt-start-guardrail',
+      message: '投递任务已启动',
+      progress: {
+        activeTargetJobIds: ['job-1'],
+        current: 0,
+        currentJob: null,
+        locked: true,
+        message: '投递任务已启动',
+        page: 2,
+        pageSize: 15,
+        remainingTargetJobIds: ['job-1'],
+        state: 'running',
+        stopRequested: false,
+        total: 1,
+      },
+      state: 'running',
+      type: 'batch-started',
+    })
+    await store.recordEvent({
+      createdAt: '2026-04-12T09:59:10.000Z',
+      detail: {
+        consecutiveFailures: 3,
+        guardrailCode: 'consecutive-failure-auto-stop',
+        guardrailLimit: 3,
+        source: 'consecutive-failure-limit',
+      },
+      id: 'evt-guardrail',
+      message: trigger?.message ?? '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+      state: 'pausing',
+      type: 'limit-reached',
+    })
+
+    expect(store.currentRun).toEqual(
+      expect.objectContaining({
+        lastError: expect.objectContaining({
+          code: 'consecutive-failure-auto-stop',
+        }),
+      }),
+    )
+
+    store.clearFailureGuardrailState()
+    expect(store.getFailureGuardrailSnapshot()).toEqual(
+      expect.objectContaining({
+        consecutiveFailures: 0,
+        triggered: expect.objectContaining({
+          code: 'consecutive-failure-auto-stop',
+        }),
+      }),
+    )
+
+    store.clearFailureGuardrailState({ clearTrigger: true })
+    expect(store.getFailureGuardrailSnapshot()).toEqual({
+      consecutiveFailures: 0,
+      limit: 3,
+      triggered: null,
+    })
+  })
+
   it('tracks persisted run summaries across lifecycle events', async () => {
     const store = useAgentRuntime()
 

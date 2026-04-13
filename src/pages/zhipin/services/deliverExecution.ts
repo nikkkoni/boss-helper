@@ -33,6 +33,15 @@ export interface DeliverIterationResult {
 }
 
 export interface DeliverExecutionDependencies {
+  agentRuntime: {
+    clearFailureGuardrailState: (options?: { clearTrigger?: boolean }) => void
+    registerFailureGuardrail: () => {
+      code: string
+      consecutiveFailures: number
+      limit: number
+      message: string
+    } | null
+  }
   cachePipelineResultFn: typeof cachePipelineResult
   common: {
     deliverState: BossHelperAgentState
@@ -92,6 +101,7 @@ export async function handleDeliverSuccess(options: {
   result: DeliverJobListHandleResult
 }): Promise<DeliverIterationResult> {
   const { data, ctx, deps, result } = options
+  deps.agentRuntime.clearFailureGuardrailState()
   deps.log.add(data, null, ctx, ctx.message)
   deps.statistics.todayData.success++
   data.status.setStatus('success', '投递成功')
@@ -187,7 +197,15 @@ export async function handleDeliverFailure(options: {
     }),
   )
 
+  if (deliverError.state === 'warning') {
+    deps.agentRuntime.clearFailureGuardrailState()
+    return {
+      stopResult: null,
+    }
+  }
+
   if (deliverError instanceof LimitError) {
+    deps.agentRuntime.clearFailureGuardrailState()
     const msg = `投递到达boss上限 ${deliverError.message}，已暂停投递`
     deps.conf.formData.notification.value && (await notification(msg))
     ElMessage.error(msg)
@@ -205,6 +223,36 @@ export async function handleDeliverFailure(options: {
         detail: {
           source: 'boss-limit',
           errorMessage: deliverError.message,
+        },
+      }),
+    )
+    return {
+      stopResult: result,
+    }
+  }
+
+  const failureGuardrail = deps.agentRuntime.registerFailureGuardrail()
+  if (failureGuardrail) {
+    deps.common.deliverStop = true
+    deps.conf.formData.notification.value && (await notification(failureGuardrail.message))
+    ElMessage.error(failureGuardrail.message)
+    emitBossHelperAgentEvent(
+      createBossHelperAgentEvent({
+        type: 'limit-reached',
+        state: 'pausing',
+        message: failureGuardrail.message,
+        job: toAgentCurrentJob(data),
+        progress: {
+          current: deps.counters.current + 1,
+          total: result.candidateCount,
+        },
+        detail: {
+          source: 'consecutive-failure-limit',
+          consecutiveFailures: failureGuardrail.consecutiveFailures,
+          guardrailCode: failureGuardrail.code,
+          guardrailLimit: failureGuardrail.limit,
+          lastFailureCode: deliverError.name,
+          lastFailureMessage: deliverError.message,
         },
       }),
     )
