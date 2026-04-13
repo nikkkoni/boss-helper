@@ -47,6 +47,10 @@ describe('buildAgentRiskSummary', () => {
       limit: 150,
       reached: false,
       remainingToday: 1,
+      remainingInRun: 20,
+      runLimit: 20,
+      runReached: false,
+      usedInRun: 0,
       usedToday: 149,
     })
     expect(result.observed).toEqual({
@@ -124,6 +128,8 @@ describe('buildAgentRiskSummary', () => {
       failureGuardrail: {
         consecutiveFailures: 2,
         limit: 3,
+        totalFailures: 0,
+        totalLimit: 5,
         triggered: null,
       },
       progress: {
@@ -158,6 +164,111 @@ describe('buildAgentRiskSummary', () => {
     ])
   })
 
+  it('surfaces cumulative failure-count progress before the total failure guardrail triggers', () => {
+    const config = jsonClone(defaultFormData)
+    config.deliveryLimit.value = 80
+    config.sameCompanyFilter.value = true
+    config.sameHrFilter.value = true
+    config.friendStatus.value = true
+    config.notification.value = true
+    config.useCache.value = true
+
+    const result = buildAgentRiskSummary({
+      config,
+      failureGuardrail: {
+        consecutiveFailures: 0,
+        limit: 3,
+        totalFailures: 4,
+        totalLimit: 5,
+        triggered: null,
+      },
+      progress: {
+        state: 'running',
+        stopRequested: false,
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 1,
+        total: 4,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        jobAddress: 0,
+        salaryRange: 0,
+        amap: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 0,
+      },
+    })
+
+    expect(result.level).toBe('medium')
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        code: 'failure-count-progress',
+        severity: 'info',
+      }),
+    ])
+  })
+
+  it('surfaces a warning when the current run is close to the per-run delivery limit', () => {
+    const config = jsonClone(defaultFormData)
+    config.deliveryLimit.value = 80
+    config.sameCompanyFilter.value = true
+    config.sameHrFilter.value = true
+    config.friendStatus.value = true
+    config.notification.value = true
+    config.useCache.value = true
+
+    const result = buildAgentRiskSummary({
+      config,
+      progress: {
+        state: 'running',
+        stopRequested: false,
+      },
+      run: {
+        current: {
+          deliveredJobIds: Array.from({ length: 18 }, (_, index) => `job-${index + 1}`),
+          state: 'running',
+        },
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 18,
+        total: 20,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        jobAddress: 0,
+        salaryRange: 0,
+        amap: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 0,
+      },
+    })
+
+    expect(result.level).toBe('medium')
+    expect(result.delivery).toEqual(expect.objectContaining({
+      remainingInRun: 2,
+      runLimit: 20,
+      runReached: false,
+      usedInRun: 18,
+    }))
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        code: 'run-delivery-limit-nearby',
+        severity: 'info',
+      }),
+    ])
+  })
+
   it('replays persisted auto-stop reasons from the run summary into risk warnings', () => {
     const config = jsonClone(defaultFormData)
     config.deliveryLimit.value = 80
@@ -175,6 +286,7 @@ describe('buildAgentRiskSummary', () => {
       },
       run: {
         recent: {
+          state: 'paused',
           lastError: {
             code: 'consecutive-failure-auto-stop',
             message: '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
@@ -204,6 +316,117 @@ describe('buildAgentRiskSummary', () => {
     expect(result.warnings).toEqual([
       expect.objectContaining({
         code: 'consecutive-failure-auto-stop',
+        severity: 'warn',
+      }),
+    ])
+  })
+
+  it('replays persisted total-failure auto-stop reasons from the run summary into risk warnings', () => {
+    const config = jsonClone(defaultFormData)
+    config.deliveryLimit.value = 80
+    config.sameCompanyFilter.value = true
+    config.sameHrFilter.value = true
+    config.friendStatus.value = true
+    config.notification.value = true
+    config.useCache.value = true
+
+    const result = buildAgentRiskSummary({
+      config,
+      progress: {
+        state: 'paused',
+        stopRequested: true,
+      },
+      run: {
+        recent: {
+          state: 'paused',
+          lastError: {
+            code: 'failure-count-auto-stop',
+            message: '当前批次累计失败达到 5 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+          },
+        },
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 1,
+        total: 4,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        jobAddress: 0,
+        salaryRange: 0,
+        amap: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 0,
+      },
+    })
+
+    expect(result.level).toBe('high')
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        code: 'failure-count-auto-stop',
+        severity: 'warn',
+      }),
+    ])
+  })
+
+  it('replays persisted per-run delivery guardrails from the run summary into risk warnings', () => {
+    const config = jsonClone(defaultFormData)
+    config.deliveryLimit.value = 80
+    config.sameCompanyFilter.value = true
+    config.sameHrFilter.value = true
+    config.friendStatus.value = true
+    config.notification.value = true
+    config.useCache.value = true
+
+    const result = buildAgentRiskSummary({
+      config,
+      progress: {
+        state: 'paused',
+        stopRequested: true,
+      },
+      run: {
+        recent: {
+          deliveredJobIds: Array.from({ length: 20 }, (_, index) => `job-${index + 1}`),
+          lastError: {
+            code: 'run-delivery-limit-reached',
+            message: '本轮投递已达到上限 20，已自动暂停投递；如需继续请先 stop 当前 run，再重新 start 新的一轮。',
+          },
+          state: 'paused',
+        },
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 20,
+        total: 22,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        jobAddress: 0,
+        salaryRange: 0,
+        amap: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 0,
+      },
+    })
+
+    expect(result.level).toBe('high')
+    expect(result.delivery).toEqual(expect.objectContaining({
+      remainingInRun: 0,
+      runLimit: 20,
+      runReached: true,
+      usedInRun: 20,
+    }))
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        code: 'run-delivery-limit-reached',
         severity: 'warn',
       }),
     ])

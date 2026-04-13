@@ -22,11 +22,39 @@ describe('agent mcp server catalog', () => {
       server.client.notify('notifications/initialized')
 
       const tools = await server.client.request('tools/list')
-      const toolNames = ((tools.result?.tools ?? []) as Array<{ name: string }>).map((tool) => tool.name)
+      const toolList = (tools.result?.tools ?? []) as Array<{
+        inputSchema?: { required?: string[] }
+        name: string
+      }>
+      const toolNames = toolList.map((tool) => tool.name)
       expect(toolNames).toContain('boss_helper_bootstrap_guide')
       expect(toolNames).toContain('boss_helper_agent_context')
       expect(toolNames).toContain('boss_helper_plan_preview')
       expect(toolNames).toContain('boss_helper_jobs_refresh')
+      expect(toolNames).toContain('boss_helper_start')
+      expect(toolNames).toContain('boss_helper_resume')
+      expect(toolNames).toContain('boss_helper_chat_send')
+      expect(toolList.find((tool) => tool.name === 'boss_helper_start')).toEqual(
+        expect.objectContaining({
+          inputSchema: expect.objectContaining({
+            required: expect.arrayContaining(['confirmHighRisk']),
+          }),
+        }),
+      )
+      expect(toolList.find((tool) => tool.name === 'boss_helper_resume')).toEqual(
+        expect.objectContaining({
+          inputSchema: expect.objectContaining({
+            required: expect.arrayContaining(['confirmHighRisk']),
+          }),
+        }),
+      )
+      expect(toolList.find((tool) => tool.name === 'boss_helper_chat_send')).toEqual(
+        expect.objectContaining({
+          inputSchema: expect.objectContaining({
+            required: expect.arrayContaining(['confirmHighRisk', 'content', 'to_name', 'to_uid']),
+          }),
+        }),
+      )
 
       const bootstrapGuideCall = await server.client.request('tools/call', {
         arguments: {},

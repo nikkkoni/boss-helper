@@ -5,6 +5,7 @@ import { isSupportedSiteUrl } from '@/site-adapters'
 import { useAgentRuntime } from '@/stores/agent'
 import { useConf } from '@/stores/conf'
 import { useLog } from '@/stores/log'
+import type { BossHelperAgentResumePayload, BossHelperAgentStartPayload } from '@/message/agent'
 
 import { createAgentController } from './agentController'
 import { onBossHelperAgentEvent } from './agentEvents'
@@ -13,6 +14,14 @@ import { useAgentBatchRunner } from './useAgentBatchRunner'
 import { useAgentQueries } from './useAgentQueries'
 
 let runSummaryTrackingRegistered = false
+
+function buildHighRiskStartMessage() {
+  return 'start 属于高风险动作，外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true 并先完成上下文检查后才会执行'
+}
+
+function buildHighRiskResumeMessage() {
+  return 'resume 属于高风险动作，外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true，并先确认当前暂停 run 仍适合继续后才会执行'
+}
 
 /**
  * 页面侧 agent 控制器入口。
@@ -67,6 +76,53 @@ export function useDeliveryControl() {
   }
 
   const controller = createAgentController({ batchRunner, queries })
+
+  async function startFromAgent(payload?: BossHelperAgentStartPayload) {
+    if (payload?.confirmHighRisk !== true) {
+      return createBossHelperAgentResponse(
+        false,
+        'high-risk-action-confirmation-required',
+        buildHighRiskStartMessage(),
+        await batchRunner.getStatsData(),
+        {
+          retryable: false,
+          suggestedAction: 'fix-input',
+        },
+      )
+    }
+
+    return batchRunner.startBatch(payload)
+  }
+
+  async function resumeFromAgent(payload?: BossHelperAgentResumePayload) {
+    if (payload?.confirmHighRisk !== true) {
+      return createBossHelperAgentResponse(
+        false,
+        'high-risk-action-confirmation-required',
+        buildHighRiskResumeMessage(),
+        await batchRunner.getStatsData(),
+        {
+          retryable: false,
+          suggestedAction: 'fix-input',
+        },
+      )
+    }
+
+    return batchRunner.resumeBatch(payload)
+  }
+
+  controller.start = startFromAgent
+  controller.resume = resumeFromAgent
+  controller.handle = async (request) => {
+    switch (request.command) {
+      case 'start':
+        return startFromAgent(request.payload as BossHelperAgentStartPayload | undefined)
+      case 'resume':
+        return resumeFromAgent(request.payload as BossHelperAgentResumePayload | undefined)
+      default:
+        return createAgentController({ batchRunner, queries }).handle(request)
+    }
+  }
 
   return {
     controller,

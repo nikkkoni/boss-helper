@@ -86,10 +86,11 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
     },
     {
       name: 'boss_helper_start',
-      description: '启动投递任务，可选传入 jobIds、configPatch、persistConfig、resetFiltered。',
+      description: '启动投递任务。高风险动作，必须显式传 confirmHighRisk=true；可选传入 jobIds、configPatch、persistConfig、resetFiltered。',
       inputSchema: {
         type: 'object',
         properties: {
+          confirmHighRisk: { type: 'boolean' },
           jobIds: { type: 'array', items: { type: 'string' } },
           configPatch: { type: 'object' },
           persistConfig: { type: 'boolean' },
@@ -97,6 +98,7 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
           timeoutMs: { type: 'number' },
           waitForRelay: { type: 'boolean' },
         },
+        required: ['confirmHighRisk'],
         additionalProperties: false,
       },
       handler: (args) => commandCall('start', args),
@@ -109,8 +111,17 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
     },
     {
       name: 'boss_helper_resume',
-      description: '恢复已暂停的投递任务。',
-      inputSchema: simpleCommandSchema(),
+      description: '恢复已暂停的投递任务。高风险动作，必须显式传 confirmHighRisk=true。',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          confirmHighRisk: { type: 'boolean' },
+          timeoutMs: { type: 'number' },
+          waitForRelay: { type: 'boolean' },
+        },
+        required: ['confirmHighRisk'],
+        additionalProperties: false,
+      },
       handler: (args) => commandCall('resume', args),
     },
     {
@@ -275,10 +286,11 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
     },
     {
       name: 'boss_helper_chat_send',
-      description: '通过当前页面可用的 Boss 通道发送聊天消息。',
+      description: '通过当前页面可用的 Boss 通道发送聊天消息。高风险动作，必须显式传 confirmHighRisk=true 才会执行。',
       inputSchema: {
         type: 'object',
         properties: {
+          confirmHighRisk: { type: 'boolean' },
           content: { type: 'string' },
           to_uid: { anyOf: [{ type: 'string' }, { type: 'number' }] },
           to_name: { type: 'string' },
@@ -286,7 +298,7 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
           timeoutMs: { type: 'number' },
           waitForRelay: { type: 'boolean' },
         },
-        required: ['content', 'to_uid', 'to_name'],
+        required: ['confirmHighRisk', 'content', 'to_uid', 'to_name'],
         additionalProperties: false,
       },
       handler: (args) => commandCall('chat.send', args),

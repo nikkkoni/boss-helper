@@ -91,6 +91,7 @@ test('routes CLI commands through the relay page into the extension controller',
     const start = await runAgentCli<BossHelperAgentResponse>({
       command: 'start',
       payload: {
+        confirmHighRisk: true,
         jobIds: [fixtureJobId],
         resetFiltered: true,
       },

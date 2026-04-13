@@ -177,17 +177,21 @@ pnpm agent:doctor
 
 `jobs.refresh` 则会重新加载当前受支持的 Boss 职位列表页，但不会改动现有 URL、搜索条件或页码。它适合放在 `readiness.get` 或其他命令返回 `suggestedAction=refresh-page` 之后，用来恢复页面控制器、详情卡片状态或列表初始化；它和 `navigate` 的边界是“保留当前搜索上下文”，和 `start` 的边界是“不会触发真实投递”。
 
-`stats` 现在除了原有的 `progress` / `todayData` / `historyData` 之外，还会附带 `run.current`、`run.recent` 与 `risk`。前两者分别表示：当前或可恢复的运行摘要，以及最近一次运行的 checkpoint；`risk` 则会汇总当前 `deliveryLimit` 使用情况、剩余额度、去重/通知/缓存护栏是否开启、AI 自动回复等高风险开关，以及结构化 `warnings`。外部 Agent 可优先据此判断是否已经存在进行中的 run、最近一次 run 是否处于 `paused` 可恢复状态，以及本轮在护栏层面是否仍适合继续 `start`。当前恢复边界如下：`paused` 可直接 `resume`，`error` 应先刷新页面并重读 readiness，`completed` / `stopped` 仅保留排障摘要，不应直接当作可恢复会话。
+`stats` 现在除了原有的 `progress` / `todayData` / `historyData` 之外，还会附带 `run.current`、`run.recent` 与 `risk`。前两者分别表示：当前或可恢复的运行摘要，以及最近一次运行的 checkpoint；`risk` 则会汇总当前 `deliveryLimit` 使用情况、剩余额度、去重/通知/缓存护栏是否开启、AI 自动回复等高风险开关，以及结构化 `warnings`。`risk.delivery` 现在不仅包含 `limit` / `usedToday` / `remainingToday`，还会在仓库侧补充 `runLimit` / `usedInRun` / `remainingInRun` / `runReached`，用于判断当前 run 是否已经达到每轮投递上限。外部 Agent 可优先据此判断是否已经存在进行中的 run、最近一次 run 是否处于 `paused` 可恢复状态，以及本轮在护栏层面是否仍适合继续 `start`。当前恢复边界如下：`paused` 默认可 `resume`，但若 `run.lastError.code=run-delivery-limit-reached`，则应先 `stop` 当前 run，再重新 `start` 新一轮；`error` 应先刷新页面并重读 readiness，`completed` / `stopped` 仅保留排障摘要，不应直接当作可恢复会话。
 
 对应地，`boss_helper_agent_context.summary` 现在也会补充 `riskLevel`、`riskWarningCount`、`remainingDeliveryCapacity`。如果 MCP 聚合层已经提示风险摘要为 `high`，推荐先读取 `boss_helper_stats` 查看 `risk.warnings`，而不是直接推进真实执行。
 
-最新一层主动护栏是“连续失败自动暂停”：当批次连续 3 次出现非 warning 失败时，页面侧会自动把当前 run 切到暂停收尾流程，并发出 `limit-reached` 事件，`detail.guardrailCode` 固定为 `consecutive-failure-auto-stop`。同一原因也会写入 `stats.data.run.current/recent.lastError` 与 `stats.data.risk.warnings`，方便外部 Agent 在 bridge、CLI、MCP 三条链路上都用同一个结构化信号判断“先排障，再决定是否 resume”。
+最新三层主动护栏分别是“连续失败自动暂停”“累计失败自动暂停”和“每轮投递上限自动暂停”：当批次连续 3 次出现非 warning 失败、当前批次累计 5 次出现非 warning 失败，或单次 run 成功投递达到 20 次时，页面侧都会自动把当前 run 切到暂停收尾流程，并发出 `limit-reached` 事件，`detail.guardrailCode` 固定为 `consecutive-failure-auto-stop`、`failure-count-auto-stop` 或 `run-delivery-limit-reached`。同一原因也会写入 `stats.data.run.current/recent.lastError` 与 `stats.data.risk.warnings`；第三种场景还会同步更新 `stats.data.run.current/recent.deliveredJobIds` 与 `stats.data.risk.delivery.usedInRun` / `remainingInRun` / `runReached`，方便外部 Agent 在 bridge、CLI、MCP 三条链路上都用同一个结构化信号判断“先排障再 resume”，还是“先 stop 再 start 新一轮”。
 
-如果你刚刚更新了仓库并重新构建扩展，但浏览器里的 unpacked extension 还没有 reload，那么 `stats` 可能仍返回旧结构而看不到 `run` 字段。这不是 bridge/MCP 失效，而是当前 Boss 页仍在运行旧 build，先重新加载扩展并刷新页面再验证。
+如果你刚刚更新了仓库并重新构建扩展，但浏览器里的 unpacked extension 还没有 reload，那么 `stats` 可能仍返回旧结构，看不到 `run` 字段或 `risk.delivery.runLimit` / `usedInRun` / `remainingInRun` / `runReached`。这不是 bridge/MCP 失效，而是当前 Boss 页仍在运行旧 build，先重新加载扩展并刷新页面再验证。
 
 除 `readiness.get` 外，bridge 现在也会为关键命令失败补统一错误元数据：`code`、`message`、`retryable`、`suggestedAction`。这意味着 CLI、MCP 和直接 HTTP 调用在遇到 `relay-not-connected`、`bridge-timeout`、`page-timeout`、`unsupported-page`、`navigate-invalid`、`job-detail-load-failed`、`event-timeout`、`events-history-unavailable`、`empty-config-patch`、`validation-failed`、`already-running`、`paused` 等失败时，不需要再依赖中文文案判断是否该重试、刷新页面、修参数、恢复批次或重连 relay。
 
 其中命令级 `suggestedAction` 当前可能出现：`navigate`、`wait-login`、`refresh-page`、`stop`、`retry`、`fix-input`、`reconnect-relay`、`resume`。如果你只想判断页面 readiness，仍应优先读 `readiness.get` 或 MCP 的 `boss_helper_agent_context.readiness`；如果你在处理命令失败恢复，则优先看对应错误 envelope 里的 `retryable` 和 `suggestedAction`。当 `suggestedAction=refresh-page` 且当前仍位于受支持职位页时，优先调用 `jobs.refresh` 或 MCP 的 `boss_helper_jobs_refresh`，而不是重新拼装一次 `navigate` 参数。
+
+另一个默认保守的高风险护栏是 `chat.send`：通过 bridge / CLI / MCP 调用时，必须在 payload 中显式传 `confirmHighRisk=true`，否则会直接返回 `high-risk-action-confirmation-required` / `suggestedAction=fix-input`。这项限制只影响外部自动化入口，不影响用户在 Boss 页面里手动聊天。
+
+现在 `start` 与 `resume` 也采用同样的外部确认边界：bridge / CLI / MCP 调用时必须显式传 `confirmHighRisk=true`，否则不会真正启动或恢复 run，而是返回 `high-risk-action-confirmation-required`。这项限制同样只针对外部入口，不影响页面内的手动“开始 / 继续”按钮。
 
 ## 环境变量
 

@@ -226,6 +226,9 @@ describe('message/contentScript', () => {
     const startPromise = __emitRuntimeMessage({
       channel: BOSS_HELPER_AGENT_CHANNEL,
       command: 'start',
+      payload: {
+        confirmHighRisk: true,
+      },
     })
     const stopPromise = __emitRuntimeMessage({
       channel: BOSS_HELPER_AGENT_CHANNEL,

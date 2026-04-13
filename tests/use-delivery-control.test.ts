@@ -233,7 +233,8 @@ describe('useDeliveryControl', () => {
     const { useDeliveryControl } = await loadDeliveryControl()
     const control = useDeliveryControl()
 
-    const startPayload = { jobIds: ['job-1'] }
+    const startPayload = { confirmHighRisk: true, jobIds: ['job-1'] }
+    const resumePayload = { confirmHighRisk: true }
     const planPayload = { jobIds: ['job-9'] }
     const historyPayload = { conversationId: 'c-1' }
     const detailPayload = { encryptJobId: 'job-2' }
@@ -241,7 +242,7 @@ describe('useDeliveryControl', () => {
 
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'start', payload: startPayload })).resolves.toEqual({ code: 'start' })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'pause' })).resolves.toEqual({ code: 'pause' })
-    await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'resume' })).resolves.toEqual({ code: 'resume' })
+    await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'resume', payload: resumePayload })).resolves.toEqual({ code: 'resume' })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'stats' })).resolves.toEqual({ code: 'stats' })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'plan.preview', payload: planPayload })).resolves.toEqual({ code: 'plan.preview', payload: planPayload })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'readiness.get' })).resolves.toEqual({ code: 'readiness.get' })
@@ -252,7 +253,7 @@ describe('useDeliveryControl', () => {
 
     expect(deliveryControlMocks.runner.startBatch).toHaveBeenCalledWith(startPayload)
     expect(deliveryControlMocks.runner.pauseBatch).toHaveBeenCalledTimes(1)
-    expect(deliveryControlMocks.runner.resumeBatch).toHaveBeenCalledTimes(1)
+    expect(deliveryControlMocks.runner.resumeBatch).toHaveBeenCalledWith(resumePayload)
     expect(deliveryControlMocks.runner.stats).toHaveBeenCalledTimes(1)
     expect(deliveryControlMocks.queries.planPreview).toHaveBeenCalledWith(planPayload)
     expect(deliveryControlMocks.queries.readinessGet).toHaveBeenCalledTimes(1)
@@ -304,6 +305,42 @@ describe('useDeliveryControl', () => {
       { progress: { state: 'idle' } },
       { retryable: false, suggestedAction: 'fix-input' },
     )
+  })
+
+  it('requires explicit confirmation for external start and resume commands', async () => {
+    const { useDeliveryControl } = await loadDeliveryControl()
+    const control = useDeliveryControl()
+
+    await expect(
+      control.controller.handle({
+        channel: BOSS_HELPER_AGENT_CHANNEL,
+        command: 'start',
+        payload: { jobIds: ['job-1'] },
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        code: 'high-risk-action-confirmation-required',
+        ok: false,
+        retryable: false,
+        suggestedAction: 'fix-input',
+      }),
+    )
+    expect(deliveryControlMocks.runner.startBatch).not.toHaveBeenCalled()
+
+    await expect(
+      control.controller.handle({
+        channel: BOSS_HELPER_AGENT_CHANNEL,
+        command: 'resume',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        code: 'high-risk-action-confirmation-required',
+        ok: false,
+        retryable: false,
+        suggestedAction: 'fix-input',
+      }),
+    )
+    expect(deliveryControlMocks.runner.resumeBatch).not.toHaveBeenCalled()
   })
 
   it('forwards agent events and shapes window bridge responses', async () => {

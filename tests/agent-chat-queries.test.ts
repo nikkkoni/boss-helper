@@ -208,7 +208,7 @@ describe('useAgentChatQueries', () => {
       expect.objectContaining({ code: 'missing-conversation-id', ok: false }),
     )
     await expect(
-      supportedQueries.chatSend({ content: ' ', to_name: 'Boss', to_uid: '1' }),
+      supportedQueries.chatSend({ confirmHighRisk: true, content: ' ', to_name: 'Boss', to_uid: '1' }),
     ).resolves.toEqual({
       code: 'missing-content',
       message: '缺少聊天内容',
@@ -217,7 +217,7 @@ describe('useAgentChatQueries', () => {
       suggestedAction: 'fix-input',
     })
     await expect(
-      supportedQueries.chatSend({ content: 'hello', to_name: ' ', to_uid: '' }),
+      supportedQueries.chatSend({ confirmHighRisk: true, content: 'hello', to_name: ' ', to_uid: '' }),
     ).resolves.toEqual({
       code: 'missing-chat-target',
       message: '缺少 to_uid 或 to_name',
@@ -225,10 +225,19 @@ describe('useAgentChatQueries', () => {
       retryable: false,
       suggestedAction: 'fix-input',
     })
+    await expect(
+      supportedQueries.chatSend({ confirmHighRisk: false, content: 'hello', to_name: 'Boss', to_uid: '1' }),
+    ).resolves.toEqual({
+      code: 'high-risk-action-confirmation-required',
+      message: 'chat.send 属于高风险动作，需在 payload 中显式传 confirmHighRisk=true 后才会执行',
+      ok: false,
+      retryable: false,
+      suggestedAction: 'fix-input',
+    })
 
     chatQueryMocks.getUserId.mockReturnValueOnce(null as unknown as string)
     await expect(
-      supportedQueries.chatSend({ content: 'hello', to_name: 'Boss', to_uid: '1' }),
+      supportedQueries.chatSend({ confirmHighRisk: true, content: 'hello', to_name: 'Boss', to_uid: '1' }),
     ).resolves.toEqual({
       code: 'missing-form-uid',
       message: '缺少 form_uid，且当前页面未获取到用户 ID',
@@ -248,6 +257,7 @@ describe('useAgentChatQueries', () => {
     const queries = useAgentChatQueries(createOptions({ ok }))
 
     const response = await queries.chatSend({
+      confirmHighRisk: true,
       content: ' hi boss ',
       to_name: ' Boss ',
       to_uid: 9,
@@ -291,7 +301,7 @@ describe('useAgentChatQueries', () => {
 
     const queries = useAgentChatQueries(createOptions({ fail }))
     await expect(
-      queries.chatSend({ content: 'hello', to_name: 'Boss', to_uid: '1' }),
+      queries.chatSend({ confirmHighRisk: true, content: 'hello', to_name: 'Boss', to_uid: '1' }),
     ).resolves.toEqual({
       code: 'chat-send-failed',
       message: 'socket down',

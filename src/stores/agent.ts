@@ -12,6 +12,12 @@ import type {
   BossHelperAgentRunSummaryData,
 } from '@/message/agent'
 import { counter } from '@/message'
+import {
+  getRunDeliveredCount,
+  runDeliveryGuardrailCode,
+  runDeliveryGuardrailLimit,
+  runDeliveryGuardrailSource,
+} from '@/pages/zhipin/shared/guardrails'
 import { logger } from '@/utils/logger'
 
 const agentRunSummaryStorageKey = 'session:zhipin-agent-run-summary-v1'
@@ -135,6 +141,7 @@ function normalizeRunSnapshot(value: unknown): BossHelperAgentRunSnapshot | null
     activeTargetJobIds: dedupeJobIds(snapshot.activeTargetJobIds),
     analyzedJobIds: dedupeJobIds(snapshot.analyzedJobIds),
     currentJob: cloneCurrentJob(snapshot.currentJob),
+    deliveredJobIds: dedupeJobIds(snapshot.deliveredJobIds),
     finishedAt: typeof snapshot.finishedAt === 'string' ? snapshot.finishedAt : null,
     lastDecision:
       snapshot.lastDecision && typeof snapshot.lastDecision === 'object'
@@ -197,19 +204,33 @@ function addJobId(list: string[], jobId: string | undefined) {
 }
 
 const consecutiveFailureGuardrailLimit = 3
+const totalFailureGuardrailLimit = 5
 
 interface AgentFailureGuardrailTrigger {
   at: string
-  code: 'consecutive-failure-auto-stop'
+  code: 'consecutive-failure-auto-stop' | 'failure-count-auto-stop'
   consecutiveFailures: number
+  source: 'consecutive-failure-limit' | 'failure-count-limit'
   limit: number
   message: string
+  totalFailures: number
 }
 
 interface AgentFailureGuardrailSnapshot {
   consecutiveFailures: number
   limit: number
+  totalFailures: number
+  totalLimit: number
   triggered: AgentFailureGuardrailTrigger | null
+}
+
+interface AgentRunDeliveryGuardrailTrigger {
+  at: string
+  code: typeof runDeliveryGuardrailCode
+  deliveredCount: number
+  limit: number
+  message: string
+  source: typeof runDeliveryGuardrailSource
 }
 
 export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
@@ -221,6 +242,7 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
   const recentRun = ref<BossHelperAgentRunSnapshot | null>(null)
   const runSummaryLoaded = ref(false)
   const consecutiveFailures = ref(0)
+  const totalFailures = ref(0)
   const lastFailureGuardrailTrigger = ref<AgentFailureGuardrailTrigger | null>(null)
 
   const hasPendingBatch = computed(() => batchPromise.value != null)
@@ -287,6 +309,7 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
       activeTargetJobIds: initialTargetJobIds,
       analyzedJobIds: [],
       currentJob: cloneCurrentJob(progress?.currentJob),
+      deliveredJobIds: [],
       finishedAt: null,
       lastDecision: null,
       lastError: null,
@@ -413,6 +436,9 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
     ) {
       run.analyzedJobIds = addJobId(run.analyzedJobIds, jobId)
       run.processedJobIds = addJobId(run.processedJobIds, jobId)
+      if (event.type === 'job-succeeded') {
+        run.deliveredJobIds = addJobId(run.deliveredJobIds, jobId)
+      }
     }
 
     if (
@@ -505,33 +531,84 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
     return {
       consecutiveFailures: consecutiveFailures.value,
       limit: consecutiveFailureGuardrailLimit,
+      totalFailures: totalFailures.value,
+      totalLimit: totalFailureGuardrailLimit,
       triggered: cloneData(lastFailureGuardrailTrigger.value),
     }
   }
 
-  function clearFailureGuardrailState(options: { clearTrigger?: boolean } = {}) {
+  function clearFailureGuardrailState(options: { clearTrigger?: boolean, resetTotalFailures?: boolean } = {}) {
     consecutiveFailures.value = 0
+    if (options.resetTotalFailures) {
+      totalFailures.value = 0
+    }
     if (options.clearTrigger) {
       lastFailureGuardrailTrigger.value = null
     }
   }
 
   function registerFailureGuardrail(): AgentFailureGuardrailTrigger | null {
-    const nextCount = consecutiveFailures.value + 1
-    consecutiveFailures.value = nextCount
-    if (nextCount < consecutiveFailureGuardrailLimit) {
+    const nextConsecutiveCount = consecutiveFailures.value + 1
+    const nextTotalCount = totalFailures.value + 1
+    consecutiveFailures.value = nextConsecutiveCount
+    totalFailures.value = nextTotalCount
+
+    if (nextConsecutiveCount < consecutiveFailureGuardrailLimit && nextTotalCount < totalFailureGuardrailLimit) {
       return null
     }
 
-    const trigger: AgentFailureGuardrailTrigger = {
-      at: new Date().toISOString(),
-      code: 'consecutive-failure-auto-stop',
-      consecutiveFailures: nextCount,
-      limit: consecutiveFailureGuardrailLimit,
-      message: `连续失败达到 ${consecutiveFailureGuardrailLimit} 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。`,
-    }
+    const trigger: AgentFailureGuardrailTrigger = nextConsecutiveCount >= consecutiveFailureGuardrailLimit
+      ? {
+          at: new Date().toISOString(),
+          code: 'consecutive-failure-auto-stop',
+          consecutiveFailures: nextConsecutiveCount,
+          source: 'consecutive-failure-limit',
+          limit: consecutiveFailureGuardrailLimit,
+          message: `连续失败达到 ${consecutiveFailureGuardrailLimit} 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。`,
+          totalFailures: nextTotalCount,
+        }
+      : {
+          at: new Date().toISOString(),
+          code: 'failure-count-auto-stop',
+          consecutiveFailures: nextConsecutiveCount,
+          source: 'failure-count-limit',
+          limit: totalFailureGuardrailLimit,
+          message: `当前批次累计失败达到 ${totalFailureGuardrailLimit} 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。`,
+          totalFailures: nextTotalCount,
+        }
     lastFailureGuardrailTrigger.value = trigger
     return cloneData(trigger)
+  }
+
+  function registerRunDeliveryGuardrail(jobId: string | undefined): AgentRunDeliveryGuardrailTrigger | null {
+    if (!currentRun.value || !jobId) {
+      return null
+    }
+
+    const nextDeliveredJobIds = addJobId(currentRun.value.deliveredJobIds, jobId)
+    if (nextDeliveredJobIds.length === currentRun.value.deliveredJobIds.length) {
+      return null
+    }
+
+    const now = new Date().toISOString()
+    currentRun.value.deliveredJobIds = nextDeliveredJobIds
+    currentRun.value.updatedAt = now
+    syncRecentRun()
+    queuePersistRunSummary()
+
+    const deliveredCount = getRunDeliveredCount(currentRun.value)
+    if (deliveredCount < runDeliveryGuardrailLimit) {
+      return null
+    }
+
+    return {
+      at: now,
+      code: runDeliveryGuardrailCode,
+      deliveredCount,
+      limit: runDeliveryGuardrailLimit,
+      message: `本轮投递已达到上限 ${runDeliveryGuardrailLimit}，已自动暂停投递；如需继续请先 stop 当前 run，再重新 start 新的一轮。`,
+      source: runDeliveryGuardrailSource,
+    }
   }
 
   function setBatchPromise(promise: Promise<void> | null) {
@@ -576,6 +653,7 @@ export const useAgentRuntime = defineStore('zhipin/agent-runtime', () => {
     recentRun,
     recordEvent,
     registerFailureGuardrail,
+    registerRunDeliveryGuardrail,
     remainingTargetJobIds,
     stopRequestedByCommand,
     setBatchPromise,

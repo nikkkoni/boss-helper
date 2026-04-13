@@ -157,8 +157,9 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
                 total: targetJobList.length,
               },
               detail: {
-                source: 'consecutive-failure-limit',
+                source: failureGuardrail.source,
                 consecutiveFailures: failureGuardrail.consecutiveFailures,
+                failureCount: failureGuardrail.totalFailures,
                 guardrailCode: failureGuardrail.code,
                 guardrailLimit: failureGuardrail.limit,
                 lastFailureCode: 'unexpected-deliver-error',

@@ -171,9 +171,13 @@ Phase 4 当前最小增量已经把 run/session checkpoint 接进现有 `stats` 
 
 Phase 7 的首个增量则把安全护栏摘要也接入了 `stats`：`boss_helper_stats.data.risk` 会汇总当前 `deliveryLimit` 使用情况、剩余额度、去重/通知/缓存护栏是否开启、AI 自动回复等高风险开关，以及结构化 `warnings`。对应地，`boss_helper_agent_context.summary` 也会补充 `riskLevel`、`riskWarningCount`、`remainingDeliveryCapacity`，让外部 Agent 在决定是否 `start` 之前，先看到当前风险面而不是只看页面是否可控。
 
-最新一个主动护栏增量会在批次连续 3 次出现非 warning 失败时自动暂停当前 run，并通过 `limit-reached` 事件的 `detail.guardrailCode=consecutive-failure-auto-stop`、`run.lastError.code` 以及 `boss_helper_stats.data.risk.warnings` 同步暴露触发原因。`boss_helper_agent_context` 在遇到这种暂停态时，也会优先建议先检查 `risk.warnings` 和最近错误，而不是直接 `resume`。
+最新三层主动护栏增量会在以下场景自动收紧执行规模：批次连续 3 次出现非 warning 失败、当前批次累计 5 次出现非 warning 失败，或单次 run 成功投递达到 20 次。对应地，`limit-reached` 事件会携带 `detail.guardrailCode=consecutive-failure-auto-stop` / `failure-count-auto-stop` / `run-delivery-limit-reached`，`run.lastError.code` 与 `boss_helper_stats.data.risk.warnings` 也会同步暴露触发原因；其中第三种场景还会把 `boss_helper_stats.data.risk.delivery.usedInRun` / `remainingInRun` / `runReached` 暴露给外部 Agent。`boss_helper_agent_context` 在遇到这种暂停态时，也会区分“先排障再 resume”和“先 stop 当前 run，再 start 新一轮”，避免把每轮上限误当成可直接恢复的暂停。
 
 除 readiness snapshot 外，bridge 和关键页面命令失败时现在也会统一返回 `code`、`message`、`retryable`、`suggestedAction`。目前已覆盖 `navigate`、`resume.get`、`jobs.detail`、`chat.send`，以及 `events_recent`、`wait_for_event`、`config.update`、`start / pause / resume / stop` 这组事件与控制链路。page-level readiness 的 `suggestedAction` 仍稳定收敛为 `navigate`、`wait-login`、`refresh-page`、`stop`、`continue`；命令级失败额外可能返回 `retry`、`fix-input`、`reconnect-relay`、`resume`，方便外部 Agent 区分“直接重试”与“先修输入/恢复 relay / 恢复暂停中的批次”。如果当前已经停留在受支持职位页，`refresh-page` 的低风险对应原语就是 `boss_helper_jobs_refresh`。
+
+`chat.send` 现在也被收紧为显式高风险动作：通过 bridge / CLI / MCP 调用时，必须在 payload 中传 `confirmHighRisk=true`，否则会返回 `high-risk-action-confirmation-required`。这样外部 Agent 不能再把聊天发送默认跟随主流程触发。
+
+同样地，外部 `start` / `resume` 入口现在也需要显式确认：通过 bridge / CLI / MCP 调用时，必须在 payload 中传 `confirmHighRisk=true`，否则不会真正启动或恢复 run，而是直接返回 `high-risk-action-confirmation-required`。这项限制只作用于外部自动化入口，不影响页面面板里的手动“开始 / 继续”按钮。
 
 ## 本地开发流程
 

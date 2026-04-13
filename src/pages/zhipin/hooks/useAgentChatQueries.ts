@@ -91,6 +91,12 @@ export function useAgentChatQueries(options: UseAgentQueriesOptions) {
     if (!payload.to_uid || !payload.to_name?.trim()) {
       return options.fail('missing-chat-target', '缺少 to_uid 或 to_name')
     }
+    if (payload.confirmHighRisk !== true) {
+      return options.fail(
+        'high-risk-action-confirmation-required',
+        'chat.send 属于高风险动作，需在 payload 中显式传 confirmHighRisk=true 后才会执行',
+      )
+    }
 
     const userId = payload.form_uid ?? useUser().getUserId()
     if (userId == null || userId === '') {

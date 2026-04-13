@@ -20,8 +20,9 @@ function printUsage() {
 
 usage:
   node ./scripts/agent-cli.mjs stats
-  node ./scripts/agent-cli.mjs start --payload '{"jobIds":["encryptJobId-1"]}'
-  node ./scripts/agent-cli.mjs chat.send --payload '{"to_uid":"123","to_name":"encryptBossId","content":"你好，我对这个岗位很感兴趣"}'
+  node ./scripts/agent-cli.mjs start --payload '{"jobIds":["encryptJobId-1"],"confirmHighRisk":true}'
+  node ./scripts/agent-cli.mjs resume --payload '{"confirmHighRisk":true}'
+  node ./scripts/agent-cli.mjs chat.send --payload '{"to_uid":"123","to_name":"encryptBossId","content":"你好，我对这个岗位很感兴趣","confirmHighRisk":true}'
   node ./scripts/agent-cli.mjs logs.query --payload '{"limit":10,"status":["AI筛选"]}'
   node ./scripts/agent-cli.mjs batch --payload '[{"command":"stats"},{"command":"jobs.list","payload":{"statusFilter":["wait"]}}]'
   node ./scripts/agent-cli.mjs status
@@ -138,6 +139,10 @@ function printHint(data) {
 
   if (data.code === 'target-tab-not-found') {
     console.error('\nHint: 请先打开 Boss 职位页，并确认插件已经完成页面初始化。')
+  }
+
+  if (data.code === 'high-risk-action-confirmation-required') {
+    console.error('\nHint: start / resume / chat.send 都是高风险动作，需要在 payload 中显式传 {"confirmHighRisk":true} 后才会执行。')
   }
 }
 

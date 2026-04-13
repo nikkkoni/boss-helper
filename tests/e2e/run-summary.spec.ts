@@ -288,6 +288,7 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
     const start = await runAgentCli<BossHelperAgentResponse>({
       command: 'start',
       payload: {
+        confirmHighRisk: true,
         jobIds: [fixtureJobId, secondJob.encryptJobId],
         resetFiltered: true,
       },
@@ -366,6 +367,9 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
 
     const resume = await runAgentCli<BossHelperAgentResponse>({
       command: 'resume',
+      payload: {
+        confirmHighRisk: true,
+      },
       port: bridge.port,
     })
     expect(resume.data).toEqual(
@@ -446,6 +450,7 @@ test('surfaces batch-error run summaries with refresh-page recovery hints', asyn
     const start = await runAgentCli<BossHelperAgentResponse>({
       command: 'start',
       payload: {
+        confirmHighRisk: true,
         jobIds: [fixtureJobId],
         resetFiltered: true,
       },

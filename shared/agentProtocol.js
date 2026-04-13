@@ -30,6 +30,7 @@ const bossHelperAgentResponseMetaByCode = Object.freeze({
 	'event-stream-closed': { retryable: true, suggestedAction: 'retry' },
 	'event-timeout': { retryable: true, suggestedAction: 'retry' },
 	'events-history-unavailable': { retryable: true, suggestedAction: 'retry' },
+	'high-risk-action-confirmation-required': { retryable: false, suggestedAction: 'fix-input' },
 	'invalid-agent-event': { retryable: false, suggestedAction: 'fix-input' },
 	'invalid-batch-command-item': { retryable: false, suggestedAction: 'fix-input' },
 	'invalid-batch-commands': { retryable: false, suggestedAction: 'fix-input' },

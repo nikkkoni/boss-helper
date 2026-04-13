@@ -57,6 +57,7 @@ async function applyStableConfig(page: import('@playwright/test').Page) {
 
 async function startTargetedApply(page: import('@playwright/test').Page) {
   return callAgentCommand(page, 'start', {
+    confirmHighRisk: true,
     jobIds: [fixtureJobId],
     resetFiltered: true,
   }) as Promise<BossHelperAgentResponse>

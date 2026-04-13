@@ -78,6 +78,8 @@ describe('useAgentRuntime', () => {
     expect(store.getFailureGuardrailSnapshot()).toEqual({
       consecutiveFailures: 0,
       limit: 3,
+      totalFailures: 0,
+      totalLimit: 5,
       triggered: null,
     })
     expect(store.registerFailureGuardrail()).toBeNull()
@@ -89,11 +91,14 @@ describe('useAgentRuntime', () => {
         code: 'consecutive-failure-auto-stop',
         consecutiveFailures: 3,
         limit: 3,
+        source: 'consecutive-failure-limit',
+        totalFailures: 3,
       }),
     )
     expect(store.getFailureGuardrailSnapshot()).toEqual(
       expect.objectContaining({
         consecutiveFailures: 3,
+        totalFailures: 3,
         triggered: expect.objectContaining({
           code: 'consecutive-failure-auto-stop',
         }),
@@ -147,18 +152,101 @@ describe('useAgentRuntime', () => {
     expect(store.getFailureGuardrailSnapshot()).toEqual(
       expect.objectContaining({
         consecutiveFailures: 0,
+        totalFailures: 3,
         triggered: expect.objectContaining({
           code: 'consecutive-failure-auto-stop',
         }),
       }),
     )
 
-    store.clearFailureGuardrailState({ clearTrigger: true })
+    store.clearFailureGuardrailState({ clearTrigger: true, resetTotalFailures: true })
     expect(store.getFailureGuardrailSnapshot()).toEqual({
       consecutiveFailures: 0,
       limit: 3,
+      totalFailures: 0,
+      totalLimit: 5,
       triggered: null,
     })
+  })
+
+  it('auto-stops when total failures keep accumulating across separate failure streaks', () => {
+    const store = useAgentRuntime()
+
+    expect(store.registerFailureGuardrail()).toBeNull()
+    expect(store.registerFailureGuardrail()).toBeNull()
+
+    store.clearFailureGuardrailState({ clearTrigger: true })
+
+    expect(store.registerFailureGuardrail()).toBeNull()
+    expect(store.registerFailureGuardrail()).toBeNull()
+
+    store.clearFailureGuardrailState({ clearTrigger: true })
+
+    const trigger = store.registerFailureGuardrail()
+    expect(trigger).toEqual(
+      expect.objectContaining({
+        code: 'failure-count-auto-stop',
+        consecutiveFailures: 1,
+        limit: 5,
+        source: 'failure-count-limit',
+        totalFailures: 5,
+      }),
+    )
+    expect(store.getFailureGuardrailSnapshot()).toEqual(
+      expect.objectContaining({
+        consecutiveFailures: 1,
+        totalFailures: 5,
+        totalLimit: 5,
+        triggered: expect.objectContaining({
+          code: 'failure-count-auto-stop',
+        }),
+      }),
+    )
+  })
+
+  it('tracks per-run delivery guardrails across the current run', async () => {
+    const store = useAgentRuntime()
+
+    await store.ensureRunSummaryLoaded()
+    await store.recordEvent({
+      createdAt: '2026-04-12T10:10:00.000Z',
+      id: 'evt-start-run-limit',
+      message: '投递任务已启动',
+      progress: {
+        activeTargetJobIds: ['job-1'],
+        current: 0,
+        currentJob: null,
+        locked: true,
+        message: '投递任务已启动',
+        page: 1,
+        pageSize: 15,
+        remainingTargetJobIds: ['job-1'],
+        state: 'running',
+        stopRequested: false,
+        total: 1,
+      },
+      state: 'running',
+      type: 'batch-started',
+    })
+
+    for (let index = 1; index < 20; index++) {
+      expect(store.registerRunDeliveryGuardrail(`job-${index}`)).toBeNull()
+    }
+
+    const trigger = store.registerRunDeliveryGuardrail('job-20')
+    expect(trigger).toEqual(
+      expect.objectContaining({
+        code: 'run-delivery-limit-reached',
+        deliveredCount: 20,
+        limit: 20,
+        source: 'run-delivery-limit',
+      }),
+    )
+    expect(store.currentRun).toEqual(
+      expect.objectContaining({
+        deliveredJobIds: Array.from({ length: 20 }, (_, index) => `job-${index + 1}`),
+      }),
+    )
   })
 
   it('tracks persisted run summaries across lifecycle events', async () => {
@@ -274,6 +362,7 @@ describe('useAgentRuntime', () => {
     expect(store.currentRun).toBeNull()
     expect(store.recentRun).toEqual(
       expect.objectContaining({
+        deliveredJobIds: ['job-1'],
         finishedAt: '2026-04-12T10:00:40.000Z',
         processedJobIds: ['job-1'],
         recovery: expect.objectContaining({

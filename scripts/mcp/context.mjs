@@ -469,11 +469,16 @@ export function createAgentContextService(bridgeClient) {
     const currentRun = sectionResults.stats?.data?.run?.current
     const recentRun = sectionResults.stats?.data?.run?.recent
     const riskSummary = sectionResults.stats?.data?.risk
-    const pausedByFailureGuardrail = Array.isArray(riskSummary?.warnings)
-      && riskSummary.warnings.some((item) => item?.code === 'consecutive-failure-auto-stop')
+    const pausedByRunDeliveryLimit = currentRun?.state === 'paused'
+      && currentRun?.lastError?.code === 'run-delivery-limit-reached'
+    const pausedByAutoStopGuardrail = Array.isArray(riskSummary?.warnings)
+      ? riskSummary.warnings.find((item) => typeof item?.code === 'string' && item.code.endsWith('-auto-stop'))?.code
+      : null
 
-    if (currentRun?.state === 'paused' && pausedByFailureGuardrail) {
-      recommendations.push(`检测到 run ${currentRun.runId} 因连续失败自动暂停，先检查 boss_helper_stats.risk.warnings 与 run.lastError，再决定是否 resume。`)
+    if (pausedByRunDeliveryLimit) {
+      recommendations.push(`检测到 run ${currentRun.runId} 已达到本轮投递上限 ${riskSummary?.delivery?.runLimit ?? 'unknown'}，当前不建议 resume；如需继续请先 stop 当前 run，再重新 start 新的一轮。`)
+    } else if (currentRun?.state === 'paused' && pausedByAutoStopGuardrail) {
+      recommendations.push(`检测到 run ${currentRun.runId} 因安全护栏 ${pausedByAutoStopGuardrail} 自动暂停，先检查 boss_helper_stats.risk.warnings 与 run.lastError，再决定是否 resume。`)
     } else if (currentRun?.state === 'paused' && currentRun.recovery?.resumable) {
       recommendations.push(`检测到暂停中的 run ${currentRun.runId}，如确认页面仍一致，可先调用 boss_helper_resume。`)
     } else if (currentRun?.state === 'running' || currentRun?.state === 'pausing') {
@@ -496,6 +501,8 @@ export function createAgentContextService(bridgeClient) {
 
     if (riskSummary?.delivery?.reached) {
       recommendations.push(`今日投递已到达 deliveryLimit ${riskSummary.delivery.limit}，当前不应继续 start。`)
+    } else if (riskSummary?.delivery?.runReached) {
+      recommendations.push(`当前 run 已达到本轮投递上限 ${riskSummary.delivery.runLimit}，如需继续请先 stop 当前 run，再重新 start 新的一轮。`)
     } else if (riskSummary?.level === 'high') {
       recommendations.push(`当前安全护栏摘要为 high，建议先检查 boss_helper_stats.risk.warnings，再决定是否继续 start。`)
     } else if (Array.isArray(riskSummary?.warnings) && riskSummary.warnings.length > 0) {

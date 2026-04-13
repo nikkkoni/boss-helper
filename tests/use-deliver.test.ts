@@ -274,6 +274,8 @@ describe('useDeliver', () => {
       consecutiveFailures: 3,
       limit: 3,
       message: '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+      source: 'consecutive-failure-limit',
+      totalFailures: 3,
     })
 
     const store = useDeliver()

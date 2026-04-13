@@ -305,7 +305,10 @@ describe('useAgentBatchRunner', () => {
     expect(started).toEqual(expect.objectContaining({ ok: true, code: 'started' }))
     expect(runnerMocks.applyAgentBatchStartPayload).toHaveBeenCalled()
     expect(runnerMocks.agentRuntimeStore.setTargetJobIds).toHaveBeenCalledWith(['job-1', 'job-2'])
-    expect(runnerMocks.agentRuntimeStore.clearFailureGuardrailState).toHaveBeenCalledWith({ clearTrigger: true })
+    expect(runnerMocks.agentRuntimeStore.clearFailureGuardrailState).toHaveBeenCalledWith({
+      clearTrigger: true,
+      resetTotalFailures: true,
+    })
 
     const pausing = await runner.pauseBatch()
     expect(pausing).toEqual(expect.objectContaining({ ok: true, code: 'pause-requested' }))
@@ -322,7 +325,10 @@ describe('useAgentBatchRunner', () => {
 
     const resumed = await runner.resumeBatch()
     expect(resumed).toEqual(expect.objectContaining({ ok: true, code: 'resumed' }))
-    expect(runnerMocks.agentRuntimeStore.clearFailureGuardrailState).toHaveBeenCalledWith({ clearTrigger: true })
+    expect(runnerMocks.agentRuntimeStore.clearFailureGuardrailState).toHaveBeenCalledWith({
+      clearTrigger: true,
+      resetTotalFailures: false,
+    })
 
     await flushBatch()
     expect(runnerMocks.batchEvents.emitBatchCompleted).toHaveBeenCalledWith('loop completed')
@@ -407,6 +413,31 @@ describe('useAgentBatchRunner', () => {
         suggestedAction: 'continue',
       }),
     )
+  })
+
+  it('blocks resume when the current run already hit the per-run delivery guardrail', async () => {
+    const { useAgentBatchRunner } = await loadBatchRunner()
+    const runner = useAgentBatchRunner({
+      ensureStoresLoaded: vi.fn(async () => undefined),
+      ensureSupportedPage: () => true,
+    })
+
+    runnerMocks.commonStore.deliverState = 'paused'
+    runnerMocks.agentRuntimeStore.currentRun = {
+      deliveredJobIds: Array.from({ length: 20 }, (_, index) => `job-${index + 1}`),
+      runId: 'run-limit',
+      state: 'paused',
+    }
+
+    await expect(runner.resumeBatch()).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        code: 'run-delivery-limit-reached',
+        retryable: false,
+        suggestedAction: 'continue',
+      }),
+    )
+    expect(runnerMocks.agentRuntimeStore.setBatchPromise).not.toHaveBeenCalled()
   })
 
   it('distinguishes stop finalization from pause finalization', async () => {
@@ -518,4 +549,5 @@ describe('useAgentBatchRunner', () => {
       expect.objectContaining({ ok: true, code: 'started' }),
     )
   })
+
 })

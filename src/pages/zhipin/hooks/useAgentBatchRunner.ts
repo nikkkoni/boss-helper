@@ -1,6 +1,6 @@
 import { ElMessage } from 'element-plus'
 
-import { type BossHelperAgentStartPayload } from '@/message/agent'
+import type { BossHelperAgentResumePayload, BossHelperAgentStartPayload } from '@/message/agent'
 import { useAgentRuntime } from '@/stores/agent'
 import { useCommon } from '@/stores/common'
 import { useConf } from '@/stores/conf'
@@ -11,6 +11,7 @@ import { delay, notification } from '@/utils'
 import { logger } from '@/utils/logger'
 
 import { applyAgentBatchStartPayload } from '../services/agentBatchPayload'
+import { getRunDeliveredCount, runDeliveryGuardrailLimit } from '../shared/guardrails'
 import { resetJobStatuses } from '../shared/jobMapping'
 import { executeAgentBatchLoop } from './agentBatchLoop'
 import { abortAllPendingAIFilterReviews } from './agentReview'
@@ -81,7 +82,10 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   async function runBatch(mode: 'start' | 'resume', options?: BossHelperAgentStartPayload) {
     common.deliverLock = true
     common.deliverStop = false
-    agentRuntime.clearFailureGuardrailState({ clearTrigger: true })
+    agentRuntime.clearFailureGuardrailState({
+      clearTrigger: true,
+      resetTotalFailures: mode === 'start',
+    })
     agentRuntime.setStopRequestedByCommand(false)
     batchEvents.setDeliverState(
       'running',
@@ -223,7 +227,7 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
     return ok('pause-requested', '已发出暂停指令')
   }
 
-  async function resumeBatch() {
+  async function resumeBatch(_payload?: BossHelperAgentResumePayload) {
     await options.ensureStoresLoaded()
     if (!options.ensureSupportedPage()) {
       return fail('unsupported-page', '当前页面不支持自动投递')
@@ -233,6 +237,18 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
     }
     if (common.deliverState !== 'paused') {
       return fail('not-paused', '当前任务不处于暂停状态')
+    }
+
+    const resumableRun = agentRuntime.currentRun ?? agentRuntime.recentRun
+    if (getRunDeliveredCount(resumableRun) >= runDeliveryGuardrailLimit) {
+      return fail(
+        'run-delivery-limit-reached',
+        `当前 run 已达到本轮投递上限 ${runDeliveryGuardrailLimit}，请先 stop 当前 run，再重新 start 新的一轮。`,
+        {
+          retryable: false,
+          suggestedAction: 'continue',
+        },
+      )
     }
 
     agentRuntime.setBatchPromise(

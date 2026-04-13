@@ -138,6 +138,7 @@ export interface BossHelperAgentRunSnapshot {
   activeTargetJobIds: string[]
   analyzedJobIds: string[]
   currentJob: BossHelperAgentCurrentJob | null
+  deliveredJobIds: string[]
   finishedAt: string | null
   lastDecision: BossHelperAgentRunDecision | null
   lastError: BossHelperAgentRunError | null
@@ -177,6 +178,10 @@ export interface BossHelperAgentRiskSummary {
     limit: number
     reached: boolean
     remainingToday: number
+    remainingInRun: number
+    runLimit: number
+    runReached: boolean
+    usedInRun: number
     usedToday: number
   }
   guardrails: {

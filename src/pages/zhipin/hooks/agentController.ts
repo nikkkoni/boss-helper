@@ -10,6 +10,7 @@ import type {
   BossHelperAgentLogsQueryPayload,
   BossHelperAgentNavigatePayload,
   BossHelperAgentPlanPreviewPayload,
+  BossHelperAgentResumePayload,
   BossHelperAgentRequest,
   BossHelperAgentStartPayload,
 } from '@/message/agent'
@@ -30,11 +31,11 @@ export function createAgentController(options: {
 }): BossHelperAgentController {
   const { batchRunner, queries } = options
 
-  return {
-    start: batchRunner.startBatch,
-    pause: batchRunner.pauseBatch,
-    resume: batchRunner.resumeBatch,
-    resumeGet: queries.resumeGet,
+    return {
+      start: batchRunner.startBatch,
+      pause: batchRunner.pauseBatch,
+      resume: (payload?: BossHelperAgentResumePayload) => batchRunner.resumeBatch(payload),
+      resumeGet: queries.resumeGet,
     stop: batchRunner.stopBatch,
     stats: batchRunner.stats,
     planPreview: queries.planPreview,
@@ -57,7 +58,7 @@ export function createAgentController(options: {
         case 'pause':
           return batchRunner.pauseBatch()
         case 'resume':
-          return batchRunner.resumeBatch()
+          return batchRunner.resumeBatch(request.payload as BossHelperAgentResumePayload | undefined)
         case 'resume.get':
           return queries.resumeGet()
         case 'stop':

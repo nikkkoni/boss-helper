@@ -43,6 +43,7 @@ function createDeps(): DeliverExecutionDependencies {
     agentRuntime: {
       clearFailureGuardrailState: vi.fn(),
       registerFailureGuardrail: vi.fn(() => null),
+      registerRunDeliveryGuardrail: vi.fn(() => null),
     },
     cachePipelineResultFn: vi.fn(async () => undefined),
     common: {
@@ -180,6 +181,8 @@ describe('deliverExecution', () => {
       consecutiveFailures: 3,
       limit: 3,
       message: '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+      source: 'consecutive-failure-limit',
+      totalFailures: 3,
     })
 
     await expect(
@@ -200,6 +203,73 @@ describe('deliverExecution', () => {
     )
     expect(ElMessage.error).toHaveBeenCalledWith(
       '连续失败达到 3 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+    )
+  })
+
+  it('auto-pauses after hitting the total failure-count guardrail', async () => {
+    const deps = createDeps()
+    const data = createJob({ encryptJobId: 'job-total-guardrail' })
+    const result = {
+      candidateCount: 2,
+      seenJobIds: [data.encryptJobId],
+    }
+    ;(deps.agentRuntime.registerFailureGuardrail as any).mockReturnValue({
+      code: 'failure-count-auto-stop',
+      consecutiveFailures: 1,
+      limit: 5,
+      message: '当前批次累计失败达到 5 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+      source: 'failure-count-limit',
+      totalFailures: 5,
+    })
+
+    await expect(
+      handleDeliverFailure({
+        data,
+        error: new Error('network boom'),
+        ctx: createLogContext(data),
+        deps,
+        result,
+      }),
+    ).resolves.toEqual({
+      stopResult: result,
+    })
+
+    expect(deps.common.deliverStop).toBe(true)
+    expect(notificationMock).toHaveBeenCalledWith(
+      '当前批次累计失败达到 5 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+    )
+    expect(ElMessage.error).toHaveBeenCalledWith(
+      '当前批次累计失败达到 5 次，已自动暂停投递，请先检查最近错误后再决定是否 resume。',
+    )
+  })
+
+  it('auto-pauses after hitting the per-run delivery guardrail', async () => {
+    const deps = createDeps()
+    const data = createJob({ encryptJobId: 'job-run-limit', jobName: 'Frontend' })
+    const ctx = createLogContext(data, { message: '你好' })
+    const result = {
+      candidateCount: 3,
+      seenJobIds: [data.encryptJobId],
+    }
+
+    ;(deps.agentRuntime.registerRunDeliveryGuardrail as any).mockReturnValue({
+      code: 'run-delivery-limit-reached',
+      deliveredCount: 20,
+      limit: 20,
+      message: '本轮投递已达到上限 20，已自动暂停投递；如需继续请先 stop 当前 run，再重新 start 新的一轮。',
+      source: 'run-delivery-limit',
+    })
+
+    await expect(handleDeliverSuccess({ data, ctx, deps, result })).resolves.toEqual({
+      stopResult: result,
+    })
+
+    expect(deps.common.deliverStop).toBe(true)
+    expect(notificationMock).toHaveBeenCalledWith(
+      '本轮投递已达到上限 20，已自动暂停投递；如需继续请先 stop 当前 run，再重新 start 新的一轮。',
+    )
+    expect(ElMessage.info).toHaveBeenCalledWith(
+      '本轮投递已达到上限 20，已自动暂停投递；如需继续请先 stop 当前 run，再重新 start 新的一轮。',
     )
   })
 

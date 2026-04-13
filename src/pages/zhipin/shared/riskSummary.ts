@@ -4,28 +4,39 @@ import type {
   BossHelperAgentRiskSummary,
   BossHelperAgentRiskWarning,
 } from '@/message/agent'
+import {
+  getRunDeliveredCount,
+  runDeliveryGuardrailCode,
+  runDeliveryGuardrailLimit,
+} from '@/pages/zhipin/shared/guardrails'
 import type { FormData, Statistics } from '@/types/formData'
 
 type RuntimeFormData = Partial<FormData> | null | undefined
 type RuntimeProgress = Partial<BossHelperAgentProgress> | null | undefined
 type RuntimeRunSummary = {
   current?: {
+    deliveredJobIds?: string[] | null
     lastError?: {
       code?: string
       message?: string
     } | null
+    state?: string
   } | null
   recent?: {
+    deliveredJobIds?: string[] | null
     lastError?: {
       code?: string
       message?: string
     } | null
+    state?: string
   } | null
 } | null | undefined
 type RuntimeStatistics = Partial<Statistics> | null | undefined
 type RuntimeFailureGuardrail = {
   consecutiveFailures: number
   limit: number
+  totalFailures: number
+  totalLimit: number
   triggered: {
     code: string
     message: string
@@ -73,9 +84,13 @@ function resolveTriggeredFailureGuardrail(run: RuntimeRunSummary, failureGuardra
     return failureGuardrail.triggered
   }
 
-  const candidates = run?.current ? [run.current] : [run?.recent]
+  const candidates = run?.current
+    ? [run.current]
+    : run?.recent?.state === 'paused'
+      ? [run.recent]
+      : []
   for (const candidate of candidates) {
-    if (candidate?.lastError?.code !== 'consecutive-failure-auto-stop') {
+    if (typeof candidate?.lastError?.code !== 'string' || !candidate.lastError.code.endsWith('-auto-stop')) {
       continue
     }
     if (typeof candidate.lastError.message !== 'string' || !candidate.lastError.message) {
@@ -88,6 +103,20 @@ function resolveTriggeredFailureGuardrail(run: RuntimeRunSummary, failureGuardra
   }
 
   return null
+}
+
+function resolveRunDeliveryGuardrail(run: RuntimeRunSummary) {
+  const candidate = run?.current ?? (run?.recent?.state === 'paused' ? run.recent : null)
+  if (candidate?.lastError?.code !== runDeliveryGuardrailCode) {
+    return null
+  }
+  if (typeof candidate.lastError.message !== 'string' || !candidate.lastError.message) {
+    return null
+  }
+  return {
+    code: candidate.lastError.code,
+    message: candidate.lastError.message,
+  }
 }
 
 export function buildAgentRiskSummary(options: {
@@ -103,6 +132,10 @@ export function buildAgentRiskSummary(options: {
   const usedToday = toNonNegativeInteger(todayData?.success)
   const remainingToday = Math.max(deliveryLimit - usedToday, 0)
   const reached = deliveryLimit > 0 && usedToday >= deliveryLimit
+  const currentOrResumableRun = run?.current ?? (run?.recent?.state === 'paused' ? run.recent : null)
+  const usedInRun = getRunDeliveredCount(currentOrResumableRun)
+  const remainingInRun = Math.max(runDeliveryGuardrailLimit - usedInRun, 0)
+  const runReached = runDeliveryGuardrailLimit > 0 && usedInRun >= runDeliveryGuardrailLimit
 
   const sameCompanyFilter = toBoolean(config?.sameCompanyFilter?.value)
   const sameHrFilter = toBoolean(config?.sameHrFilter?.value)
@@ -208,6 +241,7 @@ export function buildAgentRiskSummary(options: {
   }
 
   const triggeredFailureGuardrail = resolveTriggeredFailureGuardrail(run, failureGuardrail)
+  const triggeredRunDeliveryGuardrail = resolveRunDeliveryGuardrail(run)
   if (triggeredFailureGuardrail) {
     warnings.push(
       createWarning(
@@ -216,11 +250,57 @@ export function buildAgentRiskSummary(options: {
         'warn',
       ),
     )
-  } else if ((failureGuardrail?.consecutiveFailures ?? 0) > 0) {
+  } else {
+    if ((failureGuardrail?.totalFailures ?? 0) >= (failureGuardrail?.totalLimit ?? Number.POSITIVE_INFINITY)) {
+      warnings.push(
+        createWarning(
+          'failure-count-limit-reached',
+          `当前批次累计失败已达到 ${failureGuardrail?.totalLimit} 次；如继续 resume，下一次非 warning 失败会再次自动暂停投递。`,
+          'warn',
+        ),
+      )
+    } else if ((failureGuardrail?.totalFailures ?? 0) > 0) {
+      warnings.push(
+        createWarning(
+          'failure-count-progress',
+          `当前批次累计失败 ${failureGuardrail?.totalFailures} 次；达到 ${failureGuardrail?.totalLimit} 次后会自动暂停投递。`,
+          'info',
+        ),
+      )
+    }
+
+    if ((failureGuardrail?.consecutiveFailures ?? 0) > 0) {
+      warnings.push(
+        createWarning(
+          'consecutive-failure-streak',
+          `当前已连续失败 ${failureGuardrail?.consecutiveFailures} 次；达到 ${failureGuardrail?.limit} 次后会自动暂停投递。`,
+          'info',
+        ),
+      )
+    }
+  }
+
+  if (triggeredRunDeliveryGuardrail) {
     warnings.push(
       createWarning(
-        'consecutive-failure-streak',
-        `当前已连续失败 ${failureGuardrail?.consecutiveFailures} 次；达到 ${failureGuardrail?.limit} 次后会自动暂停投递。`,
+        triggeredRunDeliveryGuardrail.code,
+        triggeredRunDeliveryGuardrail.message,
+        'warn',
+      ),
+    )
+  } else if (runReached) {
+    warnings.push(
+      createWarning(
+        runDeliveryGuardrailCode,
+        `本轮投递已达到上限 ${runDeliveryGuardrailLimit}，请先 stop 当前 run，再重新 start 新的一轮。`,
+        'warn',
+      ),
+    )
+  } else if (!reached && remainingInRun > 0 && remainingInRun <= 3) {
+    warnings.push(
+      createWarning(
+        'run-delivery-limit-nearby',
+        `本轮剩余投递额度仅 ${remainingInRun} 次；达到 ${runDeliveryGuardrailLimit} 次后会自动暂停当前 run。`,
         'info',
       ),
     )
@@ -238,6 +318,10 @@ export function buildAgentRiskSummary(options: {
       limit: deliveryLimit,
       reached,
       remainingToday,
+      remainingInRun,
+      runLimit: runDeliveryGuardrailLimit,
+      runReached,
+      usedInRun,
       usedToday,
     },
     guardrails: {

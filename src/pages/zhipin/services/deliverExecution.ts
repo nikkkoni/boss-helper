@@ -40,6 +40,15 @@ export interface DeliverExecutionDependencies {
       consecutiveFailures: number
       limit: number
       message: string
+      source: 'consecutive-failure-limit' | 'failure-count-limit'
+      totalFailures: number
+    } | null
+    registerRunDeliveryGuardrail: (jobId: string | undefined) => {
+      code: string
+      deliveredCount: number
+      limit: number
+      message: string
+      source: 'run-delivery-limit'
     } | null
   }
   cachePipelineResultFn: typeof cachePipelineResult
@@ -121,6 +130,8 @@ export async function handleDeliverSuccess(options: {
     }),
   )
 
+  const runDeliveryGuardrail = deps.agentRuntime.registerRunDeliveryGuardrail(data.encryptJobId)
+
   if (deps.statistics.todayData.success >= deps.conf.formData.deliveryLimit.value) {
     const msg = `投递到达上限 ${deps.conf.formData.deliveryLimit.value}，已暂停投递`
     deps.conf.formData.notification.value && (await notification(msg))
@@ -139,6 +150,33 @@ export async function handleDeliverSuccess(options: {
         detail: {
           source: 'delivery-limit',
           limit: deps.conf.formData.deliveryLimit.value,
+        },
+      }),
+    )
+    return {
+      stopResult: result,
+    }
+  }
+
+  if (runDeliveryGuardrail) {
+    deps.conf.formData.notification.value && (await notification(runDeliveryGuardrail.message))
+    ElMessage.info(runDeliveryGuardrail.message)
+    deps.common.deliverStop = true
+    emitBossHelperAgentEvent(
+      createBossHelperAgentEvent({
+        type: 'limit-reached',
+        state: 'pausing',
+        message: runDeliveryGuardrail.message,
+        job: toAgentCurrentJob(data),
+        progress: {
+          current: deps.counters.current + 1,
+          total: result.candidateCount,
+        },
+        detail: {
+          source: runDeliveryGuardrail.source,
+          deliveredCount: runDeliveryGuardrail.deliveredCount,
+          guardrailCode: runDeliveryGuardrail.code,
+          guardrailLimit: runDeliveryGuardrail.limit,
         },
       }),
     )
@@ -247,8 +285,9 @@ export async function handleDeliverFailure(options: {
           total: result.candidateCount,
         },
         detail: {
-          source: 'consecutive-failure-limit',
+          source: failureGuardrail.source,
           consecutiveFailures: failureGuardrail.consecutiveFailures,
+          failureCount: failureGuardrail.totalFailures,
           guardrailCode: failureGuardrail.code,
           guardrailLimit: failureGuardrail.limit,
           lastFailureCode: deliverError.name,

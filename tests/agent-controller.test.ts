@@ -13,7 +13,7 @@ function createControllerDeps() {
 
   const batchRunner = {
     pauseBatch: vi.fn(async () => response('pause')),
-    resumeBatch: vi.fn(async () => response('resume')),
+    resumeBatch: vi.fn(async (payload?: unknown) => response('resume', payload)),
     startBatch: vi.fn(async (payload?: unknown) => response('start', payload)),
     stats: vi.fn(async () => response('stats')),
     stopBatch: vi.fn(async () => response('stop')),
@@ -62,7 +62,7 @@ describe('createAgentController', () => {
         code: 'start',
         command: 'start',
         handler: deps.batchRunner.startBatch,
-        payload: { jobIds: ['job-1'] },
+        payload: { confirmHighRisk: true, jobIds: ['job-1'] },
       },
       {
         code: 'pause',
@@ -74,7 +74,7 @@ describe('createAgentController', () => {
         code: 'resume',
         command: 'resume',
         handler: deps.batchRunner.resumeBatch,
-        payload: undefined,
+        payload: { confirmHighRisk: true },
       },
       {
         code: 'resume.get',
@@ -200,10 +200,16 @@ describe('createAgentController', () => {
     const deps = createControllerDeps()
     const controller = createAgentController(deps)
 
-    await expect(controller.start({ jobIds: ['job-3'] })).resolves.toEqual(
+    await expect(controller.start({ confirmHighRisk: true, jobIds: ['job-3'] })).resolves.toEqual(
       expect.objectContaining({
         code: 'start',
-        data: { jobIds: ['job-3'] },
+        data: { confirmHighRisk: true, jobIds: ['job-3'] },
+      }),
+    )
+    await expect(controller.resume({ confirmHighRisk: true })).resolves.toEqual(
+      expect.objectContaining({
+        code: 'resume',
+        data: { confirmHighRisk: true },
       }),
     )
     await expect(controller.resumeGet()).resolves.toEqual(
@@ -228,7 +234,8 @@ describe('createAgentController', () => {
       expect.objectContaining({ code: 'jobs.refresh' }),
     )
 
-    expect(deps.batchRunner.startBatch).toHaveBeenCalledWith({ jobIds: ['job-3'] })
+    expect(deps.batchRunner.startBatch).toHaveBeenCalledWith({ confirmHighRisk: true, jobIds: ['job-3'] })
+    expect(deps.batchRunner.resumeBatch).toHaveBeenCalledWith({ confirmHighRisk: true })
     expect(deps.queries.resumeGet).toHaveBeenCalledTimes(1)
     expect(deps.queries.readinessGet).toHaveBeenCalledTimes(1)
     expect(deps.queries.planPreview).toHaveBeenCalledWith({ jobIds: ['job-9'] })

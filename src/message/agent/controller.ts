@@ -9,6 +9,7 @@ import type {
   BossHelperAgentLogsQueryPayload,
   BossHelperAgentNavigatePayload,
   BossHelperAgentPlanPreviewPayload,
+  BossHelperAgentResumePayload,
   BossHelperAgentRequest,
   BossHelperAgentStartPayload,
 } from './commands'
@@ -60,7 +61,7 @@ export interface BossHelperAgentController {
   ) => Promise<BossHelperAgentResponse<BossHelperAgentChatListData>>
   chatSend: (payload: BossHelperAgentChatSendPayload) => Promise<BossHelperAgentResponse>
   pause: () => Promise<BossHelperAgentResponse>
-  resume: () => Promise<BossHelperAgentResponse>
+  resume: (payload?: BossHelperAgentResumePayload) => Promise<BossHelperAgentResponse>
   resumeGet: () => Promise<BossHelperAgentResponse<BossHelperAgentResumeData>>
   start: (payload?: BossHelperAgentStartPayload) => Promise<BossHelperAgentResponse>
   stop: () => Promise<BossHelperAgentResponse>

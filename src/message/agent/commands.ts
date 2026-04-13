@@ -50,10 +50,15 @@ export interface BossHelperAgentBridgeRequest {
 }
 
 export interface BossHelperAgentStartPayload {
+  confirmHighRisk?: boolean
   configPatch?: BossHelperAgentConfigPatch
   jobIds?: string[]
   persistConfig?: boolean
   resetFiltered?: boolean
+}
+
+export interface BossHelperAgentResumePayload {
+  confirmHighRisk: boolean
 }
 
 export interface BossHelperAgentConfigUpdatePayload {
@@ -94,6 +99,7 @@ export interface BossHelperAgentJobReviewPayload {
 }
 
 export interface BossHelperAgentChatSendPayload {
+  confirmHighRisk: boolean
   content: string
   form_uid?: number | string
   to_name: string
@@ -121,7 +127,7 @@ export interface BossHelperAgentLogsQueryPayload {
 export interface BossHelperAgentRequestPayloadMap {
   start: BossHelperAgentStartPayload | undefined
   pause: undefined
-  resume: undefined
+  resume: BossHelperAgentResumePayload | undefined
   'resume.get': undefined
   stop: undefined
   stats: undefined
