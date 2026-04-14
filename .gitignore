@@ -44,3 +44,14 @@ logapi.zhipin.*.pem
 
 .boss-helper-agent-token
 .boss-helper-agent-cert.json
+.boss-helper-agent-bridge.log
+.boss-helper-agent-bridge.pid
+
+# Local tool config
+opencode.json
+
+# Local dev notes
+todo.md
+
+# TypeScript incremental build
+*.tsbuildinfo
