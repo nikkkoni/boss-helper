@@ -179,6 +179,10 @@ Phase 7 的首个增量则把安全护栏摘要也接入了 `stats`：`boss_help
 
 同样地，外部 `start` / `resume` 入口现在也需要显式确认：通过 bridge / CLI / MCP 调用时，必须在 payload 中传 `confirmHighRisk=true`，否则不会真正启动或恢复 run，而是直接返回 `high-risk-action-confirmation-required`。这项限制只作用于外部自动化入口，不影响页面面板里的手动“开始 / 继续”按钮。
 
+为了避免外部 Agent 在“要不要真的执行”这一步只看到一条拒绝文案，`start` / `resume` 在未显式确认时现在还会在响应 `data.preflight` 中附带一份结构化执行前摘要：包含当前命令、目标岗位数、当前/可恢复 run、剩余投递容量，以及基于当前配置（对 `start` 还会叠加 `configPatch`）计算出的风险摘要。这样外部 Agent 可以先读同一条阻断响应里的 `preflight`，再决定是否真的提交 `confirmHighRisk=true`。
+
+`config.update` 现在也补上了更细粒度的聊天自动化护栏：如果 patch 会启用 `aiReply`，或修改一个已经启用的 `aiReply` 配置，外部 bridge / CLI / MCP 调用同样必须显式传 `confirmHighRisk=true`，否则会直接拒绝执行。这样外部 Agent 不能在未确认风险的前提下，先把 AI 自动回复悄悄打开，再等待后续运行链路触发聊天自动化。
+
 ## 本地开发流程
 
 ### 启动开发模式

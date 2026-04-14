@@ -132,6 +132,7 @@ export async function startAgentBridge(
 }
 
 export async function runAgentCli<T = Record<string, unknown>>(args: {
+  allowFailure?: boolean
   command: string
   env?: NodeJS.ProcessEnv
   payload?: unknown
@@ -150,17 +151,36 @@ export async function runAgentCli<T = Record<string, unknown>>(args: {
     cliArgs.push('--payload', JSON.stringify(args.payload))
   }
 
-  const result = await execFileAsync(process.execPath, cliArgs, {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      ...args.env,
-    },
+  const parseResult = (stdout: string, stderr: string) => ({
+    stdout,
+    stderr,
+    data: JSON.parse(stdout) as T,
   })
 
-  return {
-    ...result,
-    data: JSON.parse(result.stdout) as T,
+  try {
+    const result = await execFileAsync(process.execPath, cliArgs, {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        ...args.env,
+      },
+    })
+
+    return parseResult(result.stdout, result.stderr)
+  } catch (error) {
+    if (!args.allowFailure) {
+      throw error
+    }
+
+    const result = error as Error & {
+      stderr?: string
+      stdout?: string
+    }
+    if (typeof result.stdout !== 'string' || typeof result.stderr !== 'string') {
+      throw error
+    }
+
+    return parseResult(result.stdout, result.stderr)
   }
 }
 

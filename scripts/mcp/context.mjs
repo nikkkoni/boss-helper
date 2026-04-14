@@ -537,7 +537,6 @@ export function createAgentContextService(bridgeClient) {
       health,
       status,
     }
-
     for (const section of sections) {
       switch (section) {
         case 'readiness':

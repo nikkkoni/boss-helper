@@ -28,6 +28,21 @@ const deliveryControlMocks = vi.hoisted(() => ({
   lastRunnerOptions: undefined as DeliveryControlRunnerOptions | undefined,
   useChat: vi.fn(),
   isSupportedSiteUrl: vi.fn(() => true),
+  deepmerge: vi.fn((target: Record<string, any>, source: Record<string, any>) => {
+    const output = target
+    const mergeInto = (left: Record<string, any>, right: Record<string, any>) => {
+      for (const [key, value] of Object.entries(right)) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          left[key] ??= {}
+          mergeInto(left[key], value)
+        } else {
+          left[key] = value
+        }
+      }
+      return left
+    }
+    return mergeInto(output, source)
+  }),
   jsonClone: vi.fn((value: unknown) => structuredClone(value)),
   createBossHelperAgentResponse: vi.fn((ok: boolean, code: string, message: string, data?: unknown, meta?: Record<string, unknown>) => ({
     ok,
@@ -42,6 +57,40 @@ const deliveryControlMocks = vi.hoisted(() => ({
   isBossHelperSameOriginWindowMessage: vi.fn(() => true),
   postBossHelperWindowMessage: vi.fn(),
   confStore: {
+    formData: {
+      aiReply: {
+        enable: false,
+        prompt: '',
+      },
+      deliveryLimit: {
+        value: 120,
+      },
+      friendStatus: {
+        value: true,
+      },
+      notification: {
+        value: true,
+      },
+      sameCompanyFilter: {
+        value: true,
+      },
+      sameHrFilter: {
+        value: true,
+      },
+      useCache: {
+        value: true,
+      },
+      aiFiltering: {
+        enable: false,
+        externalMode: false,
+      },
+      aiGreeting: {
+        enable: false,
+      },
+      customGreeting: {
+        enable: false,
+      },
+    },
     isLoaded: false,
     confInit: vi.fn(async () => {
       deliveryControlMocks.confStore.isLoaded = true
@@ -49,6 +98,13 @@ const deliveryControlMocks = vi.hoisted(() => ({
   },
   agentRuntime: {
     ensureRunSummaryLoaded: vi.fn(async () => undefined),
+    getFailureGuardrailSnapshot: vi.fn(() => ({
+      consecutiveFailures: 0,
+      limit: 3,
+      totalFailures: 0,
+      totalLimit: 5,
+      triggered: null,
+    })),
     recordEvent: vi.fn(async () => undefined),
   },
   useLog: vi.fn(),
@@ -60,7 +116,80 @@ const deliveryControlMocks = vi.hoisted(() => ({
     startBatch: vi.fn(async () => ({ code: 'start' })),
     stats: vi.fn(async () => ({ code: 'stats' })),
     stopBatch: vi.fn(async () => ({ code: 'stop' })),
-    getStatsData: vi.fn(async () => ({ progress: { state: 'idle' } })),
+    getStatsData: vi.fn(async () => ({
+      historyData: [],
+      progress: {
+        activeTargetJobIds: [],
+        current: 0,
+        currentJob: null,
+        locked: false,
+        message: '未开始',
+        page: 1,
+        pageSize: 15,
+        remainingTargetJobIds: [],
+        state: 'idle',
+        stopRequested: false,
+        total: 0,
+      },
+      risk: {
+        automation: {
+          aiFilteringEnabled: false,
+          aiFilteringExternal: false,
+          aiGreetingEnabled: false,
+          aiReplyEnabled: false,
+          customGreetingEnabled: false,
+        },
+        delivery: {
+          limit: 120,
+          reached: false,
+          remainingToday: 120,
+          remainingInRun: 20,
+          runLimit: 20,
+          runReached: false,
+          usedInRun: 0,
+          usedToday: 0,
+        },
+        guardrails: {
+          friendStatus: true,
+          notification: true,
+          sameCompanyFilter: true,
+          sameHrFilter: true,
+          useCache: true,
+        },
+        level: 'low',
+        observed: {
+          deliveredToday: 0,
+          processedToday: 0,
+          repeatFilteredToday: 0,
+        },
+        runtime: {
+          state: 'idle',
+          stopRequested: false,
+        },
+        warnings: [],
+      },
+      run: {
+        current: null,
+        recent: null,
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 0,
+        total: 0,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        salaryRange: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 0,
+        jobAddress: 0,
+        amap: 0,
+      },
+    })),
   },
   useAgentBatchRunner: vi.fn((options: DeliveryControlRunnerOptions) => {
     deliveryControlMocks.lastRunnerOptions = options
@@ -98,6 +227,7 @@ vi.mock('@/site-adapters', () => ({
 }))
 
 vi.mock('@/utils/deepmerge', () => ({
+  default: deliveryControlMocks.deepmerge,
   jsonClone: deliveryControlMocks.jsonClone,
 }))
 
@@ -178,6 +308,7 @@ describe('useDeliveryControl', () => {
     deliveryControlMocks.isSupportedSiteUrl.mockReset()
     deliveryControlMocks.isSupportedSiteUrl.mockReturnValue(true)
     deliveryControlMocks.jsonClone.mockClear()
+    deliveryControlMocks.deepmerge.mockClear()
     deliveryControlMocks.createBossHelperAgentResponse.mockClear()
     deliveryControlMocks.isBossHelperAgentBridgeRequest.mockClear()
     deliveryControlMocks.isBossHelperSameOriginWindowMessage.mockReset()
@@ -185,7 +316,10 @@ describe('useDeliveryControl', () => {
     deliveryControlMocks.postBossHelperWindowMessage.mockClear()
     deliveryControlMocks.confStore.isLoaded = false
     deliveryControlMocks.confStore.confInit.mockClear()
+    deliveryControlMocks.confStore.formData.aiReply.enable = false
+    deliveryControlMocks.confStore.formData.aiReply.prompt = ''
     deliveryControlMocks.agentRuntime.ensureRunSummaryLoaded.mockClear()
+    deliveryControlMocks.agentRuntime.getFailureGuardrailSnapshot.mockClear()
     deliveryControlMocks.agentRuntime.recordEvent.mockClear()
     deliveryControlMocks.useLog.mockClear()
     deliveryControlMocks.useAgentBatchRunner.mockClear()
@@ -206,7 +340,80 @@ describe('useDeliveryControl', () => {
     deliveryControlMocks.runner.startBatch.mockResolvedValue({ code: 'start' })
     deliveryControlMocks.runner.stats.mockResolvedValue({ code: 'stats' })
     deliveryControlMocks.runner.stopBatch.mockResolvedValue({ code: 'stop' })
-    deliveryControlMocks.runner.getStatsData.mockResolvedValue({ progress: { state: 'idle' } })
+    deliveryControlMocks.runner.getStatsData.mockResolvedValue({
+      historyData: [],
+      progress: {
+        activeTargetJobIds: [],
+        current: 0,
+        currentJob: null,
+        locked: false,
+        message: '未开始',
+        page: 1,
+        pageSize: 15,
+        remainingTargetJobIds: [],
+        state: 'idle',
+        stopRequested: false,
+        total: 0,
+      },
+      risk: {
+        automation: {
+          aiFilteringEnabled: false,
+          aiFilteringExternal: false,
+          aiGreetingEnabled: false,
+          aiReplyEnabled: false,
+          customGreetingEnabled: false,
+        },
+        delivery: {
+          limit: 120,
+          reached: false,
+          remainingToday: 120,
+          remainingInRun: 20,
+          runLimit: 20,
+          runReached: false,
+          usedInRun: 0,
+          usedToday: 0,
+        },
+        guardrails: {
+          friendStatus: true,
+          notification: true,
+          sameCompanyFilter: true,
+          sameHrFilter: true,
+          useCache: true,
+        },
+        level: 'low',
+        observed: {
+          deliveredToday: 0,
+          processedToday: 0,
+          repeatFilteredToday: 0,
+        },
+        runtime: {
+          state: 'idle',
+          stopRequested: false,
+        },
+        warnings: [],
+      },
+      run: {
+        current: null,
+        recent: null,
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 0,
+        total: 0,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        salaryRange: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 0,
+        jobAddress: 0,
+        amap: 0,
+      },
+    })
 
     for (const fn of Object.values(deliveryControlMocks.queries)) {
       fn.mockClear()
@@ -302,7 +509,9 @@ describe('useDeliveryControl', () => {
       false,
       'validation-failed',
       '配置校验失败',
-      { progress: { state: 'idle' } },
+      expect.objectContaining({
+        progress: expect.objectContaining({ state: 'idle' }),
+      }),
       { retryable: false, suggestedAction: 'fix-input' },
     )
   })
@@ -315,11 +524,36 @@ describe('useDeliveryControl', () => {
       control.controller.handle({
         channel: BOSS_HELPER_AGENT_CHANNEL,
         command: 'start',
-        payload: { jobIds: ['job-1'] },
+        payload: {
+          configPatch: {
+            aiReply: {
+              enable: true,
+              prompt: 'reply prompt',
+            },
+          },
+          jobIds: ['job-1'],
+        },
       }),
     ).resolves.toEqual(
       expect.objectContaining({
         code: 'high-risk-action-confirmation-required',
+        data: expect.objectContaining({
+          preflight: expect.objectContaining({
+            command: 'start',
+            configPatchKeys: ['aiReply'],
+            reason: '本次 start 的有效配置将启用 AI 自动回复，必须在显式确认高风险后才允许继续。',
+            requiresConfirmHighRisk: true,
+            risk: expect.objectContaining({
+              automation: expect.objectContaining({
+                aiReplyEnabled: true,
+              }),
+            }),
+            summary: expect.objectContaining({
+              remainingDeliveryCapacity: 120,
+              targetJobCount: 1,
+            }),
+          }),
+        }),
         ok: false,
         retryable: false,
         suggestedAction: 'fix-input',
@@ -335,6 +569,13 @@ describe('useDeliveryControl', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         code: 'high-risk-action-confirmation-required',
+        data: expect.objectContaining({
+          preflight: expect.objectContaining({
+            command: 'resume',
+            configPatchKeys: [],
+            requiresConfirmHighRisk: true,
+          }),
+        }),
         ok: false,
         retryable: false,
         suggestedAction: 'fix-input',

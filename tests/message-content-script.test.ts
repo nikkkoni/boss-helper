@@ -271,4 +271,5 @@ describe('message/contentScript', () => {
     )
     expect(postMessageSpy).toHaveBeenCalledTimes(3)
   })
+
 })

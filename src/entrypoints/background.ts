@@ -23,6 +23,10 @@ const eventPorts = new Set<Browser.runtime.Port>()
 const trustedAgentRelayHosts = new Set(['localhost', '127.0.0.1'])
 const AGENT_RELAY_KEEPALIVE_TYPE = '__boss_helper_agent_keepalive__'
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object'
+}
+
 function isTrustedAgentRelaySender(url?: string | null) {
   if (!url) {
     return false

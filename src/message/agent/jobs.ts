@@ -204,8 +204,24 @@ export interface BossHelperAgentRiskSummary {
   warnings: BossHelperAgentRiskWarning[]
 }
 
+export interface BossHelperAgentExecutionPreflight {
+  command: 'resume' | 'start'
+  configPatchKeys: string[]
+  reason: string
+  requiresConfirmHighRisk: boolean
+  risk: BossHelperAgentRiskSummary
+  summary: {
+    currentRunId: string | null
+    currentRunState: BossHelperAgentRunState | null
+    remainingDeliveryCapacity: number
+    resumableRun: boolean
+    targetJobCount: number
+  }
+}
+
 export interface BossHelperAgentStatsData {
   historyData: Statistics[]
+  preflight?: BossHelperAgentExecutionPreflight
   progress: BossHelperAgentProgress
   risk: BossHelperAgentRiskSummary
   run: BossHelperAgentRunSummaryData

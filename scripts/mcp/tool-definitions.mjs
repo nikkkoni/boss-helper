@@ -311,10 +311,11 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
     },
     {
       name: 'boss_helper_config_update',
-      description: '更新运行时配置，返回字段级校验错误或更新结果。',
+      description: '更新运行时配置，返回字段级校验错误或更新结果；若 patch 会启用或修改已启用的 aiReply，则需显式传 confirmHighRisk=true。',
       inputSchema: {
         type: 'object',
         properties: {
+          confirmHighRisk: { type: 'boolean' },
           configPatch: { type: 'object' },
           persist: { type: 'boolean' },
           timeoutMs: { type: 'number' },

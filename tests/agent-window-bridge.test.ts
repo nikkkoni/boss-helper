@@ -218,4 +218,5 @@ describe('registerWindowAgentBridge', () => {
     await Promise.resolve()
     expect(handle).not.toHaveBeenCalled()
   })
+
 })

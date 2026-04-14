@@ -62,6 +62,7 @@ export interface BossHelperAgentResumePayload {
 }
 
 export interface BossHelperAgentConfigUpdatePayload {
+  confirmHighRisk?: boolean
   configPatch: BossHelperAgentConfigPatch
   persist?: boolean
 }

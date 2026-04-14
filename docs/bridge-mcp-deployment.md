@@ -183,8 +183,6 @@ pnpm agent:doctor
 
 最新三层主动护栏分别是“连续失败自动暂停”“累计失败自动暂停”和“每轮投递上限自动暂停”：当批次连续 3 次出现非 warning 失败、当前批次累计 5 次出现非 warning 失败，或单次 run 成功投递达到 20 次时，页面侧都会自动把当前 run 切到暂停收尾流程，并发出 `limit-reached` 事件，`detail.guardrailCode` 固定为 `consecutive-failure-auto-stop`、`failure-count-auto-stop` 或 `run-delivery-limit-reached`。同一原因也会写入 `stats.data.run.current/recent.lastError` 与 `stats.data.risk.warnings`；第三种场景还会同步更新 `stats.data.run.current/recent.deliveredJobIds` 与 `stats.data.risk.delivery.usedInRun` / `remainingInRun` / `runReached`，方便外部 Agent 在 bridge、CLI、MCP 三条链路上都用同一个结构化信号判断“先排障再 resume”，还是“先 stop 再 start 新一轮”。
 
-如果你刚刚更新了仓库并重新构建扩展，但浏览器里的 unpacked extension 还没有 reload，那么 `stats` 可能仍返回旧结构，看不到 `run` 字段或 `risk.delivery.runLimit` / `usedInRun` / `remainingInRun` / `runReached`。这不是 bridge/MCP 失效，而是当前 Boss 页仍在运行旧 build，先重新加载扩展并刷新页面再验证。
-
 除 `readiness.get` 外，bridge 现在也会为关键命令失败补统一错误元数据：`code`、`message`、`retryable`、`suggestedAction`。这意味着 CLI、MCP 和直接 HTTP 调用在遇到 `relay-not-connected`、`bridge-timeout`、`page-timeout`、`unsupported-page`、`navigate-invalid`、`job-detail-load-failed`、`event-timeout`、`events-history-unavailable`、`empty-config-patch`、`validation-failed`、`already-running`、`paused` 等失败时，不需要再依赖中文文案判断是否该重试、刷新页面、修参数、恢复批次或重连 relay。
 
 其中命令级 `suggestedAction` 当前可能出现：`navigate`、`wait-login`、`refresh-page`、`stop`、`retry`、`fix-input`、`reconnect-relay`、`resume`。如果你只想判断页面 readiness，仍应优先读 `readiness.get` 或 MCP 的 `boss_helper_agent_context.readiness`；如果你在处理命令失败恢复，则优先看对应错误 envelope 里的 `retryable` 和 `suggestedAction`。当 `suggestedAction=refresh-page` 且当前仍位于受支持职位页时，优先调用 `jobs.refresh` 或 MCP 的 `boss_helper_jobs_refresh`，而不是重新拼装一次 `navigate` 参数。
@@ -192,6 +190,10 @@ pnpm agent:doctor
 另一个默认保守的高风险护栏是 `chat.send`：通过 bridge / CLI / MCP 调用时，必须在 payload 中显式传 `confirmHighRisk=true`，否则会直接返回 `high-risk-action-confirmation-required` / `suggestedAction=fix-input`。这项限制只影响外部自动化入口，不影响用户在 Boss 页面里手动聊天。
 
 现在 `start` 与 `resume` 也采用同样的外部确认边界：bridge / CLI / MCP 调用时必须显式传 `confirmHighRisk=true`，否则不会真正启动或恢复 run，而是返回 `high-risk-action-confirmation-required`。这项限制同样只针对外部入口，不影响页面内的手动“开始 / 继续”按钮。
+
+此外，这两类阻断响应现在还会在 `data.preflight` 中附带结构化执行前摘要：至少包含当前命令、目标岗位数、当前/可恢复 run、剩余投递容量，以及基于当前配置计算出来的 `risk`。对 `start` 而言，如果请求里带了 `configPatch`，这个 preflight 会按补丁后的有效配置重新计算风险；例如外部 Agent 试图通过 `start.configPatch` 打开 `aiReply` 时，即使 `confirmHighRisk=false`，也能先从同一条阻断响应里看到 `preflight.risk.automation.aiReplyEnabled=true`，而不必真的启动 run 才发现风险面。
+
+`config.update` 则补上了更细粒度的聊天自动化护栏：如果 patch 会启用 `aiReply`，或修改一个已经启用的 `aiReply` 配置，外部 bridge / CLI / MCP 调用也必须显式传 `confirmHighRisk=true`，否则会直接返回 `high-risk-action-confirmation-required` / `suggestedAction=fix-input`。这样外部 Agent 不能先静默放开 AI 自动回复，再让后续 run 在页面里自动触发聊天回复。
 
 ## 环境变量
 

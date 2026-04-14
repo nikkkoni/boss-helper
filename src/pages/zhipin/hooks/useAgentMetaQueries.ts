@@ -9,6 +9,7 @@ import {
   type BossHelperAgentPlanPreviewPayload,
   type BossHelperAgentReadinessData,
   type BossHelperAgentResponse,
+  type BossHelperAgentResponseMeta,
   type BossHelperAgentResumeData,
   type BossHelperAgentValidationError,
 } from '@/message/agent'
@@ -22,6 +23,24 @@ import { resolveBossHelperAgentCommandFailureMeta } from './agentCommandMeta'
 import { collectAgentPageReadiness } from './agentReadiness'
 import type { UseAgentQueriesOptions } from './agentQueryShared'
 import { previewAgentPlan } from '../services/agentPlanPreview'
+
+function buildHighRiskAiReplyConfigMessage() {
+  return 'config.update 涉及启用或修改已启用的 aiReply（AI 自动回复），外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true 后才会执行'
+}
+
+function patchRequiresHighRiskAiReplyConfirmation(
+  currentConfig: BossHelperAgentConfigSnapshot['config'],
+  payload: BossHelperAgentConfigUpdatePayload,
+) {
+  const aiReplyPatch = payload.configPatch.aiReply
+  if (!aiReplyPatch || typeof aiReplyPatch !== 'object') {
+    return false
+  }
+
+  const currentEnabled = currentConfig.aiReply?.enable === true
+  const nextEnabled = aiReplyPatch.enable === true || (aiReplyPatch.enable == null && currentEnabled)
+  return nextEnabled
+}
 
 export function useAgentMetaQueries(options: UseAgentQueriesOptions) {
   const conf = useConf()
@@ -38,12 +57,19 @@ export function useAgentMetaQueries(options: UseAgentQueriesOptions) {
     code: string,
     message: string,
     errors?: BossHelperAgentValidationError[],
+    meta?: BossHelperAgentResponseMeta,
   ): Promise<BossHelperAgentResponse<BossHelperAgentConfigUpdateData>> {
     await options.ensureStoresLoaded()
-    return createBossHelperAgentResponse(false, code, message, {
-      config: conf.getRuntimeConfigSnapshot(),
-      errors,
-    })
+    return createBossHelperAgentResponse(
+      false,
+      code,
+      message,
+      {
+        config: conf.getRuntimeConfigSnapshot(),
+        errors,
+      },
+      meta,
+    )
   }
 
   async function resumeGet() {
@@ -163,6 +189,19 @@ export function useAgentMetaQueries(options: UseAgentQueriesOptions) {
     const validationErrors = validateConfigPatch(payload.configPatch)
     if (validationErrors.length > 0) {
       return configFail('validation-failed', '配置校验失败', validationErrors)
+    }
+
+    const currentConfig = conf.getRuntimeConfigSnapshot()
+    if (patchRequiresHighRiskAiReplyConfirmation(currentConfig, payload) && payload.confirmHighRisk !== true) {
+      return configFail(
+        'high-risk-action-confirmation-required',
+        buildHighRiskAiReplyConfigMessage(),
+        undefined,
+        {
+          retryable: false,
+          suggestedAction: 'fix-input',
+        },
+      )
     }
 
     const config = await conf.applyRuntimeConfigPatch(payload.configPatch, {

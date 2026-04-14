@@ -55,6 +55,15 @@ describe('agent mcp server catalog', () => {
           }),
         }),
       )
+      expect(toolList.find((tool) => tool.name === 'boss_helper_config_update')).toEqual(
+        expect.objectContaining({
+          inputSchema: expect.objectContaining({
+            properties: expect.objectContaining({
+              confirmHighRisk: expect.any(Object),
+            }),
+          }),
+        }),
+      )
 
       const bootstrapGuideCall = await server.client.request('tools/call', {
         arguments: {},
