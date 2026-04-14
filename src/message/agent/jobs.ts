@@ -1,6 +1,7 @@
 import type { Statistics } from '@/types/formData'
 
 import type { BossHelperAgentSuggestedAction } from '../../../shared/agentProtocol.js'
+import type { BossHelperAgentAudit } from '../../../shared/agentAudit.js'
 
 export type BossHelperAgentJobPipelineStatus =
   | 'pending'
@@ -57,6 +58,7 @@ export interface BossHelperAgentJobDetailData {
 }
 
 export interface BossHelperAgentLogEntry {
+  audit?: BossHelperAgentAudit | null
   aiScore?: Record<string, unknown>
   brandName: string
   encryptJobId: string
@@ -65,6 +67,23 @@ export interface BossHelperAgentLogEntry {
   jobName: string
   message?: string
   pipelineError?: Record<string, unknown>
+  review?: {
+    finalDecisionAt?: string
+    handledBy?: 'external-agent' | 'system'
+    queueDepth?: number
+    queueOverflowLimit?: number
+    reason?: string
+    reasonCode?: string
+    replacementCause?: string
+    replacementRunId?: string | null
+    rating?: number
+    status: 'pending' | 'accepted' | 'rejected'
+    source?: 'external-ai-review'
+    timeoutMs?: number
+    timeoutSource?: string
+    updatedAt?: string
+  } | null
+  runId?: string | null
   status: string
   timestamp: string
 }
@@ -196,6 +215,12 @@ export interface BossHelperAgentRiskSummary {
     deliveredToday: number
     processedToday: number
     repeatFilteredToday: number
+    sessionDuplicates: {
+      communicated: number
+      other: number
+      sameCompany: number
+      sameHr: number
+    }
   }
   runtime: {
     state: BossHelperAgentState

@@ -4,8 +4,11 @@ import type {
   BossHelperAgentRiskSummary,
   BossHelperAgentRiskWarning,
 } from '@/message/agent'
+import type { LogEntry } from '@/stores/log'
 import {
+  deliveryLimitGuardrailCode,
   getRunDeliveredCount,
+  isDeliveryLimitReached,
   runDeliveryGuardrailCode,
   runDeliveryGuardrailLimit,
 } from '@/pages/zhipin/shared/guardrails'
@@ -32,6 +35,7 @@ type RuntimeRunSummary = {
   } | null
 } | null | undefined
 type RuntimeStatistics = Partial<Statistics> | null | undefined
+type RuntimeLogEntry = Pick<LogEntry, 'createdAt' | 'message' | 'state_name'>
 type RuntimeFailureGuardrail = {
   consecutiveFailures: number
   limit: number
@@ -119,23 +123,80 @@ function resolveRunDeliveryGuardrail(run: RuntimeRunSummary) {
   }
 }
 
+function resolveDailyDeliveryGuardrail(run: RuntimeRunSummary) {
+  const candidate = run?.current ?? (run?.recent?.state === 'paused' ? run.recent : null)
+  if (candidate?.lastError?.code !== deliveryLimitGuardrailCode) {
+    return null
+  }
+  if (typeof candidate.lastError.message !== 'string' || !candidate.lastError.message) {
+    return null
+  }
+  return {
+    code: candidate.lastError.code,
+    message: candidate.lastError.message,
+  }
+}
+
+function buildSessionDuplicateSummary(logs: RuntimeLogEntry[] | null | undefined, todayDate: string) {
+  const summary = {
+    communicated: 0,
+    other: 0,
+    sameCompany: 0,
+    sameHr: 0,
+  }
+
+  if (!Array.isArray(logs) || !todayDate) {
+    return summary
+  }
+
+  for (const entry of logs) {
+    if (entry?.state_name !== '重复沟通') {
+      continue
+    }
+
+    if (typeof entry.createdAt !== 'string' || !entry.createdAt.startsWith(todayDate)) {
+      continue
+    }
+
+    const message = typeof entry.message === 'string' ? entry.message : ''
+    if (message.includes('已经沟通过')) {
+      summary.communicated += 1
+      continue
+    }
+    if (message.includes('相同公司已投递')) {
+      summary.sameCompany += 1
+      continue
+    }
+    if (/相同\s*hr已投递/i.test(message)) {
+      summary.sameHr += 1
+      continue
+    }
+
+    summary.other += 1
+  }
+
+  return summary
+}
+
 export function buildAgentRiskSummary(options: {
   config: RuntimeFormData
   failureGuardrail?: RuntimeFailureGuardrail
+  logs?: RuntimeLogEntry[]
   progress: RuntimeProgress
   run?: RuntimeRunSummary
   todayData: RuntimeStatistics
 }): BossHelperAgentRiskSummary {
-  const { config, failureGuardrail, progress, run, todayData } = options
+  const { config, failureGuardrail, logs, progress, run, todayData } = options
 
   const deliveryLimit = toNonNegativeInteger(config?.deliveryLimit?.value)
   const usedToday = toNonNegativeInteger(todayData?.success)
   const remainingToday = Math.max(deliveryLimit - usedToday, 0)
-  const reached = deliveryLimit > 0 && usedToday >= deliveryLimit
+  const reached = isDeliveryLimitReached(deliveryLimit, usedToday)
   const currentOrResumableRun = run?.current ?? (run?.recent?.state === 'paused' ? run.recent : null)
   const usedInRun = getRunDeliveredCount(currentOrResumableRun)
   const remainingInRun = Math.max(runDeliveryGuardrailLimit - usedInRun, 0)
   const runReached = runDeliveryGuardrailLimit > 0 && usedInRun >= runDeliveryGuardrailLimit
+  const sessionDuplicates = buildSessionDuplicateSummary(logs, typeof todayData?.date === 'string' ? todayData.date : '')
 
   const sameCompanyFilter = toBoolean(config?.sameCompanyFilter?.value)
   const sameHrFilter = toBoolean(config?.sameHrFilter?.value)
@@ -230,7 +291,24 @@ export function buildAgentRiskSummary(options: {
     )
   }
 
-  if (!reached && remainingToday > 0 && remainingToday <= 5) {
+  const triggeredDailyDeliveryGuardrail = reached ? resolveDailyDeliveryGuardrail(run) : null
+  if (triggeredDailyDeliveryGuardrail) {
+    warnings.push(
+      createWarning(
+        triggeredDailyDeliveryGuardrail.code,
+        triggeredDailyDeliveryGuardrail.message,
+        'warn',
+      ),
+    )
+  } else if (reached) {
+    warnings.push(
+      createWarning(
+        deliveryLimitGuardrailCode,
+        `今日投递已达到上限 ${deliveryLimit}，当前不应继续 start 或 resume。`,
+        'warn',
+      ),
+    )
+  } else if (remainingToday > 0 && remainingToday <= 5) {
     warnings.push(
       createWarning(
         'delivery-limit-nearby',
@@ -336,6 +414,7 @@ export function buildAgentRiskSummary(options: {
       deliveredToday: usedToday,
       processedToday: toNonNegativeInteger(todayData?.total),
       repeatFilteredToday: toNonNegativeInteger(todayData?.repeat),
+      sessionDuplicates,
     },
     runtime: {
       state:

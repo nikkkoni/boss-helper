@@ -251,8 +251,31 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
       res.write('event: history\n')
       res.write(`data: ${JSON.stringify({
         recent: [
-          { id: 'evt-1', type: 'job-pending-review', message: 'needs review' },
-          { id: 'evt-2', type: 'job-succeeded', message: 'completed' },
+          {
+            createdAt: '2026-04-10T00:00:03.000Z',
+            id: 'evt-1',
+            job: {
+              brandName: 'Acme',
+              encryptJobId: 'job-1',
+              jobName: 'Frontend Engineer',
+            },
+            message: 'needs review',
+            type: 'job-pending-review',
+          },
+          {
+            createdAt: '2026-04-10T00:00:04.000Z',
+            detail: {
+              guardrailCode: 'failure-count-auto-stop',
+            },
+            id: 'evt-2',
+            job: {
+              brandName: 'Acme',
+              encryptJobId: 'job-1',
+              jobName: 'Frontend Engineer',
+            },
+            message: 'completed',
+            type: 'job-succeeded',
+          },
         ],
         subscribers: 1,
       })}\n\n`)
@@ -417,6 +440,12 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
                   deliveredToday: 2,
                   processedToday: 5,
                   repeatFilteredToday: 1,
+                  sessionDuplicates: {
+                    communicated: 0,
+                    other: 0,
+                    sameCompany: 1,
+                    sameHr: 0,
+                  },
                 },
                 runtime: {
                   state: 'running',
@@ -594,7 +623,52 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
             code: 'logs.query',
             message: 'logs snapshot',
             data: {
-              items: [{ id: randomUUID(), status: 'success' }],
+              items: [
+                {
+                  aiScore: {
+                    accepted: false,
+                    rating: 42,
+                    reason: 'external review rejected',
+                    source: 'external',
+                  },
+                  brandName: 'Acme',
+                  encryptJobId: 'job-1',
+                  greeting: '你好，方便聊聊吗？',
+                  jobName: 'Frontend Engineer',
+                  message: 'external review rejected',
+                  pipelineError: {
+                    errorMessage: 'external review rejected',
+                    errorName: 'AI筛选',
+                    step: 'aiFiltering',
+                  },
+                  status: 'AI筛选',
+                  timestamp: '2026-04-10T00:00:03.500Z',
+                },
+                {
+                  brandName: 'Acme',
+                  encryptJobId: 'job-1',
+                  jobName: 'Frontend Engineer',
+                  message: 'same company filtered',
+                  pipelineError: {
+                    errorMessage: 'same company filtered',
+                    errorName: '重复沟通',
+                    step: 'sameCompanyFilter',
+                  },
+                  status: '重复沟通',
+                  timestamp: '2026-04-10T00:00:03.000Z',
+                },
+                {
+                  brandName: 'Acme',
+                  encryptJobId: 'job-1',
+                  jobName: 'Frontend Engineer',
+                  message: 'delivery succeeded',
+                  status: '投递成功',
+                  timestamp: '2026-04-10T00:00:02.500Z',
+                },
+              ],
+              limit: 25,
+              offset: 0,
+              total: 3,
             },
           }
           break

@@ -57,6 +57,12 @@ describe('buildAgentRiskSummary', () => {
       deliveredToday: 149,
       processedToday: 160,
       repeatFilteredToday: 6,
+      sessionDuplicates: {
+        communicated: 0,
+        other: 0,
+        sameCompany: 0,
+        sameHr: 0,
+      },
     })
     expect(result.warnings).toEqual(
       expect.arrayContaining([
@@ -112,6 +118,117 @@ describe('buildAgentRiskSummary', () => {
       sameHrFilter: true,
       useCache: true,
     })
+  })
+
+  it('breaks down duplicate guardrail hits from current-session logs', () => {
+    const config = jsonClone(defaultFormData)
+    const result = buildAgentRiskSummary({
+      config,
+      logs: [
+        {
+          createdAt: '2026-04-13T09:00:00.000Z',
+          message: '已经沟通过',
+          state_name: '重复沟通',
+        },
+        {
+          createdAt: '2026-04-13T09:01:00.000Z',
+          message: '相同公司已投递',
+          state_name: '重复沟通',
+        },
+        {
+          createdAt: '2026-04-13T09:02:00.000Z',
+          message: '相同hr已投递',
+          state_name: '重复沟通',
+        },
+        {
+          createdAt: '2026-04-13T09:03:00.000Z',
+          message: '没有获取到uid',
+          state_name: '重复沟通',
+        },
+        {
+          createdAt: '2026-04-12T09:03:00.000Z',
+          message: '相同公司已投递',
+          state_name: '重复沟通',
+        },
+      ],
+      progress: {
+        state: 'idle',
+        stopRequested: false,
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 0,
+        total: 4,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        jobAddress: 0,
+        salaryRange: 0,
+        amap: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 4,
+      },
+    })
+
+    expect(result.observed.sessionDuplicates).toEqual({
+      communicated: 1,
+      other: 1,
+      sameCompany: 1,
+      sameHr: 1,
+    })
+  })
+
+  it('surfaces a warning when today deliveryLimit is already exhausted', () => {
+    const config = jsonClone(defaultFormData)
+    config.deliveryLimit.value = 80
+    config.sameCompanyFilter.value = true
+    config.sameHrFilter.value = true
+    config.friendStatus.value = true
+    config.notification.value = true
+    config.useCache.value = true
+
+    const result = buildAgentRiskSummary({
+      config,
+      progress: {
+        state: 'paused',
+        stopRequested: true,
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 80,
+        total: 82,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        jobAddress: 0,
+        salaryRange: 0,
+        amap: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 0,
+      },
+    })
+
+    expect(result.level).toBe('high')
+    expect(result.delivery).toEqual(expect.objectContaining({
+      limit: 80,
+      reached: true,
+      remainingToday: 0,
+      usedToday: 80,
+    }))
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        code: 'delivery-limit-reached',
+        severity: 'warn',
+      }),
+    ])
   })
 
   it('surfaces a warning when failures are accumulating toward the auto-stop threshold', () => {

@@ -117,6 +117,7 @@ CLI 是 bridge HTTP 的一层轻量封装。
 - `boss_helper_resume` -> `resume`
 - `boss_helper_stop` -> `stop`
 - `boss_helper_stats` -> `stats`，现额外附带 `run.current` / `run.recent` checkpoint 摘要，以及 `risk` 安全护栏摘要
+- `boss_helper_run_report` -> 聚合 `stats` / `logs.query` / 最近事件，返回当前或最近一次 run 的审计报告
 - `boss_helper_navigate` -> `navigate`
 - `boss_helper_resume_get` -> `resume.get`
 - `boss_helper_jobs_list` -> `jobs.list`
@@ -248,8 +249,11 @@ CLI 是 bridge HTTP 的一层轻量封装。
 - `data.run.recent`：最近一次运行的摘要，即使当前 run 已结束，也可用于人工排障和自动恢复判断
 - `data.risk`：当前 `deliveryLimit` 使用情况、剩余额度、当前 run 已用/剩余投递额度、去重/通知/缓存护栏是否开启、AI 自动回复等高风险开关，以及结构化 `warnings`
 
+其中 `data.risk.observed` 现在除了 `deliveredToday` / `processedToday` / `repeatFilteredToday` 之外，还会带一个 `sessionDuplicates`。它会把当前页面会话内记录到的重复拦截拆成：`communicated`、`sameCompany`、`sameHr`、`other`。这个拆分是会话级观测信号，不替代按日累计的 `repeatFilteredToday`；它的用途是帮助外部 Agent 判断“今天的重复过滤主要是因为已经沟通过，还是因为同公司 / 同 HR 去重在生效”。
+
 其中与 Phase 7 主动护栏直接相关的 warning 目前至少包括：
 
+- `delivery-limit-reached`：今日投递额度已耗尽，当前不应继续 `start` 或 `resume`
 - `consecutive-failure-streak`：当前连续失败计数正在接近自动暂停阈值
 - `consecutive-failure-auto-stop`：连续失败已达到阈值，本轮已自动进入暂停收尾
 - `failure-count-progress`：当前批次累计失败数正在接近总次数自动暂停阈值
@@ -259,7 +263,7 @@ CLI 是 bridge HTTP 的一层轻量封装。
 
 当前恢复边界建议如下：
 
-- `paused`：通常可直接尝试 `boss_helper_resume`；但若 `data.run.current.lastError.code` 或 `data.run.recent.lastError.code` 为 `run-delivery-limit-reached`，则不要直接 `resume`
+- `paused`：通常可直接尝试 `boss_helper_resume`；但若 `data.risk.delivery.reached=true`，或 `data.run.current.lastError.code` / `data.run.recent.lastError.code` 为 `run-delivery-limit-reached`，则不要直接 `resume`
 - `error`：先读取 `boss_helper_agent_context.readiness`，必要时刷新 Boss 页面再恢复
 - `completed` / `stopped`：只把它们当作审计与排障摘要，不要直接当作可恢复会话
 
@@ -267,7 +271,78 @@ CLI 是 bridge HTTP 的一层轻量封装。
 
 如果 `data.risk.level=high`，推荐把它当作“先复核配置再执行”的信号，而不是只因为页面 readiness 正常就直接 `start`。一个典型流程是：先看 `boss_helper_agent_context.summary.riskLevel`，必要时再展开 `boss_helper_stats.data.risk.warnings`，确认是否只是接近限额，还是确实关闭了关键去重护栏或打开了高风险聊天自动化。
 
-如果当前 run 处于 `paused`，且 `data.risk.warnings` 里出现任一 `*-auto-stop` 护栏 warning，优先检查 `data.run.current.lastError` 或 `data.run.recent.lastError` 再决定是否 `boss_helper_resume`。如果 warning / lastError 是 `run-delivery-limit-reached`，则应先 `boss_helper_stop` 当前 run，再重新 `boss_helper_start` 新的一轮，而不是直接恢复。MCP 聚合层 `boss_helper_agent_context.recommendations` 也会在这种场景下先提示具体 `guardrailCode` 与下一步动作，而不是默认建议直接恢复。
+如果当前 run 处于 `paused`，且 `data.risk.warnings` 里出现任一 `*-auto-stop` 护栏 warning，优先检查 `data.run.current.lastError` 或 `data.run.recent.lastError` 再决定是否 `boss_helper_resume`。如果 warning / lastError 是 `run-delivery-limit-reached`，则应先 `boss_helper_stop` 当前 run，再重新 `boss_helper_start` 新的一轮，而不是直接恢复；如果 `data.risk.delivery.reached=true` 或 warning 是 `delivery-limit-reached`，则应先 `boss_helper_stop` 当前 run，并等待下一个自然日或显式调整 `deliveryLimit` 后再继续。MCP 聚合层 `boss_helper_agent_context.recommendations` 也会在这些场景下先提示具体护栏与下一步动作，而不是默认建议直接恢复。
+
+### `boss_helper_run_report`
+
+这个 tool 面向 Phase 8 的可观测性与审计需求。
+
+它会在 MCP 侧直接聚合：
+
+- `boss_helper_stats` 的 current/recent run checkpoint
+- `boss_helper_logs_query` 的结构化日志
+- `boss_helper_events_recent` 的 recent history
+
+并返回一个更适合排障和复盘的报告，至少包含：
+
+- `run` / `currentRun` / `recentRun`
+- `summary`：当前选择的是 `current` 还是 `recent` run、各类问题计数、外部审核计数、最近错误码
+- `decisionLog`：统一格式的决策时间线，每条都会带 `source`、`category`、`outcome`、`reasonCode`、`message`
+- `reviewAudit`：外部 AI 审核的通过/拒绝结论，以及 `job-pending-review` 待处理事件摘要
+- `recommendations`：基于这份报告生成的下一步恢复建议
+
+底层的 `boss_helper_logs_query` 现在也会为单条日志附带稳定的 `audit` 字段：
+
+- `audit.category`
+- `audit.outcome`
+- `audit.reasonCode`
+
+并且在页面侧当前能判定所属运行时，还会附带：
+
+- `runId`
+- `review.status`
+- `review.source`
+- `review.handledBy`
+- `review.finalDecisionAt`
+- `review.reasonCode`
+- `review.timeoutSource`
+- `review.replacementCause`
+- `review.queueDepth`
+- `review.queueOverflowLimit`
+- `review.timeoutMs`
+- `review.replacementRunId`
+
+其中这三个 `audit` 字段与 `boss_helper_run_report.decisionLog` 使用同一套归因规则；当 page-side `logs.query` 已经返回 `audit` 时，`boss_helper_run_report` 会优先复用这些值，而不是继续按日志文案做二次推断。若单条日志已经带有 `runId`，`boss_helper_run_report.decisionLog[].runId` 也会优先保留这个日志侧 runId，而不是一律回填当前选中的 run。对于外部 AI 审核链路，page-side `logs.query.data.items[].review.status` 现在会稳定暴露 `pending` / `accepted` / `rejected`，并补充 `source`、`handledBy`、`finalDecisionAt`、`reasonCode` 这些历史字段；最新仓库侧增量还补上了 `timeoutSource`、`replacementCause`、`queueDepth`、`queueOverflowLimit`、`timeoutMs`、`replacementRunId`，方便区分“自身计时器超时”“同岗位新请求替换”“队列已满拒绝”以及这些边界的触发上下文，而不是只看到一个总的 rejected。`boss_helper_run_report.reviewAudit` 也会优先按岗位去重聚合这些 review 信号，再回退到 recent events。当前优先覆盖的 `review.reasonCode` 包括：`external-review-pending`、`external-review-accepted`、`external-review-rejected`、`external-review-timeout`、`external-review-replaced`、`external-review-manual-stop`、`external-review-queue-overflow`。这样外部 Agent 如果只需要读取更长时间窗口的原始日志，也能直接基于 `boss_helper_logs_query.data.items[].audit`、`runId` 和 `review.*` 做稳定分支与历史归并。
+
+当前 `decisionLog.category` 会稳定归类为：
+
+- `execution`
+- `business`
+- `risk`
+- `page`
+- `config`
+- `system`
+
+当前 `decisionLog.outcome` 会稳定归类为：
+
+- `delivered`
+- `skipped`
+- `failed`
+- `interrupted`
+- `info`
+
+推荐用法：
+
+1. 正常执行前，仍先走 `boss_helper_bootstrap_guide` / `boss_helper_agent_context`
+2. 当某个 run 结束、暂停、触发护栏或出现异常时，再调用 `boss_helper_run_report`
+3. 优先看 `summary.categoryCounts` 和 `summary.outcomeCounts`，快速判断主要问题面
+4. 再展开 `decisionLog` 中最近几条记录，定位具体 `reasonCode`、岗位和原始 detail
+
+边界说明：
+
+- 它当前只覆盖 `current run` 或 `recent run`，不承诺任意历史 `runId` 都可重建完整报告
+- 事件部分依赖 recent history，所以更适合“刚发生不久”的运行复盘，而不是长期归档
+- 它不会替代原始 `boss_helper_logs_query`；如果需要更大时间窗口或自定义筛选，仍应直接调用底层日志接口
 
 ## `boss_helper_jobs_refresh`
 
@@ -351,7 +426,7 @@ pnpm agent:cli readiness.get
 
 如果调用 `boss_helper_chat_send` 时没有显式传 `confirmHighRisk=true`，现在会返回 `code=high-risk-action-confirmation-required` / `suggestedAction=fix-input`。这是一个默认保守的高风险护栏，外部 Agent 只有在明确决定“现在就要发送聊天消息”时，才应补上这个字段。
 
-同样地，调用 `boss_helper_start` 或 `boss_helper_resume` 时如果没有显式传 `confirmHighRisk=true`，也会返回 `code=high-risk-action-confirmation-required` / `suggestedAction=fix-input`。推荐顺序仍然是先 `boss_helper_agent_context`、必要时 `boss_helper_plan_preview`，确认风险摘要与目标岗位后，再显式提交这类写动作。
+同样地，调用 `boss_helper_start` 或 `boss_helper_resume` 时如果没有显式传 `confirmHighRisk=true`，也会返回 `code=high-risk-action-confirmation-required` / `suggestedAction=fix-input`。推荐顺序仍然是先 `boss_helper_agent_context`、必要时 `boss_helper_plan_preview`，确认风险摘要与目标岗位后，再显式提交这类写动作。注意：显式确认只解决“高风险动作是否允许发起”，不会绕过每日额度护栏；如果当天已经达到 `deliveryLimit`，这两条命令即使带了 `confirmHighRisk=true` 也会继续返回 `code=delivery-limit-reached` / `suggestedAction=stop`。
 
 为了让外部 Agent 在“最后一跳”前还能看到更贴近本次执行的风险面，`boss_helper_start` / `boss_helper_resume` 在未显式确认时，现在还会在响应 `data.preflight` 中附带结构化执行前摘要：至少包含当前命令、目标岗位数、当前/可恢复 run、剩余投递容量，以及一份 `risk`。其中 `boss_helper_start` 的 preflight 会把请求里的 `configPatch` 也考虑进去，所以如果你准备通过 `start.configPatch` 临时打开 `aiReply`，即使当前调用因为 `confirmHighRisk=false` 被阻断，仍然能先从 `data.preflight.risk.automation.aiReplyEnabled=true` 看出这次写操作会把风险面抬高到哪里。
 

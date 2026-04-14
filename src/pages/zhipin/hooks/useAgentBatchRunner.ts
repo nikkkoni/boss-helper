@@ -11,7 +11,12 @@ import { delay, notification } from '@/utils'
 import { logger } from '@/utils/logger'
 
 import { applyAgentBatchStartPayload } from '../services/agentBatchPayload'
-import { getRunDeliveredCount, runDeliveryGuardrailLimit } from '../shared/guardrails'
+import {
+  deliveryLimitGuardrailCode,
+  getRunDeliveredCount,
+  isDeliveryLimitReached,
+  runDeliveryGuardrailLimit,
+} from '../shared/guardrails'
 import { resetJobStatuses } from '../shared/jobMapping'
 import { executeAgentBatchLoop } from './agentBatchLoop'
 import { abortAllPendingAIFilterReviews } from './agentReview'
@@ -73,11 +78,35 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
     common,
     conf,
     deliver,
+    logEntries: log.data,
     page,
     statistics,
   })
   const { ok, fail } = createResponseHelpers(getStatsData)
   let startPending = false
+
+  function normalizeNonNegativeInteger(value: unknown) {
+    if (!Number.isFinite(value)) {
+      return 0
+    }
+
+    return Math.max(0, Math.trunc(Number(value)))
+  }
+
+  function buildDailyDeliveryLimitMessage(limit: number) {
+    return `今日投递已达到上限 ${limit}，当前不应继续 start 或 resume；如存在暂停中的 run，请先 stop 当前 run，并等待下一个自然日或显式调整 deliveryLimit 后再继续。`
+  }
+
+  function failForReachedDailyDeliveryLimit(limit: number) {
+    return fail(
+      deliveryLimitGuardrailCode,
+      buildDailyDeliveryLimitMessage(limit),
+    )
+  }
+
+  function resolveStartDeliveryLimit(payload?: BossHelperAgentStartPayload) {
+    return normalizeNonNegativeInteger(payload?.configPatch?.deliveryLimit?.value ?? conf.formData.deliveryLimit.value)
+  }
 
   async function runBatch(mode: 'start' | 'resume', options?: BossHelperAgentStartPayload) {
     common.deliverLock = true
@@ -183,6 +212,11 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
         common.deliverLock = false
         return fail('already-running', '当前已有进行中的投递任务')
       }
+      const deliveryLimit = resolveStartDeliveryLimit(payload)
+      if (isDeliveryLimitReached(deliveryLimit, statistics.todayData.success)) {
+        common.deliverLock = false
+        return failForReachedDailyDeliveryLimit(deliveryLimit)
+      }
       if (common.deliverState === 'paused') {
         common.deliverLock = false
         return fail('paused', '当前任务已暂停，请调用 resume 继续执行')
@@ -237,6 +271,10 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
     }
     if (common.deliverState !== 'paused') {
       return fail('not-paused', '当前任务不处于暂停状态')
+    }
+    const deliveryLimit = normalizeNonNegativeInteger(conf.formData.deliveryLimit.value)
+    if (isDeliveryLimitReached(deliveryLimit, statistics.todayData.success)) {
+      return failForReachedDailyDeliveryLimit(deliveryLimit)
     }
 
     const resumableRun = agentRuntime.currentRun ?? agentRuntime.recentRun

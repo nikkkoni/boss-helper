@@ -30,6 +30,7 @@ describe('agent mcp server catalog', () => {
       expect(toolNames).toContain('boss_helper_bootstrap_guide')
       expect(toolNames).toContain('boss_helper_agent_context')
       expect(toolNames).toContain('boss_helper_plan_preview')
+      expect(toolNames).toContain('boss_helper_run_report')
       expect(toolNames).toContain('boss_helper_jobs_refresh')
       expect(toolNames).toContain('boss_helper_start')
       expect(toolNames).toContain('boss_helper_resume')
@@ -166,6 +167,45 @@ describe('agent mcp server catalog', () => {
       )
       expect(context.sections.jobs.data.jobs).toHaveLength(1)
 
+      const runReportCall = await server.client.request('tools/call', {
+        arguments: {},
+        name: 'boss_helper_run_report',
+      })
+      const runReport = (runReportCall.result?.structuredContent ?? {}) as Record<string, any>
+      expect(runReport).toEqual(
+        expect.objectContaining({
+          ok: true,
+          code: 'run-report',
+          run: expect.objectContaining({
+            runId: 'run-1',
+            state: 'running',
+          }),
+          summary: expect.objectContaining({
+            selectedRunId: 'run-1',
+          }),
+          reviewAudit: expect.objectContaining({
+            externalReviewCount: 1,
+            pendingReviewCount: 1,
+          }),
+        }),
+      )
+      expect(runReport.decisionLog).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            category: 'business',
+            outcome: 'skipped',
+            reasonCode: 'ai-filtering',
+            source: 'log',
+          }),
+          expect.objectContaining({
+            category: 'risk',
+            outcome: 'skipped',
+            reasonCode: 'duplicate-same-company',
+            source: 'log',
+          }),
+        ]),
+      )
+
       const planPreviewCall = await server.client.request('tools/call', {
         arguments: {
           jobIds: ['job-1'],
@@ -271,6 +311,7 @@ describe('agent mcp server catalog', () => {
           'GET /agent-events?',
           'POST /command:readiness.get',
           'POST /command:readiness.get',
+          'POST /command:logs.query',
           'POST /command:plan.preview',
           'POST /command:jobs.refresh',
           'POST /command:resume.get',

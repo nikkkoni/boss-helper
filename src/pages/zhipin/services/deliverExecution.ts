@@ -21,6 +21,10 @@ import {
   createDailyStatisticsSnapshot,
   toAgentCurrentJob,
 } from '../shared/jobMapping'
+import {
+  deliveryLimitGuardrailCode,
+  deliveryLimitGuardrailSource,
+} from '../shared/guardrails'
 
 export interface DeliverJobListHandleResult {
   candidateCount: number
@@ -35,6 +39,9 @@ export interface DeliverIterationResult {
 export interface DeliverExecutionDependencies {
   agentRuntime: {
     clearFailureGuardrailState: (options?: { clearTrigger?: boolean }) => void
+    currentRun: {
+      runId: string
+    } | null
     registerFailureGuardrail: () => {
       code: string
       consecutiveFailures: number
@@ -110,6 +117,7 @@ export async function handleDeliverSuccess(options: {
   result: DeliverJobListHandleResult
 }): Promise<DeliverIterationResult> {
   const { data, ctx, deps, result } = options
+  ctx.runId = deps.agentRuntime.currentRun?.runId ?? null
   deps.agentRuntime.clearFailureGuardrailState()
   deps.log.add(data, null, ctx, ctx.message)
   deps.statistics.todayData.success++
@@ -148,7 +156,9 @@ export async function handleDeliverSuccess(options: {
           total: result.candidateCount,
         },
         detail: {
-          source: 'delivery-limit',
+          source: deliveryLimitGuardrailSource,
+          guardrailCode: deliveryLimitGuardrailCode,
+          guardrailLimit: deps.conf.formData.deliveryLimit.value,
           limit: deps.conf.formData.deliveryLimit.value,
         },
       }),
@@ -204,6 +214,7 @@ export async function handleDeliverFailure(options: {
 }): Promise<DeliverIterationResult> {
   const { data, error, ctx, deps, result } = options
   const deliverError = normalizeDeliverError(error)
+  ctx.runId = deps.agentRuntime.currentRun?.runId ?? null
   const aiScoreDetail =
     deliverError instanceof AIFilteringError
       ? deliverError.aiScore ?? (ctx.aiFilteringScore as AIFilteringScoreDetail | undefined)

@@ -5,6 +5,7 @@ import type {
   BossHelperAgentStatsData,
 } from '@/message/agent'
 import { createBossHelperAgentResponse } from '@/message/agent'
+import type { LogEntry } from '@/stores/log'
 import type { useAgentRuntime } from '@/stores/agent'
 import type { useCommon } from '@/stores/common'
 import type { useStatistics } from '@/stores/statistics'
@@ -54,6 +55,14 @@ export function createCurrentProgressSnapshot(options: {
  *
  * 每次调用都会先刷新统计 store，再返回适合对外暴露的结构化数据。
  */
+function unwrapLogEntries(logEntries: { value: LogEntry[] } | LogEntry[] | undefined): LogEntry[] {
+  if (Array.isArray(logEntries)) {
+    return logEntries
+  }
+
+  return Array.isArray(logEntries?.value) ? logEntries.value : []
+}
+
 export function createStatsDataGetter(options: {
   agentRuntime: ReturnType<typeof useAgentRuntime>
   common: ReturnType<typeof useCommon>
@@ -61,6 +70,7 @@ export function createStatsDataGetter(options: {
     formData: Record<string, unknown>
   }
   deliver: ReturnType<typeof useDeliver>
+  logEntries?: { value: LogEntry[] } | LogEntry[]
   page: ReturnType<typeof usePager>['page']
   statistics: ReturnType<typeof useStatistics>
 }) {
@@ -94,6 +104,7 @@ export function createStatsDataGetter(options: {
       risk: buildAgentRiskSummary({
         config: options.conf.formData,
         failureGuardrail: options.agentRuntime.getFailureGuardrailSnapshot(),
+        logs: unwrapLogEntries(options.logEntries),
         progress,
         run,
         todayData: options.statistics.todayData,

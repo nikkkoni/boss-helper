@@ -24,6 +24,7 @@ const bossHelperAgentResponseMetaByCode = Object.freeze({
 	'chat-send-failed': { retryable: true, suggestedAction: 'retry' },
 	'command-request-failed': { retryable: true, suggestedAction: 'retry' },
 	'controller-error': { retryable: true, suggestedAction: 'refresh-page' },
+	'delivery-limit-reached': { retryable: false, suggestedAction: 'stop' },
 	'empty-config-patch': { retryable: false, suggestedAction: 'fix-input' },
 	'empty-response': { retryable: true, suggestedAction: 'refresh-page' },
 	'event-request-failed': { retryable: true, suggestedAction: 'retry' },

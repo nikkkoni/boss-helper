@@ -102,7 +102,7 @@ const runnerMocks = vi.hoisted(() => ({
     },
   },
   logStore: {
-    data: [],
+    data: [] as Array<{ createdAt: string; message: string; state_name: string }>,
   },
   pagerStore: {
     next: vi.fn(() => true),
@@ -238,6 +238,9 @@ describe('useAgentBatchRunner', () => {
     runnerMocks.commonStore.deliverStop = false
     runnerMocks.commonStore.deliverState = 'idle'
     runnerMocks.commonStore.deliverStatusMessage = '未开始'
+    runnerMocks.statisticsStore.todayData.date = '2026-04-10'
+    runnerMocks.statisticsStore.todayData.success = 0
+    runnerMocks.statisticsStore.todayData.total = 0
     runnerMocks.statisticsStore.updateStatistics.mockReset()
     runnerMocks.statisticsStore.updateStatistics.mockResolvedValue(undefined)
     runnerMocks.agentRuntimeStore.batchPromise = null
@@ -258,6 +261,7 @@ describe('useAgentBatchRunner', () => {
     runnerMocks.agentRuntimeStore.registerFailureGuardrail.mockClear()
     runnerMocks.agentRuntimeStore.setStopRequestedByCommand.mockClear()
     runnerMocks.agentRuntimeStore.updateRunProgress.mockClear()
+    runnerMocks.confStore.formData.deliveryLimit.value = 120
     runnerMocks.pagerStore.next.mockReset()
     runnerMocks.pagerStore.next.mockReturnValue(true)
     runnerMocks.deliverStore.jobListHandle.mockReset()
@@ -268,6 +272,7 @@ describe('useAgentBatchRunner', () => {
     runnerMocks.notification.mockResolvedValue(undefined)
     runnerMocks.logger.debug.mockReset()
     runnerMocks.logger.error.mockReset()
+    runnerMocks.logStore.data = []
     runnerMocks.abortAllPendingAIFilterReviews.mockReset()
     runnerMocks.executeAgentBatchLoop.mockReset()
     runnerMocks.executeAgentBatchLoop.mockResolvedValue({ stepMsg: 'loop completed' })
@@ -345,6 +350,14 @@ describe('useAgentBatchRunner', () => {
               limit: 120,
               remainingToday: 120,
               usedToday: 0,
+            }),
+            observed: expect.objectContaining({
+              sessionDuplicates: {
+                communicated: 0,
+                other: 0,
+                sameCompany: 0,
+                sameHr: 0,
+              },
             }),
           }),
         }),
@@ -438,6 +451,111 @@ describe('useAgentBatchRunner', () => {
       }),
     )
     expect(runnerMocks.agentRuntimeStore.setBatchPromise).not.toHaveBeenCalled()
+  })
+
+  it('blocks start and resume when today deliveryLimit is already exhausted', async () => {
+    const { useAgentBatchRunner } = await loadBatchRunner()
+    const runner = useAgentBatchRunner({
+      ensureStoresLoaded: vi.fn(async () => undefined),
+      ensureSupportedPage: () => true,
+    })
+
+    runnerMocks.statisticsStore.todayData.success = 120
+    runnerMocks.confStore.formData.deliveryLimit.value = 120
+
+    await expect(runner.startBatch({ jobIds: ['job-1'] })).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        code: 'delivery-limit-reached',
+        retryable: false,
+        suggestedAction: 'stop',
+      }),
+    )
+    expect(runnerMocks.applyAgentBatchStartPayload).not.toHaveBeenCalled()
+    expect(runnerMocks.agentRuntimeStore.setBatchPromise).not.toHaveBeenCalled()
+
+    runnerMocks.commonStore.deliverState = 'paused'
+
+    await expect(runner.resumeBatch()).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        code: 'delivery-limit-reached',
+        retryable: false,
+        suggestedAction: 'stop',
+      }),
+    )
+    expect(runnerMocks.agentRuntimeStore.setBatchPromise).not.toHaveBeenCalled()
+  })
+
+  it('allows start when configPatch raises deliveryLimit above current usage', async () => {
+    const { useAgentBatchRunner } = await loadBatchRunner()
+    const runner = useAgentBatchRunner({
+      ensureStoresLoaded: vi.fn(async () => undefined),
+      ensureSupportedPage: () => true,
+    })
+
+    runnerMocks.statisticsStore.todayData.success = 120
+    runnerMocks.confStore.formData.deliveryLimit.value = 120
+
+    await expect(
+      runner.startBatch({
+        configPatch: {
+          deliveryLimit: {
+            value: 121,
+          },
+        },
+        jobIds: ['job-2'],
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        ok: true,
+        code: 'started',
+      }),
+    )
+    expect(runnerMocks.applyAgentBatchStartPayload).toHaveBeenCalledTimes(1)
+  })
+
+  it('exposes current-session duplicate feedback through risk stats', async () => {
+    runnerMocks.logStore.data = [
+      {
+        createdAt: '2026-04-10T09:00:00.000Z',
+        message: '已经沟通过',
+        state_name: '重复沟通',
+      },
+      {
+        createdAt: '2026-04-10T09:01:00.000Z',
+        message: '相同公司已投递',
+        state_name: '重复沟通',
+      },
+      {
+        createdAt: '2026-04-10T09:02:00.000Z',
+        message: '相同hr已投递',
+        state_name: '重复沟通',
+      },
+    ]
+
+    const { useAgentBatchRunner } = await loadBatchRunner()
+    const runner = useAgentBatchRunner({
+      ensureStoresLoaded: vi.fn(async () => undefined),
+      ensureSupportedPage: () => true,
+    })
+
+    await expect(runner.stats()).resolves.toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          risk: expect.objectContaining({
+            observed: expect.objectContaining({
+              sessionDuplicates: {
+                communicated: 1,
+                other: 0,
+                sameCompany: 1,
+                sameHr: 1,
+              },
+            }),
+          }),
+        }),
+      }),
+    )
   })
 
   it('distinguishes stop finalization from pause finalization', async () => {

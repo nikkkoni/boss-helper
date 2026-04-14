@@ -161,6 +161,12 @@ const deliveryControlMocks = vi.hoisted(() => ({
           deliveredToday: 0,
           processedToday: 0,
           repeatFilteredToday: 0,
+          sessionDuplicates: {
+            communicated: 0,
+            other: 0,
+            sameCompany: 0,
+            sameHr: 0,
+          },
         },
         runtime: {
           state: 'idle',
@@ -385,6 +391,12 @@ describe('useDeliveryControl', () => {
           deliveredToday: 0,
           processedToday: 0,
           repeatFilteredToday: 0,
+          sessionDuplicates: {
+            communicated: 0,
+            other: 0,
+            sameCompany: 0,
+            sameHr: 0,
+          },
         },
         runtime: {
           state: 'idle',

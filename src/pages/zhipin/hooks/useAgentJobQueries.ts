@@ -13,9 +13,13 @@ import {
 } from '@/message/agent'
 import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
+import { resolveBossHelperAgentLogAudit } from '../../../../shared/agentAudit.js'
 
 import type { UseAgentQueriesOptions } from './agentQueryShared'
-import { submitExternalAIFilterReview } from './agentReview'
+import {
+  getExternalAIFilterReviewSnapshot,
+  submitExternalAIFilterReview,
+} from './agentReview'
 import { resolveBossHelperAgentCommandFailureMeta } from './agentCommandMeta'
 import { toAgentJobDetail, toAgentJobSummary } from '../shared/jobMapping'
 
@@ -31,19 +35,62 @@ function getJobById(encryptJobId: string) {
   return jobList.get(encryptJobId) ?? jobList.list.find((item) => item.encryptJobId === encryptJobId)
 }
 
+function mergeReviewSnapshot(
+  storedReview: BossHelperAgentLogEntry['review'],
+  liveReview: BossHelperAgentLogEntry['review'],
+): BossHelperAgentLogEntry['review'] {
+  if (!storedReview) {
+    return liveReview ?? null
+  }
+
+  if (!liveReview) {
+    return storedReview
+  }
+
+  if (storedReview.status !== 'pending') {
+    return storedReview
+  }
+
+  const storedUpdatedAt = Date.parse(storedReview.updatedAt ?? '')
+  const liveUpdatedAt = Date.parse(liveReview.updatedAt ?? '')
+  if (Number.isFinite(storedUpdatedAt) && Number.isFinite(liveUpdatedAt) && liveUpdatedAt < storedUpdatedAt) {
+    return storedReview
+  }
+
+  return {
+    ...storedReview,
+    ...liveReview,
+  }
+}
+
 function toAgentLogEntry(item: ReturnType<ReturnType<typeof useLog>['query']>['items'][number]): BossHelperAgentLogEntry {
   const aiFiltering = item.data?.aiFilteringAjson
   const pipelineError = item.data?.pipelineError ? { ...item.data.pipelineError } : undefined
+  const status = item.state_name
+  const message = item.message ?? item.data?.err ?? status
+  const review = mergeReviewSnapshot(
+    item.data?.review ?? null,
+    item.job?.encryptJobId ? getExternalAIFilterReviewSnapshot(item.job.encryptJobId) : null,
+  )
   return {
+    audit: resolveBossHelperAgentLogAudit({
+      detail: pipelineError,
+      fallback: 'log-entry',
+      message,
+      status,
+      step: typeof pipelineError?.step === 'string' ? pipelineError.step : undefined,
+    }),
     encryptJobId: item.job?.encryptJobId ?? '',
     jobName: item.job?.jobName ?? item.title ?? '',
     brandName: item.job?.brandName ?? '',
-    status: item.state_name,
+    status,
     message: item.message,
     error: item.data?.err,
     greeting: item.data?.aiGreetingA ?? item.data?.message,
     aiScore: aiFiltering,
     pipelineError,
+    review,
+    runId: typeof item.runId === 'string' && item.runId ? item.runId : null,
     timestamp: item.createdAt,
   }
 }

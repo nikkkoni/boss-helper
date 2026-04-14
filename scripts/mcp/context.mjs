@@ -6,6 +6,13 @@ import {
   DEFAULT_AGENT_CONTEXT_SECTIONS,
   resolveBossHelperAgentErrorMeta,
 } from '../shared/protocol.mjs'
+import {
+  BOSS_HELPER_AGENT_AUDIT_CATEGORIES,
+  BOSS_HELPER_AGENT_AUDIT_OUTCOMES,
+  normalizeBossHelperAgentAudit,
+  resolveBossHelperAgentAuditReasonCode,
+  resolveBossHelperAgentLogAudit,
+} from '../../shared/agentAudit.js'
 
 function isRecord(value) {
   return !!value && typeof value === 'object'
@@ -343,6 +350,289 @@ function formatSectionResult(result, options = {}) {
   }
 }
 
+function createRunReportCounter(keys) {
+  return Object.fromEntries(keys.map((key) => [key, 0]))
+}
+
+function normalizeTimestamp(value) {
+  if (typeof value !== 'string' || !value) {
+    return null
+  }
+
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString()
+}
+
+function timestampInRange(timestamp, from, to) {
+  const current = normalizeTimestamp(timestamp)
+  if (!current) {
+    return false
+  }
+
+  const currentMs = Date.parse(current)
+  const fromMs = from ? Date.parse(from) : Number.NEGATIVE_INFINITY
+  const toMs = to ? Date.parse(to) : Number.POSITIVE_INFINITY
+  return currentMs >= fromMs && currentMs <= toMs
+}
+
+function trimReasonCode(value, fallback) {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function toRunReportJobSnapshot(job) {
+  if (!isRecord(job)) {
+    return null
+  }
+
+  const encryptJobId = trimReasonCode(job.encryptJobId, '')
+  const jobName = trimReasonCode(job.jobName, '')
+  const brandName = trimReasonCode(job.brandName, '')
+  if (!encryptJobId && !jobName && !brandName) {
+    return null
+  }
+
+  return {
+    encryptJobId,
+    jobName,
+    brandName,
+  }
+}
+
+function toRunReportDecisionLogFromLog(entry, runId) {
+  const detail = isRecord(entry?.pipelineError) ? { pipelineError: entry.pipelineError } : {}
+  if (typeof entry?.error === 'string' && entry.error) {
+    detail.error = entry.error
+  }
+  if (typeof entry?.greeting === 'string' && entry.greeting) {
+    detail.greeting = entry.greeting
+  }
+  if (isRecord(entry?.aiScore)) {
+    detail.aiScore = entry.aiScore
+  }
+  if (isRecord(entry?.review)) {
+    detail.review = entry.review
+  }
+
+  const pipelineError = isRecord(entry?.pipelineError) ? entry.pipelineError : null
+  const step = trimReasonCode(pipelineError?.step, '')
+  const status = trimReasonCode(entry?.status, '未知状态')
+  const message = trimReasonCode(entry?.message, trimReasonCode(entry?.error, status))
+  const audit = normalizeBossHelperAgentAudit(entry?.audit)
+    ?? resolveBossHelperAgentLogAudit({
+      detail: pipelineError,
+      fallback: 'log-entry',
+      message,
+      status,
+      step,
+    })
+
+  return {
+    source: 'log',
+    timestamp: normalizeTimestamp(entry?.timestamp) ?? new Date(0).toISOString(),
+    runId: typeof entry?.runId === 'string' && entry.runId ? entry.runId : runId,
+    category: audit.category,
+    outcome: audit.outcome,
+    reasonCode: audit.reasonCode,
+    message,
+    job: toRunReportJobSnapshot(entry),
+    reference: {
+      kind: 'log',
+      status,
+      step: step || null,
+    },
+    detail: Object.keys(detail).length > 0 ? detail : null,
+  }
+}
+
+function toRunReportDecisionLogFromEvent(event, runId) {
+  const detail = isRecord(event?.detail) ? event.detail : null
+  const eventType = trimReasonCode(event?.type, 'unknown-event')
+  const status = typeof detail?.errorName === 'string' && detail.errorName ? detail.errorName : eventType
+  const message = trimReasonCode(event?.message, eventType)
+  const step = trimReasonCode(detail?.step, '')
+
+  let audit
+  switch (eventType) {
+    case 'batch-started':
+    case 'batch-resumed':
+    case 'batch-pausing':
+    case 'batch-paused':
+    case 'batch-stopped':
+    case 'batch-completed':
+    case 'job-started':
+    case 'state-changed':
+    case 'chat-sent':
+      audit = {
+        category: 'execution',
+        outcome: 'info',
+        reasonCode: eventType,
+      }
+      break
+    case 'job-succeeded':
+      audit = {
+        category: 'execution',
+        outcome: 'delivered',
+        reasonCode: eventType,
+      }
+      break
+    case 'job-pending-review':
+      audit = {
+        category: 'business',
+        outcome: 'info',
+        reasonCode: 'external-review-required',
+      }
+      break
+    case 'batch-error':
+      audit = {
+        category: 'system',
+        outcome: 'failed',
+        reasonCode: 'batch-error',
+      }
+      break
+    case 'limit-reached':
+    case 'rate-limited':
+      audit = {
+        category: 'risk',
+        outcome: 'interrupted',
+        reasonCode: resolveBossHelperAgentAuditReasonCode({
+          detail,
+          fallback: eventType,
+          message,
+          status,
+          step,
+        }),
+      }
+      break
+    case 'job-filtered':
+      audit = resolveBossHelperAgentLogAudit({
+        detail,
+        fallback: eventType,
+        message,
+        status,
+        step,
+      })
+      if (audit.outcome === 'failed') {
+        audit = { ...audit, outcome: 'skipped' }
+      }
+      break
+    default:
+      audit = resolveBossHelperAgentLogAudit({
+        detail,
+        fallback: eventType,
+        message,
+        status,
+        step,
+      })
+      break
+  }
+
+  return {
+    source: 'event',
+    timestamp: normalizeTimestamp(event?.createdAt) ?? new Date(0).toISOString(),
+    runId,
+    category: audit.category,
+    outcome: audit.outcome,
+    reasonCode: audit.reasonCode,
+    message,
+    job: toRunReportJobSnapshot(event?.job),
+    reference: {
+      kind: 'event',
+      eventType,
+      step: step || null,
+    },
+    detail,
+  }
+}
+
+function resolveRunReportSelection(statsData, runId) {
+  const currentRun = isRecord(statsData?.run?.current) ? statsData.run.current : null
+  const recentRun = isRecord(statsData?.run?.recent) ? statsData.run.recent : null
+
+  if (typeof runId === 'string' && runId.trim()) {
+    if (currentRun?.runId === runId) {
+      return { currentRun, recentRun, run: currentRun, scope: 'current' }
+    }
+    if (recentRun?.runId === runId) {
+      return { currentRun, recentRun, run: recentRun, scope: 'recent' }
+    }
+    return { currentRun, recentRun, run: null, scope: 'missing' }
+  }
+
+  if (currentRun) {
+    return { currentRun, recentRun, run: currentRun, scope: 'current' }
+  }
+
+  if (recentRun) {
+    return { currentRun, recentRun, run: recentRun, scope: 'recent' }
+  }
+
+  return { currentRun, recentRun, run: null, scope: 'none' }
+}
+
+function buildRunReportRecommendations(report) {
+  const recommendations = []
+  const { reviewAudit, sections, summary } = report
+
+  if (sections.logs?.ok === false) {
+    recommendations.push('结构化日志当前不可读，建议先恢复 logs.query 链路，再复核 run report。')
+  }
+  if (sections.events?.ok === false) {
+    recommendations.push('最近事件当前不可读，run report 只能基于 stats 与 logs，必要时再重试 events_recent。')
+  }
+  if (!report.run) {
+    recommendations.push('当前没有可用于审计的 current/recent run，可先调用 boss_helper_plan_preview 或重新读取 boss_helper_stats。')
+    return recommendations
+  }
+
+  if (summary.categoryCounts.config > 0) {
+    recommendations.push('报告中存在配置类阻塞，先复核模型、地图或相关运行配置，再决定是否重试。')
+  }
+  if (summary.categoryCounts.page > 0) {
+    recommendations.push('报告中存在页面类失败，优先刷新 Boss 页面并重新读取 readiness。')
+  }
+  if (summary.categoryCounts.system > 0) {
+    recommendations.push('报告中存在系统类失败，建议继续检查最近 decisionLog 里的 pipelineError / detail。')
+  }
+  if (summary.categoryCounts.risk > 0 || summary.outcomeCounts.interrupted > 0) {
+    recommendations.push('报告显示本轮命中过风险护栏或速率限制，继续执行前先复核 risk.warnings 与 run.lastError。')
+  }
+  if (reviewAudit.pendingReviewCount > 0) {
+    recommendations.push(`报告显示仍有 ${reviewAudit.pendingReviewCount} 个待审核事件，优先完成 job-pending-review -> boss_helper_jobs_review 闭环。`)
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push('当前 run report 未发现新的高优先级阻塞，可结合 stats / readiness 继续推进下一步。')
+  }
+
+  return recommendations
+}
+
+function chooseLatestRunReportEntry(left, right) {
+  if (!left) {
+    return right ?? null
+  }
+  if (!right) {
+    return left
+  }
+  return Date.parse(right.timestamp) >= Date.parse(left.timestamp) ? right : left
+}
+
+function dedupeRunReportEntriesByJob(entries) {
+  const keyed = new Map()
+  const fallback = []
+
+  for (const entry of entries) {
+    const jobId = trimReasonCode(entry?.encryptJobId, '')
+    if (!jobId) {
+      fallback.push(entry)
+      continue
+    }
+    keyed.set(jobId, chooseLatestRunReportEntry(keyed.get(jobId), entry))
+  }
+
+  return [...keyed.values(), ...fallback]
+}
+
 /** @param {ReturnType<import('./bridge-client.mjs').createBridgeClient>} bridgeClient */
 export function createAgentContextService(bridgeClient) {
   const { baseUrl, bridgeGet, bridgeRuntime, commandCall, readRecentEvents } = bridgeClient
@@ -469,13 +759,18 @@ export function createAgentContextService(bridgeClient) {
     const currentRun = sectionResults.stats?.data?.run?.current
     const recentRun = sectionResults.stats?.data?.run?.recent
     const riskSummary = sectionResults.stats?.data?.risk
+    const pausedByDailyDeliveryLimit = currentRun?.state === 'paused'
+      && riskSummary?.delivery?.reached
+      && currentRun?.lastError?.code === 'delivery-limit-reached'
     const pausedByRunDeliveryLimit = currentRun?.state === 'paused'
       && currentRun?.lastError?.code === 'run-delivery-limit-reached'
     const pausedByAutoStopGuardrail = Array.isArray(riskSummary?.warnings)
       ? riskSummary.warnings.find((item) => typeof item?.code === 'string' && item.code.endsWith('-auto-stop'))?.code
       : null
 
-    if (pausedByRunDeliveryLimit) {
+    if (pausedByDailyDeliveryLimit) {
+      recommendations.push(`检测到 run ${currentRun.runId} 已触发今日 deliveryLimit ${riskSummary?.delivery?.limit ?? 'unknown'}，当前不建议 resume；如需继续请先 stop 当前 run，并等待下一个自然日或显式调整 deliveryLimit 后再重新 start。`)
+    } else if (pausedByRunDeliveryLimit) {
       recommendations.push(`检测到 run ${currentRun.runId} 已达到本轮投递上限 ${riskSummary?.delivery?.runLimit ?? 'unknown'}，当前不建议 resume；如需继续请先 stop 当前 run，再重新 start 新的一轮。`)
     } else if (currentRun?.state === 'paused' && pausedByAutoStopGuardrail) {
       recommendations.push(`检测到 run ${currentRun.runId} 因安全护栏 ${pausedByAutoStopGuardrail} 自动暂停，先检查 boss_helper_stats.risk.warnings 与 run.lastError，再决定是否 resume。`)
@@ -500,7 +795,9 @@ export function createAgentContextService(bridgeClient) {
     }
 
     if (riskSummary?.delivery?.reached) {
-      recommendations.push(`今日投递已到达 deliveryLimit ${riskSummary.delivery.limit}，当前不应继续 start。`)
+      if (!pausedByDailyDeliveryLimit) {
+        recommendations.push(`今日投递已到达 deliveryLimit ${riskSummary.delivery.limit}，当前不应继续 start 或 resume；如存在暂停中的 run，先 stop 再等待下一个自然日。`)
+      }
     } else if (riskSummary?.delivery?.runReached) {
       recommendations.push(`当前 run 已达到本轮投递上限 ${riskSummary.delivery.runLimit}，如需继续请先 stop 当前 run，再重新 start 新的一轮。`)
     } else if (riskSummary?.level === 'high') {
@@ -665,9 +962,271 @@ export function createAgentContextService(bridgeClient) {
     }
   }
 
+  async function readRunReport(args = {}) {
+    const timeoutMs = normalizePositiveNumber(args.timeoutMs)
+    const logLimit = Number.isFinite(args.logLimit) && args.logLimit > 0 ? Number(args.logLimit) : 25
+    const eventLimit = Number.isFinite(args.eventLimit) && args.eventLimit > 0 ? Number(args.eventLimit) : 20
+    const status = await safeBridgeSection('/status')
+    const waitForRelayArg = typeof args.waitForRelay === 'boolean' ? args.waitForRelay : undefined
+    const waitForRelay = waitForRelayArg ?? (status.data?.relayConnected === true)
+    const stats = await safeCommandSection('stats', { timeoutMs, waitForRelay })
+
+    if (stats.ok === false) {
+      return {
+        ok: false,
+        code: stats.code ?? 'run-report-unavailable',
+        message: `无法读取 run report：${stats.message ?? 'stats 不可用'}`,
+        retryable: stats.retryable,
+        suggestedAction: stats.suggestedAction,
+        agentProtocolVersion: AGENT_PROTOCOL_VERSION,
+        bridge: {
+          httpBaseUrl: baseUrl,
+          httpsRelayUrl: `${bridgeRuntime.httpsBaseUrl}/`,
+        },
+        sections: {
+          status,
+          stats,
+        },
+      }
+    }
+
+    const selection = resolveRunReportSelection(stats.data, typeof args.runId === 'string' ? args.runId.trim() : '')
+    if (selection.scope === 'missing') {
+      return {
+        ok: false,
+        code: 'run-report-not-found',
+        message: `未找到 run ${args.runId}，当前只能审计 current/recent run。`,
+        ...resolveBossHelperAgentErrorMeta('validation-failed'),
+        agentProtocolVersion: AGENT_PROTOCOL_VERSION,
+        availableRunIds: [selection.currentRun?.runId, selection.recentRun?.runId].filter(Boolean),
+        bridge: {
+          httpBaseUrl: baseUrl,
+          httpsRelayUrl: `${bridgeRuntime.httpsBaseUrl}/`,
+        },
+        sections: {
+          status,
+          stats,
+        },
+      }
+    }
+
+    const from = normalizeTimestamp(selection.run?.startedAt)
+    const to = normalizeTimestamp(selection.run?.finishedAt)
+    const logs = await safeCommandSection('logs.query', {
+      from: from ?? undefined,
+      limit: logLimit,
+      timeoutMs,
+      to: to ?? undefined,
+      waitForRelay,
+    })
+    const events = await safeEventSection({
+      timeoutMs: timeoutMs ?? 5_000,
+      types: args.eventTypes,
+    })
+
+    const decisionLog = []
+    const categoryCounts = createRunReportCounter(BOSS_HELPER_AGENT_AUDIT_CATEGORIES)
+    const outcomeCounts = createRunReportCounter(BOSS_HELPER_AGENT_AUDIT_OUTCOMES)
+
+    const logItems = Array.isArray(logs.data?.items) ? logs.data.items : []
+    for (const item of logItems) {
+      const mapped = toRunReportDecisionLogFromLog(item, selection.run?.runId ?? null)
+      decisionLog.push(mapped)
+      categoryCounts[mapped.category] += 1
+      outcomeCounts[mapped.outcome] += 1
+    }
+
+    const recentEvents = Array.isArray(events.data?.recent) ? events.data.recent : []
+    const filteredEvents = selection.run
+      ? recentEvents.filter((event) => timestampInRange(event?.createdAt, from, to))
+      : recentEvents
+    for (const item of filteredEvents.slice(-eventLimit)) {
+      const mapped = toRunReportDecisionLogFromEvent(item, selection.run?.runId ?? null)
+      decisionLog.push(mapped)
+      categoryCounts[mapped.category] += 1
+      outcomeCounts[mapped.outcome] += 1
+    }
+
+    decisionLog.sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp))
+
+    const reviewEntries = dedupeRunReportEntriesByJob(decisionLog
+      .filter((entry) => {
+        if (entry.detail?.aiScore?.source === 'external') {
+          return true
+        }
+        return entry.detail?.review?.status === 'accepted' || entry.detail?.review?.status === 'rejected'
+      })
+      .map((entry) => ({
+        accepted:
+          entry.detail?.aiScore?.source === 'external'
+            ? entry.detail.aiScore.accepted === true
+            : entry.detail?.review?.status === 'accepted',
+        encryptJobId: entry.job?.encryptJobId ?? '',
+        finalDecisionAt:
+          typeof entry.detail?.review?.finalDecisionAt === 'string'
+            ? entry.detail.review.finalDecisionAt
+            : entry.timestamp,
+        greeting: typeof entry.detail?.greeting === 'string' ? entry.detail.greeting : null,
+        handledBy:
+          typeof entry.detail?.review?.handledBy === 'string'
+            ? entry.detail.review.handledBy
+            : entry.detail?.aiScore?.source === 'external'
+              ? 'external-agent'
+              : null,
+        jobName: entry.job?.jobName ?? '',
+        queueDepth:
+          Number.isFinite(entry.detail?.review?.queueDepth)
+            ? entry.detail.review.queueDepth
+            : null,
+        queueOverflowLimit:
+          Number.isFinite(entry.detail?.review?.queueOverflowLimit)
+            ? entry.detail.review.queueOverflowLimit
+            : null,
+        rating:
+          Number.isFinite(entry.detail?.aiScore?.rating)
+            ? entry.detail.aiScore.rating
+            : Number.isFinite(entry.detail?.review?.rating)
+              ? entry.detail.review.rating
+              : null,
+        reason:
+          typeof entry.detail?.aiScore?.reason === 'string' && entry.detail.aiScore.reason
+            ? entry.detail.aiScore.reason
+            : typeof entry.detail?.review?.reason === 'string' && entry.detail.review.reason
+              ? entry.detail.review.reason
+              : entry.message,
+        reasonCode:
+          typeof entry.detail?.review?.reasonCode === 'string'
+            ? entry.detail.review.reasonCode
+            : entry.detail?.aiScore?.source === 'external'
+              ? entry.detail.aiScore.accepted === true
+                ? 'external-review-accepted'
+                : 'external-review-rejected'
+              : null,
+        replacementCause:
+          typeof entry.detail?.review?.replacementCause === 'string'
+            ? entry.detail.review.replacementCause
+            : null,
+        replacementRunId:
+          typeof entry.detail?.review?.replacementRunId === 'string' || entry.detail?.review?.replacementRunId === null
+            ? entry.detail.review.replacementRunId ?? null
+            : null,
+        source:
+          typeof entry.detail?.review?.source === 'string'
+            ? entry.detail.review.source
+            : 'external-ai-review',
+        timeoutMs:
+          Number.isFinite(entry.detail?.review?.timeoutMs)
+            ? entry.detail.review.timeoutMs
+            : null,
+        timeoutSource:
+          typeof entry.detail?.review?.timeoutSource === 'string'
+            ? entry.detail.review.timeoutSource
+            : null,
+        timestamp:
+          typeof entry.detail?.review?.updatedAt === 'string' && entry.detail.review.updatedAt
+            ? entry.detail.review.updatedAt
+            : entry.timestamp,
+      })))
+    const pendingReviewEvents = dedupeRunReportEntriesByJob(decisionLog.filter((entry) => {
+      if (entry.reference?.eventType === 'job-pending-review') {
+        return true
+      }
+      return entry.detail?.review?.status === 'pending'
+    })
+      .map((entry) => ({
+        encryptJobId: entry.job?.encryptJobId ?? '',
+        jobName: entry.job?.jobName ?? '',
+        message: entry.message,
+        queueDepth:
+          Number.isFinite(entry.detail?.review?.queueDepth)
+            ? entry.detail.review.queueDepth
+            : null,
+        queueOverflowLimit:
+          Number.isFinite(entry.detail?.review?.queueOverflowLimit)
+            ? entry.detail.review.queueOverflowLimit
+            : null,
+        reasonCode:
+          typeof entry.detail?.review?.reasonCode === 'string'
+            ? entry.detail.review.reasonCode
+            : entry.reference?.eventType === 'job-pending-review'
+              ? 'external-review-pending'
+              : null,
+        replacementRunId:
+          typeof entry.detail?.review?.replacementRunId === 'string' || entry.detail?.review?.replacementRunId === null
+            ? entry.detail.review.replacementRunId ?? null
+            : null,
+        reviewSource:
+          typeof entry.detail?.review?.source === 'string'
+            ? entry.detail.review.source
+            : null,
+        source: entry.source,
+        timeoutMs:
+          Number.isFinite(entry.detail?.review?.timeoutMs)
+            ? entry.detail.review.timeoutMs
+            : Number.isFinite(entry.detail?.timeoutMs)
+              ? entry.detail.timeoutMs
+              : null,
+        timestamp: entry.timestamp,
+      })))
+
+    const summary = {
+      scope: selection.scope,
+      selectedRunId: selection.run?.runId ?? null,
+      selectedRunState: selection.run?.state ?? null,
+      decisionLogCount: decisionLog.length,
+      logCount: logItems.length,
+      eventCount: filteredEvents.length,
+      categoryCounts,
+      outcomeCounts,
+      externalReviewCount: reviewEntries.length,
+      pendingReviewCount: pendingReviewEvents.length,
+      lastDecisionType: selection.run?.lastDecision?.type ?? null,
+      lastErrorCode: selection.run?.lastError?.code ?? null,
+      window: {
+        from,
+        to,
+      },
+    }
+
+    const report = {
+      ok: true,
+      code: 'run-report',
+      message: '已返回当前 run 审计报告',
+      agentProtocolVersion: AGENT_PROTOCOL_VERSION,
+      bridge: {
+        httpBaseUrl: baseUrl,
+        httpsRelayUrl: `${bridgeRuntime.httpsBaseUrl}/`,
+      },
+      run: selection.run,
+      currentRun: selection.currentRun,
+      recentRun: selection.recentRun,
+      risk: stats.data?.risk ?? null,
+      summary,
+      reviewAudit: {
+        externalReviews: reviewEntries,
+        pendingReviewEvents,
+        externalReviewCount: reviewEntries.length,
+        pendingReviewCount: pendingReviewEvents.length,
+      },
+      decisionLog,
+      sections: {
+        status,
+        stats,
+        logs,
+        events,
+      },
+    }
+
+    return {
+      ...report,
+      recommendations: buildRunReportRecommendations(report),
+    }
+  }
+
   return {
     buildBridgeContextResource,
     readBootstrapGuide: buildBootstrapGuide,
     readAgentContext,
+    readRunReport,
   }
 }

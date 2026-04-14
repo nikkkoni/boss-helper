@@ -50,6 +50,57 @@ type AgentContextSnapshot = {
   }
 }
 
+type RunReportSnapshot = {
+  currentRun?: {
+    runId?: string | null
+    state?: string | null
+  } | null
+  recentRun?: {
+    runId?: string | null
+    state?: string | null
+  } | null
+  reviewAudit?: {
+    externalReviewCount?: number
+    pendingReviewCount?: number
+    pendingReviewEvents?: Array<{
+      encryptJobId?: string
+    }>
+  }
+  run?: {
+    runId?: string | null
+    state?: string | null
+  } | null
+  summary?: {
+    categoryCounts?: Record<string, number>
+    decisionLogCount?: number
+    outcomeCounts?: Record<string, number>
+    pendingReviewCount?: number
+    scope?: string | null
+    selectedRunId?: string | null
+    selectedRunState?: string | null
+  }
+  decisionLog?: Array<{
+    category?: string
+    message?: string
+    outcome?: string
+    reasonCode?: string
+    reference?: {
+      eventType?: string
+    }
+    source?: string
+  }>
+}
+
+type RecentEventsSnapshot = {
+  data?: {
+    recent?: Array<{
+      createdAt?: string
+      message?: string
+      type?: string
+    }>
+  }
+}
+
 function createSecondFixtureJob() {
   const job = structuredClone(fixtureJobList[0])
   return {
@@ -171,6 +222,32 @@ async function readAgentContext(mcpServer: LiveMcpServer) {
   return toolCall.result?.structuredContent as AgentContextSnapshot
 }
 
+async function readRunReport(mcpServer: LiveMcpServer) {
+  const toolCall = await mcpServer.client.request('tools/call', {
+    arguments: {},
+    name: 'boss_helper_run_report',
+  })
+
+  if (toolCall.error) {
+    throw new Error(`MCP tools/call failed: ${JSON.stringify(toolCall.error)}\n${mcpServer.getStderr()}`)
+  }
+
+  return toolCall.result?.structuredContent as RunReportSnapshot
+}
+
+async function readRecentEvents(mcpServer: LiveMcpServer) {
+  const toolCall = await mcpServer.client.request('tools/call', {
+    arguments: {},
+    name: 'boss_helper_events_recent',
+  })
+
+  if (toolCall.error) {
+    throw new Error(`MCP tools/call failed: ${JSON.stringify(toolCall.error)}\n${mcpServer.getStderr()}`)
+  }
+
+  return toolCall.result?.structuredContent as RecentEventsSnapshot
+}
+
 async function applyStableConfig(port: number) {
   const response = await runAgentCli<BossHelperAgentResponse>({
     command: 'config.update',
@@ -222,6 +299,24 @@ async function applyBrokenAiFilteringConfig(port: number) {
       ok: true,
     }),
   )
+}
+
+async function postSyntheticAgentEvent(page: import('@playwright/test').Page, event: Record<string, unknown>) {
+  return page.evaluate(async (payload) => {
+    const response = await fetch('/agent-events', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ event: payload }),
+    })
+
+    return {
+      ok: response.ok,
+      body: await response.json(),
+    }
+  }, event)
 }
 
 async function readCliStats(port: number) {
@@ -365,6 +460,33 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
       }),
     )
 
+    const pausedReport = await readRunReport(mcpServer)
+    expect(pausedReport.run).toEqual(
+      expect.objectContaining({
+        runId: pausedRun?.runId,
+        state: 'paused',
+      }),
+    )
+    expect(pausedReport.summary).toEqual(
+      expect.objectContaining({
+        scope: 'current',
+        selectedRunId: pausedRun?.runId,
+        selectedRunState: 'paused',
+      }),
+    )
+    expect(pausedReport.summary?.decisionLogCount).toBeGreaterThan(0)
+    expect((pausedReport.summary?.categoryCounts?.execution ?? 0)).toBeGreaterThan(0)
+    expect((pausedReport.summary?.outcomeCounts?.delivered ?? 0)).toBeGreaterThan(0)
+    expect(pausedReport.decisionLog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: 'execution',
+          outcome: 'delivered',
+          source: 'event',
+        }),
+      ]),
+    )
+
     const resume = await runAgentCli<BossHelperAgentResponse>({
       command: 'resume',
       payload: {
@@ -412,6 +534,37 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
         runId: pausedRun?.runId,
         state: 'completed',
       }),
+    )
+
+    const completedReport = await readRunReport(mcpServer)
+    expect(completedReport.run).toEqual(
+      expect.objectContaining({
+        runId: pausedRun?.runId,
+        state: 'completed',
+      }),
+    )
+    expect(completedReport.summary).toEqual(
+      expect.objectContaining({
+        scope: 'recent',
+        selectedRunId: pausedRun?.runId,
+        selectedRunState: 'completed',
+      }),
+    )
+    expect((completedReport.summary?.categoryCounts?.execution ?? 0)).toBeGreaterThan(0)
+    expect((completedReport.summary?.outcomeCounts?.delivered ?? 0)).toBeGreaterThanOrEqual(2)
+    expect(completedReport.decisionLog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          outcome: 'delivered',
+          source: 'log',
+        }),
+        expect.objectContaining({
+          reference: expect.objectContaining({
+            eventType: 'batch-completed',
+          }),
+          source: 'event',
+        }),
+      ]),
     )
   } finally {
     await mcpServer?.close()
@@ -508,6 +661,200 @@ test('surfaces batch-error run summaries with refresh-page recovery hints', asyn
         expect.stringContaining('刷新页面'),
       ]),
     )
+
+    const errorReport = await readRunReport(mcpServer)
+    expect(errorReport.run).toEqual(
+      expect.objectContaining({
+        state: 'error',
+      }),
+    )
+    expect(errorReport.summary).toEqual(
+      expect.objectContaining({
+        scope: 'recent',
+        selectedRunState: 'error',
+      }),
+    )
+    expect(errorReport.summary?.decisionLogCount).toBeGreaterThan(0)
+    expect((errorReport.summary?.categoryCounts?.execution ?? 0)).toBeGreaterThan(0)
+    expect((errorReport.summary?.outcomeCounts?.failed ?? 0)).toBeGreaterThan(0)
+    expect(errorReport.decisionLog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reasonCode: 'batch-error',
+          source: 'event',
+        }),
+      ]),
+    )
+  } finally {
+    await mcpServer?.close()
+    await bridge.stop()
+    await session.cleanup()
+  }
+})
+
+test('surfaces pending-review audit details through MCP run report before a run is stopped', async () => {
+  const session = await launchExtensionSession()
+  const bridgePort = await pickAvailablePort(4797)
+  const bridge = await startAgentBridge(bridgePort)
+  let mcpServer: LiveMcpServer | undefined
+  let applyCount = 0
+
+  try {
+    await registerZhipinFixtureRoutes(session.context, {
+      onApply: async (route) => {
+        applyCount += 1
+        await new Promise((resolve) => {
+          setTimeout(resolve, 10_000)
+        })
+        await fulfillFixtureJson(route, {
+          body: {
+            code: 0,
+            message: 'ok',
+            zpData: {
+              attempt: applyCount,
+            },
+          },
+        })
+      },
+    })
+
+    const jobsPage = await getOrCreatePage(session.context)
+    await jobsPage.goto('https://www.zhipin.com/web/geek/jobs')
+    await waitForBossHelperReady(jobsPage)
+
+    const relayPage = await session.context.newPage()
+    await relayPage.goto(`${bridge.httpsBaseUrl}/?extensionId=${session.extensionId}`)
+    await expectRelayConnected(relayPage, bridge)
+
+    mcpServer = await startLiveMcpServer({
+      ...process.env,
+      BOSS_HELPER_AGENT_HOST: '127.0.0.1',
+      BOSS_HELPER_AGENT_PORT: String(bridge.port),
+    })
+    await initializeMcpClient(mcpServer, 'playwright-run-report-pending-review')
+
+    await applyStableConfig(bridge.port)
+
+    const start = await runAgentCli<BossHelperAgentResponse>({
+      command: 'start',
+      payload: {
+        confirmHighRisk: true,
+        jobIds: [fixtureJobId],
+        resetFiltered: true,
+      },
+      port: bridge.port,
+    })
+    expect(start.data).toEqual(
+      expect.objectContaining({
+        code: 'started',
+        ok: true,
+      }),
+    )
+
+    await expect.poll(async () => {
+      const stats = await readCliStats(bridge.port)
+      return stats.data?.run.current?.state ?? stats.data?.run.recent?.state ?? null
+    }, {
+      timeout: 10_000,
+    }).toBe('running')
+
+    const syntheticEventAt = new Date().toISOString()
+    const syntheticEvent = await postSyntheticAgentEvent(relayPage, {
+      createdAt: syntheticEventAt,
+      detail: {
+        encryptJobId: fixtureJobId,
+        job: {
+          encryptJobId: fixtureJobId,
+          jobName: 'Frontend Engineer',
+          brandName: 'Acme',
+        },
+        threshold: 60,
+        timeoutMs: 60_000,
+      },
+      id: 'pending-review-e2e',
+      job: {
+        brandName: 'Acme',
+        encryptJobId: fixtureJobId,
+        jobName: 'Frontend Engineer',
+      },
+      message: '等待外部审核: Frontend Engineer',
+      type: 'job-pending-review',
+    })
+    expect(syntheticEvent).toEqual(
+      expect.objectContaining({
+        ok: true,
+        body: expect.objectContaining({
+          accepted: true,
+          ok: true,
+        }),
+      }),
+    )
+
+    await expect.poll(async () => {
+      const recentEvents = await readRecentEvents(mcpServer!)
+      return (recentEvents.data?.recent ?? []).some((event) => event.type === 'job-pending-review')
+    }, {
+      timeout: 15_000,
+    }).toBe(true)
+
+    const pendingReport = await readRunReport(mcpServer)
+    expect(pendingReport.run).toEqual(
+      expect.objectContaining({
+        state: 'running',
+      }),
+    )
+    expect(pendingReport.summary).toEqual(
+      expect.objectContaining({
+        scope: 'current',
+        pendingReviewCount: 1,
+        selectedRunState: 'running',
+      }),
+    )
+    expect((pendingReport.summary?.categoryCounts?.business ?? 0)).toBeGreaterThan(0)
+    expect((pendingReport.summary?.outcomeCounts?.info ?? 0)).toBeGreaterThan(0)
+    expect(pendingReport.reviewAudit).toEqual(
+      expect.objectContaining({
+        externalReviewCount: 0,
+        pendingReviewCount: 1,
+        pendingReviewEvents: [
+          expect.objectContaining({
+            encryptJobId: fixtureJobId,
+            timestamp: syntheticEventAt,
+          }),
+        ],
+      }),
+    )
+    expect(pendingReport.decisionLog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: 'business',
+          outcome: 'info',
+          reasonCode: 'external-review-required',
+          reference: expect.objectContaining({
+            eventType: 'job-pending-review',
+          }),
+          source: 'event',
+        }),
+      ]),
+    )
+
+    const stop = await runAgentCli<BossHelperAgentResponse>({
+      command: 'stop',
+      port: bridge.port,
+    })
+    expect(stop.data).toEqual(
+      expect.objectContaining({
+        code: 'stopped',
+        ok: true,
+      }),
+    )
+
+    await expect.poll(async () => {
+      const stats = await callAgentCommand(jobsPage, 'stats') as BossHelperAgentResponse<BossHelperAgentStatsData>
+      return stats.data?.run?.current == null && stats.data?.run?.recent?.state === 'stopped'
+    }, {
+      timeout: 15_000,
+    }).toBe(true)
   } finally {
     await mcpServer?.close()
     await bridge.stop()

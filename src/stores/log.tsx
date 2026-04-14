@@ -23,6 +23,23 @@ export interface PipelineErrorContext {
 
 export interface logData {
   listData: MyJobListData
+  runId?: string | null
+  review?: {
+    finalDecisionAt?: string
+    handledBy?: 'external-agent' | 'system'
+    queueDepth?: number
+    queueOverflowLimit?: number
+    reasonCode?: string
+    replacementCause?: string
+    replacementRunId?: string | null
+    status: 'pending' | 'accepted' | 'rejected'
+    source?: 'external-ai-review'
+    timeoutMs?: number
+    timeoutSource?: string
+    updatedAt?: string
+    reason?: string
+    rating?: number
+  }
   el?: Element
   amap?: {
     geocode?: Awaited<ReturnType<typeof amapGeocode>>
@@ -50,6 +67,7 @@ export type LogStateName = readonly [LogState, string]
 export interface LogEntry {
   createdAt: string
   job?: MyJobListData
+  runId?: string | null
   title: string
   state: LogState
   state_name: string
@@ -142,6 +160,7 @@ const useLogStore = defineStore('log', () => {
     data.value.push({
       createdAt: new Date().toISOString(),
       job,
+      runId: typeof logdata?.runId === 'string' && logdata.runId ? logdata.runId : null,
       title: job.jobName,
       state,
       state_name: err?.name ?? '投递成功',

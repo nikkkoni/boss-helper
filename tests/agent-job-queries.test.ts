@@ -6,14 +6,15 @@ const { mockJobList, mockLogStore } = vi.hoisted(() => {
   const entries: Array<Record<string, unknown>> = []
 
   const mockLogStore = {
-    add(job: { jobName?: string }, _err: unknown, logdata?: Record<string, unknown>, msg?: string) {
+    add(job: { jobName?: string }, err: { message?: string; name?: string; state?: string } | null, logdata?: Record<string, unknown>, msg?: string) {
       entries.push({
         createdAt: new Date().toISOString(),
         job,
+        runId: typeof logdata?.runId === 'string' && logdata.runId ? logdata.runId : null,
         title: job.jobName ?? '',
-        state: 'success',
-        state_name: '投递成功',
-        message: msg,
+        state: err?.state ?? 'success',
+        state_name: err?.name ?? '投递成功',
+        message: msg ?? err?.message,
         data: logdata,
       })
     },
@@ -77,6 +78,7 @@ vi.mock('@/stores/log', () => ({
 }))
 
 vi.mock('@/pages/zhipin/hooks/agentReview', () => ({
+  getExternalAIFilterReviewSnapshot: vi.fn(() => null),
   submitExternalAIFilterReview: vi.fn(() => true),
 }))
 
@@ -84,6 +86,7 @@ import type { UseAgentQueriesOptions } from '@/pages/zhipin/hooks/agentQueryShar
 import { useAgentJobQueries } from '@/pages/zhipin/hooks/useAgentJobQueries'
 import { jobList, type MyJobListData } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
+import { AIFilteringError } from '@/types/deliverError'
 
 function createQueryOptions(overrides: Partial<UseAgentQueriesOptions> = {}): UseAgentQueriesOptions {
   return {
@@ -304,8 +307,136 @@ describe('useAgentJobQueries', () => {
       stage: 'after',
       step: 'filtering',
     })
+    expect(response.data?.items[0]?.runId).toBeNull()
+    expect(response.data?.items[0]?.audit).toEqual({
+      category: 'execution',
+      outcome: 'delivered',
+      reasonCode: 'delivery-succeeded',
+    })
     expect(response.data?.items[1]?.encryptJobId).toBe('job-old')
     expect(response.data?.items[1]?.greeting).toBe('你好')
+  })
+
+  it('surfaces structured audit fields in logs.query for stable reason codes', async () => {
+    const job = createJob({ encryptJobId: 'job-audit', jobName: 'Audit Job' })
+    const log = useLog()
+
+    log.add(job, new AIFilteringError('没有找到AI筛选的模型'), {
+      listData: job,
+      pipelineError: {
+        errorMessage: '没有找到AI筛选的模型',
+        errorName: 'AI筛选',
+        jobId: job.encryptJobId,
+        stage: 'before',
+        step: 'aiFiltering',
+      },
+    })
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.logsQuery({ limit: 10, offset: 0 })
+
+    expect(response.ok).toBe(true)
+    expect(response.data?.items[0]?.runId).toBeNull()
+    expect(response.data?.items[0]?.audit).toEqual({
+      category: 'config',
+      outcome: 'skipped',
+      reasonCode: 'ai-filtering-model-missing',
+    })
+  })
+
+  it('surfaces runId from page-side log entries when available', async () => {
+    const job = createJob({ encryptJobId: 'job-run-log', jobName: 'Run Log Job' })
+    const log = useLog()
+
+    log.add(job, null, {
+      listData: job,
+      runId: 'run-from-log-entry',
+    }, 'delivered')
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.logsQuery({ limit: 10, offset: 0 })
+
+    expect(response.ok).toBe(true)
+    expect(response.data?.items[0]?.runId).toBe('run-from-log-entry')
+  })
+
+  it('surfaces review snapshot from page-side review state when available', async () => {
+    const { getExternalAIFilterReviewSnapshot } = await import('@/pages/zhipin/hooks/agentReview')
+    vi.mocked(getExternalAIFilterReviewSnapshot).mockReturnValueOnce({
+      reasonCode: 'external-review-pending',
+      source: 'external-ai-review',
+      reason: 'waiting review',
+      status: 'pending',
+      timeoutMs: 1000,
+      updatedAt: '2026-04-14T00:00:00.000Z',
+    })
+
+    const job = createJob({ encryptJobId: 'job-review-state', jobName: 'Review State Job' })
+    const log = useLog()
+    log.add(job, null, { listData: job }, 'review pending')
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.logsQuery({ limit: 10, offset: 0 })
+
+    expect(response.ok).toBe(true)
+    expect(response.data?.items[0]?.review).toEqual({
+      reasonCode: 'external-review-pending',
+      source: 'external-ai-review',
+      reason: 'waiting review',
+      status: 'pending',
+      timeoutMs: 1000,
+      updatedAt: '2026-04-14T00:00:00.000Z',
+    })
+  })
+
+  it('upgrades stored pending review metadata when live snapshot reaches a final state', async () => {
+    const { getExternalAIFilterReviewSnapshot } = await import('@/pages/zhipin/hooks/agentReview')
+    vi.mocked(getExternalAIFilterReviewSnapshot).mockReturnValueOnce({
+      finalDecisionAt: '2026-04-14T00:01:00.000Z',
+      handledBy: 'system',
+      queueDepth: 2,
+      reason: '外部审核超时',
+      reasonCode: 'external-review-timeout',
+      replacementRunId: null,
+      status: 'rejected',
+      source: 'external-ai-review',
+      timeoutMs: 1000,
+      timeoutSource: 'request-timeout',
+      updatedAt: '2026-04-14T00:01:00.000Z',
+    })
+
+    const job = createJob({ encryptJobId: 'job-review-final', jobName: 'Review Final Job' })
+    const log = useLog()
+    log.add(job, null, {
+      listData: job,
+      review: {
+        queueDepth: 1,
+        reason: '等待审核中',
+        reasonCode: 'external-review-pending',
+        status: 'pending',
+        source: 'external-ai-review',
+        timeoutMs: 1000,
+        updatedAt: '2026-04-14T00:00:00.000Z',
+      },
+    }, 'waiting review')
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.logsQuery({ limit: 10, offset: 0 })
+
+    expect(response.ok).toBe(true)
+    expect(response.data?.items[0]?.review).toEqual({
+      finalDecisionAt: '2026-04-14T00:01:00.000Z',
+      handledBy: 'system',
+      queueDepth: 2,
+      reason: '外部审核超时',
+      reasonCode: 'external-review-timeout',
+      replacementRunId: null,
+      status: 'rejected',
+      source: 'external-ai-review',
+      timeoutMs: 1000,
+      timeoutSource: 'request-timeout',
+      updatedAt: '2026-04-14T00:01:00.000Z',
+    })
   })
 
   it('adds structured recovery hints when jobs.detail cannot load card data', async () => {

@@ -8,6 +8,11 @@ const { delayMock, notificationMock } = vi.hoisted(() => ({
   notificationMock: vi.fn(async () => {}),
 }))
 
+const agentEventMocks = vi.hoisted(() => ({
+  createBossHelperAgentEvent: vi.fn((payload) => payload),
+  emitBossHelperAgentEvent: vi.fn(),
+}))
+
 const applyToJobMock = vi.hoisted(() => vi.fn(async () => undefined))
 
 vi.mock('@/utils', () => ({
@@ -20,6 +25,11 @@ vi.mock('@/site-adapters', () => ({
   getActiveSiteAdapter: vi.fn(() => ({
     applyToJob: applyToJobMock,
   })),
+}))
+
+vi.mock('@/pages/zhipin/hooks/agentEvents', () => ({
+  createBossHelperAgentEvent: agentEventMocks.createBossHelperAgentEvent,
+  emitBossHelperAgentEvent: agentEventMocks.emitBossHelperAgentEvent,
 }))
 
 import {
@@ -42,6 +52,9 @@ function createDeps(): DeliverExecutionDependencies {
   return {
     agentRuntime: {
       clearFailureGuardrailState: vi.fn(),
+      currentRun: {
+        runId: 'run-test',
+      },
       registerFailureGuardrail: vi.fn(() => null),
       registerRunDeliveryGuardrail: vi.fn(() => null),
     },
@@ -83,6 +96,8 @@ function createDeps(): DeliverExecutionDependencies {
 describe('deliverExecution', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    agentEventMocks.createBossHelperAgentEvent.mockClear()
+    agentEventMocks.emitBossHelperAgentEvent.mockReset()
   })
 
   it('normalizes unknown errors into BossHelperError instances', () => {
@@ -111,10 +126,21 @@ describe('deliverExecution', () => {
     await expect(handleDeliverSuccess({ data, ctx, deps, result })).resolves.toEqual({
       stopResult: result,
     })
+    expect((deps.log.add as any).mock.calls[0][2]?.runId).toBe('run-test')
     expect(deps.common.deliverStop).toBe(true)
     expect(data.status.status).toBe('success')
     expect(notificationMock).toHaveBeenCalledWith('投递到达上限 120，已暂停投递')
     expect(ElMessage.info).toHaveBeenCalledWith('投递到达上限 120，已暂停投递')
+    expect(agentEventMocks.emitBossHelperAgentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          guardrailCode: 'delivery-limit-reached',
+          source: 'delivery-limit',
+        }),
+        message: '投递到达上限 120，已暂停投递',
+        type: 'limit-reached',
+      }),
+    )
 
     vi.clearAllMocks()
     deps.common.deliverStop = false
@@ -147,6 +173,7 @@ describe('deliverExecution', () => {
     ).resolves.toEqual({
       stopResult: result,
     })
+    expect((deps.log.add as any).mock.calls[0][2]?.runId).toBe('run-test')
     expect(deps.common.deliverStop).toBe(true)
     expect(notificationMock).toHaveBeenCalledWith('投递到达boss上限 今日上限，已暂停投递')
     expect(ElMessage.error).toHaveBeenCalledWith('投递到达boss上限 今日上限，已暂停投递')

@@ -39,7 +39,7 @@ function scoreArraySchema() {
  */
 export function createToolDefinitions({ bridgeClient, contextService }) {
   const { batchCall, bridgeGet, commandCall, readRecentEvents, waitForNextEvent } = bridgeClient
-  const { readAgentContext, readBootstrapGuide } = contextService
+  const { readAgentContext, readBootstrapGuide, readRunReport } = contextService
 
   return [
     {
@@ -135,6 +135,23 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
       description: '读取当前进度、今日统计和历史统计。',
       inputSchema: simpleCommandSchema(),
       handler: (args) => commandCall('stats', args),
+    },
+    {
+      name: 'boss_helper_run_report',
+      description: '聚合当前或最近一次 run 的 checkpoint、结构化决策日志与审核摘要。',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          runId: { type: 'string' },
+          logLimit: { type: 'number' },
+          eventLimit: { type: 'number' },
+          eventTypes: { type: 'array', items: { type: 'string' } },
+          timeoutMs: { type: 'number' },
+          waitForRelay: { type: 'boolean' },
+        },
+        additionalProperties: false,
+      },
+      handler: (args) => readRunReport(args),
     },
     {
       name: 'boss_helper_plan_preview',
