@@ -37,14 +37,19 @@ const { mockJobList, mockLogStore } = vi.hoisted(() => {
   const mockJobList = {
     list: [] as Array<Record<string, unknown>>,
     map: {} as Record<string, Record<string, unknown>>,
+    selected: null as Record<string, unknown> | null,
     clear() {
       this.list = []
+      this.selected = null
       Object.keys(this.map).forEach((key) => {
         delete this.map[key]
       })
     },
     get(encryptJobId: string) {
       return this.map[encryptJobId]
+    },
+    getSelected() {
+      return this.selected
     },
     set(encryptJobId: string, val: Record<string, unknown>) {
       this.map[encryptJobId] = val
@@ -179,6 +184,82 @@ describe('useAgentJobQueries', () => {
     expect(response.data?.total).toBe(1)
     expect(response.data?.totalOnPage).toBe(2)
     expect(response.data?.jobs.map((item) => item.encryptJobId)).toEqual(['job-success'])
+  })
+
+  it('returns the currently selected job snapshot without clicking a new card', async () => {
+    const job = createJob({
+      card: {
+        postDescription: '当前选中的详情',
+        salaryDesc: '25-35K',
+        degreeName: '本科',
+        experienceName: '3-5年',
+        address: '张江科学城',
+        jobLabels: ['Vue', 'TypeScript'],
+        bossName: 'Alice',
+        bossTitle: 'HR',
+        activeTimeDesc: '刚刚活跃',
+        friendStatus: 0,
+        brandName: 'Acme',
+        brandComInfo: { brandName: 'Acme', industryName: '互联网' },
+        jobInfo: {
+          postDescription: '当前选中的详情',
+          salaryDesc: '25-35K',
+          degreeName: '本科',
+          experienceName: '3-5年',
+          address: '张江科学城',
+          showSkills: ['Vue', 'TypeScript'],
+          longitude: 121.5,
+          latitude: 31.2,
+        },
+        bossInfo: {
+          name: 'Alice',
+          title: 'HR',
+          activeTimeDesc: '刚刚活跃',
+        },
+        relationInfo: {
+          beFriend: false,
+        },
+      } as NonNullable<MyJobListData['card']>,
+      encryptJobId: 'job-current',
+    })
+
+    jobList.replace([job])
+    jobList.set(job.encryptJobId, job)
+    mockJobList.selected = { item: job, card: job.card }
+
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.jobsCurrent()
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        code: 'jobs-current',
+        ok: true,
+        data: expect.objectContaining({
+          selected: true,
+          job: expect.objectContaining({
+            encryptJobId: 'job-current',
+            postDescription: '当前选中的详情',
+            hasCard: true,
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('returns selected=false when there is no current selected job', async () => {
+    const queries = useAgentJobQueries(createQueryOptions())
+    const response = await queries.jobsCurrent({ includeDetail: false })
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        code: 'jobs-current',
+        ok: true,
+        data: {
+          job: null,
+          selected: false,
+        },
+      }),
+    )
   })
 
   it('accepts jobs.refresh on supported pages and keeps unsupported-page guard', async () => {

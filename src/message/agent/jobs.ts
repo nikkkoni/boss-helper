@@ -38,6 +38,11 @@ export interface BossHelperAgentJobsListData {
   totalOnPage: number
 }
 
+export interface BossHelperAgentJobCurrentData {
+  job: BossHelperAgentJobDetail | BossHelperAgentJobSummary | null
+  selected: boolean
+}
+
 export interface BossHelperAgentJobsRefreshData {
   targetUrl: string
 }

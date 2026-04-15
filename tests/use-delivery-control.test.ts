@@ -212,6 +212,7 @@ const deliveryControlMocks = vi.hoisted(() => ({
     jobsReview: vi.fn(async (payload?: unknown) => ({ code: 'jobs.review', payload })),
     logsQuery: vi.fn(async (payload?: unknown) => ({ code: 'logs.query', payload })),
     jobsList: vi.fn(async (payload?: unknown) => ({ code: 'jobs.list', payload })),
+    jobsCurrent: vi.fn(async (payload?: unknown) => ({ code: 'jobs.current', payload })),
     jobsRefresh: vi.fn(async () => ({ code: 'jobs.refresh' })),
     jobsDetail: vi.fn(async (payload?: unknown) => ({ code: 'jobs.detail', payload })),
     getConfig: vi.fn(async () => ({ code: 'config.get' })),
@@ -440,6 +441,7 @@ describe('useDeliveryControl', () => {
     deliveryControlMocks.queries.jobsReview.mockImplementation(async (payload?: unknown) => ({ code: 'jobs.review', payload }))
     deliveryControlMocks.queries.logsQuery.mockImplementation(async (payload?: unknown) => ({ code: 'logs.query', payload }))
     deliveryControlMocks.queries.jobsList.mockImplementation(async (payload?: unknown) => ({ code: 'jobs.list', payload }))
+    deliveryControlMocks.queries.jobsCurrent.mockImplementation(async (payload?: unknown) => ({ code: 'jobs.current', payload }))
     deliveryControlMocks.queries.jobsRefresh.mockResolvedValue({ code: 'jobs.refresh' })
     deliveryControlMocks.queries.jobsDetail.mockImplementation(async (payload?: unknown) => ({ code: 'jobs.detail', payload }))
     deliveryControlMocks.queries.getConfig.mockResolvedValue({ code: 'config.get' })
@@ -456,6 +458,7 @@ describe('useDeliveryControl', () => {
     const resumePayload = { confirmHighRisk: true }
     const planPayload = { jobIds: ['job-9'] }
     const historyPayload = { conversationId: 'c-1' }
+    const currentPayload = { includeDetail: false }
     const detailPayload = { encryptJobId: 'job-2' }
     const configPayload = { configPatch: { deliveryLimit: { value: 3 } } }
 
@@ -465,6 +468,7 @@ describe('useDeliveryControl', () => {
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'stats' })).resolves.toEqual({ code: 'stats' })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'plan.preview', payload: planPayload })).resolves.toEqual({ code: 'plan.preview', payload: planPayload })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'readiness.get' })).resolves.toEqual({ code: 'readiness.get' })
+    await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'jobs.current', payload: currentPayload })).resolves.toEqual({ code: 'jobs.current', payload: currentPayload })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'jobs.refresh' })).resolves.toEqual({ code: 'jobs.refresh' })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'chat.history', payload: historyPayload })).resolves.toEqual({ code: 'chat.history', payload: historyPayload })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'jobs.detail', payload: detailPayload })).resolves.toEqual({ code: 'jobs.detail', payload: detailPayload })
@@ -476,6 +480,7 @@ describe('useDeliveryControl', () => {
     expect(deliveryControlMocks.runner.stats).toHaveBeenCalledTimes(1)
     expect(deliveryControlMocks.queries.planPreview).toHaveBeenCalledWith(planPayload)
     expect(deliveryControlMocks.queries.readinessGet).toHaveBeenCalledTimes(1)
+    expect(deliveryControlMocks.queries.jobsCurrent).toHaveBeenCalledWith(currentPayload)
     expect(deliveryControlMocks.queries.jobsRefresh).toHaveBeenCalledTimes(1)
     expect(deliveryControlMocks.queries.chatHistory).toHaveBeenCalledWith(historyPayload)
     expect(deliveryControlMocks.queries.jobsDetail).toHaveBeenCalledWith(detailPayload)

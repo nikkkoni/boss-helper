@@ -62,6 +62,7 @@ function getCommandTimeoutMs(command, override) {
   switch (command) {
     case 'start':
     case 'jobs.list':
+    case 'jobs.current':
     case 'jobs.refresh':
     case 'navigate':
     case 'chat.send':

@@ -162,6 +162,7 @@ pnpm agent:doctor
 - `pnpm agent:cli readiness.get`
 - `pnpm agent:cli stats`
 - `pnpm agent:cli plan.preview`
+- `pnpm agent:cli jobs.current`
 
 常用低风险恢复命令：
 
@@ -174,6 +175,8 @@ pnpm agent:doctor
 这个 tool 的重点不是替你自动执行冷启动动作，而是把“还缺哪一步”和“这一步是人工做还是 Agent 继续做”稳定结构化出来。当前通常仍需要人工完成的动作包括：启动本地浏览器扩展环境、打开 relay 页面、填写 extension ID、首次打开 Boss 职位页、完成登录和处理验证码 / 风控提示。
 
 `plan.preview` 则会在不触发真实投递的前提下，对当前岗位列表做只读执行预演。它适合放在 `jobs.list` / `jobs.detail` 之后、`start` 之前，用来判断：哪些岗位会被过滤，哪些仍需外部 AI 审核，哪些因为缺少卡片/地址/模型而不适合立刻执行。
+
+`jobs.current` 则用于读取“当前页面已经选中的岗位快照”。它不会像 `jobs.detail` 一样主动点击指定岗位，也不会切换列表项；如果页面当前还没有选中的详情卡片，它会返回一个成功的空快照（`selected=false`、`job=null`），让外部 Agent 自然退回 `jobs.list` 或后续显式调用 `jobs.detail`。它和 `jobs.detail` 的边界是：前者只读当前页面状态，后者按 `encryptJobId` 主动读取或加载指定岗位详情。
 
 `jobs.refresh` 则会重新加载当前受支持的 Boss 职位列表页，但不会改动现有 URL、搜索条件或页码。它适合放在 `readiness.get` 或其他命令返回 `suggestedAction=refresh-page` 之后，用来恢复页面控制器、详情卡片状态或列表初始化；它和 `navigate` 的边界是“保留当前搜索上下文”，和 `start` 的边界是“不会触发真实投递”。
 

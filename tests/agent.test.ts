@@ -58,6 +58,13 @@ describe('agent helpers', () => {
     expect(
       isBossHelperAgentRequest({
         channel: BOSS_HELPER_AGENT_CHANNEL,
+        command: 'jobs.current',
+      }),
+    ).toBe(true)
+
+    expect(
+      isBossHelperAgentRequest({
+        channel: BOSS_HELPER_AGENT_CHANNEL,
         command: 'jobs.refresh',
       }),
     ).toBe(true)

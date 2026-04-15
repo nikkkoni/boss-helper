@@ -30,6 +30,7 @@ function createControllerDeps() {
     jobsReview: vi.fn(async (payload?: unknown) => response('jobs.review', payload)),
     logsQuery: vi.fn(async (payload?: unknown) => response('logs.query', payload)),
     jobsList: vi.fn(async (payload?: unknown) => response('jobs.list', payload)),
+    jobsCurrent: vi.fn(async (payload?: unknown) => response('jobs.current', payload)),
     jobsRefresh: vi.fn(async () => response('jobs.refresh')),
     jobsDetail: vi.fn(async (payload?: unknown) => response('jobs.detail', payload)),
     getConfig: vi.fn(async () => response('config.get')),
@@ -143,6 +144,12 @@ describe('createAgentController', () => {
         payload: { statusFilter: ['success'] },
       },
       {
+        code: 'jobs.current',
+        command: 'jobs.current',
+        handler: deps.queries.jobsCurrent,
+        payload: { includeDetail: false },
+      },
+      {
         code: 'jobs.refresh',
         command: 'jobs.refresh',
         handler: deps.queries.jobsRefresh,
@@ -230,6 +237,12 @@ describe('createAgentController', () => {
         data: { statusFilter: ['success'] },
       }),
     )
+    await expect(controller.jobsCurrent({ includeDetail: false })).resolves.toEqual(
+      expect.objectContaining({
+        code: 'jobs.current',
+        data: { includeDetail: false },
+      }),
+    )
     await expect(controller.jobsRefresh()).resolves.toEqual(
       expect.objectContaining({ code: 'jobs.refresh' }),
     )
@@ -240,6 +253,7 @@ describe('createAgentController', () => {
     expect(deps.queries.readinessGet).toHaveBeenCalledTimes(1)
     expect(deps.queries.planPreview).toHaveBeenCalledWith({ jobIds: ['job-9'] })
     expect(deps.queries.jobsList).toHaveBeenCalledWith({ statusFilter: ['success'] })
+    expect(deps.queries.jobsCurrent).toHaveBeenCalledWith({ includeDetail: false })
     expect(deps.queries.jobsRefresh).toHaveBeenCalledTimes(1)
   })
 })

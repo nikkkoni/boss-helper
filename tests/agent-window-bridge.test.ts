@@ -49,6 +49,7 @@ function createController(handle: BossHelperAgentController['handle']): BossHelp
     configGet: noop,
     configUpdate: noop,
     handle,
+    jobsCurrent: noop,
     jobsDetail: noop,
     jobsList: noop,
     jobsRefresh: noop,

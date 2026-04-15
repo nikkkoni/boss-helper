@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import type {
   BossHelperAgentConfigUpdateData,
+  BossHelperAgentJobCurrentData,
   BossHelperAgentJobDetailData,
   BossHelperAgentJobsListData,
   BossHelperAgentLogsQueryData,
@@ -100,6 +101,24 @@ test('loads the extension on a Boss jobs page and completes a targeted apply flo
       expect.objectContaining({
         encryptJobId: fixtureJobId,
         postDescription: '负责前端页面开发',
+      }),
+    )
+
+    const currentJob = await callAgentCommand(page, 'jobs.current') as BossHelperAgentResponse<BossHelperAgentJobCurrentData>
+    expect(currentJob).toEqual(
+      expect.objectContaining({
+        code: 'jobs-current',
+        ok: true,
+      }),
+    )
+    expect(currentJob?.data).toEqual(
+      expect.objectContaining({
+        selected: true,
+        job: expect.objectContaining({
+          encryptJobId: fixtureJobId,
+          postDescription: '负责前端页面开发',
+          hasCard: true,
+        }),
       }),
     )
 

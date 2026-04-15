@@ -211,6 +211,20 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
       handler: (args) => commandCall('jobs.list', args),
     },
     {
+      name: 'boss_helper_jobs_current',
+      description: '读取当前页面已选中岗位的当前快照，不主动切换卡片。',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          includeDetail: { type: 'boolean' },
+          timeoutMs: { type: 'number' },
+          waitForRelay: { type: 'boolean' },
+        },
+        additionalProperties: false,
+      },
+      handler: (args) => commandCall('jobs.current', args),
+    },
+    {
       name: 'boss_helper_jobs_refresh',
       description: '刷新当前受支持的 Boss 职位列表页，不改变现有搜索条件。',
       inputSchema: simpleCommandSchema(),

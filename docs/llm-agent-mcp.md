@@ -121,6 +121,7 @@ CLI 是 bridge HTTP 的一层轻量封装。
 - `boss_helper_navigate` -> `navigate`
 - `boss_helper_resume_get` -> `resume.get`
 - `boss_helper_jobs_list` -> `jobs.list`
+- `boss_helper_jobs_current` -> `jobs.current`
 - `boss_helper_jobs_refresh` -> `jobs.refresh`
 - `boss_helper_jobs_detail` -> `jobs.detail`
 - `boss_helper_jobs_review` -> `jobs.review`
@@ -354,6 +355,24 @@ CLI 是 bridge HTTP 的一层轻量封装。
 - 相比 `boss_helper_jobs_detail`，它不读取任何职位详情
 - 相比 `boss_helper_start`，它不会触发真实投递，只负责恢复页面状态
 
+## `boss_helper_jobs_current`
+
+这个 tool 用于读取“当前页面已经选中的岗位快照”。
+
+它的边界是：
+
+- 相比 `boss_helper_jobs_detail`，它不会主动点击列表或切换到其他岗位
+- 相比 `boss_helper_jobs_list`，它返回的是当前选中卡片的一条快照，而不是整页摘要
+- 相比 `boss_helper_jobs_refresh`，它不会刷新页面或重建控制器，只做只读观察
+
+推荐在这些场景调用：
+
+- 页面里已经有一个当前选中的岗位，外部 Agent 想先复用这份上下文再决定是否读取更多详情
+- 刚执行过 `boss_helper_jobs_detail`，想确认当前选中卡片的稳定快照
+- 想做最小化的 Phase 6 页面状态观察，而不是再次主动切换岗位
+
+如果当前页面还没有已选中的岗位详情，它会返回成功的只读空快照：`selected=false`、`job=null`。这不是协议失败信号，外部 Agent 应继续退回 `boss_helper_jobs_list` 或指定 `encryptJobId` 调用 `boss_helper_jobs_detail`。
+
 推荐在这些场景调用：
 
 - `boss_helper_agent_context.readiness.suggestedAction=refresh-page`
@@ -377,7 +396,7 @@ CLI 是 bridge HTTP 的一层轻量封装。
 3. `boss_helper_status`
 4. `boss_helper_agent_context`
 5. 如返回 `suggestedAction=refresh-page`，先调用 `boss_helper_jobs_refresh`
-6. `boss_helper_jobs_list` / `boss_helper_jobs_detail`
+6. `boss_helper_jobs_list` / `boss_helper_jobs_current` / `boss_helper_jobs_detail`
 7. `boss_helper_plan_preview`
 8. `boss_helper_start`
 
@@ -444,7 +463,7 @@ pnpm agent:cli readiness.get
 4. 必要时调用 `boss_helper_navigate`
 5. 如果返回 `refresh-page` 恢复信号，调用 `boss_helper_jobs_refresh`
 6. `boss_helper_jobs_list`
-7. `boss_helper_jobs_detail`
+7. `boss_helper_jobs_current` 或 `boss_helper_jobs_detail`
 8. `boss_helper_resume_get`
 9. 基于职位详情和简历做判断
 10. `boss_helper_start` 或 `boss_helper_stop`

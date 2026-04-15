@@ -1,5 +1,7 @@
 import {
   createBossHelperAgentResponse,
+  type BossHelperAgentJobCurrentData,
+  type BossHelperAgentJobCurrentPayload,
   type BossHelperAgentJobDetailData,
   type BossHelperAgentJobDetailPayload,
   type BossHelperAgentJobPipelineStatus,
@@ -121,6 +123,32 @@ export function useAgentJobQueries(options: UseAgentQueriesOptions) {
     })
   }
 
+  async function jobsCurrent(payload?: BossHelperAgentJobCurrentPayload) {
+    await options.ensureStoresLoaded()
+    if (!options.ensureSupportedPage()) {
+      return createBossHelperAgentResponse<BossHelperAgentJobCurrentData>(
+        false,
+        'unsupported-page',
+        '当前页面不支持自动投递',
+      )
+    }
+
+    const selected = jobList.getSelected()
+    if (!selected) {
+      return createBossHelperAgentResponse(true, 'jobs-current', '当前没有已选中的岗位详情', {
+        job: null,
+        selected: false,
+      })
+    }
+
+    return createBossHelperAgentResponse(true, 'jobs-current', '已返回当前选中的岗位快照', {
+      job: payload?.includeDetail === false
+        ? toAgentJobSummary(selected.item)
+        : toAgentJobDetail(selected.item, selected.card),
+      selected: true,
+    })
+  }
+
   async function jobsRefresh() {
     await options.ensureStoresLoaded()
     if (!options.ensureSupportedPage()) {
@@ -238,6 +266,7 @@ export function useAgentJobQueries(options: UseAgentQueriesOptions) {
 
   return {
     jobsList,
+    jobsCurrent,
     jobsRefresh,
     logsQuery,
     jobsReview,

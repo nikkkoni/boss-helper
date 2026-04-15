@@ -105,6 +105,27 @@ describe('jobs store', () => {
         jobDetailKey: 'jobDetail',
         jobListKey: 'jobList',
       })),
+      parseJobDetail: vi.fn((detail: bossZpDetailData) => ({
+        ...detail,
+        activeTimeDesc: detail.bossInfo?.activeTimeDesc ?? '',
+        address: detail.jobInfo?.address ?? '',
+        bossName: detail.bossInfo?.name ?? '',
+        bossTitle: detail.bossInfo?.title ?? '',
+        brandName: detail.brandComInfo?.brandName ?? '',
+        cityName: detail.jobInfo?.locationName ?? '',
+        degreeName: detail.jobInfo?.degreeName ?? '',
+        encryptJobId: detail.jobInfo?.encryptId ?? '',
+        encryptUserId: detail.jobInfo?.encryptUserId ?? '',
+        experienceName: detail.jobInfo?.experienceName ?? '',
+        friendStatus: detail.relationInfo?.beFriend ? 1 : 0,
+        jobInfo: detail.jobInfo,
+        jobLabels: detail.jobInfo?.showSkills ?? [],
+        jobName: detail.jobInfo?.jobName ?? '',
+        postDescription: detail.jobInfo?.postDescription ?? '',
+        salaryDesc: detail.jobInfo?.salaryDesc ?? '',
+        securityId: detail.securityId ?? '',
+        sessionId: detail.sessionId ?? '',
+      })),
       parseJobList: parseJobListMock,
     })
     getReadyCacheManagerMock.mockResolvedValue(undefined)
@@ -123,6 +144,93 @@ describe('jobs store', () => {
       encryptJobId: job.encryptJobId,
       lid: job.lid,
     })
+  })
+
+  it('tracks the currently selected job detail snapshot from vue state', async () => {
+    const jobs = useJobs()
+    const detail = {
+      lid: 'lid-1',
+      jobInfo: {
+        encryptId: 'job-1',
+        encryptUserId: 'user-1',
+        postDescription: '当前详情',
+        salaryDesc: '20-30K',
+        degreeName: '本科',
+        experienceName: '3-5年',
+        address: '张江高科',
+        showSkills: ['Vue'],
+        longitude: 121.6,
+        latitude: 31.2,
+        proxyJob: 0,
+        jobName: 'Frontend Engineer',
+        locationName: '上海',
+      },
+      bossInfo: {
+        activeTimeDesc: '刚刚活跃',
+        bossOnline: true,
+        brandName: 'Acme',
+        certificated: true,
+        large: 'https://example.com/avatar-large.png',
+        name: 'Alice',
+        tiny: 'https://example.com/avatar-small.png',
+        title: 'HR',
+      },
+      brandComInfo: {
+        brandName: 'Acme',
+        industryName: '互联网',
+      },
+      relationInfo: {
+        beFriend: false,
+        interestJob: false,
+      },
+      securityId: 'security-1',
+      sessionId: 'session-1',
+    } as bossZpDetailData
+    const parsed = createListItem({ encryptJobId: 'job-1' }) as any
+
+    parseJobListMock.mockImplementation(((_items: bossZpJobItemData[], options?: any) => [
+      {
+        ...parsed,
+        status: options.createStatus('job-1', null),
+      },
+    ]) as any)
+    useHookVueDataMock
+      .mockImplementationOnce(
+        (_selectors: unknown, _key: unknown, data: { value: unknown }, update?: (val: unknown) => void) =>
+          async () => {
+            data.value = detail as never
+            update?.(data.value)
+          },
+      )
+      .mockImplementationOnce(
+        (_selectors: unknown, _key: unknown, data: { value: unknown }, update?: (val: unknown) => void) =>
+          async () => {
+            data.value = [createJobItem({ encryptJobId: 'job-1', lid: 'lid-1' })] as never
+            update?.(data.value)
+          },
+      )
+
+    await jobs.initJobList({
+      useCache: {
+        value: false,
+      },
+    } as FormData)
+
+    expect(jobs.getSelected()).toEqual(
+      expect.objectContaining({
+        item: expect.objectContaining({ encryptJobId: 'job-1' }),
+        card: expect.objectContaining({
+          encryptJobId: 'job-1',
+          postDescription: '当前详情',
+        }),
+      }),
+    )
+    expect(jobs.get('job-1')?.card).toEqual(
+      expect.objectContaining({
+        encryptJobId: 'job-1',
+        postDescription: '当前详情',
+      }),
+    )
   })
 
   it('waits for matching detail updates without interval polling', async () => {

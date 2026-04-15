@@ -21,6 +21,11 @@ export type MyJobListData = bossZpJobItemData & {
   getCard: () => Promise<bossZpCardData>
 }
 
+export interface SelectedJobSnapshot {
+  card: NonNullable<MyJobListData['card']>
+  item: MyJobListData
+}
+
 export async function waitForJobDetail(options: {
   clickJobCardAction: (item: bossZpJobItemData) => Promise<void>
   item: bossZpJobItemData
@@ -143,6 +148,43 @@ const useJobsStore = defineStore('jobs', () => {
     })
   }
 
+  function resolveJobByDetail(detail?: bossZpDetailData) {
+    if (!detail) {
+      return undefined
+    }
+
+    const encryptJobId = detail.jobInfo?.encryptId
+    if (typeof encryptJobId === 'string' && encryptJobId) {
+      const matched = get(encryptJobId)
+      if (matched) {
+        return matched
+      }
+    }
+
+    return list.value.find((item) => item.lid === detail.lid)
+  }
+
+  function toSelectedJobSnapshot(detail = vueJobDetail.value): SelectedJobSnapshot | null {
+    const item = resolveJobByDetail(detail)
+    if (!item || !detail) {
+      return null
+    }
+
+    return {
+      item,
+      card: getActiveSiteAdapter(location.href).parseJobDetail(detail),
+    }
+  }
+
+  function syncSelectedJobDetail(detail?: bossZpDetailData) {
+    const selected = toSelectedJobSnapshot(detail)
+    if (!selected) {
+      return
+    }
+
+    selected.item.card = selected.card
+  }
+
   function syncJobList(items: bossZpJobItemData[]) {
     logger.debug('初始化岗位列表', items)
 
@@ -161,6 +203,7 @@ const useJobsStore = defineStore('jobs', () => {
     })
 
     replace(nextList)
+    syncSelectedJobDetail()
   }
 
   async function initJobList(formData: FormData) {
@@ -172,7 +215,9 @@ const useJobsStore = defineStore('jobs', () => {
     const adapter = getActiveSiteAdapter(location.href)
     const bindings = adapter.getVueBindings(location.pathname)
     const vueContainerQuery = getVueContainerQuery()
-    const hookJobDetail = useHookVueData(vueContainerQuery, bindings.jobDetailKey, vueJobDetail)
+    const hookJobDetail = useHookVueData(vueContainerQuery, bindings.jobDetailKey, vueJobDetail, (detail) => {
+      syncSelectedJobDetail(detail)
+    })
     const hookClickJobCardAction = useHookVueFn<(_: bossZpJobItemData) => Promise<void>>(
       vueContainerQuery,
       bindings.clickJobCardActionKey,
@@ -197,6 +242,9 @@ const useJobsStore = defineStore('jobs', () => {
     useCache,
     initJobList,
     get,
+    getSelected() {
+      return toSelectedJobSnapshot()
+    },
     set,
     clear,
     replace,
@@ -218,6 +266,7 @@ export function useJobs() {
     ...refs,
     initJobList: store.initJobList,
     get: store.get,
+    getSelected: store.getSelected,
     set: store.set,
     clear: store.clear,
     replace: store.replace,
@@ -246,6 +295,9 @@ export const jobList = {
   },
   get(encryptJobId: EncryptJobId) {
     return useJobsStore().get(encryptJobId)
+  },
+  getSelected() {
+    return useJobsStore().getSelected()
   },
   set(encryptJobId: EncryptJobId, value: MyJobListData) {
     return useJobsStore().set(encryptJobId, value)

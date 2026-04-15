@@ -193,6 +193,7 @@ function getCommandTimeout(command: BossHelperAgentCommand) {
   switch (command) {
     case 'start':
     case 'jobs.list':
+    case 'jobs.current':
     case 'jobs.refresh':
     case 'navigate':
     case 'plan.preview':

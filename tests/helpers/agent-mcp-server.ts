@@ -607,6 +607,46 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
             },
           }
           break
+        case 'jobs.current':
+          payload = {
+            ok: true,
+            code: 'jobs-current',
+            message: 'current job snapshot',
+            data: {
+              selected: true,
+              job: {
+                encryptJobId: 'job-1',
+                jobName: 'Frontend Engineer',
+                brandName: 'Acme',
+                brandScaleName: '100-499人',
+                salaryDesc: '20-30K',
+                cityName: 'Shanghai',
+                areaDistrict: 'Pudong',
+                skills: ['Vue'],
+                jobLabels: ['Vue'],
+                bossName: 'Alice',
+                bossTitle: 'HR',
+                goldHunter: false,
+                contact: false,
+                welfareList: [],
+                status: 'wait',
+                statusMsg: '等待中',
+                hasCard: true,
+                postDescription: '负责前端页面开发',
+                degreeName: '本科',
+                experienceName: '3-5年',
+                address: '上海市浦东新区张江高科',
+                activeTimeDesc: '刚刚活跃',
+                friendStatus: 0,
+                brandIndustry: '互联网',
+                gps: {
+                  longitude: 121.6,
+                  latitude: 31.2,
+                },
+              },
+            },
+          }
+          break
         case 'jobs.refresh':
           payload = {
             ok: true,

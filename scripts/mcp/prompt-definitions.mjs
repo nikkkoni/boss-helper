@@ -65,7 +65,7 @@ function buildTargetedDeliveryPrompt(args = {}) {
 1. 先调用 \`boss_helper_health\`、\`boss_helper_status\`、\`boss_helper_agent_context\`，确认 bridge、relay、页面上下文和推荐下一步。
 2. 如果你还不确定环境是否已经搭好，优先插入一次 \`boss_helper_bootstrap_guide\`，确认当前缺的是 bridge、relay、extension ID、Boss 页还是登录/风控前置条件。
 3. 如果当前页面不在目标搜索场景，调用 \`boss_helper_navigate\`。
-4. 用 \`boss_helper_jobs_list\` 找候选岗位，只对少量高价值岗位调用 \`boss_helper_jobs_detail\`。
+4. 用 \`boss_helper_jobs_list\` 找候选岗位；如果页面里已经选中某个岗位，先读 \`boss_helper_jobs_current\`，只对少量高价值岗位调用 \`boss_helper_jobs_detail\`。
 5. 用 \`boss_helper_resume_get\` 校验岗位和真实简历的匹配度。
 6. 调用 \`boss_helper_plan_preview\` 先拿到只读执行预演，确认哪些岗位会被跳过、哪些仍需审核。
 7. 只有在明确选中岗位后，才调用 \`boss_helper_start\`，并传入明确的 \`jobIds\`。

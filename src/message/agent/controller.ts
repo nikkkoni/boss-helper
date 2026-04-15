@@ -3,6 +3,7 @@ import type {
   BossHelperAgentChatListPayload,
   BossHelperAgentChatSendPayload,
   BossHelperAgentConfigUpdatePayload,
+  BossHelperAgentJobCurrentPayload,
   BossHelperAgentJobDetailPayload,
   BossHelperAgentJobReviewPayload,
   BossHelperAgentJobsListPayload,
@@ -18,6 +19,7 @@ import type {
   BossHelperAgentChatListData,
   BossHelperAgentConfigSnapshot,
   BossHelperAgentConfigUpdateData,
+  BossHelperAgentJobCurrentData,
   BossHelperAgentJobDetailData,
   BossHelperAgentJobsListData,
   BossHelperAgentJobsRefreshData,
@@ -41,6 +43,9 @@ export interface BossHelperAgentController {
   jobsList: (
     payload?: BossHelperAgentJobsListPayload,
   ) => Promise<BossHelperAgentResponse<BossHelperAgentJobsListData>>
+  jobsCurrent: (
+    payload?: BossHelperAgentJobCurrentPayload,
+  ) => Promise<BossHelperAgentResponse<BossHelperAgentJobCurrentData>>
   jobsRefresh: () => Promise<BossHelperAgentResponse<BossHelperAgentJobsRefreshData>>
   jobsReview: (payload: BossHelperAgentJobReviewPayload) => Promise<BossHelperAgentResponse>
   logsQuery: (

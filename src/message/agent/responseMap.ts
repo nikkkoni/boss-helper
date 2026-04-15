@@ -4,6 +4,7 @@ import type {
   BossHelperAgentChatListData,
   BossHelperAgentConfigSnapshot,
   BossHelperAgentConfigUpdateData,
+  BossHelperAgentJobCurrentData,
   BossHelperAgentJobDetailData,
   BossHelperAgentJobsListData,
   BossHelperAgentJobsRefreshData,
@@ -31,6 +32,7 @@ export type BossHelperAgentResponseDataMap = {
   'chat.send': BossHelperAgentStatsData
   'logs.query': BossHelperAgentLogsQueryData
   'jobs.list': BossHelperAgentJobsListData
+  'jobs.current': BossHelperAgentJobCurrentData
   'jobs.refresh': BossHelperAgentJobsRefreshData
   'jobs.detail': BossHelperAgentJobDetailData
   'jobs.review': BossHelperAgentStatsData

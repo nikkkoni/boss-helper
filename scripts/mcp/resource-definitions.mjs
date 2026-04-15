@@ -19,7 +19,7 @@ function buildAutonomyWorkflowResource() {
 2. 再调用 \`boss_helper_health\`、\`boss_helper_status\`，确认 bridge 和 relay 在线。
 3. 然后调用 \`boss_helper_agent_context\`，一次性读取运行上下文、最近事件和下一步建议。
 4. 如有必要，用 \`boss_helper_navigate\` 切换到目标搜索页。
-5. 用 \`boss_helper_jobs_list\` 获取候选岗位，再对少量高价值岗位调用 \`boss_helper_jobs_detail\`。
+5. 用 \`boss_helper_jobs_list\` 获取候选岗位；如果页面里已经选中某个岗位，优先读取 \`boss_helper_jobs_current\`，再对少量高价值岗位调用 \`boss_helper_jobs_detail\`。
 6. 用 \`boss_helper_resume_get\` 把判断建立在真实简历上，而不是凭空猜测。
 7. 在真正执行前，先调用 \`boss_helper_plan_preview\` 读取只读预演结果，确认哪些岗位会被跳过、哪些仍需 AI 审核或人工确认。
 8. 只对明确筛出的岗位调用 \`boss_helper_start\`，并显式传入 \`jobIds\`。

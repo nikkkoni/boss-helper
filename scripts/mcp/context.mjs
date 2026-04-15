@@ -310,7 +310,13 @@ function buildBootstrapRecommendedTools(readiness, summary) {
   }
 
   if (summary.ready) {
-    tools.push('boss_helper_jobs_list', 'boss_helper_jobs_detail', 'boss_helper_plan_preview', 'boss_helper_start')
+    tools.push(
+      'boss_helper_jobs_list',
+      'boss_helper_jobs_current',
+      'boss_helper_jobs_detail',
+      'boss_helper_plan_preview',
+      'boss_helper_start',
+    )
   }
 
   return tools
@@ -807,7 +813,7 @@ export function createAgentContextService(bridgeClient) {
     }
 
     if (summary.jobsVisibleCount > 0) {
-      recommendations.push(`当前页面可见 ${summary.jobsVisibleCount} 个候选职位，优先调用 boss_helper_plan_preview 或少量 boss_helper_jobs_detail，再决定是否 start。`)
+      recommendations.push(`当前页面可见 ${summary.jobsVisibleCount} 个候选职位，优先调用 boss_helper_jobs_current、boss_helper_plan_preview 或少量 boss_helper_jobs_detail，再决定是否 start。`)
     }
 
     if (recommendations.length === 0) {

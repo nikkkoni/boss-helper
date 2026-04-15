@@ -3,6 +3,7 @@ import type {
   BossHelperAgentChatListPayload,
   BossHelperAgentChatSendPayload,
   BossHelperAgentConfigUpdatePayload,
+  BossHelperAgentJobCurrentPayload,
   BossHelperAgentController,
   BossHelperAgentJobDetailPayload,
   BossHelperAgentJobReviewPayload,
@@ -31,11 +32,11 @@ export function createAgentController(options: {
 }): BossHelperAgentController {
   const { batchRunner, queries } = options
 
-    return {
-      start: batchRunner.startBatch,
-      pause: batchRunner.pauseBatch,
-      resume: (payload?: BossHelperAgentResumePayload) => batchRunner.resumeBatch(payload),
-      resumeGet: queries.resumeGet,
+  return {
+    start: batchRunner.startBatch,
+    pause: batchRunner.pauseBatch,
+    resume: (payload?: BossHelperAgentResumePayload) => batchRunner.resumeBatch(payload),
+    resumeGet: queries.resumeGet,
     stop: batchRunner.stopBatch,
     stats: batchRunner.stats,
     planPreview: queries.planPreview,
@@ -47,6 +48,7 @@ export function createAgentController(options: {
     jobsReview: queries.jobsReview,
     logsQuery: queries.logsQuery,
     jobsList: queries.jobsList,
+    jobsCurrent: queries.jobsCurrent,
     jobsRefresh: queries.jobsRefresh,
     jobsDetail: queries.jobsDetail,
     configGet: queries.getConfig,
@@ -83,6 +85,8 @@ export function createAgentController(options: {
           return queries.logsQuery(request.payload as BossHelperAgentLogsQueryPayload | undefined)
         case 'jobs.list':
           return queries.jobsList(request.payload as BossHelperAgentJobsListPayload | undefined)
+        case 'jobs.current':
+          return queries.jobsCurrent(request.payload as BossHelperAgentJobCurrentPayload | undefined)
         case 'jobs.refresh':
           return queries.jobsRefresh()
         case 'jobs.detail':

@@ -25,6 +25,7 @@ usage:
   node ./scripts/agent-cli.mjs config.update --payload '{"configPatch":{"aiReply":{"enable":true,"prompt":"Please confirm role fit first."}},"confirmHighRisk":true}'
   node ./scripts/agent-cli.mjs chat.send --payload '{"to_uid":"123","to_name":"encryptBossId","content":"你好，我对这个岗位很感兴趣","confirmHighRisk":true}'
   node ./scripts/agent-cli.mjs logs.query --payload '{"limit":10,"status":["AI筛选"]}'
+  node ./scripts/agent-cli.mjs jobs.current --payload '{"includeDetail":true}'
   node ./scripts/agent-cli.mjs batch --payload '[{"command":"stats"},{"command":"jobs.list","payload":{"statusFilter":["wait"]}}]'
   node ./scripts/agent-cli.mjs status
   node ./scripts/agent-cli.mjs doctor

@@ -19,6 +19,7 @@ export const bossHelperAgentCommands = [
   'chat.send',
   'logs.query',
   'jobs.list',
+  'jobs.current',
   'jobs.refresh',
   'jobs.detail',
   'jobs.review',
@@ -85,6 +86,10 @@ export interface BossHelperAgentJobsListPayload {
   statusFilter?: BossHelperAgentJobPipelineStatus[]
 }
 
+export interface BossHelperAgentJobCurrentPayload {
+  includeDetail?: boolean
+}
+
 export interface BossHelperAgentJobDetailPayload {
   encryptJobId: string
 }
@@ -140,6 +145,7 @@ export interface BossHelperAgentRequestPayloadMap {
   'chat.send': BossHelperAgentChatSendPayload
   'logs.query': BossHelperAgentLogsQueryPayload | undefined
   'jobs.list': BossHelperAgentJobsListPayload | undefined
+  'jobs.current': BossHelperAgentJobCurrentPayload | undefined
   'jobs.refresh': undefined
   'jobs.detail': BossHelperAgentJobDetailPayload
   'jobs.review': BossHelperAgentJobReviewPayload

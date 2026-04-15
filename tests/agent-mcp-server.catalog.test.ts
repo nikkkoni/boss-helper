@@ -31,6 +31,7 @@ describe('agent mcp server catalog', () => {
       expect(toolNames).toContain('boss_helper_agent_context')
       expect(toolNames).toContain('boss_helper_plan_preview')
       expect(toolNames).toContain('boss_helper_run_report')
+      expect(toolNames).toContain('boss_helper_jobs_current')
       expect(toolNames).toContain('boss_helper_jobs_refresh')
       expect(toolNames).toContain('boss_helper_start')
       expect(toolNames).toContain('boss_helper_resume')
@@ -246,6 +247,28 @@ describe('agent mcp server catalog', () => {
         }),
       )
 
+      const currentJobCall = await server.client.request('tools/call', {
+        arguments: {},
+        name: 'boss_helper_jobs_current',
+      })
+      const currentJob = (currentJobCall.result?.structuredContent ?? {}) as Record<string, any>
+      expect(currentJob).toEqual(
+        expect.objectContaining({
+          ok: true,
+          command: 'jobs.current',
+          data: expect.objectContaining({
+            code: 'jobs-current',
+            data: expect.objectContaining({
+              selected: true,
+              job: expect.objectContaining({
+                encryptJobId: 'job-1',
+                postDescription: '负责前端页面开发',
+              }),
+            }),
+          }),
+        }),
+      )
+
       const resources = await server.client.request('resources/list')
       const resourceUris = ((resources.result?.resources ?? []) as Array<{ uri: string }>).map((resource) => resource.uri)
       expect(resourceUris).toEqual(
@@ -283,6 +306,7 @@ describe('agent mcp server catalog', () => {
         ]),
       )
       expect(runtimeContext.recommendedTools).toContain('boss_helper_agent_context')
+      expect(runtimeContext.recommendedTools).toContain('boss_helper_jobs_current')
 
       const prompts = await server.client.request('prompts/list')
       const promptNames = ((prompts.result?.prompts ?? []) as Array<{ name: string }>).map((prompt) => prompt.name)
@@ -313,6 +337,7 @@ describe('agent mcp server catalog', () => {
           'POST /command:readiness.get',
           'POST /command:logs.query',
           'POST /command:plan.preview',
+          'POST /command:jobs.current',
           'POST /command:jobs.refresh',
           'POST /command:resume.get',
           'POST /command:jobs.list',
