@@ -990,4 +990,999 @@ describe('agent mcp context service', () => {
     expect(result.summary.outcomeCounts.failed).toBe(1)
   })
 
+  it('builds a review-loop workflow when pending review events exist', async () => {
+    const service = createAgentContextService({
+      baseUrl: 'http://127.0.0.1:4317',
+      bridgeRuntime: {
+        host: '127.0.0.1',
+        httpsBaseUrl: 'https://127.0.0.1:4318',
+        httpsPort: 4318,
+        port: 4317,
+      },
+      bridgeGet: vi.fn(async (path: string) => {
+        if (path === '/health') {
+          return {
+            ok: true,
+            status: 200,
+            data: { ok: true },
+          }
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            ok: true,
+            relayConnected: true,
+            relays: [{ id: 'relay-1' }],
+          },
+        }
+      }),
+      commandCall: vi.fn(async (command: string) => {
+        switch (command) {
+          case 'readiness.get':
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                ready: true,
+                suggestedAction: 'continue',
+                blockers: [],
+                page: {
+                  controllable: true,
+                  exists: true,
+                  routeKind: 'jobs',
+                  supported: true,
+                  url: 'https://www.zhipin.com/web/geek/jobs',
+                },
+                extension: {
+                  initialized: true,
+                },
+                account: {
+                  loggedIn: true,
+                  loginRequired: false,
+                },
+                risk: {
+                  hasBlockingModal: false,
+                  hasCaptcha: false,
+                  hasRiskWarning: false,
+                },
+              },
+            }
+          case 'stats':
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                risk: {
+                  delivery: {
+                    limit: 120,
+                    reached: false,
+                    remainingToday: 120,
+                  },
+                  level: 'medium',
+                  warnings: [],
+                },
+                run: {
+                  current: null,
+                  recent: null,
+                },
+                todayData: {
+                  success: 0,
+                },
+              },
+            }
+          default:
+            return {
+              ok: true,
+              status: 200,
+              data: {},
+            }
+        }
+      }),
+      readRecentEvents: vi.fn(async () => ({
+        ok: true,
+        data: {
+          recent: [
+            {
+              createdAt: '2026-04-15T00:00:10.000Z',
+              message: '等待外部审核',
+              type: 'job-pending-review',
+            },
+          ],
+          subscribers: 1,
+        },
+      })),
+    })
+
+    const result = await service.readAgentContext({ include: ['readiness', 'events', 'stats'] })
+
+    expect(result.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'review-loop',
+        eventFocus: {
+          terminalTypes: ['limit-reached', 'batch-error', 'batch-completed'],
+          watchTypes: ['job-pending-review', 'limit-reached', 'batch-error', 'batch-completed'],
+        },
+        goal: '优先完成待审核闭环',
+        recommendedTools: expect.arrayContaining(['boss_helper_jobs_review', 'boss_helper_jobs_detail']),
+      }),
+    )
+  })
+
+  it('builds an observe-run workflow when an active run is already running', async () => {
+    const service = createAgentContextService({
+      baseUrl: 'http://127.0.0.1:4317',
+      bridgeRuntime: {
+        host: '127.0.0.1',
+        httpsBaseUrl: 'https://127.0.0.1:4318',
+        httpsPort: 4318,
+        port: 4317,
+      },
+      bridgeGet: vi.fn(async (path: string) => {
+        if (path === '/health') {
+          return {
+            ok: true,
+            status: 200,
+            data: { ok: true },
+          }
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            ok: true,
+            relayConnected: true,
+            relays: [{ id: 'relay-1' }],
+          },
+        }
+      }),
+      commandCall: vi.fn(async (command: string) => {
+        switch (command) {
+          case 'readiness.get':
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                ready: true,
+                suggestedAction: 'continue',
+                blockers: [],
+                page: {
+                  controllable: true,
+                  exists: true,
+                  routeKind: 'jobs',
+                  supported: true,
+                  url: 'https://www.zhipin.com/web/geek/jobs',
+                },
+                extension: {
+                  initialized: true,
+                },
+                account: {
+                  loggedIn: true,
+                  loginRequired: false,
+                },
+                risk: {
+                  hasBlockingModal: false,
+                  hasCaptcha: false,
+                  hasRiskWarning: false,
+                },
+              },
+            }
+          case 'stats':
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                risk: {
+                  delivery: {
+                    limit: 120,
+                    reached: false,
+                    remainingToday: 118,
+                  },
+                  level: 'medium',
+                  warnings: [],
+                },
+                run: {
+                  current: {
+                    runId: 'run-active',
+                    state: 'running',
+                  },
+                  recent: null,
+                },
+                todayData: {
+                  success: 2,
+                },
+              },
+            }
+          default:
+            return {
+              ok: true,
+              status: 200,
+              data: {},
+            }
+        }
+      }),
+      readRecentEvents: vi.fn(async () => ({
+        ok: true,
+        data: {
+          recent: [],
+          subscribers: 1,
+        },
+      })),
+    })
+
+    const result = await service.readAgentContext({ include: ['readiness', 'stats'] })
+
+    expect(result.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'observe-run',
+        eventFocus: {
+          terminalTypes: ['limit-reached', 'batch-error', 'batch-completed'],
+          watchTypes: [
+            'job-pending-review',
+            'limit-reached',
+            'batch-error',
+            'batch-completed',
+            'rate-limited',
+            'job-failed',
+            'job-succeeded',
+            'job-filtered',
+            'chat-sent',
+          ],
+        },
+        goal: '优先观察进行中的 run',
+        recommendedTools: expect.arrayContaining(['boss_helper_stats', 'boss_helper_events_recent', 'boss_helper_wait_for_event']),
+      }),
+    )
+  })
+
+  it('builds a resume-run workflow when a paused run is resumable', async () => {
+    const service = createAgentContextService({
+      baseUrl: 'http://127.0.0.1:4317',
+      bridgeRuntime: {
+        host: '127.0.0.1',
+        httpsBaseUrl: 'https://127.0.0.1:4318',
+        httpsPort: 4318,
+        port: 4317,
+      },
+      bridgeGet: vi.fn(async (path: string) => {
+        if (path === '/health') {
+          return {
+            ok: true,
+            status: 200,
+            data: { ok: true },
+          }
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            ok: true,
+            relayConnected: true,
+            relays: [{ id: 'relay-1' }],
+          },
+        }
+      }),
+      commandCall: vi.fn(async (command: string) => {
+        switch (command) {
+          case 'readiness.get':
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                ready: true,
+                suggestedAction: 'continue',
+                blockers: [],
+                page: {
+                  controllable: true,
+                  exists: true,
+                  routeKind: 'jobs',
+                  supported: true,
+                  url: 'https://www.zhipin.com/web/geek/jobs',
+                },
+                extension: {
+                  initialized: true,
+                },
+                account: {
+                  loggedIn: true,
+                  loginRequired: false,
+                },
+                risk: {
+                  hasBlockingModal: false,
+                  hasCaptcha: false,
+                  hasRiskWarning: false,
+                },
+              },
+            }
+          case 'stats':
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                risk: {
+                  delivery: {
+                    limit: 120,
+                    reached: false,
+                    remainingToday: 118,
+                    remainingInRun: 17,
+                    runLimit: 20,
+                    runReached: false,
+                    usedInRun: 3,
+                  },
+                  level: 'medium',
+                  warnings: [],
+                },
+                run: {
+                  current: {
+                    lastError: {
+                      code: 'manual-pause',
+                    },
+                    recovery: {
+                      resumable: true,
+                    },
+                    runId: 'run-paused',
+                    state: 'paused',
+                  },
+                  recent: {
+                    recovery: {
+                      resumable: true,
+                    },
+                    runId: 'run-paused',
+                    state: 'paused',
+                  },
+                },
+                todayData: {
+                  success: 2,
+                },
+              },
+            }
+          default:
+            return {
+              ok: true,
+              status: 200,
+              data: {},
+            }
+        }
+      }),
+      readRecentEvents: vi.fn(async () => ({
+        ok: true,
+        data: {
+          recent: [],
+          subscribers: 1,
+        },
+      })),
+    })
+
+    const result = await service.readAgentContext({ include: ['readiness', 'stats'] })
+
+    expect(result.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'resume-run',
+        goal: '判断是否安全恢复当前 paused run',
+        nextActions: ['先复核 risk.warnings 与 lastError，再决定是否调用 resume。'],
+        recommendedTools: expect.arrayContaining([
+          'boss_helper_stats',
+          'boss_helper_run_report',
+          'boss_helper_resume',
+          'boss_helper_stop',
+        ]),
+      }),
+    )
+  })
+
+  it('builds a recover-error workflow when the recent run ended with error', async () => {
+    const service = createAgentContextService({
+      baseUrl: 'http://127.0.0.1:4317',
+      bridgeRuntime: {
+        host: '127.0.0.1',
+        httpsBaseUrl: 'https://127.0.0.1:4318',
+        httpsPort: 4318,
+        port: 4317,
+      },
+      bridgeGet: vi.fn(async (path: string) => {
+        if (path === '/health') {
+          return {
+            ok: true,
+            status: 200,
+            data: { ok: true },
+          }
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            ok: true,
+            relayConnected: true,
+            relays: [{ id: 'relay-1' }],
+          },
+        }
+      }),
+      commandCall: vi.fn(async (command: string) => {
+        switch (command) {
+          case 'readiness.get':
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                ready: true,
+                suggestedAction: 'continue',
+                blockers: [],
+                page: {
+                  controllable: true,
+                  exists: true,
+                  routeKind: 'jobs',
+                  supported: true,
+                  url: 'https://www.zhipin.com/web/geek/jobs',
+                },
+                extension: {
+                  initialized: true,
+                },
+                account: {
+                  loggedIn: true,
+                  loginRequired: false,
+                },
+                risk: {
+                  hasBlockingModal: false,
+                  hasCaptcha: false,
+                  hasRiskWarning: false,
+                },
+              },
+            }
+          case 'stats':
+            return {
+              ok: true,
+              status: 200,
+              data: {
+                risk: {
+                  delivery: {
+                    limit: 120,
+                    reached: false,
+                    remainingToday: 120,
+                  },
+                  level: 'medium',
+                  warnings: [],
+                },
+                run: {
+                  current: null,
+                  recent: {
+                    lastError: {
+                      code: 'batch-error',
+                    },
+                    recovery: {
+                      requiresPageReload: true,
+                      resumable: false,
+                      suggestedAction: 'refresh-page',
+                    },
+                    runId: 'run-error',
+                    state: 'error',
+                  },
+                },
+                todayData: {
+                  success: 1,
+                },
+              },
+            }
+          default:
+            return {
+              ok: true,
+              status: 200,
+              data: {},
+            }
+        }
+      }),
+      readRecentEvents: vi.fn(async () => ({
+        ok: true,
+        data: {
+          recent: [],
+          subscribers: 1,
+        },
+      })),
+    })
+
+    const result = await service.readAgentContext({ include: ['readiness', 'stats'] })
+
+    expect(result.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'recover-error',
+        goal: '先定位上一轮错误，再决定是否继续',
+        nextActions: ['先看 run_report 和 readiness，确认是页面、配置、系统还是风险中断。'],
+        recommendedTools: expect.arrayContaining([
+          'boss_helper_run_report',
+          'boss_helper_stats',
+          'boss_helper_jobs_refresh',
+        ]),
+      }),
+    )
+  })
+
+  it('scopes agent_context plan preview to the currently selected job when available', async () => {
+    const commandCall = vi.fn(async (command: string, args: Record<string, unknown>) => {
+      switch (command) {
+        case 'readiness.get':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              ready: true,
+              suggestedAction: 'continue',
+              blockers: [],
+              page: {
+                controllable: true,
+                exists: true,
+                routeKind: 'jobs',
+                supported: true,
+                url: 'https://www.zhipin.com/web/geek/jobs',
+              },
+              extension: {
+                initialized: true,
+              },
+              account: {
+                loggedIn: true,
+                loginRequired: false,
+              },
+              risk: {
+                hasBlockingModal: false,
+                hasCaptcha: false,
+                hasRiskWarning: false,
+              },
+            },
+          }
+        case 'jobs.current':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              selected: true,
+              job: {
+                brandName: 'Selected Corp',
+                encryptJobId: 'job-selected',
+                hasCard: true,
+                jobName: 'Selected Engineer',
+                status: 'wait',
+              },
+            },
+          }
+        case 'jobs.list':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              jobs: [
+                {
+                  brandName: 'Selected Corp',
+                  encryptJobId: 'job-selected',
+                  hasCard: true,
+                  jobName: 'Selected Engineer',
+                  status: 'wait',
+                },
+                {
+                  brandName: 'Other Corp',
+                  encryptJobId: 'job-other',
+                  hasCard: false,
+                  jobName: 'Other Engineer',
+                  status: 'pending',
+                },
+              ],
+            },
+          }
+        case 'plan.preview': {
+          const jobIds = Array.isArray(args.jobIds) ? args.jobIds.map((jobId: unknown) => String(jobId)) : []
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              config: {
+                targetJobIds: jobIds,
+              },
+              items: [
+                {
+                  decision: 'needs-manual-review',
+                  job: {
+                    encryptJobId: jobIds[0] ?? 'job-selected',
+                    jobName: 'Selected Engineer',
+                  },
+                  stage: 'ai-filtering',
+                },
+              ],
+              summary: {
+                missingInfoCount: 0,
+                needsExternalReviewCount: 0,
+                needsManualReviewCount: 1,
+                readyCount: 0,
+                scopedCount: jobIds.length,
+                skipCount: 0,
+                totalOnPage: 2,
+                unknownTargetJobIds: [],
+              },
+            },
+          }
+        }
+        case 'stats':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              risk: {
+                delivery: {
+                  limit: 120,
+                  reached: false,
+                  remainingToday: 120,
+                },
+                level: 'low',
+                warnings: [],
+              },
+              run: {
+                current: null,
+                recent: null,
+              },
+              todayData: {
+                success: 0,
+              },
+            },
+          }
+        default:
+          return {
+            ok: true,
+            status: 200,
+            data: {},
+          }
+      }
+    })
+
+    const service = createAgentContextService({
+      baseUrl: 'http://127.0.0.1:4317',
+      bridgeRuntime: {
+        host: '127.0.0.1',
+        httpsBaseUrl: 'https://127.0.0.1:4318',
+        httpsPort: 4318,
+        port: 4317,
+      },
+      bridgeGet: vi.fn(async (path: string) => {
+        if (path === '/health') {
+          return {
+            ok: true,
+            status: 200,
+            data: { ok: true },
+          }
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            ok: true,
+            relayConnected: true,
+            relays: [{ id: 'relay-1' }],
+          },
+        }
+      }),
+      commandCall,
+      readRecentEvents: vi.fn(async () => ({
+        ok: true,
+        data: {
+          recent: [],
+          subscribers: 1,
+        },
+      })),
+    })
+
+    const result = await service.readAgentContext({ include: ['readiness', 'jobs', 'plan', 'stats'] })
+
+    expect(commandCall).toHaveBeenCalledWith(
+      'jobs.current',
+      expect.objectContaining({ includeDetail: false, waitForRelay: true }),
+    )
+    expect(commandCall).toHaveBeenCalledWith(
+      'plan.preview',
+      expect.objectContaining({ jobIds: ['job-selected'], waitForRelay: true }),
+    )
+    expect(result.sections.plan).toEqual(
+      expect.objectContaining({
+        scope: {
+          source: 'selected-current-job',
+          targetJobIds: ['job-selected'],
+        },
+        data: expect.objectContaining({
+          config: expect.objectContaining({
+            targetJobIds: ['job-selected'],
+          }),
+          summary: expect.objectContaining({
+            scopedCount: 1,
+          }),
+        }),
+      }),
+    )
+    expect(result.workflow.planFocus).toEqual(
+      expect.objectContaining({
+        scope: {
+          source: 'selected-current-job',
+          targetJobIds: ['job-selected'],
+        },
+      }),
+    )
+  })
+
+  it('builds an analyze-jobs workflow when visible jobs are available and no run is active', async () => {
+    const commandCall = vi.fn(async (command: string, _args: Record<string, unknown>) => {
+      switch (command) {
+        case 'readiness.get':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              ready: true,
+              suggestedAction: 'continue',
+              blockers: [],
+              page: {
+                controllable: true,
+                exists: true,
+                routeKind: 'jobs',
+                supported: true,
+                url: 'https://www.zhipin.com/web/geek/jobs',
+              },
+              extension: {
+                initialized: true,
+              },
+              account: {
+                loggedIn: true,
+                loginRequired: false,
+              },
+              risk: {
+                hasBlockingModal: false,
+                hasCaptcha: false,
+                hasRiskWarning: false,
+              },
+            },
+          }
+        case 'jobs.list':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              jobs: [
+                {
+                  brandName: 'Acme',
+                  encryptJobId: 'job-1',
+                  hasCard: false,
+                  jobName: 'Frontend Engineer',
+                  status: 'pending',
+                },
+                {
+                  brandName: 'Beta',
+                  encryptJobId: 'job-2',
+                  hasCard: true,
+                  jobName: 'Fullstack Engineer',
+                  status: 'pending',
+                },
+                {
+                  brandName: 'Gamma',
+                  encryptJobId: 'job-3',
+                  hasCard: false,
+                  jobName: 'Platform Engineer',
+                  status: 'wait',
+                },
+              ],
+            },
+          }
+        case 'jobs.current':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              job: null,
+              selected: false,
+            },
+          }
+        case 'stats':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              risk: {
+                delivery: {
+                  limit: 120,
+                  reached: false,
+                  remainingToday: 120,
+                },
+                level: 'low',
+                warnings: [],
+              },
+              run: {
+                current: null,
+                recent: null,
+              },
+              todayData: {
+                success: 0,
+              },
+            },
+          }
+        case 'plan.preview':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              items: [
+                {
+                  decision: 'needs-manual-review',
+                  job: {
+                    encryptJobId: 'job-2',
+                    jobName: 'Fullstack Engineer',
+                  },
+                  stage: 'ai-filtering',
+                },
+                {
+                  decision: 'missing-info',
+                  job: {
+                    encryptJobId: 'job-3',
+                    jobName: 'Platform Engineer',
+                  },
+                  stage: 'load-card',
+                },
+              ],
+              summary: {
+                missingInfoCount: 1,
+                needsExternalReviewCount: 0,
+                needsManualReviewCount: 1,
+                readyCount: 0,
+                scopedCount: 3,
+                skipCount: 1,
+                totalOnPage: 3,
+                unknownTargetJobIds: [],
+              },
+            },
+          }
+        case 'resume.get':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              resumeText: 'Vue engineer',
+              userId: 'user-1',
+            },
+          }
+        default:
+          return {
+            ok: true,
+            status: 200,
+            data: {},
+          }
+      }
+    })
+
+    const service = createAgentContextService({
+      baseUrl: 'http://127.0.0.1:4317',
+      bridgeRuntime: {
+        host: '127.0.0.1',
+        httpsBaseUrl: 'https://127.0.0.1:4318',
+        httpsPort: 4318,
+        port: 4317,
+      },
+      bridgeGet: vi.fn(async (path: string) => {
+        if (path === '/health') {
+          return {
+            ok: true,
+            status: 200,
+            data: { ok: true },
+          }
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            ok: true,
+            relayConnected: true,
+            relays: [{ id: 'relay-1' }],
+          },
+        }
+      }),
+      commandCall,
+      readRecentEvents: vi.fn(async () => ({
+        ok: true,
+        data: {
+          recent: [],
+          subscribers: 1,
+        },
+      })),
+    })
+
+    const result = await service.readAgentContext({ include: ['readiness', 'jobs', 'plan', 'resume', 'stats'] })
+
+    expect(result.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'analyze-jobs',
+        candidateFocus: {
+          inspectFirst: [
+            {
+              brandName: 'Beta',
+              encryptJobId: 'job-2',
+              hasCard: true,
+              jobName: 'Fullstack Engineer',
+              reason: 'loaded-card',
+              status: 'pending',
+            },
+            {
+              brandName: 'Acme',
+              encryptJobId: 'job-1',
+              hasCard: false,
+              jobName: 'Frontend Engineer',
+              reason: 'list-order',
+              status: 'pending',
+            },
+            {
+              brandName: 'Gamma',
+              encryptJobId: 'job-3',
+              hasCard: false,
+              jobName: 'Platform Engineer',
+              reason: 'list-order',
+              status: 'wait',
+            },
+          ],
+          loadedCardCount: 1,
+          visibleCount: 3,
+        },
+        planFocus: {
+          firstAction: 'inspect-manual-review',
+          inspectFirst: [
+            {
+              decision: 'needs-manual-review',
+              encryptJobId: 'job-2',
+              jobName: 'Fullstack Engineer',
+              stage: 'ai-filtering',
+            },
+            {
+              decision: 'missing-info',
+              encryptJobId: 'job-3',
+              jobName: 'Platform Engineer',
+              stage: 'load-card',
+            },
+          ],
+          scope: {
+            source: 'candidate-focus',
+            targetJobIds: ['job-2', 'job-1', 'job-3'],
+          },
+          summary: {
+            missingInfoCount: 1,
+            needsExternalReviewCount: 0,
+            needsManualReviewCount: 1,
+            readyCount: 0,
+            scopedCount: 3,
+            skipCount: 1,
+          },
+        },
+        goal: '先做小范围岗位分析与只读预演',
+        recommendedTools: expect.arrayContaining(['boss_helper_jobs_current', 'boss_helper_jobs_detail', 'boss_helper_plan_preview']),
+      }),
+    )
+    expect(result.workflow.nextActions).toEqual([
+      'plan.preview 已显示仍有岗位需要进一步人工复核，先检查对应候选详情。',
+      '优先依据 workflow.planFocus 收敛下一步，而不是重新人工统计 preview summary。',
+    ])
+    expect(commandCall).toHaveBeenCalledWith(
+      'jobs.current',
+      expect.objectContaining({ includeDetail: false, waitForRelay: true }),
+    )
+    expect(commandCall).toHaveBeenCalledWith(
+      'plan.preview',
+      expect.objectContaining({ jobIds: ['job-2', 'job-1', 'job-3'], waitForRelay: true }),
+    )
+    expect(result.sections.plan).toEqual(
+      expect.objectContaining({
+        scope: {
+          source: 'candidate-focus',
+          targetJobIds: ['job-2', 'job-1', 'job-3'],
+        },
+        data: expect.objectContaining({
+          summary: expect.objectContaining({
+            missingInfoCount: 1,
+            needsManualReviewCount: 1,
+          }),
+        }),
+      }),
+    )
+  })
+
 })

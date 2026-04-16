@@ -291,6 +291,7 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
         type: 'object',
         properties: {
           limit: { type: 'number' },
+          pendingReplyOnly: { type: 'boolean' },
           timeoutMs: { type: 'number' },
           waitForRelay: { type: 'boolean' },
         },

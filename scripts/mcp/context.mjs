@@ -322,6 +322,363 @@ function buildBootstrapRecommendedTools(readiness, summary) {
   return tools
 }
 
+function createWorkflowEventFocus(watchTypes, terminalTypes = []) {
+  const normalizedWatchTypes = normalizeStringArray(watchTypes)
+  const normalizedTerminalTypes = normalizeStringArray(terminalTypes)
+
+  if (normalizedWatchTypes.length === 0 && normalizedTerminalTypes.length === 0) {
+    return null
+  }
+
+  return {
+    watchTypes: normalizedWatchTypes,
+    terminalTypes: normalizedTerminalTypes,
+  }
+}
+
+const DEFAULT_AGENT_CONTEXT_PLAN_SCOPE_LIMIT = 3
+
+function toWorkflowCandidateJob(job, reason) {
+  if (!isRecord(job)) {
+    return null
+  }
+
+  const encryptJobId = typeof job.encryptJobId === 'string' ? job.encryptJobId : ''
+  if (!encryptJobId) {
+    return null
+  }
+
+  return {
+    encryptJobId,
+    jobName: typeof job.jobName === 'string' ? job.jobName : '',
+    brandName: typeof job.brandName === 'string' ? job.brandName : '',
+    hasCard: job.hasCard === true,
+    reason,
+    status: typeof job.status === 'string' ? job.status : 'unknown',
+  }
+}
+
+function buildAnalyzeJobsCandidateFocus(jobsSection) {
+  const jobs = Array.isArray(jobsSection?.data?.jobs) ? jobsSection.data.jobs : []
+  if (jobs.length === 0) {
+    return null
+  }
+
+  const loadedCardJobs = jobs.filter((job) => isRecord(job) && job.hasCard === true)
+  const remainingJobs = jobs.filter((job) => !isRecord(job) || job.hasCard !== true)
+  const inspectFirst = [...loadedCardJobs, ...remainingJobs]
+    .map((job) => toWorkflowCandidateJob(job, isRecord(job) && job.hasCard === true ? 'loaded-card' : 'list-order'))
+    .filter(Boolean)
+    .slice(0, 3)
+
+  return {
+    inspectFirst,
+    loadedCardCount: loadedCardJobs.length,
+    visibleCount: jobs.length,
+  }
+}
+
+function getSelectedPlanPreviewJobId(currentJobSection) {
+  if (currentJobSection?.ok !== true || currentJobSection?.data?.selected !== true) {
+    return ''
+  }
+
+  return typeof currentJobSection.data?.job?.encryptJobId === 'string'
+    ? currentJobSection.data.job.encryptJobId
+    : ''
+}
+
+function createAgentContextPlanScope(source, targetJobIds = []) {
+  const normalizedSource = typeof source === 'string' && source ? source : 'page-default'
+
+  return {
+    source: normalizedSource,
+    targetJobIds: normalizeStringArray(targetJobIds),
+  }
+}
+
+function withAgentContextPlanScope(section, scope) {
+  if (!isRecord(section) || !isRecord(scope)) {
+    return section
+  }
+
+  return {
+    ...section,
+    scope,
+  }
+}
+
+function buildScopedPlanPreviewJobIds(jobsSection, maxCount = DEFAULT_AGENT_CONTEXT_PLAN_SCOPE_LIMIT) {
+  const candidateFocus = buildAnalyzeJobsCandidateFocus(jobsSection)
+  if (!candidateFocus) {
+    return []
+  }
+
+  return candidateFocus.inspectFirst
+    .map((item) => {
+      if (!item || typeof item.encryptJobId !== 'string') {
+        return ''
+      }
+      return item.encryptJobId
+    })
+    .filter(Boolean)
+    .slice(0, Math.max(1, maxCount))
+}
+
+function limitJobsSectionResult(section, jobsLimit) {
+  if (!Array.isArray(section?.data?.jobs) || !Number.isFinite(jobsLimit) || jobsLimit <= 0) {
+    return section
+  }
+
+  return {
+    ...section,
+    data: {
+      ...section.data,
+      jobs: section.data.jobs.slice(0, Math.max(1, Number(jobsLimit))),
+    },
+  }
+}
+
+function createPlanScopeUnavailableSection(sourceSection) {
+  const sourceMessage = typeof sourceSection?.message === 'string' && sourceSection.message
+    ? sourceSection.message
+    : '当前无法确定安全的只读预演范围'
+
+  return {
+    ok: false,
+    code: 'validation-failed',
+    message: `无法确定 agent_context 内 plan.preview 的安全预演范围：${sourceMessage}`,
+    retryable: typeof sourceSection?.retryable === 'boolean' ? sourceSection.retryable : true,
+    suggestedAction:
+      typeof sourceSection?.suggestedAction === 'string' ? sourceSection.suggestedAction : 'retry',
+    data: null,
+  }
+}
+
+function buildWorkflowPlanFocus(planSection) {
+  const summary = isRecord(planSection?.data?.summary) ? planSection.data.summary : null
+  const items = Array.isArray(planSection?.data?.items) ? planSection.data.items : []
+  const scope = isRecord(planSection?.scope) ? planSection.scope : null
+  if (!summary) {
+    return null
+  }
+
+  const firstAction = summary.readyCount > 0
+    ? 'narrow-to-ready'
+    : summary.needsExternalReviewCount > 0
+      ? 'handle-external-review'
+      : summary.needsManualReviewCount > 0
+        ? 'inspect-manual-review'
+        : summary.missingInfoCount > 0
+          ? 'fill-missing-info'
+          : summary.skipCount === summary.scopedCount && summary.scopedCount > 0
+            ? 'refresh-candidates'
+            : 're-read-context'
+
+  const inspectFirst = items
+    .filter((item) => isRecord(item) && isRecord(item.job))
+    .map((item) => ({
+      decision: typeof item.decision === 'string' ? item.decision : 'unknown',
+      encryptJobId: typeof item.job.encryptJobId === 'string' ? item.job.encryptJobId : '',
+      jobName: typeof item.job.jobName === 'string' ? item.job.jobName : '',
+      stage: typeof item.stage === 'string' ? item.stage : 'unknown',
+    }))
+    .filter((item) => item.encryptJobId)
+    .slice(0, 3)
+
+  return {
+    firstAction,
+    inspectFirst,
+    scope,
+    summary: {
+      missingInfoCount: Number.isFinite(summary.missingInfoCount) ? summary.missingInfoCount : 0,
+      needsExternalReviewCount: Number.isFinite(summary.needsExternalReviewCount) ? summary.needsExternalReviewCount : 0,
+      needsManualReviewCount: Number.isFinite(summary.needsManualReviewCount) ? summary.needsManualReviewCount : 0,
+      readyCount: Number.isFinite(summary.readyCount) ? summary.readyCount : 0,
+      scopedCount: Number.isFinite(summary.scopedCount) ? summary.scopedCount : 0,
+      skipCount: Number.isFinite(summary.skipCount) ? summary.skipCount : 0,
+    },
+  }
+}
+
+function buildAgentWorkflow(sectionResults, readiness, summary) {
+  const currentRun = sectionResults.stats?.data?.run?.current
+  const recentRun = sectionResults.stats?.data?.run?.recent
+  const riskSummary = sectionResults.stats?.data?.risk
+  const planFocus = buildWorkflowPlanFocus(sectionResults.plan)
+  const pageReadiness = sectionResults.readiness?.data
+  const pendingReviewCount = Number.isFinite(summary?.pendingReviewCount) ? summary.pendingReviewCount : 0
+  const jobsVisibleCount = Number.isFinite(summary?.jobsVisibleCount) ? summary.jobsVisibleCount : 0
+
+  if (!readiness.bridgeOnline || !readiness.relayConnected) {
+    return {
+      stage: 'bootstrap',
+      goal: '恢复 bridge 与 relay 链路',
+      why: '当前外部 Agent 还无法稳定读取页面上下文，必须先恢复 companion 链路。',
+      nextActions: [
+        '先确认 boss_helper_bootstrap_guide.summary.nextAction，再补 bridge / relay 冷启动步骤。',
+      ],
+      candidateFocus: null,
+      eventFocus: createWorkflowEventFocus(),
+      planFocus,
+      recommendedTools: ['boss_helper_bootstrap_guide', 'boss_helper_health', 'boss_helper_status'],
+    }
+  }
+
+  if (pageReadiness?.ready === false) {
+    const nextAction = typeof pageReadiness.suggestedAction === 'string'
+      ? pageReadiness.suggestedAction
+      : readiness.suggestedAction
+    const stage = nextAction === 'navigate'
+      ? 'navigate'
+      : nextAction === 'wait-login'
+        ? 'wait-login'
+        : nextAction === 'refresh-page'
+          ? 'recover-page'
+          : 'readiness-blocked'
+
+    return {
+      stage,
+      goal: '恢复页面到可执行态',
+      why: '页面 readiness 还没到 continue，当前不适合直接进入岗位分析或执行。',
+      nextActions: [
+        nextAction === 'navigate'
+          ? '先切回受支持的 Boss 职位搜索页。'
+          : nextAction === 'wait-login'
+            ? '等待用户完成登录后，再重新读取 agent_context。'
+            : nextAction === 'refresh-page'
+              ? '优先刷新当前职位页并等待扩展重新初始化。'
+              : '先解决当前页面阻塞，再继续自动化。',
+      ],
+      recommendedTools: buildBootstrapRecommendedTools(readiness, {
+        ready: false,
+        nextAction: nextAction || 'stop',
+      }),
+      candidateFocus: null,
+      eventFocus: createWorkflowEventFocus(),
+      planFocus,
+    }
+  }
+
+  if (pendingReviewCount > 0) {
+    return {
+      stage: 'review-loop',
+      goal: '优先完成待审核闭环',
+      why: '当前运行上下文里已经出现待审核事件，继续扩大分析或执行范围前应先清空 review backlog。',
+      nextActions: [
+        '先定位 job-pending-review 对应岗位，必要时补 jobs.detail 与 resume.get。',
+        '提交 jobs.review，再决定是否继续观察运行或恢复批次。',
+      ],
+      candidateFocus: null,
+      eventFocus: createWorkflowEventFocus(
+        ['job-pending-review', 'limit-reached', 'batch-error', 'batch-completed'],
+        ['limit-reached', 'batch-error', 'batch-completed'],
+      ),
+      planFocus,
+      recommendedTools: ['boss_helper_agent_context', 'boss_helper_jobs_detail', 'boss_helper_resume_get', 'boss_helper_jobs_review'],
+    }
+  }
+
+  if (currentRun?.state === 'running' || currentRun?.state === 'pausing') {
+    return {
+      stage: 'observe-run',
+      goal: '优先观察进行中的 run',
+      why: '当前已经存在 active run，继续发起新的 start 通常比先观察事件更容易造成上下文冲突。',
+      nextActions: [
+        '先观察 events_recent / wait_for_event 和 stats，再决定是否需要 pause、stop 或处理 review 事件。',
+      ],
+      candidateFocus: null,
+      eventFocus: createWorkflowEventFocus(
+        [
+          'job-pending-review',
+          'limit-reached',
+          'batch-error',
+          'batch-completed',
+          'rate-limited',
+          'job-failed',
+          'job-succeeded',
+          'job-filtered',
+          'chat-sent',
+        ],
+        ['limit-reached', 'batch-error', 'batch-completed'],
+      ),
+      planFocus,
+      recommendedTools: ['boss_helper_agent_context', 'boss_helper_stats', 'boss_helper_events_recent', 'boss_helper_wait_for_event', 'boss_helper_run_report'],
+    }
+  }
+
+  if (currentRun?.state === 'paused' && currentRun?.recovery?.resumable) {
+    return {
+      stage: 'resume-run',
+      goal: '判断是否安全恢复当前 paused run',
+      why: '当前存在可恢复的 paused run，先检查护栏和 lastError，通常比直接 start 新 run 更符合既有编排经验。',
+      nextActions: [
+        riskSummary?.delivery?.reached === true || currentRun?.lastError?.code === 'run-delivery-limit-reached'
+          ? '先根据 risk 与 lastError 判断应 stop 还是等待，不要直接 resume。'
+          : '先复核 risk.warnings 与 lastError，再决定是否调用 resume。',
+      ],
+      candidateFocus: null,
+      eventFocus: createWorkflowEventFocus(),
+      planFocus,
+      recommendedTools: ['boss_helper_agent_context', 'boss_helper_stats', 'boss_helper_run_report', 'boss_helper_resume', 'boss_helper_stop'],
+    }
+  }
+
+  if (recentRun?.state === 'error') {
+    return {
+      stage: 'recover-error',
+      goal: '先定位上一轮错误，再决定是否继续',
+      why: '最近一次 run 以 error 结束，直接重启执行往往会重复触发同类问题。',
+      nextActions: [
+        '先看 run_report 和 readiness，确认是页面、配置、系统还是风险中断。',
+      ],
+      candidateFocus: null,
+      eventFocus: createWorkflowEventFocus(),
+      planFocus,
+      recommendedTools: ['boss_helper_agent_context', 'boss_helper_run_report', 'boss_helper_stats', 'boss_helper_jobs_refresh'],
+    }
+  }
+
+  if (jobsVisibleCount > 0) {
+    return {
+      stage: 'analyze-jobs',
+      goal: '先做小范围岗位分析与只读预演',
+      why: '当前页面已有候选岗位，沿用 orchestrator 的成熟顺序，应该先读简历、岗位详情和 plan.preview，而不是直接 start 整页。',
+      nextActions: [
+        planFocus?.firstAction === 'narrow-to-ready'
+          ? 'plan.preview 已显示存在 ready 岗位，先缩小到 ready 候选，再决定是否进入真实执行。'
+          : planFocus?.firstAction === 'handle-external-review'
+            ? 'plan.preview 已显示仍有岗位需要 external review，先收敛到这些候选再决定是否进入 review 闭环。'
+            : planFocus?.firstAction === 'inspect-manual-review'
+              ? 'plan.preview 已显示仍有岗位需要进一步人工复核，先检查对应候选详情。'
+              : planFocus?.firstAction === 'fill-missing-info'
+                ? 'plan.preview 已显示仍有岗位缺少关键信息，先补详情或模型前置条件。'
+                : '先结合 jobs.current / jobs.list / jobs.detail 与 resume.get 建立候选集。',
+        planFocus
+          ? '优先依据 workflow.planFocus 收敛下一步，而不是重新人工统计 preview summary。'
+          : '再调用 plan.preview，确认哪些岗位 ready、skip 或仍需 review。',
+      ],
+      candidateFocus: buildAnalyzeJobsCandidateFocus(sectionResults.jobs),
+      eventFocus: createWorkflowEventFocus(),
+      planFocus,
+      recommendedTools: ['boss_helper_agent_context', 'boss_helper_jobs_current', 'boss_helper_jobs_list', 'boss_helper_jobs_detail', 'boss_helper_resume_get', 'boss_helper_plan_preview'],
+    }
+  }
+
+  return {
+    stage: 'context-refresh',
+    goal: '继续补齐当前可执行上下文',
+    why: '链路已 ready，但当前没有 active run、待审核事件或可见候选岗位，需要先刷新上下文再决定下一步。',
+    nextActions: [
+      '重新读取 jobs.list、resume.get 或必要时 navigate 到目标搜索页，再决定是否进入 plan.preview。',
+    ],
+    candidateFocus: null,
+    eventFocus: createWorkflowEventFocus(),
+    planFocus,
+    recommendedTools: ['boss_helper_agent_context', 'boss_helper_jobs_list', 'boss_helper_resume_get', 'boss_helper_navigate'],
+  }
+}
+
 function formatSectionResult(result, options = {}) {
   const resultRecord = isRecord(result) ? result : null
   const hasTransportEnvelope = Boolean(
@@ -840,6 +1197,38 @@ export function createAgentContextService(bridgeClient) {
       health,
       status,
     }
+    let planScopeCurrentJobSection = null
+    let planScopeJobsSection = null
+
+    async function loadPlanScopeCurrentJobSection() {
+      if (planScopeCurrentJobSection) {
+        return planScopeCurrentJobSection
+      }
+
+      planScopeCurrentJobSection = await safeCommandSection('jobs.current', {
+        includeDetail: false,
+        timeoutMs,
+        waitForRelay,
+      })
+      return planScopeCurrentJobSection
+    }
+
+    async function loadPlanScopeJobsSection() {
+      if (sectionResults.jobs) {
+        return sectionResults.jobs
+      }
+      if (planScopeJobsSection) {
+        return planScopeJobsSection
+      }
+
+      planScopeJobsSection = limitJobsSectionResult(await safeCommandSection('jobs.list', {
+        statusFilter: args.statusFilter,
+        timeoutMs,
+        waitForRelay,
+      }), args.jobsLimit)
+      return planScopeJobsSection
+    }
+
     for (const section of sections) {
       switch (section) {
         case 'readiness':
@@ -855,17 +1244,7 @@ export function createAgentContextService(bridgeClient) {
           })
           break
         case 'jobs':
-          sectionResults.jobs = await safeCommandSection('jobs.list', {
-            statusFilter: args.statusFilter,
-            timeoutMs,
-            waitForRelay,
-          })
-          if (Array.isArray(sectionResults.jobs.data?.jobs) && Number.isFinite(args.jobsLimit) && args.jobsLimit > 0) {
-            sectionResults.jobs.data = {
-              ...sectionResults.jobs.data,
-              jobs: sectionResults.jobs.data.jobs.slice(0, Math.max(1, Number(args.jobsLimit))),
-            }
-          }
+          sectionResults.jobs = await loadPlanScopeJobsSection()
           break
         case 'logs':
           sectionResults.logs = await safeCommandSection('logs.query', {
@@ -874,6 +1253,56 @@ export function createAgentContextService(bridgeClient) {
             waitForRelay,
           })
           break
+        case 'plan': {
+          const currentJobSection = await loadPlanScopeCurrentJobSection()
+          const selectedJobId = getSelectedPlanPreviewJobId(currentJobSection)
+          if (selectedJobId) {
+            sectionResults.plan = withAgentContextPlanScope(
+              await safeCommandSection('plan.preview', {
+                jobIds: [selectedJobId],
+                timeoutMs,
+                waitForRelay,
+              }),
+              createAgentContextPlanScope('selected-current-job', [selectedJobId]),
+            )
+            break
+          }
+
+          const jobsSection = await loadPlanScopeJobsSection()
+          const scopedJobIds = buildScopedPlanPreviewJobIds(jobsSection)
+          if (scopedJobIds.length > 0) {
+            sectionResults.plan = withAgentContextPlanScope(
+              await safeCommandSection('plan.preview', {
+                jobIds: scopedJobIds,
+                timeoutMs,
+                waitForRelay,
+              }),
+              createAgentContextPlanScope('candidate-focus', scopedJobIds),
+            )
+            break
+          }
+
+          const scopedJobs = Array.isArray(jobsSection?.data?.jobs) ? jobsSection.data.jobs : null
+          if (scopedJobs?.length === 0) {
+            sectionResults.plan = withAgentContextPlanScope(
+              await safeCommandSection('plan.preview', {
+                timeoutMs,
+                waitForRelay,
+              }),
+              createAgentContextPlanScope('page-default'),
+            )
+            break
+          }
+
+          sectionResults.plan = createPlanScopeUnavailableSection(
+            jobsSection?.ok === false
+              ? jobsSection
+              : currentJobSection?.ok === false
+                ? currentJobSection
+                : null,
+          )
+          break
+        }
         case 'resume':
           sectionResults.resume = await safeCommandSection('resume.get', { timeoutMs, waitForRelay })
           break
@@ -952,6 +1381,7 @@ export function createAgentContextService(bridgeClient) {
       resumableRun: recentRun?.recovery?.resumable === true,
       todayDelivered,
     }
+    const workflow = buildAgentWorkflow(sectionResults, readiness, summary)
 
     return {
       ok: true,
@@ -963,6 +1393,7 @@ export function createAgentContextService(bridgeClient) {
       requestedSections: sections,
       readiness,
       summary,
+      workflow,
       sections: sectionResults,
       recommendations: buildAgentContextRecommendations(sectionResults, readiness, summary),
     }

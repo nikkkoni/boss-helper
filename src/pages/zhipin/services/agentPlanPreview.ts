@@ -485,7 +485,8 @@ export async function previewAgentPlan(
     pipelineBuildError = error instanceof Error ? error.message : String(error)
   }
 
-  const items = await Promise.all(scopedJobs.map(async (job) => {
+  const items: BossHelperAgentPlanPreviewItem[] = []
+  for (const job of scopedJobs) {
     const previewStatus = resolvePreviewStatus({
       hasTargetJobIds: targetJobIdSet != null,
       job,
@@ -494,11 +495,13 @@ export async function previewAgentPlan(
     const previewJob = cloneJobForPreview(job, previewStatus)
 
     if (previewStatus.status !== 'wait') {
-      return createExistingStatusItem(previewJob, previewStatus)
+      items.push(createExistingStatusItem(previewJob, previewStatus))
+      continue
     }
 
     if (pipelineBuildError || pipeline == null) {
-      return createTopLevelFailureItem(previewJob, pipelineBuildError ?? 'preview pipeline unavailable')
+      items.push(createTopLevelFailureItem(previewJob, pipelineBuildError ?? 'preview pipeline unavailable'))
+      continue
     }
 
     const ctx: logData = { listData: previewJob }
@@ -506,18 +509,18 @@ export async function previewAgentPlan(
       for (const step of pipeline.before) {
         await step({ data: previewJob }, ctx)
       }
-      return createPostFilterItem({
+      items.push(createPostFilterItem({
         config: configSummary,
         job: previewJob,
-      })
+      }))
     } catch (error) {
-      return createFailureItem({
+      items.push(createFailureItem({
         error,
         job: previewJob,
         ctx,
-      })
+      }))
     }
-  }))
+  }
 
   return {
     config: configSummary,

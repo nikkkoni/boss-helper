@@ -143,7 +143,16 @@ describe('useAgentChatQueries', () => {
       }),
     )
     expect(listResponse.data?.total).toBe(2)
+    expect(listResponse.data?.totalConversations).toBe(2)
+    expect(listResponse.data?.pendingReplyCount).toBe(1)
     expect(listResponse.data?.conversations).toHaveLength(1)
+    expect(listResponse.data?.conversations[0]).toEqual(
+      expect.objectContaining({
+        conversationId: 'boss-2',
+        latestRole: 'boss',
+        needsReply: true,
+      }),
+    )
 
     expect(historyResponse).toEqual(
       expect.objectContaining({
@@ -245,6 +254,64 @@ describe('useAgentChatQueries', () => {
       retryable: false,
       suggestedAction: 'fix-input',
     })
+  })
+
+  it('filters chat.list to pending-reply conversations without losing total context', async () => {
+    const chat = useChat()
+    chat.appendChatMessage({
+      avatar: '',
+      content: 'boss latest',
+      conversationId: 'boss-1',
+      createdAt: new Date('2026-04-10T00:00:01').getTime(),
+      date: ['2026-04-10', '00:00:01'],
+      id: 1,
+      name: 'Boss One',
+      role: 'boss',
+    })
+    chat.appendChatMessage({
+      avatar: '',
+      content: 'boss first',
+      conversationId: 'boss-2',
+      createdAt: new Date('2026-04-10T00:00:02').getTime(),
+      date: ['2026-04-10', '00:00:02'],
+      id: 2,
+      name: 'Boss Two',
+      role: 'boss',
+    })
+    chat.appendChatMessage({
+      avatar: '',
+      content: 'my reply',
+      conversationId: 'boss-2',
+      createdAt: new Date('2026-04-10T00:00:03').getTime(),
+      date: ['2026-04-10', '00:00:03'],
+      id: 3,
+      name: 'Me',
+      role: 'user',
+    })
+
+    const queries = useAgentChatQueries(createOptions())
+    const response = await queries.chatList({ pendingReplyOnly: true })
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        code: 'chat-list',
+        ok: true,
+      }),
+    )
+    expect(response.data).toEqual(
+      expect.objectContaining({
+        pendingReplyCount: 1,
+        total: 1,
+        totalConversations: 2,
+        conversations: [
+          expect.objectContaining({
+            conversationId: 'boss-1',
+            latestRole: 'boss',
+            needsReply: true,
+          }),
+        ],
+      }),
+    )
   })
 
   it('sends chat messages and emits structured events', async () => {

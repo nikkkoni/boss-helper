@@ -1,105 +1,12 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { once } from 'node:events'
-
 import { expect, test } from '@playwright/test'
 
-import type {
-  BossHelperAgentResponse,
-  BossHelperAgentStatsData,
-} from '../../src/message/agent'
-import { McpClient } from '../helpers/agent-mcp-server'
-import {
-  expectRelayConnected,
-  pickAvailablePort,
-  runAgentCli,
-  startAgentBridge,
-} from './helpers/agent-bridge'
-import {
-  callAgentCommand,
-  getOrCreatePage,
-  launchExtensionSession,
-  repoRoot,
-  waitForBossHelperReady,
-} from './helpers/extension'
+import { createWorkflowDriver } from './helpers/workflow-driver'
 import {
   fixtureJobDetails,
   fixtureJobId,
   fixtureJobList,
   fulfillFixtureJson,
-  registerZhipinFixtureRoutes,
 } from './helpers/zhipin-fixture'
-
-type LiveMcpServer = {
-  client: McpClient
-  close: () => Promise<void>
-  getStderr: () => string
-}
-
-type AgentContextSnapshot = {
-  recommendations?: string[]
-  sections?: {
-    stats?: {
-      data?: BossHelperAgentStatsData
-    }
-  }
-  summary?: {
-    currentRunId?: string | null
-    hasActiveRun?: boolean
-    recentRunState?: string | null
-    resumableRun?: boolean
-  }
-}
-
-type RunReportSnapshot = {
-  currentRun?: {
-    runId?: string | null
-    state?: string | null
-  } | null
-  recentRun?: {
-    runId?: string | null
-    state?: string | null
-  } | null
-  reviewAudit?: {
-    externalReviewCount?: number
-    pendingReviewCount?: number
-    pendingReviewEvents?: Array<{
-      encryptJobId?: string
-    }>
-  }
-  run?: {
-    runId?: string | null
-    state?: string | null
-  } | null
-  summary?: {
-    categoryCounts?: Record<string, number>
-    decisionLogCount?: number
-    outcomeCounts?: Record<string, number>
-    pendingReviewCount?: number
-    scope?: string | null
-    selectedRunId?: string | null
-    selectedRunState?: string | null
-  }
-  decisionLog?: Array<{
-    category?: string
-    message?: string
-    outcome?: string
-    reasonCode?: string
-    reference?: {
-      eventType?: string
-    }
-    source?: string
-  }>
-}
-
-type RecentEventsSnapshot = {
-  data?: {
-    recent?: Array<{
-      createdAt?: string
-      message?: string
-      type?: string
-    }>
-  }
-}
 
 function createSecondFixtureJob() {
   const job = structuredClone(fixtureJobList[0])
@@ -151,193 +58,13 @@ function createSecondFixtureJobDetail() {
   }
 }
 
-async function stopChildProcess(child: ChildProcessWithoutNullStreams) {
-  if (child.exitCode != null) {
-    return
-  }
-
-  child.kill('SIGTERM')
-  const exited = await Promise.race([
-    once(child, 'exit').then(() => true),
-    new Promise<boolean>((resolve) => {
-      setTimeout(() => resolve(false), 3_000)
-    }),
-  ])
-
-  if (exited) {
-    return
-  }
-
-  child.kill('SIGKILL')
-  await once(child, 'exit')
-}
-
-async function startLiveMcpServer(env: NodeJS.ProcessEnv): Promise<LiveMcpServer> {
-  const child = spawn(process.execPath, ['./scripts/agent-mcp-server.mjs'], {
-    cwd: repoRoot,
-    env,
-    stdio: 'pipe',
-  })
-
-  let stderr = ''
-  child.stderr.on('data', (chunk) => {
-    stderr += chunk.toString('utf8')
-  })
-
-  return {
-    client: new McpClient(child),
-    close: async () => {
-      await stopChildProcess(child)
-    },
-    getStderr: () => stderr,
-  }
-}
-
-async function initializeMcpClient(mcpServer: LiveMcpServer, name: string) {
-  const initialize = await mcpServer.client.request('initialize', {
-    capabilities: {},
-    clientInfo: {
-      name,
-      version: '1.0.0',
-    },
-    protocolVersion: '2024-11-05',
-  })
-
-  expect(initialize.error).toBeUndefined()
-  mcpServer.client.notify('notifications/initialized')
-}
-
-async function readAgentContext(mcpServer: LiveMcpServer) {
-  const toolCall = await mcpServer.client.request('tools/call', {
-    arguments: {
-      include: ['stats'],
-    },
-    name: 'boss_helper_agent_context',
-  })
-
-  if (toolCall.error) {
-    throw new Error(`MCP tools/call failed: ${JSON.stringify(toolCall.error)}\n${mcpServer.getStderr()}`)
-  }
-
-  return toolCall.result?.structuredContent as AgentContextSnapshot
-}
-
-async function readRunReport(mcpServer: LiveMcpServer) {
-  const toolCall = await mcpServer.client.request('tools/call', {
-    arguments: {},
-    name: 'boss_helper_run_report',
-  })
-
-  if (toolCall.error) {
-    throw new Error(`MCP tools/call failed: ${JSON.stringify(toolCall.error)}\n${mcpServer.getStderr()}`)
-  }
-
-  return toolCall.result?.structuredContent as RunReportSnapshot
-}
-
-async function readRecentEvents(mcpServer: LiveMcpServer) {
-  const toolCall = await mcpServer.client.request('tools/call', {
-    arguments: {},
-    name: 'boss_helper_events_recent',
-  })
-
-  if (toolCall.error) {
-    throw new Error(`MCP tools/call failed: ${JSON.stringify(toolCall.error)}\n${mcpServer.getStderr()}`)
-  }
-
-  return toolCall.result?.structuredContent as RecentEventsSnapshot
-}
-
-async function applyStableConfig(port: number) {
-  const response = await runAgentCli<BossHelperAgentResponse>({
-    command: 'config.update',
-    payload: {
-      configPatch: {
-        delay: {
-          deliveryStarts: 0,
-          deliveryInterval: 0,
-          deliveryPageNext: 0,
-          messageSending: 0,
-        },
-        notification: {
-          value: false,
-        },
-        sameHrFilter: {
-          value: false,
-        },
-      },
-    },
-    port,
-  })
-
-  expect(response.data).toEqual(
-    expect.objectContaining({
-      code: 'config-updated',
-      ok: true,
-    }),
-  )
-}
-
-async function applyBrokenAiFilteringConfig(port: number) {
-  const response = await runAgentCli<BossHelperAgentResponse>({
-    command: 'config.update',
-    payload: {
-      configPatch: {
-        aiFiltering: {
-          enable: true,
-          model: '__missing_model__',
-          vip: false,
-        },
-      },
-    },
-    port,
-  })
-
-  expect(response.data).toEqual(
-    expect.objectContaining({
-      code: 'config-updated',
-      ok: true,
-    }),
-  )
-}
-
-async function postSyntheticAgentEvent(page: import('@playwright/test').Page, event: Record<string, unknown>) {
-  return page.evaluate(async (payload) => {
-    const response = await fetch('/agent-events', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({ event: payload }),
-    })
-
-    return {
-      ok: response.ok,
-      body: await response.json(),
-    }
-  }, event)
-}
-
-async function readCliStats(port: number) {
-  return (await runAgentCli<BossHelperAgentResponse<BossHelperAgentStatsData>>({
-    command: 'stats',
-    port,
-  })).data
-}
-
 test('surfaces paused and completed run summaries through CLI stats and MCP context', async () => {
-  const session = await launchExtensionSession()
-  const bridgePort = await pickAvailablePort(4757)
-  const bridge = await startAgentBridge(bridgePort)
-  let mcpServer: LiveMcpServer | undefined
   let applyCount = 0
-
   const secondJob = createSecondFixtureJob()
   const secondJobDetail = createSecondFixtureJobDetail()
-
-  try {
-    await registerZhipinFixtureRoutes(session.context, {
+  const driver = await createWorkflowDriver({
+    clientName: 'playwright-run-summary-paused',
+    fixtureOptions: {
       jobDetails: {
         ...structuredClone(fixtureJobDetails),
         [secondJob.encryptJobId]: secondJobDetail,
@@ -361,46 +88,53 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
           },
         })
       },
+    },
+    preferredBridgePort: 4757,
+  })
+
+  try {
+    const start = await driver.prepareObserveRun({
+      jobIds: [fixtureJobId, secondJob.encryptJobId],
+      resetFiltered: true,
+      timeout: 10_000,
     })
-
-    const jobsPage = await getOrCreatePage(session.context)
-    await jobsPage.goto('https://www.zhipin.com/web/geek/jobs')
-    await waitForBossHelperReady(jobsPage)
-
-    const relayPage = await session.context.newPage()
-    await relayPage.goto(`${bridge.httpsBaseUrl}/?extensionId=${session.extensionId}`)
-    await expectRelayConnected(relayPage, bridge)
-
-    mcpServer = await startLiveMcpServer({
-      ...process.env,
-      BOSS_HELPER_AGENT_HOST: '127.0.0.1',
-      BOSS_HELPER_AGENT_PORT: String(bridge.port),
-    })
-    await initializeMcpClient(mcpServer, 'playwright-run-summary-paused')
-
-    await applyStableConfig(bridge.port)
-
-    const start = await runAgentCli<BossHelperAgentResponse>({
-      command: 'start',
-      payload: {
-        confirmHighRisk: true,
-        jobIds: [fixtureJobId, secondJob.encryptJobId],
-        resetFiltered: true,
-      },
-      port: bridge.port,
-    })
-    expect(start.data).toEqual(
+    expect(start).toEqual(
       expect.objectContaining({
         code: 'started',
         ok: true,
       }),
     )
 
-    const pause = await runAgentCli<BossHelperAgentResponse<BossHelperAgentStatsData>>({
-      command: 'pause',
-      port: bridge.port,
-    })
-    expect(pause.data).toEqual(
+    const runningContext = await driver.readAgentContext()
+    expect(runningContext.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'observe-run',
+        eventFocus: {
+          terminalTypes: ['limit-reached', 'batch-error', 'batch-completed'],
+          watchTypes: [
+            'job-pending-review',
+            'limit-reached',
+            'batch-error',
+            'batch-completed',
+            'rate-limited',
+            'job-failed',
+            'job-succeeded',
+            'job-filtered',
+            'chat-sent',
+          ],
+        },
+        goal: '优先观察进行中的 run',
+        recommendedTools: expect.arrayContaining([
+          'boss_helper_stats',
+          'boss_helper_events_recent',
+          'boss_helper_wait_for_event',
+          'boss_helper_run_report',
+        ]),
+      }),
+    )
+
+    const { pause, stats: pausedStats } = await driver.pauseRunAndWaitPaused({ timeout: 10_000 })
+    expect(pause).toEqual(
       expect.objectContaining({
         code: 'pause-requested',
         ok: true,
@@ -417,20 +151,13 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
       }),
     )
 
-    await expect.poll(async () => {
-      const stats = await callAgentCommand(jobsPage, 'stats') as BossHelperAgentResponse<BossHelperAgentStatsData>
-      return stats.data?.run?.current?.state ?? null
-    }).toBe('paused')
-
-    const pausedStats = await readCliStats(bridge.port)
+    const pausedRun = pausedStats.data?.run.current
     expect(pausedStats).toEqual(
       expect.objectContaining({
         code: 'stats',
         ok: true,
       }),
     )
-
-    const pausedRun = pausedStats.data?.run.current
     expect(pausedRun).toEqual(
       expect.objectContaining({
         processedJobIds: [fixtureJobId],
@@ -444,7 +171,7 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
     )
     expect(pausedRun?.runId).toEqual(expect.any(String))
 
-    const pausedContext = await readAgentContext(mcpServer)
+    const pausedContext = await driver.readAgentContext()
     expect(pausedContext.summary).toEqual(
       expect.objectContaining({
         currentRunId: pausedRun?.runId,
@@ -459,8 +186,20 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
         state: 'paused',
       }),
     )
+    expect(pausedContext.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'resume-run',
+        goal: '判断是否安全恢复当前 paused run',
+        recommendedTools: expect.arrayContaining([
+          'boss_helper_stats',
+          'boss_helper_run_report',
+          'boss_helper_resume',
+          'boss_helper_stop',
+        ]),
+      }),
+    )
 
-    const pausedReport = await readRunReport(mcpServer)
+    const pausedReport = await driver.readRunReport()
     expect(pausedReport.run).toEqual(
       expect.objectContaining({
         runId: pausedRun?.runId,
@@ -487,26 +226,14 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
       ]),
     )
 
-    const resume = await runAgentCli<BossHelperAgentResponse>({
-      command: 'resume',
-      payload: {
-        confirmHighRisk: true,
-      },
-      port: bridge.port,
-    })
-    expect(resume.data).toEqual(
+    const { resume, stats: completedStats } = await driver.resumeRunAndWaitCompleted({ timeout: 10_000 })
+    expect(resume).toEqual(
       expect.objectContaining({
         code: 'resumed',
         ok: true,
       }),
     )
 
-    await expect.poll(async () => {
-      const stats = await callAgentCommand(jobsPage, 'stats') as BossHelperAgentResponse<BossHelperAgentStatsData>
-      return stats.data?.run?.current == null && stats.data?.run?.recent?.state === 'completed'
-    }).toBe(true)
-
-    const completedStats = await readCliStats(bridge.port)
     expect(completedStats.data?.run.current).toBeNull()
     expect(completedStats.data?.run.recent).toEqual(
       expect.objectContaining({
@@ -520,7 +247,7 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
       }),
     )
 
-    const completedContext = await readAgentContext(mcpServer)
+    const completedContext = await driver.readAgentContext()
     expect(completedContext.summary).toEqual(
       expect.objectContaining({
         currentRunId: null,
@@ -536,7 +263,7 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
       }),
     )
 
-    const completedReport = await readRunReport(mcpServer)
+    const completedReport = await driver.readRunReport()
     expect(completedReport.run).toEqual(
       expect.objectContaining({
         runId: pausedRun?.runId,
@@ -555,6 +282,7 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
     expect(completedReport.decisionLog).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          category: 'execution',
           outcome: 'delivered',
           source: 'log',
         }),
@@ -567,63 +295,30 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
       ]),
     )
   } finally {
-    await mcpServer?.close()
-    await bridge.stop()
-    await session.cleanup()
+    await driver.cleanup()
   }
 })
 
 test('surfaces batch-error run summaries with refresh-page recovery hints', async () => {
-  const session = await launchExtensionSession()
-  const bridgePort = await pickAvailablePort(4777)
-  const bridge = await startAgentBridge(bridgePort)
-  let mcpServer: LiveMcpServer | undefined
+  const driver = await createWorkflowDriver({
+    clientName: 'playwright-run-summary-error',
+    preferredBridgePort: 4777,
+  })
 
   try {
-    await registerZhipinFixtureRoutes(session.context)
-
-    const jobsPage = await getOrCreatePage(session.context)
-    await jobsPage.goto('https://www.zhipin.com/web/geek/jobs')
-    await waitForBossHelperReady(jobsPage)
-
-    const relayPage = await session.context.newPage()
-    await relayPage.goto(`${bridge.httpsBaseUrl}/?extensionId=${session.extensionId}`)
-    await expectRelayConnected(relayPage, bridge)
-
-    mcpServer = await startLiveMcpServer({
-      ...process.env,
-      BOSS_HELPER_AGENT_HOST: '127.0.0.1',
-      BOSS_HELPER_AGENT_PORT: String(bridge.port),
+    const { start, stats: errorStats } = await driver.prepareErrorRun({
+      jobIds: [fixtureJobId],
+      resetFiltered: true,
+      timeout: 10_000,
     })
-    await initializeMcpClient(mcpServer, 'playwright-run-summary-error')
 
-    await applyStableConfig(bridge.port)
-    await applyBrokenAiFilteringConfig(bridge.port)
-
-    const start = await runAgentCli<BossHelperAgentResponse>({
-      command: 'start',
-      payload: {
-        confirmHighRisk: true,
-        jobIds: [fixtureJobId],
-        resetFiltered: true,
-      },
-      port: bridge.port,
-    })
-    expect(start.data).toEqual(
+    expect(start).toEqual(
       expect.objectContaining({
         code: 'started',
         ok: true,
       }),
     )
 
-    await expect.poll(async () => {
-      const stats = await callAgentCommand(jobsPage, 'stats') as BossHelperAgentResponse<BossHelperAgentStatsData>
-      return stats.data?.run?.current == null && stats.data?.run?.recent?.state === 'error'
-    }, {
-      timeout: 10_000,
-    }).toBe(true)
-
-    const errorStats = await readCliStats(bridge.port)
     expect(errorStats.data?.run.current).toBeNull()
     expect(errorStats.data?.run.recent).toEqual(
       expect.objectContaining({
@@ -639,7 +334,7 @@ test('surfaces batch-error run summaries with refresh-page recovery hints', asyn
       }),
     )
 
-    const errorContext = await readAgentContext(mcpServer)
+    const errorContext = await driver.readAgentContext()
     expect(errorContext.summary).toEqual(
       expect.objectContaining({
         currentRunId: null,
@@ -656,13 +351,24 @@ test('surfaces batch-error run summaries with refresh-page recovery hints', asyn
         state: 'error',
       }),
     )
+    expect(errorContext.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'recover-error',
+        goal: '先定位上一轮错误，再决定是否继续',
+        recommendedTools: expect.arrayContaining([
+          'boss_helper_run_report',
+          'boss_helper_stats',
+          'boss_helper_jobs_refresh',
+        ]),
+      }),
+    )
     expect(errorContext.recommendations).toEqual(
       expect.arrayContaining([
         expect.stringContaining('刷新页面'),
       ]),
     )
 
-    const errorReport = await readRunReport(mcpServer)
+    const errorReport = await driver.readRunReport()
     expect(errorReport.run).toEqual(
       expect.objectContaining({
         state: 'error',
@@ -686,21 +392,15 @@ test('surfaces batch-error run summaries with refresh-page recovery hints', asyn
       ]),
     )
   } finally {
-    await mcpServer?.close()
-    await bridge.stop()
-    await session.cleanup()
+    await driver.cleanup()
   }
 })
 
 test('surfaces pending-review audit details through MCP run report before a run is stopped', async () => {
-  const session = await launchExtensionSession()
-  const bridgePort = await pickAvailablePort(4797)
-  const bridge = await startAgentBridge(bridgePort)
-  let mcpServer: LiveMcpServer | undefined
   let applyCount = 0
-
-  try {
-    await registerZhipinFixtureRoutes(session.context, {
+  const driver = await createWorkflowDriver({
+    clientName: 'playwright-run-report-pending-review',
+    fixtureOptions: {
       onApply: async (route) => {
         applyCount += 1
         await new Promise((resolve) => {
@@ -716,70 +416,43 @@ test('surfaces pending-review audit details through MCP run report before a run 
           },
         })
       },
-    })
+    },
+    preferredBridgePort: 4797,
+  })
 
-    const jobsPage = await getOrCreatePage(session.context)
-    await jobsPage.goto('https://www.zhipin.com/web/geek/jobs')
-    await waitForBossHelperReady(jobsPage)
-
-    const relayPage = await session.context.newPage()
-    await relayPage.goto(`${bridge.httpsBaseUrl}/?extensionId=${session.extensionId}`)
-    await expectRelayConnected(relayPage, bridge)
-
-    mcpServer = await startLiveMcpServer({
-      ...process.env,
-      BOSS_HELPER_AGENT_HOST: '127.0.0.1',
-      BOSS_HELPER_AGENT_PORT: String(bridge.port),
-    })
-    await initializeMcpClient(mcpServer, 'playwright-run-report-pending-review')
-
-    await applyStableConfig(bridge.port)
-
-    const start = await runAgentCli<BossHelperAgentResponse>({
-      command: 'start',
-      payload: {
-        confirmHighRisk: true,
-        jobIds: [fixtureJobId],
-        resetFiltered: true,
+  try {
+    const { event, start, syntheticEvent } = await driver.preparePendingReviewRun({
+      event: {
+        detail: {
+          encryptJobId: fixtureJobId,
+          job: {
+            encryptJobId: fixtureJobId,
+            jobName: 'Frontend Engineer',
+            brandName: 'Acme',
+          },
+          threshold: 60,
+          timeoutMs: 60_000,
+        },
+        id: 'pending-review-e2e',
+        job: {
+          brandName: 'Acme',
+          encryptJobId: fixtureJobId,
+          jobName: 'Frontend Engineer',
+        },
+        message: '等待外部审核: Frontend Engineer',
+        type: 'job-pending-review',
       },
-      port: bridge.port,
+      jobIds: [fixtureJobId],
+      resetFiltered: true,
+      timeout: 15_000,
     })
-    expect(start.data).toEqual(
+
+    expect(start).toEqual(
       expect.objectContaining({
         code: 'started',
         ok: true,
       }),
     )
-
-    await expect.poll(async () => {
-      const stats = await readCliStats(bridge.port)
-      return stats.data?.run.current?.state ?? stats.data?.run.recent?.state ?? null
-    }, {
-      timeout: 10_000,
-    }).toBe('running')
-
-    const syntheticEventAt = new Date().toISOString()
-    const syntheticEvent = await postSyntheticAgentEvent(relayPage, {
-      createdAt: syntheticEventAt,
-      detail: {
-        encryptJobId: fixtureJobId,
-        job: {
-          encryptJobId: fixtureJobId,
-          jobName: 'Frontend Engineer',
-          brandName: 'Acme',
-        },
-        threshold: 60,
-        timeoutMs: 60_000,
-      },
-      id: 'pending-review-e2e',
-      job: {
-        brandName: 'Acme',
-        encryptJobId: fixtureJobId,
-        jobName: 'Frontend Engineer',
-      },
-      message: '等待外部审核: Frontend Engineer',
-      type: 'job-pending-review',
-    })
     expect(syntheticEvent).toEqual(
       expect.objectContaining({
         ok: true,
@@ -790,14 +463,26 @@ test('surfaces pending-review audit details through MCP run report before a run 
       }),
     )
 
-    await expect.poll(async () => {
-      const recentEvents = await readRecentEvents(mcpServer!)
-      return (recentEvents.data?.recent ?? []).some((event) => event.type === 'job-pending-review')
-    }, {
-      timeout: 15_000,
-    }).toBe(true)
+    const pendingContext = await driver.readAgentContext({
+      include: ['events', 'stats'],
+    })
+    expect(pendingContext.workflow).toEqual(
+      expect.objectContaining({
+        stage: 'review-loop',
+        eventFocus: {
+          terminalTypes: ['limit-reached', 'batch-error', 'batch-completed'],
+          watchTypes: ['job-pending-review', 'limit-reached', 'batch-error', 'batch-completed'],
+        },
+        goal: '优先完成待审核闭环',
+        recommendedTools: expect.arrayContaining([
+          'boss_helper_jobs_detail',
+          'boss_helper_resume_get',
+          'boss_helper_jobs_review',
+        ]),
+      }),
+    )
 
-    const pendingReport = await readRunReport(mcpServer)
+    const pendingReport = await driver.readRunReport()
     expect(pendingReport.run).toEqual(
       expect.objectContaining({
         state: 'running',
@@ -819,7 +504,7 @@ test('surfaces pending-review audit details through MCP run report before a run 
         pendingReviewEvents: [
           expect.objectContaining({
             encryptJobId: fixtureJobId,
-            timestamp: syntheticEventAt,
+            timestamp: event.createdAt,
           }),
         ],
       }),
@@ -838,26 +523,15 @@ test('surfaces pending-review audit details through MCP run report before a run 
       ]),
     )
 
-    const stop = await runAgentCli<BossHelperAgentResponse>({
-      command: 'stop',
-      port: bridge.port,
-    })
-    expect(stop.data).toEqual(
+    const stop = await driver.stopRun()
+    expect(stop).toEqual(
       expect.objectContaining({
         code: 'stopped',
         ok: true,
       }),
     )
-
-    await expect.poll(async () => {
-      const stats = await callAgentCommand(jobsPage, 'stats') as BossHelperAgentResponse<BossHelperAgentStatsData>
-      return stats.data?.run?.current == null && stats.data?.run?.recent?.state === 'stopped'
-    }, {
-      timeout: 15_000,
-    }).toBe(true)
+    await driver.waitForRecentRunState('stopped', { timeout: 15_000 })
   } finally {
-    await mcpServer?.close()
-    await bridge.stop()
-    await session.cleanup()
+    await driver.cleanup()
   }
 })

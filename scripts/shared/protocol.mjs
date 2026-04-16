@@ -28,6 +28,7 @@ export const AGENT_CONTEXT_SECTIONS = Object.freeze([
   'events',
   'jobs',
   'logs',
+  'plan',
   'resume',
   'stats',
 ])

@@ -13,6 +13,7 @@ import {
   type BossHelperAgentReadinessBlocker,
   type BossHelperAgentReadinessData,
   type BossHelperAgentRequest,
+  type BossHelperAgentResponseDataMap,
   type BossHelperAgentResponse,
 } from '@/message/agent'
 import { ProvideBackgroundAdapter, provideBackgroundCounter } from '@/message/background'
@@ -22,10 +23,6 @@ const zhipinMatches = ['*://zhipin.com/*', '*://*.zhipin.com/*']
 const eventPorts = new Set<Browser.runtime.Port>()
 const trustedAgentRelayHosts = new Set(['localhost', '127.0.0.1'])
 const AGENT_RELAY_KEEPALIVE_TYPE = '__boss_helper_agent_keepalive__'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object'
-}
 
 function isTrustedAgentRelaySender(url?: string | null) {
   if (!url) {
@@ -111,6 +108,19 @@ function getRouteKind(url?: string | null) {
   return getSiteAdapterByUrl(url).getSelectors().getRouteKind(pathname)
 }
 
+function resolveNavigateBaseUrl(url: string) {
+  const parsed = new URL(url)
+  const callbackUrl = parsed.searchParams.get('callbackUrl')
+  if (callbackUrl) {
+    const callbackTargetUrl = new URL(callbackUrl, parsed.origin).toString()
+    if (callbackTargetUrl.startsWith(parsed.origin) && isSupportedSiteUrl(callbackTargetUrl)) {
+      return callbackTargetUrl
+    }
+  }
+
+  return new URL('/web/geek/jobs', parsed.origin).toString()
+}
+
 function buildReadinessData(
   tab: Browser.tabs.Tab | undefined,
   options: {
@@ -164,7 +174,7 @@ function buildReadinessData(
 async function forwardAgentRequestToTab(
   targetTab: Browser.tabs.Tab,
   request: BossHelperAgentRequest,
-): Promise<BossHelperAgentResponse> {
+): Promise<BossHelperAgentResponse<unknown>> {
   if (!targetTab.id) {
     return createBossHelperAgentResponse(false, 'target-tab-not-found', '未找到可用的 Boss 投递页面')
   }
@@ -190,9 +200,53 @@ async function forwardAgentRequestToTab(
   return createBossHelperAgentResponse(false, 'empty-response', '投递页面没有返回结果')
 }
 
+async function navigateAgentTab(
+  targetTab: Browser.tabs.Tab,
+  request: BossHelperAgentRequest<'navigate'>,
+): Promise<BossHelperAgentResponse<BossHelperAgentResponseDataMap['navigate']>> {
+  if (!targetTab.id || !targetTab.url) {
+    return createBossHelperAgentResponse(false, 'target-tab-not-found', '未找到可用的 Boss 投递页面')
+  }
+
+  try {
+    const baseUrl = resolveNavigateBaseUrl(targetTab.url)
+    const targetUrl = getSiteAdapterByUrl(baseUrl).buildNavigateUrl(
+      request.payload,
+      baseUrl,
+      new URL(baseUrl).origin,
+    )
+
+    await browser.tabs.update(targetTab.id, { url: targetUrl })
+
+    return createBossHelperAgentResponse(true, 'navigate-accepted', '已接受导航请求', {
+      targetUrl,
+    })
+  } catch (error) {
+    return createBossHelperAgentResponse(
+      false,
+      'navigate-invalid',
+      error instanceof Error ? error.message : '导航参数不合法',
+    )
+  }
+}
+
 async function forwardAgentRequest(
   request: BossHelperAgentRequest,
-): Promise<BossHelperAgentResponse> {
+): Promise<BossHelperAgentResponse<unknown>> {
+  if (request.command === 'navigate') {
+    const { bossTab, supportedTab } = await findAgentTabContext()
+    const targetTab = supportedTab ?? bossTab
+    if (!targetTab?.id) {
+      return createBossHelperAgentResponse(false, 'target-tab-not-found', '未找到可用的 Boss 投递页面')
+    }
+
+    if (supportedTab?.id === targetTab.id) {
+      return forwardAgentRequestToTab(targetTab, request)
+    }
+
+    return navigateAgentTab(targetTab, request as BossHelperAgentRequest<'navigate'>)
+  }
+
   const targetTab = await findAgentTargetTab()
   if (!targetTab?.id) {
     return createBossHelperAgentResponse(false, 'target-tab-not-found', '未找到可用的 Boss 投递页面')

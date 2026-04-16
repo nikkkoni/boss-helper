@@ -10,15 +10,19 @@ export interface BossHelperAgentChatMessage {
 export interface BossHelperAgentChatConversation {
   conversationId: string
   latestMessage: string
+  latestRole: 'boss' | 'user' | 'assistant'
   latestTimestamp: string
   messageCount: number
   name?: string
+  needsReply: boolean
   roles: Array<'boss' | 'user' | 'assistant'>
 }
 
 export interface BossHelperAgentChatListData {
   conversations: BossHelperAgentChatConversation[]
+  pendingReplyCount: number
   total: number
+  totalConversations: number
 }
 
 export interface BossHelperAgentChatHistoryData {

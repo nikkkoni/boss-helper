@@ -29,6 +29,7 @@ interface ZhipinFixtureOptions {
   jobList?: Array<(typeof fixtureJobList)[number]>
   onApply?: FixtureRouteHandler
   onChatRemind?: FixtureRouteHandler
+  selectedJobId?: string | null
   userInfo?: typeof fixtureUserInfo
 }
 
@@ -209,11 +210,13 @@ export const fixtureJobDetails: Record<string, unknown> = {
 function fixtureHtml(options: ZhipinFixtureOptions = {}) {
   const jobList = options.jobList ?? fixtureJobList
   const jobDetails = options.jobDetails ?? fixtureJobDetails
+  const selectedJobId = options.selectedJobId === undefined ? jobList[0]?.encryptJobId ?? null : options.selectedJobId
   const userInfo = options.userInfo ?? fixtureUserInfo
   const payload = JSON.stringify(
     {
       jobDetails,
       jobList,
+      selectedJobId,
       userInfo,
     },
     null,

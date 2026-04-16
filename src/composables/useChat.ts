@@ -33,6 +33,23 @@ export interface ChatAvatar {
   color?: string
 }
 
+export interface ChatConversationSummary {
+  conversationId: string
+  latestCreatedAt: number
+  latestMessage: string
+  latestRole: ChatMessage['role']
+  latestTimestamp: string
+  messageCount: number
+  name?: string
+  needsReply: boolean
+  roles: ChatMessage['role'][]
+}
+
+export interface ListChatConversationsOptions {
+  limit?: number
+  pendingReplyOnly?: boolean
+}
+
 function getConversationId(message: Pick<ChatMessage, 'name' | 'role' | 'conversationId'>) {
   const explicitConversationId = message.conversationId?.trim()
   if (explicitConversationId) {
@@ -143,12 +160,13 @@ function appendChatMessage(message: ChatMessage) {
   return true
 }
 
-function listChatConversations(limit = 20) {
+function listChatConversations(options: ListChatConversationsOptions = {}) {
   const conversations = new Map<
     string,
     {
       conversationId: string
       latestMessage: string
+      latestRole: ChatMessage['role']
       latestTimestamp: string
       latestCreatedAt: number
       messageCount: number
@@ -164,20 +182,22 @@ function listChatConversations(limit = 20) {
     const createdAt = resolveMessageCreatedAt(message)
 
     if (!existing) {
-      conversations.set(conversationId, {
-        conversationId,
-        latestMessage: message.content,
-        latestTimestamp: timestamp,
-        latestCreatedAt: createdAt,
-        messageCount: 1,
-        name: message.name,
-        roles: new Set([message.role]),
+        conversations.set(conversationId, {
+          conversationId,
+          latestMessage: message.content,
+          latestRole: message.role,
+          latestTimestamp: timestamp,
+          latestCreatedAt: createdAt,
+          messageCount: 1,
+          name: message.name,
+          roles: new Set([message.role]),
       })
       continue
     }
 
     if (createdAt >= existing.latestCreatedAt) {
       existing.latestMessage = message.content
+      existing.latestRole = message.role
       existing.latestTimestamp = timestamp
       existing.latestCreatedAt = createdAt
       if (message.name) {
@@ -191,17 +211,21 @@ function listChatConversations(limit = 20) {
     existing.roles.add(message.role)
   }
 
-  const safeLimit = Math.max(limit, 1)
+  const safeLimit = Math.max(options.limit ?? 20, 1)
   const items = [...conversations.values()]
-    .map((conversation) => ({
+    .map<ChatConversationSummary>((conversation) => ({
       ...conversation,
+      needsReply: conversation.latestRole === 'boss',
       roles: [...conversation.roles],
     }))
+    .filter((conversation) => !options.pendingReplyOnly || conversation.needsReply)
     .sort((left, right) => right.latestCreatedAt - left.latestCreatedAt)
 
   return {
     items: items.slice(0, safeLimit),
+    pendingReplyCount: items.filter((conversation) => conversation.needsReply).length,
     total: items.length,
+    totalBeforeFilter: conversations.size,
   }
 }
 

@@ -57,6 +57,15 @@ describe('agent mcp server catalog', () => {
           }),
         }),
       )
+      expect(toolList.find((tool) => tool.name === 'boss_helper_chat_list')).toEqual(
+        expect.objectContaining({
+          inputSchema: expect.objectContaining({
+            properties: expect.objectContaining({
+              pendingReplyOnly: expect.any(Object),
+            }),
+          }),
+        }),
+      )
       expect(toolList.find((tool) => tool.name === 'boss_helper_config_update')).toEqual(
         expect.objectContaining({
           inputSchema: expect.objectContaining({
@@ -136,6 +145,18 @@ describe('agent mcp server catalog', () => {
           todayDelivered: 2,
         }),
       )
+      expect(context.workflow).toEqual(
+        expect.objectContaining({
+          stage: 'review-loop',
+          candidateFocus: null,
+          eventFocus: {
+            terminalTypes: ['limit-reached', 'batch-error', 'batch-completed'],
+            watchTypes: ['job-pending-review', 'limit-reached', 'batch-error', 'batch-completed'],
+          },
+          goal: '优先完成待审核闭环',
+          recommendedTools: expect.arrayContaining(['boss_helper_jobs_review', 'boss_helper_jobs_detail']),
+        }),
+      )
       expect(context.sections.resume.data).toEqual(
         expect.objectContaining({
           userId: 'user-1',
@@ -167,6 +188,79 @@ describe('agent mcp server catalog', () => {
         }),
       )
       expect(context.sections.jobs.data.jobs).toHaveLength(1)
+
+      const analyzeJobsContextCall = await server.client.request('tools/call', {
+        arguments: {
+          include: ['jobs', 'plan'],
+        },
+        name: 'boss_helper_agent_context',
+      })
+      const analyzeJobsContext = (analyzeJobsContextCall.result?.structuredContent ?? {}) as Record<string, any>
+      expect(analyzeJobsContext.workflow).toEqual(
+        expect.objectContaining({
+          stage: 'analyze-jobs',
+          candidateFocus: {
+            inspectFirst: [
+              {
+                brandName: 'Beta',
+                encryptJobId: 'job-2',
+                hasCard: true,
+                jobName: 'Fullstack Engineer',
+                reason: 'loaded-card',
+                status: 'wait',
+              },
+              {
+                brandName: 'Acme',
+                encryptJobId: 'job-1',
+                hasCard: false,
+                jobName: 'Frontend Engineer',
+                reason: 'list-order',
+                status: 'pending',
+              },
+            ],
+            loadedCardCount: 1,
+            visibleCount: 2,
+          },
+          planFocus: {
+            firstAction: 'inspect-manual-review',
+            inspectFirst: [
+              {
+                decision: 'needs-manual-review',
+                encryptJobId: 'job-1',
+                jobName: 'Frontend Engineer',
+                stage: 'ai-filtering',
+              },
+            ],
+            scope: {
+              source: 'selected-current-job',
+              targetJobIds: ['job-1'],
+            },
+            summary: {
+              missingInfoCount: 0,
+              needsExternalReviewCount: 0,
+              needsManualReviewCount: 1,
+              readyCount: 0,
+              scopedCount: 1,
+              skipCount: 0,
+            },
+          },
+          eventFocus: null,
+        }),
+      )
+      expect(analyzeJobsContext.sections.plan).toEqual(
+        expect.objectContaining({
+          scope: {
+            source: 'selected-current-job',
+            targetJobIds: ['job-1'],
+          },
+          data: expect.objectContaining({
+            summary: expect.objectContaining({
+              needsManualReviewCount: 1,
+              scopedCount: 1,
+            }),
+          }),
+        }),
+      )
 
       const runReportCall = await server.client.request('tools/call', {
         arguments: {},
@@ -269,6 +363,35 @@ describe('agent mcp server catalog', () => {
         }),
       )
 
+      const chatListCall = await server.client.request('tools/call', {
+        arguments: {
+          pendingReplyOnly: true,
+        },
+        name: 'boss_helper_chat_list',
+      })
+      const chatList = (chatListCall.result?.structuredContent ?? {}) as Record<string, any>
+      expect(chatList).toEqual(
+        expect.objectContaining({
+          ok: true,
+          command: 'chat.list',
+          data: expect.objectContaining({
+            code: 'chat-list',
+            data: expect.objectContaining({
+              pendingReplyCount: 1,
+              total: 1,
+              totalConversations: 2,
+              conversations: [
+                expect.objectContaining({
+                  conversationId: 'uid:2',
+                  latestRole: 'boss',
+                  needsReply: true,
+                }),
+              ],
+            }),
+          }),
+        }),
+      )
+
       const resources = await server.client.request('resources/list')
       const resourceUris = ((resources.result?.resources ?? []) as Array<{ uri: string }>).map((resource) => resource.uri)
       expect(resourceUris).toEqual(
@@ -335,8 +458,11 @@ describe('agent mcp server catalog', () => {
           'GET /agent-events?',
           'POST /command:readiness.get',
           'POST /command:readiness.get',
+          'POST /command:readiness.get',
           'POST /command:logs.query',
           'POST /command:plan.preview',
+          'POST /command:plan.preview',
+          'POST /command:chat.list',
           'POST /command:jobs.current',
           'POST /command:jobs.refresh',
           'POST /command:resume.get',

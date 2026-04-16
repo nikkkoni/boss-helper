@@ -106,9 +106,11 @@ describe('initBossChatStream', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    const conversations = useChat().listChatConversations(10)
+    const conversations = useChat().listChatConversations({ limit: 10 })
     expect(conversations.total).toBe(1)
     expect(conversations.items[0].latestMessage).toBe('你好 Boss')
+    expect(conversations.items[0].latestRole).toBe('user')
+    expect(conversations.items[0].needsReply).toBe(false)
     expect(sendSpy).toHaveBeenCalledTimes(2)
 
     const history = useChat().getChatHistory('uid:2')
@@ -145,7 +147,7 @@ describe('initBossChatStream', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(sendSpy).toHaveBeenCalledTimes(1)
-    expect(useChat().listChatConversations(10).total).toBe(0)
+    expect(useChat().listChatConversations({ limit: 10 }).total).toBe(0)
   })
 
   it('captures wrapper sends, parses alternate message bodies, and tolerates undecodable frames', async () => {

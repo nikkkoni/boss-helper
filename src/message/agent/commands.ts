@@ -114,6 +114,7 @@ export interface BossHelperAgentChatSendPayload {
 
 export interface BossHelperAgentChatListPayload {
   limit?: number
+  pendingReplyOnly?: boolean
 }
 
 export interface BossHelperAgentChatHistoryPayload {

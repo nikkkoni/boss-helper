@@ -300,6 +300,30 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
             },
           }
           break
+        case 'chat.list':
+          payload = {
+            ok: true,
+            code: 'chat-list',
+            message: 'chat snapshot',
+            data: {
+              conversations: [
+                {
+                  conversationId: 'uid:2',
+                  latestMessage: '您好，请问方便沟通吗？',
+                  latestRole: 'boss',
+                  latestTimestamp: '2026-04-10 00:00:04',
+                  messageCount: 2,
+                  name: 'Boss',
+                  needsReply: true,
+                  roles: ['boss', 'user'],
+                },
+              ],
+              pendingReplyCount: 1,
+              total: 1,
+              totalConversations: 2,
+            },
+          }
+          break
         case 'stats':
           payload = {
             ok: true,
@@ -469,6 +493,14 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
           }
           break
         case 'plan.preview':
+          {
+            const payloadInput = body.payload && typeof body.payload === 'object'
+              ? body.payload as Record<string, unknown>
+              : {}
+            const targetJobIds = Array.isArray(payloadInput.jobIds)
+              ? payloadInput.jobIds.map((jobId) => String(jobId)).filter(Boolean)
+              : ['job-1']
+
           payload = {
             ok: true,
             code: 'plan-preview',
@@ -482,7 +514,7 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
                 greetingMode: 'none',
                 greetingModelReady: true,
                 resetFiltered: false,
-                targetJobIds: ['job-1'],
+                targetJobIds,
               },
               items: [
                 {
@@ -532,6 +564,7 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
             },
           }
           break
+          }
         case 'resume.get':
           payload = {
             ok: true,
@@ -596,14 +629,22 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
             data: {
               jobs: [
                 {
+                  brandName: 'Acme',
                   encryptJobId: 'job-1',
+                  hasCard: false,
                   jobName: 'Frontend Engineer',
+                  status: 'pending',
                 },
                 {
+                  brandName: 'Beta',
                   encryptJobId: 'job-2',
+                  hasCard: true,
                   jobName: 'Fullstack Engineer',
+                  status: 'wait',
                 },
               ],
+              total: 2,
+              totalOnPage: 2,
             },
           }
           break

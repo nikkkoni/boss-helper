@@ -270,6 +270,9 @@ export const browser = {
     async sendMessage(..._args: unknown[]): Promise<unknown> {
       return undefined
     },
+    async update(..._args: unknown[]): Promise<unknown> {
+      return undefined
+    },
   },
 }
 
@@ -298,6 +301,7 @@ export function __resetWxtMockState() {
   browser.runtime.sendMessage = async (..._args: unknown[]) => undefined
   browser.tabs.query = async (..._args: unknown[]) => []
   browser.tabs.sendMessage = async (..._args: unknown[]) => undefined
+  browser.tabs.update = async (..._args: unknown[]) => undefined
 }
 
 export function __setStorageItem<T>(key: string, value: T) {

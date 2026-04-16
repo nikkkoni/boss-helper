@@ -37,9 +37,21 @@ async function occupyPort(port: number) {
   occupiedServers.push(server)
 }
 
+async function reservePortPairBase(startPort = 4760, endPort = 4980) {
+  for (let port = startPort; port <= endPort; port += 2) {
+    const basePort = await pickAvailablePort(port)
+    const nextPairPort = await pickAvailablePort(basePort + 2)
+    if (nextPairPort === basePort + 2) {
+      return basePort
+    }
+  }
+
+  throw new Error('未找到可用的测试端口对')
+}
+
 describe('agent bridge helper', () => {
   it('skips occupied ports when picking an available bridge port pair', async () => {
-    const preferredPort = 4760
+    const preferredPort = await reservePortPairBase()
     await occupyPort(preferredPort)
     await occupyPort(preferredPort + 1)
 
@@ -49,7 +61,7 @@ describe('agent bridge helper', () => {
   })
 
   it('fails fast with a clear startup error when the bridge port is already in use', async () => {
-    const port = 4780
+    const port = await reservePortPairBase(4780, 5000)
     await occupyPort(port)
 
     await expect(startAgentBridge(port)).rejects.toThrow(

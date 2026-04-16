@@ -106,7 +106,7 @@
             pageSize: fixture.jobList.length,
           },
           jobList: fixture.jobList,
-          jobDetail: undefined,
+          jobDetail: fixture.selectedJobId ? fixture.jobDetails[fixture.selectedJobId] : undefined,
           clickJobCardAction(job) {
             const detail = fixture.jobDetails[job.encryptJobId]
             window.setTimeout(() => {

@@ -59,27 +59,87 @@ describe('useChat', () => {
       }),
     )
 
-    const conversations = chat.listChatConversations(10)
+    const conversations = chat.listChatConversations({ limit: 10 })
 
     expect(conversations.total).toBe(2)
     expect(conversations.items).toEqual([
       expect.objectContaining({
         conversationId: 'room-1',
         latestMessage: 'later',
+        latestRole: 'user',
         messageCount: 2,
+        needsReply: false,
         roles: ['user', 'boss'],
       }),
       expect.objectContaining({
         conversationId: 'Helper',
         latestMessage: 'assistant reply',
+        latestRole: 'assistant',
         messageCount: 1,
+        needsReply: false,
         roles: ['assistant'],
       }),
     ])
+    expect(conversations.pendingReplyCount).toBe(0)
+    expect(conversations.totalBeforeFilter).toBe(2)
 
     expect(chat.getChatHistory('room-1', 0, 10).items.map((item) => item.content)).toEqual([
       'earlier',
       'later',
+    ])
+  })
+
+  it('marks boss-latest conversations as pending reply and filters them when requested', () => {
+    const chat = useChat()
+
+    chat.appendChatMessage(
+      createChatMessage({
+        content: 'boss latest',
+        conversationId: 'room-boss',
+        createdAt: 3_000,
+        id: 3,
+        role: 'boss',
+      }),
+    )
+    chat.appendChatMessage(
+      createChatMessage({
+        content: 'user latest',
+        conversationId: 'room-user',
+        createdAt: 4_000,
+        id: 4,
+        role: 'user',
+      }),
+    )
+
+    const allConversations = chat.listChatConversations({ limit: 10 })
+    const pendingOnly = chat.listChatConversations({ limit: 10, pendingReplyOnly: true })
+
+    expect(allConversations.pendingReplyCount).toBe(1)
+    expect(allConversations.total).toBe(2)
+    expect(allConversations.totalBeforeFilter).toBe(2)
+    expect(allConversations.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          conversationId: 'room-boss',
+          latestRole: 'boss',
+          needsReply: true,
+        }),
+        expect.objectContaining({
+          conversationId: 'room-user',
+          latestRole: 'user',
+          needsReply: false,
+        }),
+      ]),
+    )
+    expect(pendingOnly.pendingReplyCount).toBe(1)
+    expect(pendingOnly.total).toBe(1)
+    expect(pendingOnly.totalBeforeFilter).toBe(2)
+    expect(pendingOnly.items).toEqual([
+      expect.objectContaining({
+        conversationId: 'room-boss',
+        latestRole: 'boss',
+        needsReply: true,
+      }),
     ])
   })
 

@@ -134,15 +134,27 @@ async function dismissProtocolNotice(page: Page) {
   await expect(agreeButton).toBeHidden()
 }
 
-export async function waitForBossHelperReady(page: Page) {
+export async function waitForBossHelperReady(
+  page: Page,
+  options: {
+    allowEmptyJobList?: boolean
+  } = {},
+) {
   await page.locator('#boss-helper').waitFor()
   await page.locator('#boss-helper-job').waitFor()
   await page.locator('#boss-helper-job-wrap').waitFor()
-  await expect.poll(async () => {
+  const readTotalOnPage = async () => {
     const jobs = await callAgentCommand(page, 'jobs.list')
     return jobs.data && typeof jobs.data === 'object' && 'totalOnPage' in jobs.data
       ? Number((jobs.data as { totalOnPage?: number }).totalOnPage ?? 0)
-      : 0
-  }).toBeGreaterThan(0)
+      : null
+  }
+
+  if (options.allowEmptyJobList) {
+    await expect.poll(readTotalOnPage).not.toBeNull()
+  } else {
+    await expect.poll(readTotalOnPage).toBeGreaterThan(0)
+  }
+
   await dismissProtocolNotice(page)
 }

@@ -44,10 +44,15 @@ export function useAgentChatQueries(options: UseAgentQueriesOptions) {
       )
     }
 
-    const result = chat.listChatConversations(payload?.limit ?? 20)
+    const result = chat.listChatConversations({
+      limit: payload?.limit,
+      pendingReplyOnly: payload?.pendingReplyOnly,
+    })
     return createBossHelperAgentResponse(true, 'chat-list', '已返回当前页面聊天会话', {
       conversations: result.items,
+      pendingReplyCount: result.pendingReplyCount,
       total: result.total,
+      totalConversations: result.totalBeforeFilter,
     })
   }
 
