@@ -1,14 +1,11 @@
 <script lang="ts" setup>
 import { useMouse, useMouseInElement } from '@vueuse/core'
 import {
-  ElBadge,
   ElCheckbox,
   ElConfigProvider,
-  ElLink,
   ElMessage,
   ElTabPane,
   ElTabs,
-  ElTag,
   ElText,
   ElTooltip,
 } from 'element-plus'
@@ -18,7 +15,6 @@ import { useModel } from '@/composables/useModel'
 import { getActiveSiteAdapter } from '@/site-adapters'
 import { useConf } from '@/stores/conf'
 import { jobList } from '@/stores/jobs'
-import { useSignedKey } from '@/stores/signedKey'
 import { useStatistics } from '@/stores/statistics'
 import { useUser } from '@/stores/user'
 import { elmGetter } from '@/utils/elmGetter'
@@ -32,19 +28,16 @@ import About from './About.vue'
 import Card from './Card.vue'
 import Config from './Config.vue'
 import Logs from './Logs.vue'
-import Service from './Service.vue'
 import Statistics from './Statistics.vue'
 
 const user = useUser()
 const model = useModel()
-const signedKey = useSignedKey()
 const { initPager } = usePager()
 const { registerWindowAgentBridge } = useDeliveryControl()
 const { x, y } = useMouse({ type: 'client' })
 const deliver = useDeliver()
 const { todayData } = useStatistics()
 const conf = useConf()
-let refreshSignedKeyTimer: ReturnType<typeof setInterval> | undefined
 let unregisterAgentBridge: (() => void) | undefined
 
 const helpVisible = ref(false)
@@ -168,7 +161,6 @@ onMounted(async () => {
   void user.initUser()
   void user.initCookie()
   void model.initModel()
-  void signedKey.initSignedKey()
   try {
     await jobList.initJobList(conf.formData)
   } catch (e) {
@@ -247,13 +239,6 @@ onMounted(async () => {
     ElMessage.error(`分页器初始失败: ${e instanceof Error ? e.message : '未知错误'}`)
   })
 
-  refreshSignedKeyTimer = setInterval(
-    () => {
-      void signedKey.refreshSignedKeyInfo()
-    },
-    1000 * 60 * 20,
-  )
-
   tabsRootElement = (tabsRef.value?.$el as HTMLElement | undefined) ?? null
   tabsRootElement?.addEventListener('mousemove', handleHelpMouseMove, true)
   tabsRootElement?.addEventListener('mouseleave', handleHelpMouseLeave, true)
@@ -262,9 +247,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (refreshSignedKeyTimer) {
-    clearInterval(refreshSignedKeyTimer)
-  }
   unregisterAgentBridge?.()
   tabsRootElement?.removeEventListener('mousemove', handleHelpMouseMove, true)
   tabsRootElement?.removeEventListener('mouseleave', handleHelpMouseLeave, true)
@@ -272,57 +254,12 @@ onUnmounted(() => {
   window.removeEventListener('resize', refreshHelpBox)
   tabsRootElement = null
 })
-
-function tagOpen(url: string) {
-  window.open(url)
-}
-const VITE_VERSION = __APP_VERSION__
-
-function parseVersionSegments(version: string) {
-  return version
-    .split(/[^\d]+/)
-    .filter(Boolean)
-    .map((part) => Number.parseInt(part, 10))
-}
-
-function isVersionNewer(remoteVersion: string, currentVersion: string) {
-  const remoteParts = parseVersionSegments(remoteVersion)
-  const currentParts = parseVersionSegments(currentVersion)
-  const length = Math.max(remoteParts.length, currentParts.length)
-
-  for (let index = 0; index < length; index += 1) {
-    const remote = remoteParts[index] ?? 0
-    const current = currentParts[index] ?? 0
-
-    if (remote !== current) {
-      return remote > current
-    }
-  }
-
-  return false
-}
-
-const isDot = computed(() => {
-  return isVersionNewer(signedKey.netConf?.version ?? '0', VITE_VERSION)
-})
-
-function openStore() {
-  window.__q_openStore?.()
-}
 </script>
 
 <template>
   <ElConfigProvider namespace="ehp">
     <h2 style="display: flex; align-items: center">
       Helper
-      <ElBadge
-        :is-dot="isDot"
-        :offset="[-2, 7]"
-        style="cursor: pointer; display: inline-flex; margin: 0 4px"
-        @click="openStore"
-      >
-        <ElTag type="primary"> v{{ VITE_VERSION }} {{ isDot ? ' 有更新' : '' }} </ElTag>
-      </ElBadge>
       <ElText v-if="todayData.total > 0" style="margin-right: 15px">
         今日投递: {{ todayData.success }}/{{ conf.formData.deliveryLimit.value }}
       </ElText>
@@ -334,18 +271,6 @@ function openStore() {
       style="z-index: 999; position: fixed; pointer-events: none; border-width: 1px"
       :style="boxStyles"
     />
-    <div v-if="signedKey.netConf && signedKey.netConf.notification" class="netAlerts">
-      <template
-        v-for="item in signedKey.netConf.notification.filter((item) => item.type === 'alert')"
-        :key="item.key ?? item.data.title"
-      >
-        <!-- <ElAlert
-        v-if="now > GM_getValue(`netConf-${item.key}`, 0)"
-        v-bind="item.data"
-        @close="GM_setValue(`netConf-${item.key}`, now + 259200000)"
-      /> -->
-      </template>
-    </div>
     <ElTooltip :visible="helpVisible && !isOutside" :virtual-ref="triggerRef">
       <template #content>
         <div :style="`width: auto;max-width:${helpMaxWidth};font-size:17px;`">
@@ -361,29 +286,15 @@ function openStore() {
       <ElTabPane label="配置" data-help="好好看，好好学">
         <Config />
       </ElTabPane>
-      <ElTabPane v-if="signedKey.signedKey" label="AI" data-help="AI时代，脚本怎么能落伍!">
-        <Service />
-      </ElTabPane>
       <ElTabPane label="日志" data-help="反正你也不看">
         <Logs />
       </ElTabPane>
       <ElTabPane
-        label="关于&赞赏"
+        label="关于"
         class="hp-about-box"
         data-help="项目是写不完美的,但总要去追求完美"
       >
         <About />
-      </ElTabPane>
-      <ElTabPane v-if="signedKey.netConf && signedKey.netConf.feedback">
-        <template #label>
-          <ElLink
-            size="large"
-            style="height: 100%"
-            @click.stop="tagOpen(signedKey.netConf.feedback)"
-          >
-            反馈
-          </ElLink>
-        </template>
       </ElTabPane>
       <ElTabPane>
         <template #label>

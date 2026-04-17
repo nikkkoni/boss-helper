@@ -4,7 +4,6 @@ import { h, ref } from 'vue'
 
 import type { Prompt } from '@/composables/useModel/type'
 import { formInfoData, useConf } from '@/stores/conf'
-import { useSignedKey } from '@/stores/signedKey'
 import { useUser } from '@/stores/user'
 import type { FormInfoAi } from '@/types/formData'
 
@@ -15,16 +14,11 @@ const props = defineProps<{
   data: 'aiGreeting' | 'aiFiltering' | 'aiReply'
 }>()
 
-const signedKey = useSignedKey()
 const conf = useConf()
 
 const show = defineModel<boolean>({ required: true })
 const currentModel = ref(conf.formData[props.data].model)
-const singleMode = ref(
-  conf.formData[props.data].vip || signedKey.signedKey != null
-    ? ('vip' as const)
-    : !Array.isArray(conf.formData[props.data].prompt),
-)
+const singleMode = ref(!Array.isArray(conf.formData[props.data].prompt))
 const score = ref(props.data === 'aiFiltering' ? (conf.formData[props.data].score ?? 10) : 10)
 const roleOptions = ['system', 'user', 'assistant'].map((item) => ({
   label: item,
@@ -77,15 +71,11 @@ function openTestDialog() {
 }
 
 async function savePrompt() {
-  if (singleMode.value !== 'vip') {
-    if (currentModel.value == null) {
-      ElMessage.warning('请在右上角选择模型')
-      return
-    }
-    conf.formData[props.data].model = currentModel.value
-  } else {
-    conf.formData[props.data].vip = true
+  if (currentModel.value == null) {
+    ElMessage.warning('请在右上角选择模型')
+    return
   }
+  conf.formData[props.data].model = currentModel.value
   conf.formData[props.data].prompt = message.value
   if (props.data === 'aiFiltering') {
     conf.formData[props.data].score = score.value

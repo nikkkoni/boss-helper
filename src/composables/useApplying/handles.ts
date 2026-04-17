@@ -8,8 +8,7 @@ import { useStatistics } from '@/stores/statistics'
 import type { Statistics, FormData } from '@/types/formData'
 import { AIFilteringError } from '@/types/deliverError'
 
-import { SignedKeyLLM } from '../useModel/signedKey'
-import { runInternalAIFiltering, warmSignedKeyResume } from './services/aiFiltering'
+import { runInternalAIFiltering } from './services/aiFiltering'
 import { buildAmapPrompt } from './services/amapStep'
 import { useChatPromptBridge } from './services/chatPrompt'
 import {
@@ -91,16 +90,9 @@ export function handles(options: ApplyingHandleOptions = {}) {
     }
     const model = getModelStore()
     const curModel = model.modelData.find((v) => conf.formData.aiFiltering.model === v.key)
-    if (!curModel && !formData.aiFiltering.vip) {
+    const requiresInternalModel = formData.aiFiltering.externalMode !== true
+    if (requiresInternalModel && !curModel) {
       throw new AIFilteringError('没有找到AI筛选的模型')
-    }
-    const gpt = model.getModel(
-      curModel,
-      formData.aiFiltering.prompt,
-      formData.aiFiltering.vip,
-    )
-    if (gpt instanceof SignedKeyLLM) {
-      warmSignedKeyResume(gpt, 'aiFiltering')
     }
     return async (_, ctx) => {
       // const chatInput = chatInputInit(model)
@@ -158,7 +150,7 @@ export function handles(options: ApplyingHandleOptions = {}) {
         await runInternalAIFiltering({
           amapPrompt: buildAmapPrompt(ctx, formData.amap.enable),
           ctx,
-          gpt,
+          gpt: model.getModel(curModel, formData.aiFiltering.prompt),
           model: curModel,
           onPrompt: (s) => getChatBossMessage()(ctx, s),
           threshold,
@@ -177,13 +169,12 @@ export function handles(options: ApplyingHandleOptions = {}) {
   const aiGreeting: StepFactory = () => {
     const model = getModelStore()
     const curModel = model.modelData.find((v) => conf.formData.aiGreeting.model === v.key)
-    if (!curModel && !formData.aiGreeting.vip) {
+    if (!curModel) {
       ElMessage.warning('没有找到招呼语的模型')
       return
     }
     return createAIGreetingStep({
-      getModel: () =>
-        model.getModel(curModel, formData.aiGreeting.prompt, formData.aiGreeting.vip),
+      getModel: () => model.getModel(curModel, formData.aiGreeting.prompt),
       model: curModel,
       onPrompt: getChatBossMessage(),
     })()

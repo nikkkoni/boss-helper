@@ -40,7 +40,6 @@
 
 - Vitest defaults to `environment: 'node'`; DOM and component tests need `// @vitest-environment jsdom`.
 - Playwright E2E uses fixtures from `tests/e2e/helpers/zhipin-fixture.ts`, not the live Boss site.
-- `src/types/openapi.d.ts` is generated; use `pnpm openapi` (expects `http://localhost:8002/openapi.json`) instead of hand-editing it.
 - The bridge token is baked into the extension build in `wxt.config.ts`. If `.boss-helper-agent-token` or `BOSS_HELPER_AGENT_BRIDGE_TOKEN` changes, rebuild the extension and restart the bridge and relay.
 - If you change agent commands, bridge endpoints, MCP tools, or chat protocol/schema, update `README.md`, `docs/bridge-mcp-deployment.md`, and `docs/llm-agent-mcp.md`.
 - Never commit `.boss-helper-agent-token`, `.boss-helper-agent-cert.json`, `.boss-helper-agent-bridge.log`, `.boss-helper-agent-bridge.pid`, or `.env*`.

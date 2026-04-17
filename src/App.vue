@@ -2,24 +2,18 @@
 import type { Action } from 'element-plus'
 import {
   ElAvatar,
-  ElButton,
   ElConfigProvider,
-  ElDialog,
   ElDropdown,
   ElDropdownItem,
   ElDropdownMenu,
   ElMessage,
   ElMessageBox,
-  ElSpace,
-  ElText,
 } from 'element-plus'
 import { h, onMounted, ref } from 'vue'
 
 import SafeHtml from '@/components/SafeHtml.vue'
 import userVue from '@/components/conf/User.vue'
-import { store } from '@/components/icon/store'
 import { counter } from '@/message'
-import type { NetConf } from '@/stores/signedKey'
 import { logger } from '@/utils/logger'
 
 const confBox = ref(false)
@@ -50,11 +44,9 @@ async function themeChange() {
 
 // logger.log(monkeyWindow, window, unsafeWindow);
 
-const VITE_VERSION = __APP_VERSION__
-const storeShow = ref(false)
-const protocolNotice = `1. 使用前先好好了解项目，阅读每一个标签和帮助,
-2.暂时不维护文档，如果帮助还无法理解可以提交反馈, 优化文案
-3. 遇到bug即时反馈，不再维护交流群，遇到问题飞书表格或者GitHub反馈
+const protocolNotice = `1. 使用前先好好了解项目，阅读 README、docs 以及界面里的帮助说明
+2. 如果帮助文案仍无法解决问题，优先通过当前仓库的 GitHub Issues 反馈
+3. 当前仓库的说明、安装方式和发布信息以本仓库 README 与 docs 为准，不沿用历史问卷或旧仓库链接
 4. 帮助复选框 能随时进入和退出帮助模式, 配置内容较多, 好好观看
 5. 配置最前面需要打钩启用，启用后需要保存配置
 6. 配置项 包含/排除 能点击切换模式
@@ -63,22 +55,9 @@ const protocolNotice = `1. 使用前先好好了解项目，阅读每一个标�
 
 本项目仅供学习交流，禁止用于商业用途
 使用该脚本有一定风险(如黑号,封号,权重降低等)，本项目不承担任何责任
-<img style="width: 200px; height: 200px; object-fit: cover;" src="https://qiu-config.oss-cn-beijing.aliyuncs.com/reward.png"/>
-Github开源地址: <a href="https://github.com/ocyss/boos-helper" target="_blank" rel="noreferrer">https://github.com/ocyss/boos-helper</a>
-反馈结果会在对应记录中评论回复， 一般3-7天回复
-飞书反馈问卷(匿名): <a href="https://gai06vrtbc0.feishu.cn/share/base/form/shrcnmEq2fxH9hM44hqEnoeaj8g" target="_blank" rel="noreferrer">https://gai06vrtbc0.feishu.cn/share/base/form/shrcnmEq2fxH9hM44hqEnoeaj8g</a>
-飞书问卷结果: <a href="https://gai06vrtbc0.feishu.cn/share/base/view/shrcnrg8D0cbLQc89d7Jj7AZgMc" target="_blank" rel="noreferrer">https://gai06vrtbc0.feishu.cn/share/base/view/shrcnrg8D0cbLQc89d7Jj7AZgMc</a>`
-
-if (import.meta.env.DEV) {
-  window.__q_openStore = () => {
-    storeShow.value = true
-  }
-}
-const netConf = ref<NetConf>()
-
-function updateNetConf() {
-  netConf.value = window.__q_netConf?.()
-}
+当前仓库: <a href="https://github.com/nikkkoni/boss-helper" target="_blank" rel="noreferrer">https://github.com/nikkkoni/boss-helper</a>
+问题反馈: <a href="https://github.com/nikkkoni/boss-helper/issues" target="_blank" rel="noreferrer">https://github.com/nikkkoni/boss-helper/issues</a>
+文档入口: <a href="https://github.com/nikkkoni/boss-helper#readme" target="_blank" rel="noreferrer">README 与 docs</a>`
 
 onMounted(async () => {
   logger.info('BossHelper挂载成功')
@@ -129,79 +108,16 @@ onMounted(async () => {
           <ElDropdownItem disabled @click="themeChange">
             暗黑模式（{{ dark ? '开' : '关' }}）
           </ElDropdownItem>
-          <ElDropdownItem @click="storeShow = true"> 版本信息 </ElDropdownItem>
         </ElDropdownMenu>
       </template>
     </ElDropdown>
     <Teleport to="body">
       <component :is="confs[confKey].component" id="help-conf-box" v-model="confBox" />
     </Teleport>
-    <ElDialog v-model="storeShow" title="BossHelper扩展商店" width="500" @open="updateNetConf">
-      <div>
-        <div style="text-align: center; font-size: 14px; color: #606266">
-          你的版本: {{ VITE_VERSION }}
-        </div>
-        <div style="text-align: center; font-size: 14px; color: #606266">
-          最新版本: {{ netConf?.version ?? '暂未获取到版本信息' }}
-        </div>
-        <div style="text-align: center; font-size: 16px; color: #606266">更新内容：</div>
-        <div style="text-align: center; font-size: 14px; color: #606266; white-space: pre-line">
-          {{ netConf?.version_description ?? '暂未获取到更新日志' }}
-        </div>
-      </div>
-      <ElSpace wrap>
-        <a
-          v-for="(item, key) in store"
-          :key="key"
-          class="store-item-a"
-          :href="netConf?.store?.[key]?.[1] ?? item[2]"
-          target="_blank"
-        >
-          <div class="store-item">
-            <component :is="item[0]" />
-            <img :src="netConf?.store?.[key]?.[2] ?? item[3]" alt="store" style="height: 20px" />
-            <ElText>{{ netConf?.store?.[key]?.[0] ?? item[1] }}</ElText>
-          </div>
-        </a>
-      </ElSpace>
-      <template #footer>
-        <div class="dialog-footer">
-          <ElButton type="primary" @click="storeShow = false"> 关闭 </ElButton>
-        </div>
-      </template>
-    </ElDialog>
   </ElConfigProvider>
 </template>
 
 <style lang="scss">
-.store-item-a {
-  .store-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-direction: column;
-    width: 140px;
-    height: 180px;
-    background: aliceblue;
-    padding: 10px;
-    border: 1px solid #f6f6f7;
-    border-radius: 12px;
-    background-color: #f6f6f7;
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.04),
-      0 1px 2px rgba(0, 0, 0, 0.06);
-    transition:
-      border-color 0.25s,
-      background-color 0.25s;
-  }
-  &:hover {
-    .store-item {
-      background-color: #bbf8fa;
-      border-color: #2fffd9;
-    }
-  }
-}
-
 .protocol-notice {
   white-space: pre-wrap;
 }

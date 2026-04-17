@@ -24,7 +24,6 @@ const {
         model: '',
         prompt: '',
         score: 10,
-        vip: false,
       },
     },
   },
@@ -73,7 +72,6 @@ vi.mock('@/composables/useApplying/utils', () => ({
 mockModelStore.getModel = mockGetModel
 
 vi.mock('@/composables/useModel', () => ({
-  llmIcon: { vip: '<svg />' },
   useModel: () => mockModelStore,
 }))
 
@@ -89,12 +87,6 @@ vi.mock('@/stores/conf', () => ({
 
 vi.mock('@/stores/jobs', () => ({
   jobList: mockJobList,
-}))
-
-vi.mock('@/stores/signedKey', () => ({
-  useSignedKey: () => ({
-    signedKey: null,
-  }),
 }))
 
 vi.mock('@/stores/user', () => ({
@@ -117,7 +109,6 @@ describe('Selectllm.vue', () => {
     mockConf.formData.aiFiltering.model = ''
     mockConf.formData.aiFiltering.prompt = ''
     mockConf.formData.aiFiltering.score = 10
-    mockConf.formData.aiFiltering.vip = false
     mockModelStore.modelData = []
     mockJobList.list = []
   })
@@ -158,5 +149,15 @@ describe('Selectllm.vue', () => {
 
     expect(source).toContain('<ElForm v-else label-width="auto" class="demo-dynamic">')
     expect(source).not.toContain('<ElForm v-else v-model="message as string"')
+  })
+
+  it('uses the current repository variable table link instead of the upstream fork', () => {
+    const source = readFileSync(
+      '/Users/wang/Documents/boss/boss-helper/src/components/llms/selectllm/SelectllmPromptEditor.vue',
+      'utf8',
+    )
+
+    expect(source).toContain('https://github.com/nikkkoni/boss-helper/blob/main/src/types/bossData.d.ts')
+    expect(source).not.toContain('https://github.com/Ocyss/boos-helper')
   })
 })

@@ -1,7 +1,6 @@
 import { miTem } from 'mitem'
 
 import type { modelData } from '@/composables/useModel'
-import { SignedKeyLLM } from '@/composables/useModel/signedKey'
 import type { Llm } from '@/composables/useModel/type'
 import { Message } from '@/composables/useWebSocket'
 import type { logData } from '@/stores/log'
@@ -74,8 +73,8 @@ export function createCustomGreetingSender(options: {
 
 export async function runAIGreeting(options: {
   ctx: logData
-  gpt: Llm | SignedKeyLLM
-  model?: Pick<modelData, 'data' | 'vip'>
+  gpt: Llm
+  model?: Pick<modelData, 'data'>
   onPrompt: (s: string) => void
   uid: string | number
 }) {

@@ -25,7 +25,7 @@ const props = defineProps<{
   state: {
     currentModel: Ref<string | undefined>
     message: Ref<string | Prompt>
-    singleMode: Ref<'vip' | boolean>
+    singleMode: Ref<boolean>
   }
 }>()
 
@@ -95,10 +95,7 @@ async function testJob() {
   const currentModelData = model.modelData.find(
     (value) => props.state.currentModel.value === value.key,
   )
-  if (
-    props.state.singleMode.value !== 'vip' &&
-    (!props.state.currentModel.value || !currentModelData)
-  ) {
+  if (!props.state.currentModel.value || !currentModelData) {
     testJobLoading.value = false
     testJobStop.value = true
     ElMessage.warning('请在上级弹窗右上角选择模型')
@@ -108,7 +105,6 @@ async function testJob() {
     const gpt = model.getModel(
       currentModelData!,
       props.state.message.value,
-      props.state.singleMode.value === 'vip',
     )
     const handle = async (item: TestData) => {
       if (testJobStop.value) {

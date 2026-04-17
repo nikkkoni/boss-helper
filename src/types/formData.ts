@@ -131,7 +131,6 @@ export interface FormDataCheckbox {
 
 export interface FormDataAi {
   model?: string
-  vip?: boolean
   prompt: string | Prompt
   enable: boolean
 }

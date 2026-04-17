@@ -72,11 +72,9 @@ function buildPlanConfigSummary(options: {
   const aiFilteringEnabled = config.aiFiltering.enable === true
   const aiFilteringExternal = aiFilteringEnabled && config.aiFiltering.externalMode === true
   const aiFilteringModelReady = !aiFilteringEnabled
-    || config.aiFiltering.vip === true
     || (typeof config.aiFiltering.model === 'string' && availableModelKeys.has(config.aiFiltering.model))
   const greetingMode = resolveGreetingMode(config)
   const greetingModelReady = greetingMode !== 'ai'
-    || config.aiGreeting.vip === true
     || (typeof config.aiGreeting.model === 'string' && availableModelKeys.has(config.aiGreeting.model))
 
   return {

@@ -432,7 +432,6 @@ export async function createWorkflowDriver(options: WorkflowDriverOptions): Prom
             aiFiltering: {
               enable: true,
               model: '__missing_model__',
-              vip: false,
             },
           },
         },

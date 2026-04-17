@@ -1,5 +1,4 @@
 import type { BossHelperAgentController } from '@/message/agent'
-import type { NetConf } from '@/stores/signedKey'
 
 export {}
 
@@ -54,12 +53,9 @@ declare global {
       get: (key: string) => string
     }
     __bossHelperAgent?: BossHelperAgentController
-    __q_openStore?: () => void
-    __q_netConf?: () => NetConf | undefined
     __q_useConf?: unknown
     __q_jobList?: unknown
     __q_log?: unknown
-    __q_useSignedKey?: unknown
     __q_useUser?: unknown
     _q_ChatProtobufHandler?: unknown
     _q_ChatProtobufMessage?: unknown

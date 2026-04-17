@@ -1,8 +1,8 @@
 # Boss Helper Architecture
 
-此文件已改为文档入口重定向，避免继续维护两份架构说明。
+当前仓库的架构说明已统一到 `docs/architecture-analysis.md`，避免维护多份内容不一致的架构文档。
 
-- 完整架构分析请看 [docs/architecture-analysis.md](docs/architecture-analysis.md)
-  其中包含 companion `bridge -> relay -> background -> content -> main-world` 链路、事件回传路径，以及 relay keepalive / MV3 生命周期说明。
-- 已完成的重构归档请看 [docs/refactoring-guide.md](docs/refactoring-guide.md)
-- 历史 review / todo 已归档到 [docs/archive](docs/archive)
+- 系统分层、运行链路、模块边界：[`docs/architecture-analysis.md`](docs/architecture-analysis.md)
+- bridge / relay / CLI / MCP 部署：[`docs/bridge-mcp-deployment.md`](docs/bridge-mcp-deployment.md)
+- 外部 LLM Agent / MCP 接入：[`docs/llm-agent-mcp.md`](docs/llm-agent-mcp.md)
+- 已归档的重构记录：[`docs/refactoring-guide.md`](docs/refactoring-guide.md)

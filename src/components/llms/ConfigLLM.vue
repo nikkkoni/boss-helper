@@ -11,7 +11,6 @@ import {
 } from 'element-plus'
 import { ref } from 'vue'
 
-import Alert from '@/components/Alert'
 import SafeHtml from '@/components/SafeHtml.vue'
 import type { modelData } from '@/composables/useModel'
 import { llmIcon, useModel } from '@/composables/useModel'
@@ -107,20 +106,13 @@ function importllm() {
     destroy-on-close
     :z-index="20"
   >
-    <Alert id="llm-config-alert" title="注意" type="warning">
-      会员模型暂时不支持输出 思考过程, 比如deepseekR1，但是不影响模型能力
-    </Alert>
     <ElTable :data="modelStore.modelData" style="width: 100%" table-layout="auto">
       <ElTableColumn label="模型">
         <template #default="scope">
           <div style="align-items: center; display: flex">
             <ElAvatar :size="30" :style="{ '--el-avatar-bg-color': scope.row.color }">
               <ElIcon>
-                <SafeHtml
-                  tag="span"
-                  variant="svg"
-                  :html="scope.row.vip != null ? llmIcon.vip : llmIcon[scope.row.data.mode]"
-                />
+                <SafeHtml tag="span" variant="svg" :html="llmIcon[scope.row.data?.mode ?? '']" />
               </ElIcon>
             </ElAvatar>
             <span style="margin-left: 8px">{{ scope.row.name }}</span>
@@ -130,13 +122,13 @@ function importllm() {
       <ElTableColumn label="描述">
         <template #default="scope">
           <ElText line-clamp="1">
-            {{ scope.row.vip == null ? scope.row.data.url : scope.row.vip.description }}
+            {{ scope.row.data?.url ?? '未配置地址' }}
           </ElText>
         </template>
       </ElTableColumn>
       <ElTableColumn label="管理">
         <template #default="scope">
-          <div v-if="scope.row.vip == null" style="width: 200px">
+          <div style="width: 200px">
             <ElButton link type="primary" size="small" @click="() => del(scope.row)">
               删除
             </ElButton>

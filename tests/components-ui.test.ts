@@ -12,13 +12,10 @@ const {
   mockElmGetterRm,
   mockInitJobList,
   mockInitPager,
-  mockInitSignedKey,
   mockInitUser,
   mockInitCookie,
   mockInitModel,
-  mockRefreshSignedKeyInfo,
   mockRegisterWindowAgentBridge,
-  mockSignedKey,
   mockUnregister,
 } = vi.hoisted(() => ({
   mockConf: {
@@ -33,20 +30,8 @@ const {
   mockInitJobList: vi.fn(async () => {}),
   mockInitModel: vi.fn(async () => {}),
   mockInitPager: vi.fn(async () => {}),
-  mockInitSignedKey: vi.fn(async () => {}),
   mockInitUser: vi.fn(async () => {}),
-  mockRefreshSignedKeyInfo: vi.fn(async () => {}),
   mockRegisterWindowAgentBridge: vi.fn(() => mockUnregister),
-  mockSignedKey: {
-    initSignedKey: vi.fn(async () => {}),
-    netConf: {
-      feedback: 'https://example.com/feedback',
-      notification: [],
-      version: '0.4.5',
-    },
-    refreshSignedKeyInfo: vi.fn(async () => {}),
-    signedKey: 'signed-key',
-  },
   mockUnregister: vi.fn(),
 }))
 
@@ -81,10 +66,6 @@ vi.mock('@/composables/useModel', () => ({
   useModel: () => ({
     initModel: mockInitModel,
   }),
-}))
-
-vi.mock('@/stores/signedKey', () => ({
-  useSignedKey: () => mockSignedKey,
 }))
 
 vi.mock('@/stores/statistics', () => ({
@@ -159,15 +140,7 @@ describe('Ui.vue', () => {
     mockInitUser.mockReset()
     mockInitCookie.mockReset()
     mockInitModel.mockReset()
-    mockInitSignedKey.mockReset()
-    mockRefreshSignedKeyInfo.mockReset()
     mockRegisterWindowAgentBridge.mockClear()
-    mockSignedKey.initSignedKey = mockInitSignedKey
-    mockSignedKey.refreshSignedKeyInfo = mockRefreshSignedKeyInfo
-    mockSignedKey.netConf.feedback = 'https://example.com/feedback'
-    mockSignedKey.netConf.notification = []
-    mockSignedKey.netConf.version = '0.4.5'
-    mockSignedKey.signedKey = 'signed-key'
     mockUnregister.mockClear()
   })
 
@@ -192,17 +165,13 @@ describe('Ui.vue', () => {
           About: true,
           Card: true,
           Config: true,
-          ElBadge: passthrough('div'),
           ElCheckbox: passthrough('button'),
           ElConfigProvider: passthrough('div'),
-          ElLink: passthrough('a'),
           ElTabPane: passthrough('section'),
           ElTabs: passthrough('div'),
-          ElTag: passthrough('span'),
           ElText: passthrough('span'),
           ElTooltip: passthrough('div'),
           Logs: true,
-          Service: true,
           Statistics: true,
           Teleport: true,
         },
@@ -216,25 +185,17 @@ describe('Ui.vue', () => {
     expect(mockInitUser).toHaveBeenCalledTimes(1)
     expect(mockInitCookie).toHaveBeenCalledTimes(1)
     expect(mockInitModel).toHaveBeenCalledTimes(1)
-    expect(mockInitSignedKey).toHaveBeenCalledTimes(1)
     expect(mockInitPager).toHaveBeenCalledTimes(1)
     expect(searchEl.style.display).toBe('none')
     expect(searchInputEl.parentElement).toBe(conditionEl.parentElement)
     expect(expectSelectEl.parentElement).toBe(conditionEl.parentElement)
     expect(wrapper.text()).toContain('今日投递: 3/120')
 
-    vi.advanceTimersByTime(20 * 60 * 1000)
-    expect(mockRefreshSignedKeyInfo).toHaveBeenCalledTimes(1)
-
     wrapper.unmount()
     expect(mockUnregister).toHaveBeenCalledTimes(1)
-
-    vi.advanceTimersByTime(20 * 60 * 1000)
-    expect(mockRefreshSignedKeyInfo).toHaveBeenCalledTimes(1)
   })
 
-  it('uses semantic version comparison for update dots and keeps config help attributes addressable', async () => {
-    mockSignedKey.netConf.version = '10.0.0'
+  it('keeps config help attributes addressable without remote update UI', async () => {
     document.body.innerHTML = '<div class="page-jobs-main"></div>'
 
     const wrapper = mount(Ui, {
@@ -244,17 +205,13 @@ describe('Ui.vue', () => {
           About: true,
           Card: true,
           Config: true,
-          ElBadge: passthrough('div'),
           ElCheckbox: passthrough('button'),
           ElConfigProvider: passthrough('div'),
-          ElLink: passthrough('a'),
           ElTabPane: passthrough('section'),
           ElTabs: passthrough('div'),
-          ElTag: passthrough('span'),
           ElText: passthrough('span'),
           ElTooltip: passthrough('div'),
           Logs: true,
-          Service: true,
           Statistics: true,
           Teleport: true,
         },
@@ -263,8 +220,8 @@ describe('Ui.vue', () => {
 
     await flushPromises()
 
-    expect(wrapper.text()).toContain('有更新')
     expect(wrapper.find('[data-help="好好看，好好学"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('有更新')
 
     wrapper.unmount()
   })

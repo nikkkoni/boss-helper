@@ -17,6 +17,7 @@ import {
   amapKeyStorageKey,
   formDataKey,
   formDataTemplatesKey,
+  legacySignedKeyStorageKeys,
   legacyAmapKeyStorageKey,
   sanitizeSensitiveFormData,
 } from './shared'
@@ -42,6 +43,15 @@ export const FORM_DATA_MIGRATIONS: readonly FormDataMigration[] = [
         const [min, max] = (from.companySizeRange.value as string).split('-').map(Number)
         from.companySizeRange.value = [min, max, false]
       }
+      return from
+    },
+  ],
+  [
+    '20260417',
+    (from) => {
+      delete (from.aiGreeting as (Partial<FormData['aiGreeting']> & { vip?: boolean }) | undefined)?.vip
+      delete (from.aiFiltering as (Partial<FormData['aiFiltering']> & { vip?: boolean }) | undefined)?.vip
+      delete (from.aiReply as (Partial<FormData['aiReply']> & { vip?: boolean }) | undefined)?.vip
       return from
     },
   ],
@@ -111,6 +121,8 @@ export const useConf = defineStore('conf', () => {
       from = sanitizeSensitiveFormData(from)
       await counter.storageSet(formDataKey, from)
     }
+
+    await Promise.all(legacySignedKeyStorageKeys.map((key) => counter.storageRm(key)))
 
     from = (await formDataHandler(from)) ?? from
     const data = deepmerge<FormData>(defaultFormData, from)

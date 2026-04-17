@@ -1,9 +1,7 @@
 import type { modelData } from '@/composables/useModel'
-import { SignedKeyLLM } from '@/composables/useModel/signedKey'
 import type { Llm, MessageResponse } from '@/composables/useModel/type'
 import type { logData } from '@/stores/log'
 import { AIFilteringError } from '@/types/deliverError'
-import { logger } from '@/utils/logger'
 import { parseStructuredJson } from '@/utils/parse'
 
 import { recordAIUsage } from './usageTracker'
@@ -50,15 +48,6 @@ type FilteringResult = {
   positive: FilteringItem[]
 }
 
-export function warmSignedKeyResume(gpt: SignedKeyLLM, scene: 'aiFiltering' | 'aiGreeting') {
-  void gpt.checkResume().catch((error) => {
-    logger.warn('VIP模型简历检查失败', {
-      scene,
-      error: error instanceof Error ? error.message : String(error),
-    })
-  })
-}
-
 export function summarizeFilteringResult(result: Partial<FilteringResult> | null | undefined) {
   const hand = (acc: { score: number; reason: string }, curr: FilteringItem) => ({
     score: acc.score + Math.abs(curr.score),
@@ -77,8 +66,8 @@ export function summarizeFilteringResult(result: Partial<FilteringResult> | null
 export async function runInternalAIFiltering(options: {
   amapPrompt: string
   ctx: logData
-  gpt: Llm | SignedKeyLLM
-  model?: Pick<modelData, 'data' | 'vip'>
+  gpt: Llm
+  model?: Pick<modelData, 'data'>
   onPrompt: (s: string) => void
   threshold: number
 }) {

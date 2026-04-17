@@ -4,7 +4,7 @@ import { useStatistics } from '@/stores/statistics'
 
 export function calculateUsageCost(
   usage: NonNullable<MessageResponse['usage']> | undefined,
-  model?: Pick<modelData, 'data' | 'vip'>,
+  model?: Pick<modelData, 'data'>,
 ) {
   if (!usage || !model?.data) {
     return 0
@@ -25,7 +25,7 @@ export function calculateUsageCost(
 
 export function recordAIUsage(
   usage: NonNullable<MessageResponse['usage']> | undefined,
-  model?: Pick<modelData, 'data' | 'vip'>,
+  model?: Pick<modelData, 'data'>,
 ) {
   if (!usage) {
     return 0

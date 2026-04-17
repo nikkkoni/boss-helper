@@ -62,7 +62,6 @@ import { sameCompanyKey, sameHrKey } from '@/composables/useApplying/utils'
 import { useChat } from '@/composables/useChat'
 import { useModel } from '@/composables/useModel'
 import type { modelData } from '@/composables/useModel'
-import { SignedKeyLLM } from '@/composables/useModel/signedKey'
 import type { Llm } from '@/composables/useModel/type'
 import { counter } from '@/message'
 import { useConf, defaultFormData } from '@/stores/conf'
@@ -475,7 +474,6 @@ describe('useApplying handles', () => {
 
     conf.formData.aiFiltering.enable = true
     conf.formData.aiFiltering.externalMode = true
-    conf.formData.aiFiltering.vip = true
     conf.formData.aiFiltering.prompt = '外部筛选'
     conf.formData.aiFiltering.score = 80
     mockExternalReview.mockResolvedValueOnce({
@@ -573,13 +571,11 @@ describe('useApplying handles', () => {
 
     conf.formData.aiFiltering.enable = true
     conf.formData.aiFiltering.model = 'missing-model'
-    conf.formData.aiFiltering.vip = false
     model.modelData = []
 
     expect(() => handles().aiFiltering()).toThrow('没有找到AI筛选的模型')
 
     conf.formData.aiFiltering.externalMode = true
-    conf.formData.aiFiltering.vip = true
     conf.formData.aiFiltering.prompt = '外部通过'
     conf.formData.aiFiltering.score = 60
     mockExternalReview.mockResolvedValueOnce({
@@ -601,7 +597,6 @@ describe('useApplying handles', () => {
     expect(ctx.externalGreeting).toBeUndefined()
 
     conf.formData.aiFiltering.externalMode = false
-    conf.formData.aiFiltering.vip = false
     conf.formData.aiFiltering.model = 'model-1'
     conf.formData.aiFiltering.score = 10
     model.modelData = [createModelItem()]
@@ -642,34 +637,6 @@ describe('useApplying handles', () => {
         source: 'internal',
       }),
     )
-
-    const signedKeyModel = Object.assign(Object.create(SignedKeyLLM.prototype), {
-      checkResume: vi.fn(async () => {
-        throw new Error('resume check failed')
-      }),
-      message: vi.fn(async () => ({
-        content: '```json\n{"negative":[],"positive":[{"reason":"技能契合","score":20}]}\n```',
-        prompt: 'vip prompt',
-        reasoning_content: 'vip reasoning',
-      })),
-    }) as SignedKeyLLM
-    conf.formData.aiFiltering.vip = true
-    getModelSpy.mockReturnValueOnce(signedKeyModel)
-
-    const vipCtx = createLogContext(createJob({ card: createJobCard() }))
-    await expect(
-      getHandler(handles().aiFiltering())({ data: job }, vipCtx),
-    ).resolves.toBeUndefined()
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(signedKeyModel.checkResume).toHaveBeenCalledTimes(1)
-    expect(vipCtx.aiFilteringScore).toEqual(
-      expect.objectContaining({
-        accepted: true,
-        rating: 20,
-      }),
-    )
-
-    conf.formData.aiFiltering.vip = false
     getModelSpy.mockReturnValueOnce({
       message: vi.fn(async () => {
         throw new Error('llm unavailable')
@@ -697,7 +664,6 @@ describe('useApplying handles', () => {
 
     conf.formData.aiFiltering.enable = true
     conf.formData.aiFiltering.externalMode = false
-    conf.formData.aiFiltering.vip = false
     conf.formData.aiFiltering.model = 'model-1'
     conf.formData.aiFiltering.score = 0
     conf.formData.amap.enable = true
