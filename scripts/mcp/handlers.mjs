@@ -25,14 +25,22 @@ function makeToolResult(payload, isError = false) {
 
 /**
  * @param {{
+ *   bootstrapPromise?: Promise<unknown> | null,
  *   bridgeBaseUrl: string,
  *   catalog: ReturnType<import('./catalog.mjs').createMcpCatalog>,
  *   sendError: (id: number | string | null | undefined, code: number, message: string, data?: unknown) => void,
  *   sendResult: (id: number | string | null | undefined, result: unknown) => void,
  * }} options
  */
-export function createMcpRequestHandler({ bridgeBaseUrl, catalog, sendError, sendResult }) {
+export function createMcpRequestHandler({ bootstrapPromise = null, bridgeBaseUrl, catalog, sendError, sendResult }) {
   const { promptMap, prompts, resourceMap, resources, toolMap, tools } = catalog
+
+  async function waitForBootstrap() {
+    if (!bootstrapPromise) {
+      return
+    }
+    await bootstrapPromise
+  }
 
   async function handleResourceRead(params, id) {
     const uri = typeof params?.uri === 'string' ? params.uri : ''
@@ -48,6 +56,7 @@ export function createMcpRequestHandler({ bridgeBaseUrl, catalog, sendError, sen
     }
 
     try {
+      await waitForBootstrap()
       const content = await resource.read()
       sendResult(id, { contents: [content] })
     } catch (error) {
@@ -90,6 +99,7 @@ export function createMcpRequestHandler({ bridgeBaseUrl, catalog, sendError, sen
     }
 
     try {
+      await waitForBootstrap()
       const result = await tool.handler(args ?? {})
       sendResult(id, makeToolResult(result, result?.ok === false))
     } catch (error) {

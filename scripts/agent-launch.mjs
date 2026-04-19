@@ -60,8 +60,6 @@ function parseArgs(argv) {
   return options
 }
 
-const options = parseArgs(process.argv.slice(2))
-
 /** @param {number} ms */
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -76,7 +74,7 @@ async function fetchJson(url) {
   }
 }
 
-async function isBridgeHealthy() {
+async function isBridgeHealthy(options) {
   try {
     const { ok, data } = await fetchJson(`http://${options.host}:${options.port}/health`)
     return Boolean(ok && data?.ok)
@@ -85,7 +83,7 @@ async function isBridgeHealthy() {
   }
 }
 
-export function startBridgeProcess() {
+export function startBridgeProcess(options) {
   const logFd = openSync(logFile, 'a')
   try {
     const child = spawn(process.execPath, [bridgeScript], {
@@ -106,19 +104,28 @@ export function startBridgeProcess() {
   }
 }
 
-export async function ensureBridge() {
-  if (await isBridgeHealthy()) {
+/** @param {Partial<AgentLaunchOptions>} [inputOptions] */
+export async function ensureBridge(inputOptions = undefined) {
+  const options = inputOptions ?? {
+    browser: '',
+    extensionId: '',
+    host: process.env.BOSS_HELPER_AGENT_HOST ?? '127.0.0.1',
+    noOpen: false,
+    port: Number.parseInt(process.env.BOSS_HELPER_AGENT_PORT ?? '4317', 10),
+  }
+
+  if (await isBridgeHealthy(options)) {
     return { started: false }
   }
 
-  const pid = startBridgeProcess()
+  const pid = startBridgeProcess(options)
   if (pid == null) {
     throw new Error('bridge 启动失败，未获取到子进程 pid')
   }
   await writeFile(pidFile, `${pid}\n`, 'utf8')
 
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    if (await isBridgeHealthy()) {
+    if (await isBridgeHealthy(options)) {
       return { started: true, pid }
     }
     await sleep(300)
@@ -127,7 +134,7 @@ export async function ensureBridge() {
   throw new Error(`bridge 启动超时，请检查日志: ${logFile}`)
 }
 
-function buildRelayUrl() {
+function buildRelayUrl(options) {
   const runtime = getAgentBridgeRuntime({
     ...process.env,
     BOSS_HELPER_AGENT_HOST: options.host,
@@ -141,6 +148,7 @@ function buildRelayUrl() {
 }
 
 function openRelayPage(url) {
+  const options = arguments[1]
   if (options.noOpen) {
     return
   }
@@ -161,10 +169,11 @@ function openRelayPage(url) {
 }
 
 export async function main() {
-  const bridge = await ensureBridge()
-  const relayUrl = buildRelayUrl()
+  const options = parseArgs(process.argv.slice(2))
+  const bridge = await ensureBridge(options)
+  const relayUrl = buildRelayUrl(options)
 
-  openRelayPage(relayUrl)
+  openRelayPage(relayUrl, options)
 
   printJson({
     ok: true,

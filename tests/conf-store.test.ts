@@ -255,22 +255,19 @@ describe('useConf store', () => {
 
     await conf.confInit()
     expect(mockUserStore.changeUser).not.toHaveBeenCalled()
-    expect(elMessageSuccess).toHaveBeenCalledWith('登录新账号')
+    expect(conf.formData.userId).toBe(2)
+    expect(elMessageSuccess).toHaveBeenCalledWith('检测到当前页面账号已变化，已切换为当前账号配置作用域')
 
     mockUserStore.getUserId.mockReturnValue(3 as unknown as null)
     await counter.storageSet(formDataKey, {
       userId: 1,
       version: '20250826',
     })
-    vi.spyOn(counter, 'cookieInfo').mockResolvedValueOnce({
-      3: {
-        uid: '3',
-      },
-    } as never)
 
     await conf.confInit()
-    expect(mockUserStore.changeUser).toHaveBeenCalledWith(expect.objectContaining({ uid: '3' }))
-    expect(elMessageSuccess).toHaveBeenCalledWith('匹配到账号配置 恢复中, 3s后刷新页面')
+    expect(mockUserStore.changeUser).not.toHaveBeenCalled()
+    expect(conf.formData.userId).toBe(3)
+    expect(elMessageSuccess).toHaveBeenCalledWith('检测到当前页面账号已变化，已切换为当前账号配置作用域')
 
     const exportJsonSpy = vi
       .spyOn(await import('@/utils/jsonImportExport'), 'exportJson')

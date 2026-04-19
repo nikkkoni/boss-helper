@@ -92,16 +92,8 @@ export const useConf = defineStore('conf', () => {
       const uid = user.getUserId()
       // eslint-disable-next-line eqeqeq
       if (uid != null && from.userId != null && from.userId != uid) {
-        const data = await counter.cookieInfo()
-        if (uid in data) {
-          await user.changeUser(data[uid])
-          ElMessage.success('匹配到账号配置 恢复中, 3s后刷新页面')
-          setTimeout(() => window.location.reload(), 3000)
-          return
-        } else {
-          ElMessage.success('登录新账号')
-          from.userId = uid
-        }
+        ElMessage.success('检测到当前页面账号已变化，已切换为当前账号配置作用域')
+        from.userId = uid
       } else if (uid != null && from.userId == null) {
         from.userId = uid
       }

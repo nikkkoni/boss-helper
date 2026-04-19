@@ -50,4 +50,32 @@ describe('agent script robustness', () => {
     expect(closeSync).toHaveBeenCalledWith(99)
     expect(spawn).toHaveBeenCalledTimes(1)
   })
+
+  it('defaults bootstrap mode based on the existing profile state', async () => {
+    // @ts-ignore scripts are typechecked separately via tsconfig.scripts.json
+    const { parseBootstrapArgs } = await import('../scripts/agent-bootstrap.mjs')
+    expect(parseBootstrapArgs([])).toEqual(
+      expect.objectContaining({
+        headless: expect.any(Boolean),
+        hold: false,
+        noBrowser: false,
+      }),
+    )
+  })
+
+  it('keeps hold enabled for agent:start style bootstrap', async () => {
+    // @ts-ignore scripts are typechecked separately via tsconfig.scripts.json
+    const { parseBootstrapArgs } = await import('../scripts/agent-bootstrap.mjs')
+    expect(parseBootstrapArgs(['--hold'])).toEqual(
+      expect.objectContaining({
+        hold: true,
+      }),
+    )
+  })
+
+  it('derives the fixed extension id from the manifest key', async () => {
+    // @ts-ignore scripts are typechecked separately via tsconfig.scripts.json
+    const { BOSS_HELPER_AGENT_EXTENSION_ID } = await import('../scripts/agent-extension.mjs')
+    expect(BOSS_HELPER_AGENT_EXTENSION_ID).toBe('hddkbpoblgnkiicfdhnhnbppegmgkkek')
+  })
 })

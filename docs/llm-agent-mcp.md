@@ -6,7 +6,9 @@
 
 ## 先理解一件事
 
-`pnpm agent:mcp` 不是“浏览器扩展直接开放端口”。它只是把现有 bridge 能力包装成 MCP tools。
+`pnpm agent:mcp` 不是“浏览器扩展直接开放端口”。它仍然只是把现有 bridge 能力包装成 MCP tools。
+
+与旧版本不同的是：当前 `pnpm agent:mcp` 默认会在后台尝试自动补齐 bridge、真实 Chrome profile、relay 和 Boss 页面链路；但它不会绕过 Boss 页面登录、验证码或风控，也不会直接驱动 Boss 页面。
 
 真实链路是：
 
@@ -19,12 +21,18 @@ MCP client
   -> Boss 页面控制器
 ```
 
-因此在任何 MCP 调用前，都要先确认：
+因此在任何 MCP 调用前，都仍要确认：
 
-- 扩展已经加载
-- relay 页面已连接扩展
+- 扩展已经在当前 Chrome profile 中安装并加载
+- relay 页面已连接扩展事件端口
 - 至少存在一个支持的 Boss 职位页
 - 页面已登录并完成初始化
+
+如果你已经手工准备好了 bridge / relay / 浏览器链路，或在测试环境中不希望自动拉起浏览器，可使用：
+
+```bash
+pnpm agent:mcp -- --no-bootstrap
+```
 
 ## 推荐工作流
 
@@ -268,7 +276,7 @@ MCP client
 }
 ```
 
-前提仍然是 bridge、relay 和浏览器页面链路已经就绪。
+默认情况下，`agent:mcp` 会尝试自动补齐这条链路；但首次 profile 登录、验证码和风控处理仍需要人工完成。
 
 ## 推荐实践
 

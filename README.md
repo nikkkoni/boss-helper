@@ -93,40 +93,54 @@ pnpm lint && pnpm check && pnpm test -- --run
 
 ## Agent / CLI / MCP
 
-如果你需要外部自动化，不要把 `pnpm agent:mcp` 当成“一键启动全部链路”的命令。它只暴露 MCP tools，本身不会启动 bridge，也不会替你打开 relay 页面。
+`pnpm agent:start` 现在会一键自举本地 bridge、受管真实 Chrome profile、relay 页面和默认 Boss 职位页，适合作为本机无人值守入口。
+
+`pnpm agent:mcp` 默认也会在后台复用同一套自举逻辑；MCP server 会先完成握手，再在首个 tool/resource 调用前等待 bootstrap 完成。这个 bootstrap 只会打开真实 Chrome / relay / Boss 页面，不会直接驱动 Boss 页面。测试或已有手工链路场景可显式传 `--no-bootstrap`。
 
 最短启动路径：
 
-1. 加载扩展并打开一个支持的 Boss 职位页。
-2. 运行：
+1. 运行：
 
 ```bash
-pnpm agent:start -- --extension-id <扩展ID>
+pnpm agent:start
 ```
 
-3. 首次打开 relay 页面时信任本地证书，并保持 relay 页面常驻。
-4. 运行：
+2. 首次使用时命令会自动构建 Chrome 扩展、打开受管真实 Chrome profile，并默认打开 relay 页面与 `https://www.zhipin.com/web/geek/jobs`。
+3. 在该 Chrome profile 中手动安装仓库内的扩展目录：`.output/chrome-mv3/`。安装一次后，后续同一 profile 可直接复用。
+4. 如果当前 profile 还没有 Boss 登录态，请在自动打开的浏览器里登录一次；后续同一 profile 可直接复用。
+5. 启动脚本只负责打开真实浏览器、relay 和 Boss 页面；后续对 Boss 的任何操作都应走 `MCP -> bridge -> extension -> page` 的间接链路，不直接驱动浏览器页面。
+6. 有头模式下默认使用系统已安装的真实 `Google Chrome`；只有 `--headless` 时才会回退到无头命令行模式。
+7. 运行：
 
 ```bash
 pnpm agent:doctor
 pnpm agent:cli status
 ```
 
-5. 如需 MCP：
+8. 如需 MCP：
 
 ```bash
 pnpm agent:mcp
+```
+
+常用附加参数：
+
+```bash
+pnpm agent:start -- --profile-dir ./local/boss-profile --headed
+pnpm agent:bootstrap -- --headless --target-url 'https://www.zhipin.com/web/geek/jobs?query=运维'
+pnpm agent:mcp -- --no-bootstrap
 ```
 
 常用脚本：
 
 | 命令 | 作用 |
 | --- | --- |
-| `pnpm agent:start` | 一键拉起 bridge，并打开 relay 页面 |
+| `pnpm agent:start` | 一键拉起 bridge、真实 Chrome profile、relay 和默认 Boss 页 |
+| `pnpm agent:bootstrap` | 执行一次自举并输出结构化结果；默认不持有浏览器进程，也不直接操控 Boss 页面 |
 | `pnpm agent:bridge` | 只启动本地 bridge |
 | `pnpm agent:cli <command>` | 通过 CLI 调用 bridge |
 | `pnpm agent:doctor` | 诊断 bridge / relay / extension 状态 |
-| `pnpm agent:mcp` | 启动 stdio MCP server |
+| `pnpm agent:mcp` | 启动 stdio MCP server，并默认自动补齐本地 bootstrap |
 | `pnpm agent:orchestrate` | 运行仓库内置的自动化编排示例 |
 
 `navigate` / 搜索定位补充：

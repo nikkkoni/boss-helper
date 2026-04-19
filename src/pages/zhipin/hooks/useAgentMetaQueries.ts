@@ -85,8 +85,6 @@ export function useAgentMetaQueries(options: UseAgentQueriesOptions) {
   }
 
   async function readinessGet() {
-    await options.ensureStoresLoaded()
-
     const readiness = collectAgentPageReadiness()
     return createBossHelperAgentResponse<BossHelperAgentReadinessData>(
       true,

@@ -1671,11 +1671,11 @@ describe('agent mcp context service', () => {
 
     expect(commandCall).toHaveBeenCalledWith(
       'jobs.current',
-      expect.objectContaining({ includeDetail: false, waitForRelay: true }),
+      expect.objectContaining({ includeDetail: false, waitForRelay: false }),
     )
     expect(commandCall).toHaveBeenCalledWith(
       'plan.preview',
-      expect.objectContaining({ jobIds: ['job-selected'], waitForRelay: true }),
+      expect.objectContaining({ jobIds: ['job-selected'], waitForRelay: false }),
     )
     expect(result.sections.plan).toEqual(
       expect.objectContaining({
@@ -1961,11 +1961,11 @@ describe('agent mcp context service', () => {
     ])
     expect(commandCall).toHaveBeenCalledWith(
       'jobs.current',
-      expect.objectContaining({ includeDetail: false, waitForRelay: true }),
+      expect.objectContaining({ includeDetail: false, waitForRelay: false }),
     )
     expect(commandCall).toHaveBeenCalledWith(
       'plan.preview',
-      expect.objectContaining({ jobIds: ['job-2', 'job-1', 'job-3'], waitForRelay: true }),
+      expect.objectContaining({ jobIds: ['job-2', 'job-1', 'job-3'], waitForRelay: false }),
     )
     expect(result.sections.plan).toEqual(
       expect.objectContaining({

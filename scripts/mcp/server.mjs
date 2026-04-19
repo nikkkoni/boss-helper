@@ -10,6 +10,7 @@ import { createMcpRequestHandler } from './handlers.mjs'
 
 /**
  * @param {{
+ *   bootstrapPromise?: Promise<unknown> | null,
  *   env?: NodeJS.ProcessEnv,
  *   stderr?: NodeJS.WriteStream,
  *   stdin?: NodeJS.ReadStream,
@@ -21,6 +22,7 @@ export function runMcpServer(options = {}) {
   const stdin = options.stdin ?? processStdin
   const stdout = options.stdout ?? processStdout
   const stderr = options.stderr ?? processStderr
+  const bootstrapPromise = options.bootstrapPromise ?? null
   const maxStdinContentLength = Number.parseInt(
     env.BOSS_HELPER_AGENT_MCP_MAX_CONTENT_LENGTH ?? `${1024 * 1024}`,
     10,
@@ -66,6 +68,7 @@ export function runMcpServer(options = {}) {
   }
 
   const handleRequest = createMcpRequestHandler({
+    bootstrapPromise,
     bridgeBaseUrl: bridgeClient.baseUrl,
     catalog,
     sendError,

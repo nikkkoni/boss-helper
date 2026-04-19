@@ -315,6 +315,7 @@
         }
         responseEl.textContent = JSON.stringify(response, null, 2)
         await postJson('/responses', {
+          clientId: relayClientId,
           requestId: commandEnvelope.requestId,
           response,
         })
@@ -322,11 +323,18 @@
       }
 
       async function announceRelay() {
-        await postJson('/relay/announce', {
-          clientId: relayClientId,
-          extensionId: getExtensionId(),
-          browser: navigator.userAgent,
-        })
+        try {
+          await postJson('/relay/announce', {
+            clientId: relayClientId,
+            extensionId: getExtensionId(),
+            browser: navigator.userAgent,
+            eventsConnected: Boolean(extensionPort),
+          })
+        } catch (error) {
+          log('relay announce 失败', {
+            message: error instanceof Error ? error.message : String(error),
+          })
+        }
       }
 
       let eventSource
@@ -410,6 +418,7 @@
           extensionPort = nextPort
           setExtensionEventsState('connected')
           startExtensionKeepalive(nextPort)
+          void announceRelay()
 
           nextPort.onMessage.addListener((event) => {
             log(`收到实时事件 ${event.type}`, event)
@@ -427,6 +436,7 @@
             extensionPort = undefined
             clearExtensionKeepaliveTimer()
             resetBridgeBootstrap()
+            void announceRelay()
             scheduleExtensionEventReconnect({
               message: error?.message ?? 'port disconnected without lastError',
             })
@@ -437,6 +447,7 @@
           clearExtensionKeepaliveTimer()
           resetBridgeBootstrap()
           setExtensionEventsState('connect failed')
+          void announceRelay()
           log('连接扩展事件端口失败', { message })
           scheduleExtensionEventReconnect({ message })
         }

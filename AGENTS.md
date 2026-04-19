@@ -28,8 +28,8 @@
 ## Live Automation
 
 - If a task touches MCP, bridge, relay, or CLI automation, read `docs/llm-agent-mcp.md` and `docs/bridge-mcp-deployment.md` first.
-- `pnpm agent:mcp` only starts the stdio MCP server. It does not start the bridge or open the relay page.
-- `pnpm agent:start -- --extension-id <id>` is the fastest local bootstrap; on macOS it opens the relay in `Google Chrome` by default.
+- `pnpm agent:mcp` now auto-bootstraps bridge, real Chrome profile, relay, and Boss page by default; pass `--no-bootstrap` for tests or already-prepared manual chains.
+- `pnpm agent:start` is the fastest local unattended bootstrap; it opens a real Chrome profile, relay page, and Boss page, but does not directly automate the Boss page.
 - `opencode.json` assumes the local bridge is on `127.0.0.1:4317/4318`; using other ports breaks the repo-local `boss_helper` MCP until that config or env is updated.
 - A connected relay is not enough; use `boss_helper_bootstrap_guide` or `boss_helper_agent_context` before page actions. `readiness.get` is mainly for lower-level debugging.
 - Prefer the read-only flow `boss_helper_bootstrap_guide` or `boss_helper_agent_context` -> `boss_helper_plan_preview` -> `start`.
@@ -40,6 +40,6 @@
 
 - Vitest defaults to `environment: 'node'`; DOM and component tests need `// @vitest-environment jsdom`.
 - Playwright E2E uses fixtures from `tests/e2e/helpers/zhipin-fixture.ts`, not the live Boss site.
-- The bridge token is baked into the extension build in `wxt.config.ts`. If `.boss-helper-agent-token` or `BOSS_HELPER_AGENT_BRIDGE_TOKEN` changes, rebuild the extension and restart the bridge and relay.
+- The bridge token is baked into the extension build in `wxt.config.ts`. The new bootstrap flow tracks the last built token and auto-runs `pnpm build:chrome` when needed; the extension still needs to be installed once into the real Chrome profile before relay events can connect.
 - If you change agent commands, bridge endpoints, MCP tools, or chat protocol/schema, update `README.md`, `docs/bridge-mcp-deployment.md`, and `docs/llm-agent-mcp.md`.
 - Never commit `.boss-helper-agent-token`, `.boss-helper-agent-cert.json`, `.boss-helper-agent-bridge.log`, `.boss-helper-agent-bridge.pid`, or `.env*`.

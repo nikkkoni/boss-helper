@@ -151,7 +151,8 @@ describe('useAgentMetaQueries', () => {
     `
 
     const { useAgentMetaQueries } = await import('@/pages/zhipin/hooks/useAgentMetaQueries')
-    const queries = useAgentMetaQueries(createOptions())
+    const ensureStoresLoaded = vi.fn(async () => undefined)
+    const queries = useAgentMetaQueries(createOptions({ ensureStoresLoaded }))
 
     await expect(queries.readinessGet()).resolves.toEqual(
       expect.objectContaining({
@@ -171,6 +172,7 @@ describe('useAgentMetaQueries', () => {
         }),
       }),
     )
+    expect(ensureStoresLoaded).not.toHaveBeenCalled()
 
     document.body.insertAdjacentHTML(
       'beforeend',

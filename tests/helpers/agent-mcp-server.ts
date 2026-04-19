@@ -138,7 +138,7 @@ export async function startMcpServer(options: { maxContentLength?: number } = {}
   const bridge = await createFakeBridge(token)
   const tempDir = mkdtempSync(join(tmpdir(), 'boss-helper-mcp-test-'))
   const tokenFile = join(tempDir, '.boss-helper-agent-token')
-  const child = spawn(process.execPath, ['./scripts/agent-mcp-server.mjs'], {
+  const child = spawn(process.execPath, ['./scripts/agent-mcp-server.mjs', '--no-bootstrap'], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -232,6 +232,7 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
           {
             clientId: 'relay-1',
             connectedAt: '2026-04-10T00:00:00.000Z',
+            eventsConnected: true,
             extensionId: 'ext-1',
             lastSeenAt: '2026-04-10T00:00:00.000Z',
             userAgent: 'vitest',

@@ -43,7 +43,9 @@ const relayMeta = new Map()
 const eventClients = new Map()
 const recentAgentEvents = []
 const recentAgentEventIds = new Set()
+const relayRequestOwners = new Map()
 let nextRelayIndex = 0
+let preferredRelayClientId = ''
 const trustedRelayOrigins = new Set([
   `https://127.0.0.1:${HTTPS_PORT}`,
   `https://localhost:${HTTPS_PORT}`,
@@ -250,11 +252,27 @@ function getRelaySnapshot() {
     return {
       clientId: meta.clientId ?? '',
       connectedAt: meta.connectedAt ?? null,
+      eventsConnected: meta.eventsConnected === true,
       extensionId: meta.extensionId ?? '',
       lastSeenAt: meta.lastSeenAt ?? null,
       userAgent: meta.userAgent ?? '',
     }
   })
+}
+
+function getRunnableRelays() {
+  const runnableRelays = [...relayClients].filter((relay) => {
+    const meta = relayMeta.get(relay)
+    const extensionId = meta?.extensionId
+    return meta?.eventsConnected === true && typeof extensionId === 'string' && extensionId.trim().length > 0
+  })
+
+  if (!preferredRelayClientId) {
+    return runnableRelays
+  }
+
+  const preferredRelays = runnableRelays.filter((relay) => relayMeta.get(relay)?.clientId === preferredRelayClientId)
+  return preferredRelays.length > 0 ? preferredRelays : runnableRelays
 }
 
 function normalizeEventTypeFilter(value) {
@@ -302,7 +320,7 @@ function broadcastQueueState() {
 }
 
 function dispatchQueuedCommands() {
-  const relays = [...relayClients]
+  const relays = getRunnableRelays()
   if (relays.length === 0 || commandQueue.length === 0) {
     return
   }
@@ -311,6 +329,7 @@ function dispatchQueuedCommands() {
     const relay = relays[nextRelayIndex % relays.length]
     nextRelayIndex = (nextRelayIndex + 1) % relays.length
     const command = commandQueue.shift()
+    relayRequestOwners.set(command.requestId, relayMeta.get(relay)?.clientId ?? '')
     writeSse(relay, 'command', command)
   }
 
@@ -330,6 +349,11 @@ function clearPendingResponse(requestId, response) {
 
   clearTimeout(pending.timeout)
   pendingResponses.delete(requestId)
+  const ownerClientId = relayRequestOwners.get(requestId)
+  relayRequestOwners.delete(requestId)
+  if (typeof ownerClientId === 'string' && ownerClientId) {
+    preferredRelayClientId = ownerClientId
+  }
   pending.resolve(response)
   broadcastQueueState()
   return true
@@ -350,6 +374,7 @@ function queueCommand(command, timeoutMs = COMMAND_TIMEOUT_MS) {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       pendingResponses.delete(requestId)
+      relayRequestOwners.delete(requestId)
       resolve(createBridgeErrorResponse('bridge-timeout', 'relay 页面未在超时时间内返回结果'))
       broadcastQueueState()
     }, timeoutMs)
@@ -395,8 +420,12 @@ async function runBatchCommands(commands, options = {}) {
 }
 
 function handleRelayDisconnect(res) {
+  const disconnectedClientId = relayMeta.get(res)?.clientId ?? ''
   relayClients.delete(res)
   relayMeta.delete(res)
+  if (preferredRelayClientId && disconnectedClientId === preferredRelayClientId) {
+    preferredRelayClientId = ''
+  }
   if (relayClients.size === 0) {
     nextRelayIndex = 0
   } else {
@@ -524,6 +553,7 @@ async function createAppServer() {
         relayMeta.set(res, {
           clientId,
           connectedAt: new Date().toISOString(),
+          eventsConnected: false,
           extensionId: url.searchParams.get('extensionId') ?? '',
           lastSeenAt: new Date().toISOString(),
           userAgent: req.headers['user-agent'] ?? '',
@@ -551,6 +581,7 @@ async function createAppServer() {
         const body = await readJson(req)
         const clientId = normalizeRelayClientId(body.clientId)
         updateRelayMeta(clientId, {
+          eventsConnected: body.eventsConnected === true,
           extensionId: body.extensionId ?? '',
           browser: body.browser ?? '',
           userAgent: body.browser ?? '',
@@ -569,6 +600,9 @@ async function createAppServer() {
 
       if (req.method === 'POST' && url.pathname === '/responses') {
         const body = await readJson(req)
+        if (typeof body.clientId === 'string' && body.clientId.trim()) {
+          relayRequestOwners.set(body.requestId, body.clientId.trim())
+        }
         const resolved = clearPendingResponse(body.requestId, body.response)
         sendJson(req, res, resolved ? 200 : 404, {
           ok: resolved,
@@ -619,7 +653,7 @@ async function createAppServer() {
 
         const waitForRelay = shouldWaitForRelay(body.command, body.waitForRelay)
 
-        if (relayClients.size === 0 && !waitForRelay) {
+        if (getRunnableRelays().length === 0 && !waitForRelay) {
           sendJson(
             req,
             res,
@@ -648,7 +682,7 @@ async function createAppServer() {
         const body = await readJson(req)
         const waitForRelay = body.waitForRelay !== false
 
-        if (relayClients.size === 0 && !waitForRelay) {
+        if (getRunnableRelays().length === 0 && !waitForRelay) {
           sendJson(
             req,
             res,

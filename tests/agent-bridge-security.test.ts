@@ -276,4 +276,5 @@ describe('agent bridge security', () => {
       }),
     )
   })
+
 })

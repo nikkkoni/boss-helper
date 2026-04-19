@@ -4,6 +4,8 @@ import { defineConfig } from 'wxt'
 import { version } from './package.json'
 // @ts-ignore Local build helper lives in a .mjs script.
 import { getAgentBridgeTokenSync } from './scripts/agent-security.mjs'
+// @ts-ignore Shared agent extension constants live in a .mjs script.
+import { BOSS_HELPER_AGENT_EXTENSION_KEY } from './scripts/agent-extension.mjs'
 
 const matches = ['*://zhipin.com/*', '*://*.zhipin.com/*']
 const hostPermissions = ['*://zhipin.com/*', '*://*.zhipin.com/*']
@@ -17,6 +19,7 @@ export default defineConfig({
 
   manifest: {
     default_locale: 'zh_CN',
+    key: BOSS_HELPER_AGENT_EXTENSION_KEY,
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
     permissions: ['storage', 'cookies', 'notifications'],

@@ -52,14 +52,22 @@ function getKnownExtensionIds(statusSection) {
   )]
 }
 
+function getRunnableRelayCount(statusSection) {
+  return normalizeRelaySnapshot(statusSection)
+    .filter((relay) => relay?.eventsConnected === true && typeof relay?.extensionId === 'string' && relay.extensionId.trim())
+    .length
+}
+
 function buildBootstrapReadiness(healthSection, statusSection, readinessSection) {
   const pageReadiness = readinessSection?.data
   const knownExtensionIds = getKnownExtensionIds(statusSection)
+  const runnableRelayCount = getRunnableRelayCount(statusSection)
 
   return {
     bridgeOnline: healthSection.ok === true,
     relayConnected: statusSection?.data?.relayConnected === true,
     relayCount: normalizeRelaySnapshot(statusSection).length,
+    runnableRelayCount,
     extensionIdConfigured: knownExtensionIds.length > 0,
     knownExtensionIds,
     bossPageFound: pageReadiness?.page?.exists === true,
@@ -78,13 +86,12 @@ function buildBootstrapReadiness(healthSection, statusSection, readinessSection)
     suggestedAction:
       typeof pageReadiness?.suggestedAction === 'string'
         ? pageReadiness.suggestedAction
-        : healthSection.ok === true && statusSection?.data?.relayConnected === true
+        : healthSection.ok === true && runnableRelayCount > 0
           ? 'continue'
           : 'stop',
     ready:
       healthSection.ok === true
-      && statusSection?.data?.relayConnected === true
-      && knownExtensionIds.length > 0
+      && runnableRelayCount > 0
       && pageReadiness?.ready === true,
   }
 }
@@ -115,6 +122,15 @@ function buildBootstrapSummary(readiness) {
       ready: false,
       stage: 'relay-offline',
       nextAction: 'open-relay',
+      needsHumanAction: true,
+    }
+  }
+
+  if (readiness.runnableRelayCount <= 0) {
+    return {
+      ready: false,
+      stage: 'relay-not-ready',
+      nextAction: 'configure-extension-id',
       needsHumanAction: true,
     }
   }
@@ -201,13 +217,15 @@ function buildBootstrapSteps(readiness, relayUrl) {
     createBootstrapStep(
       'relay',
       'relay 页面已连接扩展',
-      relayBlocked ? 'blocked' : readiness.relayConnected ? 'ready' : 'missing',
+      relayBlocked ? 'blocked' : readiness.runnableRelayCount > 0 ? 'ready' : readiness.relayConnected ? 'missing' : 'missing',
       'user',
       'open-relay',
       relayBlocked
         ? 'bridge 未在线前，无法建立 relay 连接。'
-        : readiness.relayConnected
-          ? 'relay 已连接，可继续检查扩展 ID 与页面状态。'
+        : readiness.runnableRelayCount > 0
+          ? 'relay 已连接且扩展事件通道已就绪，可继续检查扩展 ID 与页面状态。'
+          : readiness.relayConnected
+            ? 'relay 页面已打开，但扩展事件通道尚未就绪。'
           : `需要在 ${relayUrl} 打开 relay 页面并保持常驻。`,
     ),
     createBootstrapStep(
@@ -271,6 +289,8 @@ function buildBootstrapNextSteps(readiness, summary, relayUrl) {
       return ['先启动本地 bridge：pnpm agent:start 或 pnpm agent:bridge。']
     case 'relay-offline':
       return [`在 ${relayUrl} 打开 relay 页面，并保持该页面常驻。`]
+    case 'relay-not-ready':
+      return ['等待 relay 页面与扩展事件端口连通；若长时间未恢复，检查扩展是否已加载并重开 relay 页面。']
     case 'extension-id-missing':
       return ['在 relay 页面填写扩展 ID，然后点击“保存并重连”。']
     case 'boss-page-missing':
@@ -1186,7 +1206,8 @@ export function createAgentContextService(bridgeClient) {
 
     const health = await safeBridgeSection('/health')
     const status = await safeBridgeSection('/status')
-    const waitForRelay = waitForRelayArg ?? (status.data?.relayConnected === true)
+    const runnableRelayCount = getRunnableRelayCount(status)
+    const waitForRelay = waitForRelayArg ?? (runnableRelayCount > 0)
 
     const sectionResults = {
       health,
@@ -1332,6 +1353,7 @@ export function createAgentContextService(bridgeClient) {
       bridgeOnline: health.ok,
       relayConnected: status.data?.relayConnected === true,
       relayCount,
+      runnableRelayCount,
       bossPageFound: pageReadiness?.page?.exists === true,
       pageSupported: pageReadiness?.page?.supported === true,
       pageUrl: typeof pageReadiness?.page?.url === 'string' ? pageReadiness.page.url : '',
@@ -1339,7 +1361,7 @@ export function createAgentContextService(bridgeClient) {
       pageInitialized: pageReadiness?.extension?.initialized === true,
       pageControllable:
         health.ok
-        && status.data?.relayConnected === true
+        && runnableRelayCount > 0
         && pageReadiness?.page?.controllable === true,
       loggedIn:
         typeof pageReadiness?.account?.loggedIn === 'boolean' ? pageReadiness.account.loggedIn : null,
@@ -1347,14 +1369,14 @@ export function createAgentContextService(bridgeClient) {
       hasCaptcha: pageReadiness?.risk?.hasCaptcha === true,
       hasRiskWarning: pageReadiness?.risk?.hasRiskWarning === true,
       hasBlockingModal: pageReadiness?.risk?.hasBlockingModal === true,
-      ready: health.ok && status.data?.relayConnected === true && pageReadiness?.ready === true,
+      ready: health.ok && runnableRelayCount > 0 && pageReadiness?.ready === true,
       blockers: Array.isArray(pageReadiness?.blockers)
         ? pageReadiness.blockers.map((item) => item.code)
         : [],
       suggestedAction:
         typeof pageReadiness?.suggestedAction === 'string'
           ? pageReadiness.suggestedAction
-          : health.ok && status.data?.relayConnected === true
+          : health.ok && runnableRelayCount > 0
             ? 'continue'
             : 'stop',
     }
@@ -1400,7 +1422,7 @@ export function createAgentContextService(bridgeClient) {
     const eventLimit = Number.isFinite(args.eventLimit) && args.eventLimit > 0 ? Number(args.eventLimit) : 20
     const status = await safeBridgeSection('/status')
     const waitForRelayArg = typeof args.waitForRelay === 'boolean' ? args.waitForRelay : undefined
-    const waitForRelay = waitForRelayArg ?? (status.data?.relayConnected === true)
+    const waitForRelay = waitForRelayArg ?? (getRunnableRelayCount(status) > 0)
     const stats = await safeCommandSection('stats', { timeoutMs, waitForRelay })
 
     if (stats.ok === false) {

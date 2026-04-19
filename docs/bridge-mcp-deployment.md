@@ -36,8 +36,8 @@ CLI / MCP / 外部脚本
 
 - Node.js `20.19.0`
 - pnpm `9.x`
-- Chromium 浏览器
-- 已构建并加载 Boss Helper 扩展
+- 系统已安装的 `Google Chrome`
+- 已构建 Boss Helper 扩展，并在受管 profile 中手动安装 `.output/chrome-mv3/`
 - 至少打开一个支持的 Boss 职位页
 - 默认端口 `4317` 和 `4318` 可用
 
@@ -49,50 +49,77 @@ CLI / MCP / 外部脚本
 
 ## 最短启动路径
 
-### 1. 构建并加载扩展
+### 1. 一键自举本地链路
 
 ```bash
 pnpm install
-pnpm build:chrome
-```
-
-然后在浏览器开发者模式中加载 `.output/chrome-mv3/`。
-
-### 2. 打开 Boss 职位页并登录
-
-确保当前页面已经是支持的职位搜索页，并且扩展已完成初始化。
-
-### 3. 启动 bridge 并打开 relay 页面
-
-```bash
-pnpm agent:start -- --extension-id <你的扩展ID>
+pnpm agent:start
 ```
 
 这个命令会：
 
-- 检查 bridge 是否已健康运行
-- 若没有则后台拉起 `agent-bridge.mjs`
-- 生成 relay URL
-- 默认打开浏览器中的 relay 页面
+- 检查 bridge 是否已健康运行，必要时后台拉起 `agent-bridge.mjs`
+- 在 token 变化或首次使用时自动执行 `pnpm build:chrome`
+- 有头模式下打开一个受管的系统 `Google Chrome` persistent profile
+- 自动打开 relay 页面并预填当前扩展的默认 extension ID
+- 默认打开 `https://www.zhipin.com/web/geek/jobs`
 
-macOS 下默认浏览器名是 `Google Chrome`，也可通过 `--browser` 覆盖。
+说明：当前 bootstrap 只负责拉起真实浏览器、relay 和 Boss 页面，不会直接通过 Playwright 页面对象操控 Boss，也不会用命令行强制注入扩展。请先在该 Chrome profile 里手动安装 `.output/chrome-mv3/`，后续所有 Boss 操作都应通过 MCP -> bridge -> extension -> page 的间接链路完成。`--headless` 仅用于无头命令行场景。
 
-### 4. 信任证书并保持 relay 页面打开
+### 2. 首次 profile 登录 Boss
 
-首次访问时需要接受本地自签名证书。relay 页面保持常驻，否则外部命令不会被转发给扩展。
+首次使用某个 profile 时，仍需要你在自动打开的真实 Chrome 中完成 Boss 登录。之后同一 `profileDir` 可直接复用登录态。
 
-### 5. 运行诊断
+默认 profile 目录：
+
+- `.boss-helper-agent-profile/`
+
+如需自定义：
+
+```bash
+pnpm agent:start -- --profile-dir ./local/boss-profile --headed
+```
+
+### 3. 运行诊断
 
 ```bash
 pnpm agent:doctor
 pnpm agent:cli status
 ```
 
-### 6. 如需 MCP
+### 4. 如需 MCP
 
 ```bash
 pnpm agent:mcp
 ```
+
+`agent:mcp` 现在默认也会后台触发同一套 bootstrap，但它不会阻塞 MCP initialize 握手；而是在首个 tool/resource 调用前等待 bootstrap 完成。
+
+如果你已经手工准备好 bridge / relay / 浏览器链路，或在测试环境里不希望自动拉起浏览器，可显式关闭：
+
+```bash
+pnpm agent:mcp -- --no-bootstrap
+```
+
+## 受管自举参数
+
+`pnpm agent:start` 与 `pnpm agent:bootstrap` 共享这些常用参数：
+
+- `--profile-dir <path>`: 指定真实 Chrome persistent profile 目录
+- `--target-url <url>`: 自定义启动后打开的 Boss 页面
+- `--headless`: 对已有登录态 profile 做无头启动
+- `--headed`: 强制有头启动
+- `--force-build`: 无论是否已有产物都重建 Chrome 扩展
+- `--no-build`: 跳过自动构建；要求 `.output/chrome-mv3` 已存在
+- `--no-browser`: 只确保 bridge 和扩展构建，不拉起真实浏览器
+
+其中：
+
+- `agent:start` 会持有受管浏览器进程，适合作为常驻入口
+- `agent:bootstrap` 只做一次自举并输出结构化结果，适合被其他脚本复用；默认也不会直接操控 Boss 页面
+
+
+首次访问 relay HTTPS 页面时仍可能需要接受本地自签名证书；受管浏览器会忽略 HTTPS 错误，但手工浏览器不会。
 
 ## 手动启动方式
 
@@ -112,7 +139,7 @@ pnpm agent:bridge
 - `https://127.0.0.1:4318/`
 - `https://localhost:4318/`
 
-进入页面后填入扩展 ID，并保持页面常驻。
+进入页面后填入扩展 ID，并保持页面常驻。`agent:start` 打开的 relay URL 会自动预填当前默认扩展 ID；如果当前 profile 实际安装的是别的扩展实例，应以 Chrome profile 中实际安装的扩展 ID 为准。如果扩展事件端口没有连上，bridge 会把该 relay 视为“未就绪”，不会向它派发命令。
 
 ### 常用 CLI 命令
 
@@ -236,7 +263,7 @@ x-boss-helper-agent-token: <token>
 
 ## MCP 部署
 
-`pnpm agent:mcp` 不负责启动 bridge 或连接 relay，只负责把现有 bridge 能力包装成 MCP。
+`pnpm agent:mcp` 默认会尝试自动补齐 bridge / 受管浏览器 / relay 链路，但仍然只是本地 stdio MCP server，不会绕过页面登录、验证码或风控。
 
 最小注册示例：
 

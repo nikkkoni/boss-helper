@@ -50,7 +50,7 @@ async function stopChildProcess(child: ChildProcessWithoutNullStreams) {
 }
 
 async function startLiveMcpServer(env: NodeJS.ProcessEnv): Promise<LiveMcpServer> {
-  const child = spawn(process.execPath, ['./scripts/agent-mcp-server.mjs'], {
+  const child = spawn(process.execPath, ['./scripts/agent-mcp-server.mjs', '--no-bootstrap'], {
     cwd: repoRoot,
     env,
     stdio: 'pipe',
