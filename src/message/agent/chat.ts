@@ -16,6 +16,8 @@ export interface BossHelperAgentChatConversation {
   name?: string
   needsReply: boolean
   roles: Array<'boss' | 'user' | 'assistant'>
+  to_name?: string
+  to_uid?: string
 }
 
 export interface BossHelperAgentChatListData {

@@ -21,6 +21,10 @@ vi.mock('@/utils/logger', () => ({
 describe('websocket protobuf and mqtt helpers', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="app"></div>'
+    window.GeekChatCore = undefined
+    window.ChatWebsocket = undefined
+    window.EventBus = undefined
+    window.socket = undefined as unknown as WebSocket
     mockLoggerError.mockReset()
   })
 
@@ -56,7 +60,7 @@ describe('websocket protobuf and mqtt helpers', () => {
     expect(message.toArrayBuffer().byteLength).toBeGreaterThan(0)
     expect(message.msg).not.toEqual(duplicateTimestampMessage.msg)
 
-    message.send()
+    await message.send()
 
     expect(clientSend).toHaveBeenCalledWith(message)
     Date.now = realDateNow
@@ -77,9 +81,154 @@ describe('websocket protobuf and mqtt helpers', () => {
       to_uid: '2',
     })
 
-    message.send()
+    await message.send()
 
     expect(socketSend).toHaveBeenCalledWith(message)
+  })
+
+  it('falls back to ChatWebsocket when GeekChatCore client is unavailable', async () => {
+    const socketSend = vi.fn()
+    window.GeekChatCore = {
+      getInstance: () => ({
+        getClient: () => ({}) as any,
+      }),
+    }
+    window.ChatWebsocket = {
+      send: socketSend,
+    }
+
+    const { Message } = await import('@/composables/useWebSocket/protobuf')
+    const message = new Message({
+      content: 'hello',
+      form_uid: '1',
+      to_name: 'encryptBoss',
+      to_uid: '2',
+    })
+
+    await message.send()
+
+    expect(socketSend).toHaveBeenCalledWith(message)
+  })
+
+  it('falls back to raw socket when wrapper sends throw before the socket is ready', async () => {
+    const socket = {
+      readyState: WebSocket.OPEN,
+      send: vi.fn(),
+    }
+    Object.setPrototypeOf(socket, WebSocket.prototype)
+    window.socket = socket as unknown as WebSocket
+    window.GeekChatCore = {
+      getInstance: () => ({
+        getClient: () => ({
+          client: {
+            send: () => {
+              throw new Error('client not ready')
+            },
+          },
+        }),
+      }),
+    }
+    window.ChatWebsocket = {
+      send: () => {
+        throw new Error('wrapper not ready')
+      },
+    }
+
+    const { mqtt } = await import('@/composables/useWebSocket/mqtt')
+    const { Message } = await import('@/composables/useWebSocket/protobuf')
+    const message = new Message({
+      content: 'fallback',
+      form_uid: '1',
+      to_name: 'encryptBoss',
+      to_uid: '2',
+    })
+
+    await message.send()
+
+    expect(socket.send).toHaveBeenCalledTimes(1)
+    const packet = socket.send.mock.calls[0][0] as Uint8Array
+    const decoded = mqtt.decode(packet, packet[0] & 0x0f)
+    expect(decoded.topic).toBe('chat')
+    expect([...decoded.payload]).toEqual([...message.msg])
+  })
+
+  it('falls back to EventBus publish when websocket channels are unavailable', async () => {
+    delete window.GeekChatCore
+    delete window.ChatWebsocket
+
+    const publish = vi.fn(() => undefined)
+    window.EventBus = {
+      publish: publish as unknown as NonNullable<Window['EventBus']>['publish'],
+      subscribe: vi.fn() as unknown as NonNullable<Window['EventBus']>['subscribe'],
+    }
+
+    const { Message } = await import('@/composables/useWebSocket/protobuf')
+    const message = new Message({
+      content: 'hello',
+      form_uid: '1',
+      to_name: 'encryptBoss',
+      to_uid: '2',
+    })
+
+    await message.send()
+
+    expect(publish).toHaveBeenCalledWith(
+      'CHAT_SEND_TEXT',
+      {
+        uid: '2',
+        encryptUid: 'encryptBoss',
+        message: 'hello',
+        msg: 'hello',
+      },
+      expect.any(Function),
+      expect.any(Function),
+    )
+  })
+
+  it('does not require EventBus callbacks to resolve sending', async () => {
+    delete window.GeekChatCore
+    delete window.ChatWebsocket
+
+    const publish = vi.fn(() => undefined)
+    window.EventBus = {
+      publish: publish as unknown as NonNullable<Window['EventBus']>['publish'],
+      subscribe: vi.fn() as unknown as NonNullable<Window['EventBus']>['subscribe'],
+    }
+
+    const { Message } = await import('@/composables/useWebSocket/protobuf')
+    const message = new Message({
+      content: 'hello',
+      form_uid: '1',
+      to_name: 'encryptBoss',
+      to_uid: '2',
+    })
+
+    await expect(message.send()).resolves.toBeUndefined()
+    expect(publish).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces EventBus publish failures when it is the last available channel', async () => {
+    delete window.GeekChatCore
+    delete window.ChatWebsocket
+
+    const publish = vi.fn((...args: unknown[]) => {
+      const onError = args[3] as ((error: unknown) => void) | undefined
+      onError?.('eventbus down')
+    })
+    window.EventBus = {
+      publish: publish as unknown as NonNullable<Window['EventBus']>['publish'],
+      subscribe: vi.fn() as unknown as NonNullable<Window['EventBus']>['subscribe'],
+    }
+
+    const { Message } = await import('@/composables/useWebSocket/protobuf')
+    const message = new Message({
+      content: 'hello',
+      form_uid: '1',
+      to_name: 'encryptBoss',
+      to_uid: '2',
+    })
+
+    await expect(message.send()).rejects.toThrow('eventbus down')
   })
 
   it('shows an error when no send channel is available', async () => {
@@ -95,11 +244,78 @@ describe('websocket protobuf and mqtt helpers', () => {
       to_uid: '2',
     })
 
-    message.send()
+    await expect(message.send({ timeoutMs: 0 })).rejects.toThrow(
+      '无可用发送渠道，请等待作者修复。可暂时关闭招呼语功能',
+    )
 
     expect(ElMessage.error).toHaveBeenCalledWith(
       '无可用发送渠道，请等待作者修复。可暂时关闭招呼语功能',
     )
+  })
+
+  it('falls back to raw socket mqtt send when wrapper channels are unavailable', async () => {
+    delete window.GeekChatCore
+    delete window.ChatWebsocket
+
+    const socket = {
+      readyState: WebSocket.OPEN,
+      send: vi.fn(),
+    }
+    Object.setPrototypeOf(socket, WebSocket.prototype)
+    window.socket = socket as unknown as WebSocket
+
+    const { mqtt } = await import('@/composables/useWebSocket/mqtt')
+    const { Message } = await import('@/composables/useWebSocket/protobuf')
+    const message = new Message({
+      content: 'hello',
+      form_uid: '1',
+      to_name: 'encryptBoss',
+      to_uid: '2',
+    })
+
+    await message.send()
+
+    expect(socket.send).toHaveBeenCalledTimes(1)
+    expect(socket.send).toHaveBeenCalledWith(
+      expect.any(Uint8Array),
+    )
+
+    const packet = socket.send.mock.calls[0][0] as Uint8Array
+    const decoded = mqtt.decode(packet, packet[0] & 0x0f)
+    expect(decoded.topic).toBe('chat')
+    expect([...decoded.payload]).toEqual([...message.msg])
+  })
+
+  it('waits briefly for a wrapper send channel to appear', async () => {
+    vi.useFakeTimers()
+
+    try {
+      delete window.GeekChatCore
+      delete window.ChatWebsocket
+
+      const { Message } = await import('@/composables/useWebSocket/protobuf')
+      const message = new Message({
+        content: 'hello',
+        form_uid: '1',
+        to_name: 'encryptBoss',
+        to_uid: '2',
+      })
+
+      const delayedSend = vi.fn()
+      const sendPromise = message.send({ retryDelayMs: 100, timeoutMs: 400 })
+
+      setTimeout(() => {
+        window.ChatWebsocket = {
+          send: delayedSend,
+        }
+      }, 150)
+
+      await vi.advanceTimersByTimeAsync(400)
+      await expect(sendPromise).resolves.toBeUndefined()
+      expect(delayedSend).toHaveBeenCalledWith(message)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('builds chat protocol payloads for text and image messages', async () => {

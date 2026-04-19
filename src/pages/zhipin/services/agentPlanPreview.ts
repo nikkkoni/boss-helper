@@ -179,7 +179,7 @@ function resolvePreviewStatus(options: {
     }
   }
 
-  if (resetFiltered) {
+  if (currentStatus === 'pending' || resetFiltered) {
     return {
       status: 'wait',
       message: '等待中',

@@ -151,6 +151,28 @@ describe('scheduleDOMBatch', () => {
 
     expect(order).toEqual(['raf', 'idle'])
   })
+
+  it('falls back when animation frame callbacks are throttled', async () => {
+    vi.useFakeTimers()
+
+    try {
+      vi.stubGlobal('window', {
+        ...window,
+        requestAnimationFrame: vi.fn(() => 1),
+        requestIdleCallback: (callback: () => void) => {
+          callback()
+          return 1
+        },
+      })
+
+      const promise = scheduleDOMBatch()
+      await vi.advanceTimersByTimeAsync(200)
+
+      await expect(promise).resolves.toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('limited concurrency wrappers', () => {

@@ -1,7 +1,9 @@
 import { useChat } from '@/composables/useChat'
 import { Message } from '@/composables/useWebSocket'
+import { requestBossData } from '@/composables/useApplying/utils'
 import {
   createBossHelperAgentResponse,
+  type BossHelperAgentChatConversation,
   type BossHelperAgentChatHistoryData,
   type BossHelperAgentChatHistoryPayload,
   type BossHelperAgentChatListData,
@@ -9,8 +11,11 @@ import {
   type BossHelperAgentChatMessage,
   type BossHelperAgentChatSendPayload,
 } from '@/message/agent'
+import { jobList } from '@/stores/jobs'
 import { useCommon } from '@/stores/common'
+import { useConf } from '@/stores/conf'
 import { useUser } from '@/stores/user'
+import { recordOutgoingChatMessage } from '../services/chatStreamMessages'
 
 import { createBossHelperAgentEvent, emitBossHelperAgentEvent } from './agentEvents'
 import { resolveBossHelperAgentCommandFailureMeta } from './agentCommandMeta'
@@ -30,9 +35,75 @@ function toAgentChatMessage(
   }
 }
 
+function toAgentChatConversation(
+  item: ReturnType<typeof useChat>['listChatConversations'] extends (...args: any[]) => { items: infer T }
+    ? T extends Array<infer U>
+      ? U
+      : never
+    : never,
+): BossHelperAgentChatConversation {
+  return {
+    conversationId: item.conversationId,
+    latestMessage: item.latestMessage,
+    latestRole: item.latestRole,
+    latestTimestamp: item.latestTimestamp,
+    messageCount: item.messageCount,
+    name: item.name,
+    needsReply: item.needsReply,
+    roles: item.roles,
+    to_name: item.targetName,
+    to_uid: item.targetUid,
+  }
+}
+
+function getJobById(encryptJobId: string) {
+  return jobList.get(encryptJobId) ?? jobList.list.find((item) => item.encryptJobId === encryptJobId)
+}
+
 export function useAgentChatQueries(options: UseAgentQueriesOptions) {
   const chat = useChat()
   const common = useCommon()
+  const conf = useConf()
+
+  async function resolveChatTarget(payload: BossHelperAgentChatSendPayload) {
+    const toUid = payload.to_uid == null ? '' : String(payload.to_uid).trim()
+    const toName = payload.to_name?.trim() ?? ''
+    if (toUid && toName) {
+      return {
+        to_name: toName,
+        to_uid: toUid,
+      }
+    }
+
+    if (!payload.encryptJobId?.trim()) {
+      return null
+    }
+
+    const item = getJobById(payload.encryptJobId.trim())
+    if (!item) {
+      throw new Error('当前页面未找到指定岗位')
+    }
+
+    if (!item.card) {
+      await item.getCard()
+    }
+
+    if (!item.card) {
+      throw new Error('岗位详情暂不可用')
+    }
+
+    const bossData = await requestBossData(item.card)
+    const resolvedUid = bossData.data?.bossId == null ? '' : String(bossData.data.bossId).trim()
+    const resolvedName = bossData.data?.encryptBossId?.trim() ?? ''
+    if (!resolvedUid || !resolvedName) {
+      throw new Error('未能解析聊天目标')
+    }
+
+    return {
+      to_name: resolvedName,
+      to_uid: resolvedUid,
+    }
+  }
 
   async function chatList(payload?: BossHelperAgentChatListPayload) {
     await options.ensureStoresLoaded()
@@ -49,7 +120,7 @@ export function useAgentChatQueries(options: UseAgentQueriesOptions) {
       pendingReplyOnly: payload?.pendingReplyOnly,
     })
     return createBossHelperAgentResponse(true, 'chat-list', '已返回当前页面聊天会话', {
-      conversations: result.items,
+      conversations: result.items.map(toAgentChatConversation),
       pendingReplyCount: result.pendingReplyCount,
       total: result.total,
       totalConversations: result.totalBeforeFilter,
@@ -93,9 +164,6 @@ export function useAgentChatQueries(options: UseAgentQueriesOptions) {
     if (!payload?.content?.trim()) {
       return options.fail('missing-content', '缺少聊天内容')
     }
-    if (!payload.to_uid || !payload.to_name?.trim()) {
-      return options.fail('missing-chat-target', '缺少 to_uid 或 to_name')
-    }
     if (payload.confirmHighRisk !== true) {
       return options.fail(
         'high-risk-action-confirmation-required',
@@ -113,24 +181,40 @@ export function useAgentChatQueries(options: UseAgentQueriesOptions) {
     }
 
     try {
+      const target = await resolveChatTarget(payload)
+      if (!target) {
+        return options.fail('missing-chat-target', '缺少 to_uid 或 to_name')
+      }
+
       const message = new Message({
         form_uid: String(userId),
-        to_uid: String(payload.to_uid),
-        to_name: payload.to_name.trim(),
+        to_uid: target.to_uid,
+        to_name: target.to_name,
         content: payload.content.trim(),
       })
-      message.send()
+      await message.send({
+        timeoutMs: Math.max(0, conf.formData.delay.messageSending) * 1000,
+      })
+      recordOutgoingChatMessage({
+        content: payload.content.trim(),
+        createdAt: 'createdAt' in message && typeof message.createdAt === 'number' ? message.createdAt : undefined,
+        form_uid: String(userId),
+        messageId: 'messageId' in message && typeof message.messageId === 'string' ? message.messageId : undefined,
+        to_name: target.to_name,
+        to_uid: target.to_uid,
+      })
 
       emitBossHelperAgentEvent(
         createBossHelperAgentEvent({
           type: 'chat-sent',
           state: common.deliverState,
-          message: `消息已发送给 ${payload.to_name.trim()}`,
+          message: `消息已发送给 ${target.to_name}`,
           progress: options.currentProgressSnapshot(),
           detail: {
-            to_uid: String(payload.to_uid),
-            to_name: payload.to_name.trim(),
+            to_uid: target.to_uid,
+            to_name: target.to_name,
             content: payload.content.trim(),
+            ...(payload.encryptJobId?.trim() ? { encryptJobId: payload.encryptJobId.trim() } : {}),
           },
         }),
       )

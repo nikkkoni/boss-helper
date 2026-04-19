@@ -171,13 +171,14 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
     },
     {
       name: 'boss_helper_navigate',
-      description: '导航到 Boss 职位搜索页，支持 url、query、city、position、page。',
+      description: '导航到 Boss 职位搜索页，支持 url、query、city（城市名或编码）、multiBusinessDistrict（区县/商圈代码）、position、page。',
       inputSchema: {
         type: 'object',
         properties: {
           url: { type: 'string' },
           query: { type: 'string' },
-          city: { type: 'string' },
+          city: { type: 'string', description: '城市名称（如"杭州"）或 Boss 城市编码（如"101210100"）' },
+          multiBusinessDistrict: { type: 'string', description: 'Boss 页面实际使用的区县/商圈代码（如"330523"为安吉县）' },
           position: { type: 'string' },
           page: { type: 'number' },
           timeoutMs: { type: 'number' },
@@ -318,19 +319,20 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
     },
     {
       name: 'boss_helper_chat_send',
-      description: '通过当前页面可用的 Boss 通道发送聊天消息。高风险动作，必须显式传 confirmHighRisk=true 才会执行。',
+      description: '通过当前页面可用的 Boss 通道发送聊天消息。高风险动作，必须显式传 confirmHighRisk=true 才会执行。必须提供 to_uid + to_name，或提供 encryptJobId，二选一。',
       inputSchema: {
         type: 'object',
         properties: {
           confirmHighRisk: { type: 'boolean' },
           content: { type: 'string' },
-          to_uid: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+          encryptJobId: { type: 'string' },
+          to_uid: { type: 'string' },
           to_name: { type: 'string' },
-          form_uid: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+          form_uid: { type: 'string' },
           timeoutMs: { type: 'number' },
           waitForRelay: { type: 'boolean' },
         },
-        required: ['confirmHighRisk', 'content', 'to_uid', 'to_name'],
+        required: ['confirmHighRisk', 'content'],
         additionalProperties: false,
       },
       handler: (args) => commandCall('chat.send', args),

@@ -21,6 +21,48 @@ describe('buildBossHelperNavigateUrl', () => {
     ).toBe('https://www.zhipin.com/web/geek/jobs?query=frontend&city=101020100&position=100101')
   })
 
+  it('resolves city name to code', () => {
+    expect(
+      buildBossHelperNavigateUrl({ city: '杭州' }, currentUrl, origin),
+    ).toBe('https://www.zhipin.com/web/geek/jobs?query=java&city=101210100&page=3')
+
+    expect(
+      buildBossHelperNavigateUrl({ city: '湖州' }, currentUrl, origin),
+    ).toBe('https://www.zhipin.com/web/geek/jobs?query=java&city=101210200&page=3')
+  })
+
+  it('passes through numeric city code as-is', () => {
+    expect(
+      buildBossHelperNavigateUrl({ city: '101210200' }, currentUrl, origin),
+    ).toBe('https://www.zhipin.com/web/geek/jobs?query=java&city=101210200&page=3')
+  })
+
+  it('passes through unrecognized city name as-is', () => {
+    const result = buildBossHelperNavigateUrl({ city: '安吉' }, currentUrl, origin)
+    expect(new URL(result).searchParams.get('city')).toBe('安吉')
+  })
+
+  it('adds multiBusinessDistrict parameter', () => {
+    const result = buildBossHelperNavigateUrl({ city: '湖州', multiBusinessDistrict: '330523' }, currentUrl, origin)
+    const params = new URL(result).searchParams
+    expect(params.get('city')).toBe('101210200')
+    expect(params.get('multiBusinessDistrict')).toBe('330523')
+  })
+
+  it('removes multiBusinessDistrict when empty', () => {
+    const urlWithArea = 'https://www.zhipin.com/web/geek/jobs?city=101210200&multiBusinessDistrict=330523'
+    expect(
+      buildBossHelperNavigateUrl({ multiBusinessDistrict: '' }, urlWithArea, origin),
+    ).toBe('https://www.zhipin.com/web/geek/jobs?city=101210200')
+  })
+
+  it('removes legacy areaBusiness when clearing district filter', () => {
+    const legacyUrl = 'https://www.zhipin.com/web/geek/jobs?city=101210200&areaBusiness=330523'
+    expect(
+      buildBossHelperNavigateUrl({ multiBusinessDistrict: '' }, legacyUrl, origin),
+    ).toBe('https://www.zhipin.com/web/geek/jobs?city=101210200')
+  })
+
   it('accepts supported absolute or relative job urls', () => {
     expect(
       buildBossHelperNavigateUrl(

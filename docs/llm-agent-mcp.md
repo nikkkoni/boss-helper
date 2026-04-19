@@ -35,6 +35,8 @@ MCP client
 3. `boss_helper_status`
 4. `boss_helper_agent_context`
 5. 必要时 `boss_helper_navigate` 或 `boss_helper_jobs_refresh`
+   - 地级市可直接传 `city='杭州'`、`city='湖州'`
+   - 目标是区县时优先传 `city + multiBusinessDistrict`，例如安吉县用 `city='湖州'` 与 `multiBusinessDistrict='330523'`
 6. `boss_helper_jobs_current` / `boss_helper_jobs_list` / `boss_helper_jobs_detail`
 7. `boss_helper_resume_get`
 8. `boss_helper_plan_preview`
@@ -60,7 +62,7 @@ MCP client
 
 | Tool | 作用 |
 | --- | --- |
-| `boss_helper_navigate` | 导航到受支持的 Boss 搜索页 |
+| `boss_helper_navigate` | 导航到受支持的 Boss 搜索页；支持 `city` 与 `multiBusinessDistrict` 定位城市 / 区县 |
 | `boss_helper_jobs_refresh` | 刷新当前受支持职位页，不改搜索条件 |
 | `boss_helper_resume_get` | 读取当前账号的结构化简历与摘要 |
 | `boss_helper_jobs_list` | 读取当前页岗位摘要列表 |
@@ -147,6 +149,24 @@ MCP client
 - `jobs.detail`: 按 `encryptJobId` 主动读取或加载指定岗位详情
 - `jobs.refresh`: 刷新当前列表页，只做页面恢复，不读取详情
 
+### `boss_helper_navigate`
+
+`navigate` 的几个关键参数语义：
+
+- `city`: 支持 Boss 城市编码，也支持常见地级市中文名；MCP 会在页面侧把如 `杭州`、`湖州` 自动转成 Boss 城市编码
+- `multiBusinessDistrict`: Boss 页面实际使用的区县 / 商圈筛选参数，通常传 6 位代码，例如 `330523` 表示安吉县
+- 如果目标是县区，不要只传 `city='安吉'` 这类名字并期待 Boss 一定识别；更稳妥的做法是传地级市 + 区县码，例如 `city='湖州'` 且 `multiBusinessDistrict='330523'`
+
+例如：
+
+```json
+{
+  "city": "湖州",
+  "multiBusinessDistrict": "330523",
+  "query": "运维"
+}
+```
+
 ### `boss_helper_plan_preview`
 
 用于在真正 `start` 前做一次只读预演，帮助外部 Agent 判断：
@@ -165,6 +185,10 @@ MCP client
 ### `boss_helper_chat_list`
 
 读取的是当前页面可采集到的会话摘要，不是 Boss 全量历史聊天。
+
+当页面已经采集到聊天消息时，`chat.list` 的会话摘要会附带 `to_uid` / `to_name`，可直接转交给 `boss_helper_chat_send` 复用。
+当你只有岗位而还没有会话摘要时，可先读 `boss_helper_jobs_detail`；若页面可解析出聊天目标，返回的岗位详情会附带 `chatTarget`。
+`boss_helper_chat_send` 也支持直接传 `encryptJobId`，由页面侧自动解析聊天目标。
 
 支持：
 

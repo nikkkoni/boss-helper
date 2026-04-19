@@ -20,7 +20,7 @@ const chatQueryMocks = vi.hoisted(() => {
       sentPayloads.push(payload)
     }
 
-    send() {
+    async send() {
       chatQueryMocks.sendMock(this.payload)
     }
   }
@@ -32,11 +32,17 @@ const chatQueryMocks = vi.hoisted(() => {
     emitBossHelperAgentEvent: vi.fn(),
     createBossHelperAgentEvent: vi.fn((payload) => payload),
     getUserId: vi.fn(() => 'user-1'),
+    requestBossData: vi.fn(),
+    registerUserConfigSnapshotGetter: vi.fn(),
   }
 })
 
 vi.mock('@/composables/useWebSocket', () => ({
   Message: chatQueryMocks.MockMessage,
+}))
+
+vi.mock('@/composables/useApplying/utils', () => ({
+  requestBossData: chatQueryMocks.requestBossData,
 }))
 
 vi.mock('@/pages/zhipin/hooks/agentEvents', () => ({
@@ -45,6 +51,7 @@ vi.mock('@/pages/zhipin/hooks/agentEvents', () => ({
 }))
 
 vi.mock('@/stores/user', () => ({
+  registerUserConfigSnapshotGetter: chatQueryMocks.registerUserConfigSnapshotGetter,
   useUser: () => ({
     getUserId: chatQueryMocks.getUserId,
   }),
@@ -93,6 +100,8 @@ describe('useAgentChatQueries', () => {
     chatQueryMocks.createBossHelperAgentEvent.mockClear()
     chatQueryMocks.getUserId.mockReset()
     chatQueryMocks.getUserId.mockReturnValue('user-1')
+    chatQueryMocks.requestBossData.mockReset()
+    chatQueryMocks.registerUserConfigSnapshotGetter.mockClear()
   })
 
   it('lists conversations and returns mapped chat history', async () => {
@@ -352,6 +361,18 @@ describe('useAgentChatQueries', () => {
         type: 'chat-sent',
       }),
     )
+
+    const listResponse = await queries.chatList({ limit: 10 })
+    expect(listResponse.data?.conversations).toEqual([
+      expect.objectContaining({
+        conversationId: 'uid:9',
+        latestMessage: 'hi boss',
+        latestRole: 'user',
+        name: 'Boss',
+        to_name: 'Boss',
+        to_uid: '9',
+      }),
+    ])
   })
 
   it('returns chat-send-failed when the websocket sender throws', async () => {
@@ -376,5 +397,44 @@ describe('useAgentChatQueries', () => {
       retryable: true,
       suggestedAction: 'retry',
     })
+  })
+
+  it('resolves chat targets from encryptJobId when explicit target fields are missing', async () => {
+    const queries = useAgentChatQueries(createOptions())
+    const item = {
+      card: {
+        encryptBossId: 'boss-encrypt',
+      },
+      encryptJobId: 'job-1',
+      getCard: vi.fn(async function(this: any) {
+        return this.card
+      }),
+    }
+    ;(await import('@/stores/jobs')).jobList.replace([item as any])
+    ;(await import('@/stores/jobs')).jobList.set('job-1', item as any)
+    chatQueryMocks.requestBossData.mockResolvedValueOnce({
+      data: {
+        bossId: 7,
+        encryptBossId: 'boss-encrypt',
+      },
+    })
+
+    const response = await queries.chatSend({
+      confirmHighRisk: true,
+      content: 'hello by job',
+      encryptJobId: 'job-1',
+      to_name: '',
+      to_uid: '',
+    })
+
+    expect(response).toEqual({ code: 'chat-sent', message: '消息已发送', ok: true })
+    expect(chatQueryMocks.sentPayloads).toEqual([
+      {
+        content: 'hello by job',
+        form_uid: 'user-1',
+        to_name: 'boss-encrypt',
+        to_uid: '7',
+      },
+    ])
   })
 })

@@ -87,7 +87,10 @@ export const useDeliver = defineStore('zhipin/deliver', () => {
     const shouldResetStatus = (item: MyJobListData) => {
       return (
         !selectedJobIds ||
-        Boolean(options.resetSelectionStatuses && selectedJobIds.has(item.encryptJobId))
+        Boolean(
+          selectedJobIds.has(item.encryptJobId)
+          && (options.resetSelectionStatuses || item.status.status === 'pending'),
+        )
       )
     }
 

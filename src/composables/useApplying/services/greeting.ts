@@ -3,6 +3,8 @@ import { miTem } from 'mitem'
 import type { modelData } from '@/composables/useModel'
 import type { Llm } from '@/composables/useModel/type'
 import { Message } from '@/composables/useWebSocket'
+import { recordOutgoingChatMessage } from '@/pages/zhipin/services/chatStreamMessages'
+import { useConf } from '@/stores/conf'
 import type { logData } from '@/stores/log'
 
 import { requestBossData } from '../utils'
@@ -31,6 +33,7 @@ export async function sendGreetingMessage(options: {
   ctx: logData
   content: string
 }) {
+  const conf = useConf()
   const bossData = await ensureGreetingBossData(options.ctx)
   options.ctx.message = options.content
 
@@ -41,7 +44,17 @@ export async function sendGreetingMessage(options: {
     content: options.content,
   })
 
-  buf.send()
+  await buf.send({
+    timeoutMs: Math.max(0, conf.formData.delay.messageSending) * 1000,
+  })
+  recordOutgoingChatMessage({
+    content: options.content,
+    createdAt: buf.createdAt,
+    form_uid: String(options.uid),
+    messageId: buf.messageId,
+    to_name: bossData.data.encryptBossId,
+    to_uid: bossData.data.bossId.toString(),
+  })
 }
 
 export function createCustomGreetingSender(options: {

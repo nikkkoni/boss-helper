@@ -61,6 +61,12 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
     currentProgressSnapshot,
   })
 
+  function resetDeliverProgress() {
+    deliver.total = 0
+    deliver.current = 0
+    deliver.currentData = undefined
+  }
+
   function clearTargetJobState() {
     agentRuntime.clearTargetJobState()
   }
@@ -109,6 +115,10 @@ export function useAgentBatchRunner(options: UseAgentBatchRunnerOptions) {
   }
 
   async function runBatch(mode: 'start' | 'resume', options?: BossHelperAgentStartPayload) {
+    if (mode === 'start') {
+      resetDeliverProgress()
+    }
+
     common.deliverLock = true
     common.deliverStop = false
     agentRuntime.clearFailureGuardrailState({

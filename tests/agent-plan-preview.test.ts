@@ -231,4 +231,53 @@ describe('previewAgentPlan', () => {
       }),
     ])
   })
+
+  it('treats targeted pending jobs as runnable in preview', async () => {
+    const result = await previewAgentPlan(
+      {
+        jobIds: ['job-pending'],
+      },
+      {
+        createHandleFn: vi.fn(async () => ({
+          after: [],
+          before: [],
+        })),
+        jobs: [
+          createJob({
+            encryptJobId: 'job-pending',
+            status: {
+              msg: '未开始',
+              status: 'pending',
+              setStatus: vi.fn(),
+            },
+          }),
+        ],
+        modelStore: {
+          initModel: vi.fn(async () => undefined),
+          modelData: [],
+        },
+        resolveCurrentUserId: vi.fn(async () => 1001),
+        runtimeConfig: jsonClone(defaultFormData),
+      },
+    )
+
+    expect(result.summary).toEqual(
+      expect.objectContaining({
+        readyCount: 1,
+        scopedCount: 1,
+        skipCount: 0,
+      }),
+    )
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        decision: 'ready',
+        job: expect.objectContaining({
+          encryptJobId: 'job-pending',
+          status: 'wait',
+          statusMsg: '等待中',
+        }),
+        stage: 'ready',
+      }),
+    ])
+  })
 })

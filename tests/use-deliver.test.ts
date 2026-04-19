@@ -253,6 +253,58 @@ describe('useDeliver', () => {
     expect(deliverMocks.logger.error).toHaveBeenCalledWith('未知报错', expect.any(Error), waitJob)
   })
 
+  it('processes selected pending jobs without requiring resetSelectionStatuses', async () => {
+    const { useDeliver } = await import('@/pages/zhipin/hooks/useDeliver')
+    const pendingJob = createJob({
+      encryptJobId: 'job-pending',
+      status: {
+        msg: '未开始',
+        setStatus(status, msg = '') {
+          pendingJob.status.status = status
+          pendingJob.status.msg = msg
+        },
+        status: 'pending',
+      },
+    })
+    const errorJob = createJob({
+      encryptJobId: 'job-error',
+      status: {
+        msg: '打招呼出错',
+        setStatus(status, msg = '') {
+          errorJob.status.status = status
+          errorJob.status.msg = msg
+        },
+        status: 'error',
+      },
+    })
+    deliverMocks.jobList.list = [pendingJob, errorJob]
+    deliverMocks.resetJobStatuses.mockImplementation((jobs: Array<any>, shouldReset: (job: any) => boolean) => {
+      jobs.forEach((job: any) => {
+        if (shouldReset(job) && job.status.status !== 'success' && job.status.status !== 'warn') {
+          job.status.setStatus('wait', '等待中')
+        }
+      })
+    })
+
+    const store = useDeliver()
+    const result = await store.jobListHandle({
+      selectedJobIds: ['job-pending', 'job-error'],
+    })
+
+    expect(result).toEqual({
+      candidateCount: 2,
+      seenJobIds: ['job-pending', 'job-error'],
+    })
+    expect(deliverMocks.executeDeliverJob).toHaveBeenCalledTimes(1)
+    expect(deliverMocks.executeDeliverJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: pendingJob,
+      }),
+    )
+    expect(pendingJob.status.status).toBe('running')
+    expect(errorJob.status.status).toBe('error')
+  })
+
   it('emits a structured limit event when unexpected crashes hit the failure guardrail', async () => {
     const { useDeliver } = await import('@/pages/zhipin/hooks/useDeliver')
     const waitJob = createJob({

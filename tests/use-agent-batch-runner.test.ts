@@ -110,7 +110,7 @@ const runnerMocks = vi.hoisted(() => ({
   },
   deliverStore: {
     jobListHandle: vi.fn(async () => ({ seenJobIds: [] })),
-    currentData: null,
+    currentData: null as any,
     current: 0,
     total: 0,
   },
@@ -266,6 +266,9 @@ describe('useAgentBatchRunner', () => {
     runnerMocks.pagerStore.next.mockReturnValue(true)
     runnerMocks.deliverStore.jobListHandle.mockReset()
     runnerMocks.deliverStore.jobListHandle.mockResolvedValue({ seenJobIds: [] })
+    runnerMocks.deliverStore.currentData = null
+    runnerMocks.deliverStore.current = 0
+    runnerMocks.deliverStore.total = 0
     runnerMocks.delay.mockReset()
     runnerMocks.delay.mockResolvedValue(undefined)
     runnerMocks.notification.mockReset()
@@ -513,6 +516,39 @@ describe('useAgentBatchRunner', () => {
       }),
     )
     expect(runnerMocks.applyAgentBatchStartPayload).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears stale deliver progress before a fresh start run publishes state', async () => {
+    const { useAgentBatchRunner } = await loadBatchRunner()
+    const runner = useAgentBatchRunner({
+      ensureStoresLoaded: vi.fn(async () => undefined),
+      ensureSupportedPage: () => true,
+    })
+
+    runnerMocks.deliverStore.currentData = {
+      brandName: 'Old Company',
+      encryptJobId: 'old-job',
+      jobName: 'Old Role',
+      status: {
+        msg: '打招呼出错',
+        status: 'error',
+      },
+    }
+    runnerMocks.deliverStore.current = 4
+    runnerMocks.deliverStore.total = 5
+
+    runnerMocks.executeAgentBatchLoop.mockImplementation(async () => {
+      expect(runnerMocks.deliverStore.currentData).toBeUndefined()
+      expect(runnerMocks.deliverStore.current).toBe(0)
+      expect(runnerMocks.deliverStore.total).toBe(0)
+      return { stepMsg: 'loop completed' }
+    })
+
+    await expect(runner.startBatch({ jobIds: ['job-9'] })).resolves.toEqual(
+      expect.objectContaining({ ok: true, code: 'started' }),
+    )
+
+    await flushBatch()
   })
 
   it('exposes current-session duplicate feedback through risk stats', async () => {

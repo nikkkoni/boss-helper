@@ -43,6 +43,8 @@ export interface ChatConversationSummary {
   name?: string
   needsReply: boolean
   roles: ChatMessage['role'][]
+  targetName?: string
+  targetUid?: string
 }
 
 export interface ListChatConversationsOptions {
@@ -77,6 +79,29 @@ function chatDateToTimestamp(message: Pick<ChatMessage, 'id' | 'date' | 'created
   const createdAt = resolveMessageCreatedAt(message)
   const date = new Date(createdAt)
   return `${getCurDay(date)} ${getCurTime(date)}`
+}
+
+function normalizeChatTargetValue(value: unknown) {
+  if (value == null) {
+    return undefined
+  }
+
+  const normalized = String(value).trim()
+  return normalized || undefined
+}
+
+function getConversationTarget(
+  conversationId: string,
+  message: Pick<ChatMessage, 'data' | 'name' | 'role'>,
+) {
+  const targetUid =
+    normalizeChatTargetValue(message.role === 'user' ? message.data?.to_uid : message.data?.from_uid)
+    ?? (conversationId.startsWith('uid:') ? conversationId.slice(4) : undefined)
+
+  return {
+    targetName: normalizeChatTargetValue(message.name),
+    targetUid,
+  }
 }
 
 const chatMessages = ref<ChatMessages>([])
@@ -172,6 +197,8 @@ function listChatConversations(options: ListChatConversationsOptions = {}) {
       messageCount: number
       name?: string
       roles: Set<ChatMessage['role']>
+      targetName?: string
+      targetUid?: string
     }
   >()
 
@@ -180,6 +207,7 @@ function listChatConversations(options: ListChatConversationsOptions = {}) {
     const existing = conversations.get(conversationId)
     const timestamp = chatDateToTimestamp(message)
     const createdAt = resolveMessageCreatedAt(message)
+    const target = getConversationTarget(conversationId, message)
 
     if (!existing) {
         conversations.set(conversationId, {
@@ -191,6 +219,8 @@ function listChatConversations(options: ListChatConversationsOptions = {}) {
           messageCount: 1,
           name: message.name,
           roles: new Set([message.role]),
+          targetName: target.targetName,
+          targetUid: target.targetUid,
       })
       continue
     }
@@ -203,10 +233,22 @@ function listChatConversations(options: ListChatConversationsOptions = {}) {
       if (message.name) {
         existing.name = message.name
       }
+      if (target.targetName) {
+        existing.targetName = target.targetName
+      }
+      if (target.targetUid) {
+        existing.targetUid = target.targetUid
+      }
     }
     existing.messageCount += 1
     if (!existing.name && message.name) {
       existing.name = message.name
+    }
+    if (!existing.targetName && target.targetName) {
+      existing.targetName = target.targetName
+    }
+    if (!existing.targetUid && target.targetUid) {
+      existing.targetUid = target.targetUid
     }
     existing.roles.add(message.role)
   }

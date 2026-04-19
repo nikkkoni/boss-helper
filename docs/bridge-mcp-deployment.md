@@ -123,7 +123,14 @@ pnpm agent:cli readiness.get
 pnpm agent:cli stats
 pnpm agent:cli jobs.current --payload '{"includeDetail":true}'
 pnpm agent:cli plan.preview
+pnpm agent:cli navigate --payload '{"city":"湖州","multiBusinessDistrict":"330523","query":"运维"}'
 ```
+
+`navigate` 参数说明：
+
+- `city` 支持 Boss 城市编码，也支持常见地级市中文名，例如 `杭州`、`湖州`
+- `multiBusinessDistrict` 是 Boss 页面实际使用的区县 / 商圈级过滤参数，通常传 6 位代码；例如 `330523` 为安吉县
+- 目标是县区时，优先使用“地级市 + multiBusinessDistrict”组合，而不是仅传县区名
 
 高风险写命令示例：
 
@@ -131,7 +138,11 @@ pnpm agent:cli plan.preview
 pnpm agent:cli start --payload '{"jobIds":["encryptJobId-1"],"confirmHighRisk":true}'
 pnpm agent:cli resume --payload '{"confirmHighRisk":true}'
 pnpm agent:cli chat.send --payload '{"to_uid":"123","to_name":"bossId","content":"你好","confirmHighRisk":true}'
+pnpm agent:cli chat.send --payload '{"encryptJobId":"encryptJobId-1","content":"你好","confirmHighRisk":true}'
 ```
+
+`chat.list` 返回的会话摘要会尽量携带 `to_uid` / `to_name`，方便直接复用到 `chat.send`。
+`jobs.detail` 也会在可解析时附带 `chatTarget`，适合刚投递成功后立刻补发定制消息。
 
 ## 状态语义
 

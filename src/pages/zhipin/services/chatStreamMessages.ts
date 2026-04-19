@@ -106,6 +106,35 @@ function buildDedupeKey(message: TechwolfMessage, conversationId: string, conten
   ].join(':')
 }
 
+function buildOutgoingConversationId(targetUid: string, targetName: string) {
+  const normalizedUid = targetUid.trim()
+  if (normalizedUid) {
+    return `uid:${normalizedUid}`
+  }
+
+  return `name:${targetName.trim() || 'unknown'}`
+}
+
+function buildOutgoingDedupeKey(options: {
+  content: string
+  conversationId: string
+  formUid: string
+  messageId: string
+  targetUid: string
+  time: string
+}) {
+  return [
+    options.conversationId,
+    options.messageId,
+    options.messageId,
+    options.time,
+    options.formUid,
+    options.targetUid,
+    '1',
+    options.content,
+  ].join(':')
+}
+
 function toChatMessage(message: TechwolfMessage): ChatMessage | null {
   const content = extractMessageContent(message.body)
   if (!content) {
@@ -200,4 +229,51 @@ export async function captureChatPayload(data: unknown) {
       chat.appendChatMessage(chatMessage)
     }
   }
+}
+
+export function recordOutgoingChatMessage(options: {
+  content?: string
+  createdAt?: number
+  form_uid: string
+  messageId?: string
+  to_name: string
+  to_uid: string
+}) {
+  const content = options.content?.trim()
+  const toUid = options.to_uid.trim()
+  const toName = options.to_name.trim()
+
+  if (!content || (!toUid && !toName)) {
+    return false
+  }
+
+  const createdAt = Number.isFinite(options.createdAt) ? Number(options.createdAt) : Date.now()
+  const time = String(createdAt)
+  const messageId = options.messageId?.trim() || time
+  const conversationId = buildOutgoingConversationId(toUid, toName)
+
+  return useChat().appendChatMessage({
+    id: Number.isFinite(Number(messageId)) ? Number(messageId) : createdAt,
+    role: 'user',
+    name: toName || undefined,
+    content,
+    conversationId,
+    createdAt,
+    date: [getCurDay(new Date(createdAt)), getCurTime(new Date(createdAt))],
+    avatar: '',
+    data: {
+      from_uid: options.form_uid.trim(),
+      to_uid: toUid,
+      mid: messageId,
+      cmid: messageId,
+      dedupeKey: buildOutgoingDedupeKey({
+        content,
+        conversationId,
+        formUid: options.form_uid.trim(),
+        messageId,
+        targetUid: toUid,
+        time,
+      }),
+    },
+  })
 }

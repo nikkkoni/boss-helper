@@ -57,7 +57,7 @@ function installWrapperHooks() {
   }
 
   try {
-    const client = window.GeekChatCore?.getInstance?.().getClient?.().client
+    const client = window.GeekChatCore?.getInstance?.()?.getClient?.()?.client
     if (client?.send) {
       patchedAny = patchSendTarget(client) || patchedAny
     }

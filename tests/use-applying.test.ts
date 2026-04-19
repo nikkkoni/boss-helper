@@ -44,7 +44,7 @@ vi.mock('@/composables/useWebSocket', () => ({
       this.args = args
     }
 
-    send() {
+    async send() {
       messageSendSpy(this.args)
     }
   },

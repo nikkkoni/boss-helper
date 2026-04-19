@@ -13,7 +13,8 @@ import {
   type BossHelperAgentLogsQueryData,
   type BossHelperAgentLogsQueryPayload,
 } from '@/message/agent'
-import { jobList } from '@/stores/jobs'
+import { requestBossData } from '@/composables/useApplying/utils'
+import { jobList, type MyJobListData } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
 import { resolveBossHelperAgentLogAudit } from '../../../../shared/agentAudit.js'
 
@@ -35,6 +36,29 @@ function normalizeJobStatusFilter(statusFilter?: BossHelperAgentJobPipelineStatu
 
 function getJobById(encryptJobId: string) {
   return jobList.get(encryptJobId) ?? jobList.list.find((item) => item.encryptJobId === encryptJobId)
+}
+
+async function resolveChatTarget(item: MyJobListData) {
+  if (!item.card) {
+    return undefined
+  }
+
+  try {
+    const bossData = await requestBossData(item.card)
+    const toUid = bossData.data?.bossId == null ? '' : String(bossData.data.bossId).trim()
+    const toName = bossData.data?.encryptBossId?.trim() ?? ''
+
+    if (!toUid || !toName) {
+      return undefined
+    }
+
+    return {
+      to_name: toName,
+      to_uid: toUid,
+    }
+  } catch {
+    return undefined
+  }
 }
 
 function mergeReviewSnapshot(
@@ -248,8 +272,13 @@ export function useAgentJobQueries(options: UseAgentQueriesOptions) {
         )
       }
 
+      const chatTarget = await resolveChatTarget(item)
+
       return createBossHelperAgentResponse(true, 'job-detail', '已返回岗位详情', {
-        job: toAgentJobDetail(item, item.card),
+        job: {
+          ...toAgentJobDetail(item, item.card),
+          ...(chatTarget ? { chatTarget } : {}),
+        },
       })
     } catch (error) {
       return createBossHelperAgentResponse<BossHelperAgentJobDetailData>(

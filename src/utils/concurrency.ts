@@ -102,14 +102,31 @@ export function createTaskBatcher(defaultTtlMs = 0) {
   }
 }
 
-function waitForAnimationFrame() {
+function waitForAnimationFrame(timeoutMs = 120) {
   return new Promise<void>((resolve) => {
     const view = globalThis.window
     if (!view || typeof view.requestAnimationFrame !== 'function') {
       resolve()
       return
     }
-    view.requestAnimationFrame(() => resolve())
+
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return
+      }
+      settled = true
+      resolve()
+    }, timeoutMs)
+
+    view.requestAnimationFrame(() => {
+      if (settled) {
+        return
+      }
+      settled = true
+      clearTimeout(timeout)
+      resolve()
+    })
   })
 }
 
@@ -124,7 +141,23 @@ function waitForIdle(timeoutMs = 120) {
       return
     }
 
-    view.requestIdleCallback(() => resolve(), { timeout: timeoutMs })
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return
+      }
+      settled = true
+      resolve()
+    }, timeoutMs)
+
+    view.requestIdleCallback(() => {
+      if (settled) {
+        return
+      }
+      settled = true
+      clearTimeout(timeout)
+      resolve()
+    }, { timeout: timeoutMs })
   })
 }
 

@@ -3,6 +3,7 @@ import type { BossHelperAgentNavigatePayload } from '@/message/agent'
 import type { MyJobListData } from '@/stores/jobs'
 import { getZhipinRouteKind, zhipinSelectors } from '@/utils/selectors'
 
+import { resolveBossCityCode } from './cityMap'
 import type { SiteAdapter } from '../type'
 
 function buildZhipinNavigateUrl(
@@ -38,9 +39,17 @@ function buildZhipinNavigateUrl(
   }
   if (payload?.city != null) {
     if (payload.city.trim()) {
-      targetUrl.searchParams.set('city', payload.city.trim())
+      targetUrl.searchParams.set('city', resolveBossCityCode(payload.city))
     } else {
       targetUrl.searchParams.delete('city')
+    }
+  }
+  if (payload?.multiBusinessDistrict != null) {
+    if (payload.multiBusinessDistrict.trim()) {
+      targetUrl.searchParams.set('multiBusinessDistrict', payload.multiBusinessDistrict.trim())
+    } else {
+      targetUrl.searchParams.delete('multiBusinessDistrict')
+      targetUrl.searchParams.delete('areaBusiness')
     }
   }
   if (payload?.position != null) {

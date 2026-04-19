@@ -76,6 +76,7 @@ export interface BossHelperAgentPlanPreviewPayload {
 
 export interface BossHelperAgentNavigatePayload {
   city?: string
+  multiBusinessDistrict?: string
   page?: number
   position?: string
   query?: string
@@ -107,6 +108,7 @@ export interface BossHelperAgentJobReviewPayload {
 export interface BossHelperAgentChatSendPayload {
   confirmHighRisk: boolean
   content: string
+  encryptJobId?: string
   form_uid?: number | string
   to_name: string
   to_uid: number | string

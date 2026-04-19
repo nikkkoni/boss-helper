@@ -38,6 +38,8 @@ CLI / MCP / 外部脚本
 - 高德地图距离 / 时长过滤
 - AI 筛选、AI 招呼语、外部 AI 审核闭环
 - 聊天会话读取、历史读取、消息发送
+- `chat.list` 会返回可直接复用到 `chat.send` 的目标字段 `to_uid` / `to_name`
+- `jobs.detail` 会尽量附带 `chatTarget`，便于投递后补发定制消息
 - 运行统计、结构化日志、风险摘要和 run checkpoint
 - CLI、bridge、MCP、外部 Agent 自动化接入
 
@@ -129,6 +131,11 @@ pnpm agent:mcp
 | `pnpm agent:doctor` | 诊断 bridge / relay / extension 状态 |
 | `pnpm agent:mcp` | 启动 stdio MCP server |
 | `pnpm agent:orchestrate` | 运行仓库内置的自动化编排示例 |
+
+`navigate` / 搜索定位补充：
+
+- MCP / CLI 的 `navigate.city` 支持常见地级市中文名，也支持 Boss 城市编码
+- 目标是县区时，应优先使用 `city + multiBusinessDistrict` 组合；例如安吉县可使用 `city="湖州"` 与 `multiBusinessDistrict="330523"`
 
 ## 文档导航
 

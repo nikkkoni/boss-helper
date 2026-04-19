@@ -62,6 +62,10 @@ const { mockJobList, mockLogStore } = vi.hoisted(() => {
   return { mockJobList, mockLogStore }
 })
 
+const { mockRequestBossData } = vi.hoisted(() => ({
+  mockRequestBossData: vi.fn(),
+}))
+
 vi.mock('@/utils/logger', () => ({
   logger: {
     log: vi.fn(),
@@ -80,6 +84,10 @@ vi.mock('@/stores/jobs', () => ({
 
 vi.mock('@/stores/log', () => ({
   useLog: () => mockLogStore,
+}))
+
+vi.mock('@/composables/useApplying/utils', () => ({
+  requestBossData: mockRequestBossData,
 }))
 
 vi.mock('@/pages/zhipin/hooks/agentReview', () => ({
@@ -156,6 +164,7 @@ describe('useAgentJobQueries', () => {
     `
     jobList.clear()
     useLog().clear()
+    mockRequestBossData.mockReset()
   })
 
   it('filters jobs.list by pipeline status', async () => {
@@ -336,6 +345,12 @@ describe('useAgentJobQueries', () => {
 
     jobList.replace([job])
     jobList.set(job.encryptJobId, job)
+    mockRequestBossData.mockResolvedValueOnce({
+      data: {
+        bossId: 9,
+        encryptBossId: 'boss-encrypt-9',
+      },
+    })
 
     const queries = useAgentJobQueries(createQueryOptions())
     const response = await queries.jobsDetail({ encryptJobId: 'job-detail' })
@@ -348,6 +363,10 @@ describe('useAgentJobQueries', () => {
     expect(response.data?.job.friendStatus).toBe(1)
     expect(response.data?.job.gps).toEqual({ longitude: 121.6, latitude: 31.2 })
     expect(response.data?.job.hasCard).toBe(true)
+    expect(response.data?.job.chatTarget).toEqual({
+      to_name: 'boss-encrypt-9',
+      to_uid: '9',
+    })
   })
 
   it('returns normalized logs from logs.query in reverse chronological order', async () => {

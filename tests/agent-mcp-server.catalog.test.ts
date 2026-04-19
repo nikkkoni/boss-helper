@@ -53,7 +53,7 @@ describe('agent mcp server catalog', () => {
       expect(toolList.find((tool) => tool.name === 'boss_helper_chat_send')).toEqual(
         expect.objectContaining({
           inputSchema: expect.objectContaining({
-            required: expect.arrayContaining(['confirmHighRisk', 'content', 'to_name', 'to_uid']),
+            required: expect.arrayContaining(['confirmHighRisk', 'content']),
           }),
         }),
       )
@@ -71,6 +71,16 @@ describe('agent mcp server catalog', () => {
           inputSchema: expect.objectContaining({
             properties: expect.objectContaining({
               confirmHighRisk: expect.any(Object),
+            }),
+          }),
+        }),
+      )
+      expect(toolList.find((tool) => tool.name === 'boss_helper_navigate')).toEqual(
+        expect.objectContaining({
+          inputSchema: expect.objectContaining({
+            properties: expect.objectContaining({
+              multiBusinessDistrict: expect.any(Object),
+              city: expect.any(Object),
             }),
           }),
         }),
@@ -450,6 +460,14 @@ describe('agent mcp server catalog', () => {
       expect(promptText).toContain('寻找 Vue 前端岗位')
       expect(promptText).toContain('boss_helper_agent_context')
       expect(promptText).toContain('boss_helper_jobs_review')
+      expect(promptText).toContain('multiBusinessDistrict')
+
+      const autonomyResource = await server.client.request('resources/read', {
+        uri: 'boss-helper://guides/autonomy-workflow',
+      })
+      const autonomyText = ((autonomyResource.result?.contents ?? []) as Array<{ text: string }>)[0].text
+      expect(autonomyText).toContain('multiBusinessDistrict')
+      expect(autonomyText).toContain("330523")
 
       expect(server.bridge.requests).toEqual(
         expect.arrayContaining([

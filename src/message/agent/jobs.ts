@@ -51,6 +51,10 @@ export interface BossHelperAgentJobDetail extends BossHelperAgentJobSummary {
   activeTimeDesc: string
   address: string
   brandIndustry: string
+  chatTarget?: {
+    to_name: string
+    to_uid: string
+  }
   degreeName: string
   experienceName: string
   friendStatus: number | null
