@@ -7,7 +7,6 @@ import {
 import { collectAgentPageReadiness } from './agentReadiness'
 
 const readinessDrivenErrorCodes = new Set([
-  'chat-send-failed',
   'job-detail-load-failed',
   'job-detail-unavailable',
   'missing-form-uid',

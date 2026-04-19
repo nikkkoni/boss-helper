@@ -36,12 +36,11 @@ import { rangeMatch, rangeMatchFormat } from '@/composables/useApplying/rangeMat
 import { errorHandle, parseFiltering } from '@/composables/useApplying/utils'
 import {
   getBossToken,
-  requestBossData,
   requestCard,
   requestDetail,
   sendPublishReq,
 } from '@/composables/useApplying/zhipinApi'
-import { GreetError, LimitError, PublishError, RateLimitError } from '@/types/deliverError'
+import { LimitError, PublishError, RateLimitError } from '@/types/deliverError'
 
 function createJob(overrides: Partial<bossZpJobItemData> = {}) {
   return {
@@ -363,61 +362,6 @@ describe('useApplying utils', () => {
     )
     expect(axiosMock).toHaveBeenCalledTimes(4)
   })
-
-  it('returns boss data, retries friend-state failures, and surfaces fatal greet errors', async () => {
-    document.cookie = 'bst=greet-token; path=/'
-    axiosMock
-      .mockResolvedValueOnce({
-        data: {
-          code: 1,
-          message: '非好友关系',
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          code: 0,
-          zpData: {
-            data: {
-              bossId: 1,
-            },
-          },
-        },
-      })
-
-    await expect(requestBossData(createCard())).resolves.toEqual({
-      data: {
-        bossId: 1,
-      },
-    })
-
-    axiosMock.mockResolvedValueOnce({
-      data: {
-        code: 1,
-        message: '接口故障',
-      },
-    })
-    await expect(requestBossData(createCard())).rejects.toBeInstanceOf(GreetError)
-
-    axiosMock.mockRejectedValueOnce(new Error('网络抖动')).mockResolvedValueOnce({
-      data: {
-        code: 0,
-        zpData: {
-          data: {
-            bossId: 2,
-          },
-        },
-      },
-    })
-    await expect(requestBossData(createCard())).resolves.toEqual({
-      data: {
-        bossId: 2,
-      },
-    })
-
-    await expect(requestBossData(createCard(), '结束', 0)).rejects.toEqual(
-      expect.objectContaining({ message: '结束' }),
-    )
-  }, 10000)
 
   it('formats and matches ranges across strict, loose, swapped, and invalid inputs', () => {
     expect(rangeMatchFormat([10, 20, true], 'K')).toBe('10 - 20 K 严格')

@@ -52,16 +52,6 @@ function buildPreviewConfig(runtimeConfig: FormData, payload?: BossHelperAgentPl
   return config
 }
 
-function resolveGreetingMode(config: FormData): BossHelperAgentPlanConfigSummary['greetingMode'] {
-  if (config.aiGreeting.enable) {
-    return 'ai'
-  }
-  if (config.customGreeting.enable) {
-    return 'custom'
-  }
-  return 'none'
-}
-
 function buildPlanConfigSummary(options: {
   availableModelKeys: Set<string>
   config: FormData
@@ -73,17 +63,12 @@ function buildPlanConfigSummary(options: {
   const aiFilteringExternal = aiFilteringEnabled && config.aiFiltering.externalMode === true
   const aiFilteringModelReady = !aiFilteringEnabled
     || (typeof config.aiFiltering.model === 'string' && availableModelKeys.has(config.aiFiltering.model))
-  const greetingMode = resolveGreetingMode(config)
-  const greetingModelReady = greetingMode !== 'ai'
-    || (typeof config.aiGreeting.model === 'string' && availableModelKeys.has(config.aiGreeting.model))
 
   return {
     aiFilteringEnabled,
     aiFilteringExternal,
     aiFilteringModelReady,
     aiFilteringThreshold: aiFilteringEnabled ? (config.aiFiltering.score ?? null) : null,
-    greetingMode,
-    greetingModelReady,
     resetFiltered,
     targetJobIds,
   }
@@ -97,10 +82,6 @@ function buildRemainingSteps(config: BossHelperAgentPlanConfigSummary) {
   }
 
   steps.push('apply')
-
-  if (config.greetingMode !== 'none' && config.greetingModelReady) {
-    steps.push('greeting')
-  }
 
   return steps
 }
@@ -300,21 +281,10 @@ function createPostFilterItem(options: {
     }
   }
 
-  const issues: BossHelperAgentPlanIssue[] = []
-  if (config.greetingMode === 'ai' && !config.greetingModelReady) {
-    issues.push(
-      createIssue(
-        'ai-greeting-model-missing',
-        'AI 招呼语模型不可用；实际执行时仍可投递，但不会生成 AI 招呼语。',
-        'info',
-      ),
-    )
-  }
-
   return {
     decision: 'ready',
     explain: '岗位已通过当前只读前置过滤，可以直接进入真实投递链路。',
-    issues,
+    issues: [],
     job: toAgentJobSummary(job),
     remainingSteps,
     stage: 'ready',
@@ -474,7 +444,6 @@ export async function previewAgentPlan(
       ...(currentUserId == null ? {} : { currentUserId }),
       formData: previewConfig,
       includeAiFiltering: false,
-      includeGreeting: false,
       statistics: {
         todayData: createDailyStatisticsSnapshot(new Date().toISOString().slice(0, 10)),
       },

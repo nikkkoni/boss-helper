@@ -1,4 +1,3 @@
-import { useChat } from '@/composables/useChat'
 import { createBossHelperAgentResponse } from '@/message/agent'
 import type {
   BossHelperAgentExecutionPreflight,
@@ -8,6 +7,7 @@ import type {
 import { isSupportedSiteUrl } from '@/site-adapters'
 import { useAgentRuntime } from '@/stores/agent'
 import { useConf } from '@/stores/conf'
+import { validateConfigPatch } from '@/stores/conf/validation'
 import { useLog } from '@/stores/log'
 import type { BossHelperAgentResumePayload, BossHelperAgentStartPayload } from '@/message/agent'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
@@ -30,10 +30,6 @@ function normalizeTargetJobIds(jobIds?: string[]) {
 }
 
 function buildHighRiskStartMessage(preflight: BossHelperAgentExecutionPreflight) {
-  if (preflight.risk.automation.aiReplyEnabled) {
-    return 'start 属于高风险动作，且本次执行前风险摘要显示已启用 AI 自动回复；外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true 并先复核 preflight 风险摘要后才会执行'
-  }
-
   return 'start 属于高风险动作，外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true 并先完成上下文检查后才会执行'
 }
 
@@ -45,6 +41,14 @@ function buildHighRiskResumeMessage(preflight: BossHelperAgentExecutionPreflight
   return 'resume 属于高风险动作，外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true，并先确认当前暂停 run 仍适合继续后才会执行'
 }
 
+function collectStartConfigPatchErrors(payload?: BossHelperAgentStartPayload) {
+  if (!payload?.configPatch || Object.keys(payload.configPatch).length === 0) {
+    return []
+  }
+
+  return validateConfigPatch(payload.configPatch)
+}
+
 /**
  * 页面侧 agent 控制器入口。
  *
@@ -53,7 +57,6 @@ function buildHighRiskResumeMessage(preflight: BossHelperAgentExecutionPreflight
  * 都会走同一套校验和状态更新逻辑。
  */
 export function useDeliveryControl() {
-  useChat()
   useLog()
   const conf = useConf()
   const agentRuntime = useAgentRuntime()
@@ -134,11 +137,9 @@ export function useDeliveryControl() {
       command,
       configPatchKeys,
       reason:
-        command === 'start' && risk.automation.aiReplyEnabled
-          ? '本次 start 的有效配置将启用 AI 自动回复，必须在显式确认高风险后才允许继续。'
-          : command === 'resume'
-            ? 'resume 会继续一个已暂停的 run，必须先复核当前风险摘要与恢复边界，再显式确认高风险。'
-            : 'start 会触发真实执行链路，必须先复核当前风险摘要，再显式确认高风险。',
+        command === 'resume'
+          ? 'resume 会继续一个已暂停的 run，必须先复核当前风险摘要与恢复边界，再显式确认高风险。'
+          : 'start 会触发真实执行链路，必须先复核当前风险摘要，再显式确认高风险。',
       requiresConfirmHighRisk: true,
       risk,
       summary: {
@@ -161,6 +162,20 @@ export function useDeliveryControl() {
   }
 
   async function startFromAgent(payload?: BossHelperAgentStartPayload) {
+    const validationErrors = collectStartConfigPatchErrors(payload)
+    if (validationErrors.length > 0) {
+      return createBossHelperAgentResponse(
+        false,
+        'validation-failed',
+        '配置校验失败',
+        await batchRunner.getStatsData(),
+        {
+          retryable: false,
+          suggestedAction: 'fix-input',
+        },
+      )
+    }
+
     if (payload?.confirmHighRisk !== true) {
       const { preflight, statsData } = await createExecutionPreflight('start', payload)
       return createBossHelperAgentResponse(

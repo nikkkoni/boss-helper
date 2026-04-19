@@ -26,7 +26,6 @@ type DeliveryControlQueryOptions = {
 const deliveryControlMocks = vi.hoisted(() => ({
   lastQueryOptions: undefined as DeliveryControlQueryOptions | undefined,
   lastRunnerOptions: undefined as DeliveryControlRunnerOptions | undefined,
-  useChat: vi.fn(),
   isSupportedSiteUrl: vi.fn(() => true),
   deepmerge: vi.fn((target: Record<string, any>, source: Record<string, any>) => {
     const output = target
@@ -58,10 +57,6 @@ const deliveryControlMocks = vi.hoisted(() => ({
   postBossHelperWindowMessage: vi.fn(),
   confStore: {
     formData: {
-      aiReply: {
-        enable: false,
-        prompt: '',
-      },
       deliveryLimit: {
         value: 120,
       },
@@ -83,12 +78,6 @@ const deliveryControlMocks = vi.hoisted(() => ({
       aiFiltering: {
         enable: false,
         externalMode: false,
-      },
-      aiGreeting: {
-        enable: false,
-      },
-      customGreeting: {
-        enable: false,
       },
     },
     isLoaded: false,
@@ -135,9 +124,6 @@ const deliveryControlMocks = vi.hoisted(() => ({
         automation: {
           aiFilteringEnabled: false,
           aiFilteringExternal: false,
-          aiGreetingEnabled: false,
-          aiReplyEnabled: false,
-          customGreetingEnabled: false,
         },
         delivery: {
           limit: 120,
@@ -206,9 +192,6 @@ const deliveryControlMocks = vi.hoisted(() => ({
     readinessGet: vi.fn(async () => ({ code: 'readiness.get' })),
     resumeGet: vi.fn(async () => ({ code: 'resume.get' })),
     navigate: vi.fn(async (payload?: unknown) => ({ code: 'navigate', payload })),
-    chatList: vi.fn(async (payload?: unknown) => ({ code: 'chat.list', payload })),
-    chatHistory: vi.fn(async (payload?: unknown) => ({ code: 'chat.history', payload })),
-    chatSend: vi.fn(async (payload?: unknown) => ({ code: 'chat.send', payload })),
     jobsReview: vi.fn(async (payload?: unknown) => ({ code: 'jobs.review', payload })),
     logsQuery: vi.fn(async (payload?: unknown) => ({ code: 'logs.query', payload })),
     jobsList: vi.fn(async (payload?: unknown) => ({ code: 'jobs.list', payload })),
@@ -223,10 +206,6 @@ const deliveryControlMocks = vi.hoisted(() => ({
     return deliveryControlMocks.queries
   }),
   onBossHelperAgentEvent: vi.fn(),
-}))
-
-vi.mock('@/composables/useChat', () => ({
-  useChat: deliveryControlMocks.useChat,
 }))
 
 vi.mock('@/site-adapters', () => ({
@@ -309,7 +288,6 @@ function createSameOriginEvent(data: unknown) {
 describe('useDeliveryControl', () => {
   beforeEach(() => {
     vi.resetModules()
-    deliveryControlMocks.useChat.mockClear()
     deliveryControlMocks.lastQueryOptions = undefined
     deliveryControlMocks.lastRunnerOptions = undefined
     deliveryControlMocks.isSupportedSiteUrl.mockReset()
@@ -323,8 +301,6 @@ describe('useDeliveryControl', () => {
     deliveryControlMocks.postBossHelperWindowMessage.mockClear()
     deliveryControlMocks.confStore.isLoaded = false
     deliveryControlMocks.confStore.confInit.mockClear()
-    deliveryControlMocks.confStore.formData.aiReply.enable = false
-    deliveryControlMocks.confStore.formData.aiReply.prompt = ''
     deliveryControlMocks.agentRuntime.ensureRunSummaryLoaded.mockClear()
     deliveryControlMocks.agentRuntime.getFailureGuardrailSnapshot.mockClear()
     deliveryControlMocks.agentRuntime.recordEvent.mockClear()
@@ -366,9 +342,6 @@ describe('useDeliveryControl', () => {
         automation: {
           aiFilteringEnabled: false,
           aiFilteringExternal: false,
-          aiGreetingEnabled: false,
-          aiReplyEnabled: false,
-          customGreetingEnabled: false,
         },
         delivery: {
           limit: 120,
@@ -435,9 +408,6 @@ describe('useDeliveryControl', () => {
     deliveryControlMocks.queries.planPreview.mockImplementation(async (payload?: unknown) => ({ code: 'plan.preview', payload }))
     deliveryControlMocks.queries.readinessGet.mockResolvedValue({ code: 'readiness.get' })
     deliveryControlMocks.queries.navigate.mockImplementation(async (payload?: unknown) => ({ code: 'navigate', payload }))
-    deliveryControlMocks.queries.chatList.mockImplementation(async (payload?: unknown) => ({ code: 'chat.list', payload }))
-    deliveryControlMocks.queries.chatHistory.mockImplementation(async (payload?: unknown) => ({ code: 'chat.history', payload }))
-    deliveryControlMocks.queries.chatSend.mockImplementation(async (payload?: unknown) => ({ code: 'chat.send', payload }))
     deliveryControlMocks.queries.jobsReview.mockImplementation(async (payload?: unknown) => ({ code: 'jobs.review', payload }))
     deliveryControlMocks.queries.logsQuery.mockImplementation(async (payload?: unknown) => ({ code: 'logs.query', payload }))
     deliveryControlMocks.queries.jobsList.mockImplementation(async (payload?: unknown) => ({ code: 'jobs.list', payload }))
@@ -457,7 +427,6 @@ describe('useDeliveryControl', () => {
     const startPayload = { confirmHighRisk: true, jobIds: ['job-1'] }
     const resumePayload = { confirmHighRisk: true }
     const planPayload = { jobIds: ['job-9'] }
-    const historyPayload = { conversationId: 'c-1' }
     const currentPayload = { includeDetail: false }
     const detailPayload = { encryptJobId: 'job-2' }
     const configPayload = { configPatch: { deliveryLimit: { value: 3 } } }
@@ -470,7 +439,6 @@ describe('useDeliveryControl', () => {
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'readiness.get' })).resolves.toEqual({ code: 'readiness.get' })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'jobs.current', payload: currentPayload })).resolves.toEqual({ code: 'jobs.current', payload: currentPayload })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'jobs.refresh' })).resolves.toEqual({ code: 'jobs.refresh' })
-    await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'chat.history', payload: historyPayload })).resolves.toEqual({ code: 'chat.history', payload: historyPayload })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'jobs.detail', payload: detailPayload })).resolves.toEqual({ code: 'jobs.detail', payload: detailPayload })
     await expect(control.controller.handle({ channel: BOSS_HELPER_AGENT_CHANNEL, command: 'config.update', payload: configPayload })).resolves.toEqual({ code: 'config.update', payload: configPayload })
 
@@ -482,7 +450,6 @@ describe('useDeliveryControl', () => {
     expect(deliveryControlMocks.queries.readinessGet).toHaveBeenCalledTimes(1)
     expect(deliveryControlMocks.queries.jobsCurrent).toHaveBeenCalledWith(currentPayload)
     expect(deliveryControlMocks.queries.jobsRefresh).toHaveBeenCalledTimes(1)
-    expect(deliveryControlMocks.queries.chatHistory).toHaveBeenCalledWith(historyPayload)
     expect(deliveryControlMocks.queries.jobsDetail).toHaveBeenCalledWith(detailPayload)
     expect(deliveryControlMocks.queries.updateConfig).toHaveBeenCalledWith(configPayload)
   })
@@ -543,9 +510,9 @@ describe('useDeliveryControl', () => {
         command: 'start',
         payload: {
           configPatch: {
-            aiReply: {
+            customGreeting: {
               enable: true,
-              prompt: 'reply prompt',
+              value: 'hello',
             },
           },
           jobIds: ['job-1'],
@@ -553,24 +520,7 @@ describe('useDeliveryControl', () => {
       }),
     ).resolves.toEqual(
       expect.objectContaining({
-        code: 'high-risk-action-confirmation-required',
-        data: expect.objectContaining({
-          preflight: expect.objectContaining({
-            command: 'start',
-            configPatchKeys: ['aiReply'],
-            reason: '本次 start 的有效配置将启用 AI 自动回复，必须在显式确认高风险后才允许继续。',
-            requiresConfirmHighRisk: true,
-            risk: expect.objectContaining({
-              automation: expect.objectContaining({
-                aiReplyEnabled: true,
-              }),
-            }),
-            summary: expect.objectContaining({
-              remainingDeliveryCapacity: 120,
-              targetJobCount: 1,
-            }),
-          }),
-        }),
+        code: 'validation-failed',
         ok: false,
         retryable: false,
         suggestedAction: 'fix-input',

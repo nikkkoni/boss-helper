@@ -19,7 +19,6 @@ const tableRef = ref<TableV2Instance>()
 const { filterData, columns, dialogData } = useLog()
 
 const aiFilterActiveNames = ref('response')
-const aiGreetActiveNames = ref('response')
 const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
 
 // watchEffect(() => {
@@ -59,29 +58,6 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
               <ElCollapseItem title="响应" name="response" class="active">
                 <div class="ai-text">
                   {{ dialogData.data.data.aiFilteringAtext }}
-                </div>
-              </ElCollapseItem>
-            </ElCollapse>
-          </ElTabPane>
-          <ElTabPane v-if="dialogData.data?.data?.aiGreetingQ" label="AI打招呼" name="second">
-            <ElCollapse v-model="aiGreetActiveNames" accordion>
-              <ElCollapseItem title="Prompt" name="prompt">
-                <div class="ai-text">
-                  {{ dialogData.data.data.aiGreetingQ }}
-                </div>
-              </ElCollapseItem>
-              <ElCollapseItem
-                v-if="dialogData.data.data.aiGreetingR"
-                title="思考过程"
-                name="thinking"
-              >
-                <div class="ai-text">
-                  {{ dialogData.data.data.aiGreetingR }}
-                </div>
-              </ElCollapseItem>
-              <ElCollapseItem title="响应" name="response" class="active">
-                <div class="ai-text">
-                  {{ dialogData.data.data.aiGreetingA }}
                 </div>
               </ElCollapseItem>
             </ElCollapse>

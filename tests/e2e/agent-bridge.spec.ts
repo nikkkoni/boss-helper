@@ -43,7 +43,6 @@ test('routes CLI commands through the relay page into the extension controller',
             deliveryStarts: 0,
             deliveryInterval: 0,
             deliveryPageNext: 0,
-            messageSending: 0,
           },
           notification: {
             value: false,
@@ -131,7 +130,7 @@ test('routes CLI commands through the relay page into the extension controller',
   }
 })
 
-test('blocks external start with aiReply configPatch until confirmHighRisk is explicit', async () => {
+test('blocks external start when configPatch contains removed delivery-only fields', async () => {
   const session = await launchExtensionSession()
   const bridgePort = await pickAvailablePort()
   const bridge = await startAgentBridge(bridgePort)
@@ -153,9 +152,9 @@ test('blocks external start with aiReply configPatch until confirmHighRisk is ex
       payload: {
         confirmHighRisk: false,
         configPatch: {
-          aiReply: {
+          customGreeting: {
             enable: true,
-            prompt: 'fresh build preflight verification',
+            value: 'fresh build validation verification',
           },
         },
         jobIds: [fixtureJobId],
@@ -165,28 +164,10 @@ test('blocks external start with aiReply configPatch until confirmHighRisk is ex
 
     expect(blockedStart.data).toEqual(
       expect.objectContaining({
-        code: 'high-risk-action-confirmation-required',
-        message:
-          'start 属于高风险动作，且本次执行前风险摘要显示已启用 AI 自动回复；外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true 并先复核 preflight 风险摘要后才会执行',
+        code: 'validation-failed',
         ok: false,
         retryable: false,
         suggestedAction: 'fix-input',
-        data: expect.objectContaining({
-          preflight: expect.objectContaining({
-            command: 'start',
-            configPatchKeys: ['aiReply'],
-            requiresConfirmHighRisk: true,
-            risk: expect.objectContaining({
-              automation: expect.objectContaining({
-                aiReplyEnabled: true,
-              }),
-            }),
-            summary: expect.objectContaining({
-              remainingDeliveryCapacity: 120,
-              targetJobCount: 1,
-            }),
-          }),
-        }),
       }),
     )
 

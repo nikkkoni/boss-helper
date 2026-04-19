@@ -43,8 +43,12 @@ import {
   legacyAmapKeyStorageKey,
   useConf,
 } from '@/stores/conf'
-import type { FormData } from '@/types/formData'
+import type { FormData, PersistedFormData } from '@/types/formData'
 import { jsonClone } from '@/utils/deepmerge'
+
+type PersistedFormDataWithLegacyFlag = PersistedFormData & {
+  legacyFlag?: { value: boolean }
+}
 
 describe('useConf store', () => {
   beforeEach(() => {
@@ -115,21 +119,23 @@ describe('useConf store', () => {
           '20240501',
           (from) => ({
             ...from,
-            greetingVariable: { value: true },
-          }),
+            legacyFlag: { value: true },
+          }) as PersistedFormDataWithLegacyFlag,
         ],
         [
           '20240601',
           (from) => ({
             ...from,
-            deliveryLimit: { value: from.greetingVariable?.value ? 88 : 0 },
-          }),
+            deliveryLimit: {
+              value: (from as PersistedFormDataWithLegacyFlag).legacyFlag?.value ? 88 : 0,
+            },
+          }) as PersistedFormDataWithLegacyFlag,
         ],
       ],
     )
 
     expect(migrated.version).toBe('20240601')
-    expect(migrated.greetingVariable).toEqual({ value: true })
+    expect((migrated as PersistedFormDataWithLegacyFlag).legacyFlag).toEqual({ value: true })
     expect(migrated.deliveryLimit).toEqual({ value: 88 })
   })
 
@@ -272,7 +278,7 @@ describe('useConf store', () => {
     await conf.confExport()
     expect(exportJsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({ amap: expect.objectContaining({ key: '' }) }),
-      '打招呼配置',
+      '投递配置',
     )
 
     const importModule = await import('@/utils/jsonImportExport')

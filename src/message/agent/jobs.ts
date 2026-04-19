@@ -51,10 +51,6 @@ export interface BossHelperAgentJobDetail extends BossHelperAgentJobSummary {
   activeTimeDesc: string
   address: string
   brandIndustry: string
-  chatTarget?: {
-    to_name: string
-    to_uid: string
-  }
   degreeName: string
   experienceName: string
   friendStatus: number | null
@@ -72,7 +68,6 @@ export interface BossHelperAgentLogEntry {
   brandName: string
   encryptJobId: string
   error?: string
-  greeting?: string
   jobName: string
   message?: string
   pipelineError?: Record<string, unknown>
@@ -198,9 +193,6 @@ export interface BossHelperAgentRiskSummary {
   automation: {
     aiFilteringEnabled: boolean
     aiFilteringExternal: boolean
-    aiGreetingEnabled: boolean
-    aiReplyEnabled: boolean
-    customGreetingEnabled: boolean
   }
   delivery: {
     limit: number

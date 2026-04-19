@@ -300,30 +300,6 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
             },
           }
           break
-        case 'chat.list':
-          payload = {
-            ok: true,
-            code: 'chat-list',
-            message: 'chat snapshot',
-            data: {
-              conversations: [
-                {
-                  conversationId: 'uid:2',
-                  latestMessage: '您好，请问方便沟通吗？',
-                  latestRole: 'boss',
-                  latestTimestamp: '2026-04-10 00:00:04',
-                  messageCount: 2,
-                  name: 'Boss',
-                  needsReply: true,
-                  roles: ['boss', 'user'],
-                },
-              ],
-              pendingReplyCount: 1,
-              total: 1,
-              totalConversations: 2,
-            },
-          }
-          break
         case 'stats':
           payload = {
             ok: true,
@@ -442,9 +418,6 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
                 automation: {
                   aiFilteringEnabled: true,
                   aiFilteringExternal: false,
-                  aiGreetingEnabled: false,
-                  aiReplyEnabled: false,
-                  customGreetingEnabled: false,
                 },
                 delivery: {
                   limit: 120,
@@ -511,8 +484,6 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
                 aiFilteringExternal: false,
                 aiFilteringModelReady: true,
                 aiFilteringThreshold: 15,
-                greetingMode: 'none',
-                greetingModelReady: true,
                 resetFiltered: false,
                 targetJobIds,
               },
@@ -714,7 +685,6 @@ async function createFakeBridge(token: string): Promise<FakeBridge> {
                   },
                   brandName: 'Acme',
                   encryptJobId: 'job-1',
-                  greeting: '你好，方便聊聊吗？',
                   jobName: 'Frontend Engineer',
                   message: 'external review rejected',
                   pipelineError: {

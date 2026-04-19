@@ -21,7 +21,7 @@ import { jobList } from '@/stores/jobs'
 import { logger } from '@/utils/logger'
 
 const props = defineProps<{
-  data: 'aiGreeting' | 'aiFiltering' | 'aiReply'
+  data: 'aiFiltering'
   state: {
     currentModel: Ref<string | undefined>
     message: Ref<string | Prompt>

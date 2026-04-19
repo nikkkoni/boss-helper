@@ -1,13 +1,13 @@
 > [!CAUTION]
 > 本项目仅供学习交流，禁止用于商业用途。
 >
-> 自动投递、自动聊天、外部 Agent / MCP 调用都可能触发平台风控，包括但不限于限流、降权、异常提醒或封禁。请自行评估风险。
+> 自动投递、外部 Agent / MCP 调用都可能触发平台风控，包括但不限于限流、降权、异常提醒或封禁。请自行评估风险。
 >
 > 当前仓库基于早期项目 fork 后持续演进，文档、链接、安装方式和支持边界均以本仓库为准，不沿用上游 README 中的商店地址、问卷或反馈入口。
 
 # Boss Helper
 
-Boss Helper 是一个面向 Boss 直聘网页端的浏览器扩展和本地自动化工具链，用来减少职位筛选、简历投递、聊天跟进中的重复操作。
+Boss Helper 是一个面向 Boss 直聘网页端的浏览器扩展和本地自动化工具链，用来减少职位筛选和简历投递中的重复操作。
 
 当前仓库不是只有一个插件面板，而是一条完整执行链路：
 
@@ -20,14 +20,14 @@ CLI / MCP / 外部脚本
   -> main-world
   -> delivery controller
   -> SiteAdapter / applying pipeline
-  -> Boss 页面 DOM、接口与聊天通道
+  -> Boss 页面 DOM 与投递接口
 ```
 
 ## 仓库定位
 
-- 浏览器扩展负责页面内职位读取、筛选、投递、聊天与状态展示
+- 浏览器扩展负责页面内职位读取、筛选、投递与状态展示
 - `SiteAdapter` 与 `src/utils/selectors.ts` 收敛 Boss 页面 DOM 和路由耦合
-- applying pipeline 负责规则过滤、高德通勤、AI 筛选、招呼语等执行步骤
+- applying pipeline 负责规则过滤、高德通勤与 AI 筛选等执行步骤
 - `scripts/` 提供本地 bridge、CLI、MCP server 和 orchestrator
 - 支持 Chrome / Edge / Firefox 构建，本地调试优先推荐 Chrome
 
@@ -36,10 +36,7 @@ CLI / MCP / 外部脚本
 - 批量投递、定向投递和批次控制
 - 岗位名、公司、薪资、公司规模、HR、已沟通等规则过滤
 - 高德地图距离 / 时长过滤
-- AI 筛选、AI 招呼语、外部 AI 审核闭环
-- 聊天会话读取、历史读取、消息发送
-- `chat.list` 会返回可直接复用到 `chat.send` 的目标字段 `to_uid` / `to_name`
-- `jobs.detail` 会尽量附带 `chatTarget`，便于投递后补发定制消息
+- AI 筛选、外部 AI 审核闭环
 - 运行统计、结构化日志、风险摘要和 run checkpoint
 - CLI、bridge、MCP、外部 Agent 自动化接入
 
@@ -153,8 +150,7 @@ pnpm agent:mcp
 | `src/entrypoints/` | background / content / main-world 入口 |
 | `src/pages/zhipin/` | 页面逻辑、组件、批处理控制、查询 hooks |
 | `src/site-adapters/` | 站点适配层 |
-| `src/composables/useApplying/` | 投递 pipeline、过滤、AI、招呼语 |
-| `src/composables/useWebSocket/` | Boss 聊天 WebSocket / protobuf 处理 |
+| `src/composables/useApplying/` | 投递 pipeline、过滤与 AI |
 | `src/message/` | 跨上下文消息协议与 Agent 命令模型 |
 | `src/stores/` | 配置、统计、职位、日志、用户、agent 运行态 |
 | `scripts/` | bridge、CLI、MCP、orchestrator 和本地运维脚本 |
@@ -164,7 +160,7 @@ pnpm agent:mcp
 
 当前仓库的基础能力主要在本地运行，但某些可选功能会访问外部服务：
 
-- Boss 直聘网页接口与聊天通道
+- Boss 直聘网页接口
 - 高德地图 REST API：仅在启用通勤过滤并配置 key 后使用
 - OpenAI 兼容接口：仅在你配置自己的模型与 API Key 后使用
 
@@ -174,7 +170,7 @@ pnpm agent:mcp
 
 - 页面 DOM 或站内路由变化会直接影响选择器和自动化稳定性
 - bridge 默认只允许本机 `localhost / 127.0.0.1` 使用，不应暴露到公网
-- `start`、`resume`、`chat.send` 与部分 `config.update` 属于显式高风险动作
+- `start` 与 `resume` 属于显式高风险动作
 - 当前仓库不把上游浏览器商店链接视为有效安装入口；默认以源码构建和本仓库内容为准
 
 ## 相关链接

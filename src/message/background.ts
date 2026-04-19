@@ -3,7 +3,7 @@ import { defineProxy } from 'comctx'
 
 import type { Browser } from '#imports'
 import { browser, storage } from '#imports'
-import type { FormData } from '@/types/formData'
+import type { PersistedFormData } from '@/types/formData'
 import type { ResponseType } from '@/utils/request'
 
 export const userKey = 'local:conf-user'
@@ -94,7 +94,7 @@ export interface CookieInfo {
   gender: 'man' | 'woman' | 'unknown'
   flag: 'student' | 'staff'
   date: string
-  form?: Partial<FormData>
+  form?: PersistedFormData
   statistics?: string
 }
 

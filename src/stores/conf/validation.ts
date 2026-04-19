@@ -1,8 +1,20 @@
 import type { BossHelperAgentValidationError } from '@/message/agent'
-import type { FormData, FormDataRange } from '@/types/formData'
+import type { FormData, FormDataRange, RuntimeConfigPatch } from '@/types/formData'
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
+}
+
+function pushRemovedFieldError(
+  errors: BossHelperAgentValidationError[],
+  field: string,
+  message = '该配置项已移除，当前构建仅保留投递功能',
+) {
+  errors.push({
+    field,
+    code: 'feature-removed',
+    message,
+  })
 }
 
 function validateRangeValue(
@@ -44,8 +56,24 @@ function validateRangeValue(
   }
 }
 
-export function validateConfigPatch(patch: Partial<FormData>): BossHelperAgentValidationError[] {
+export function validateConfigPatch(patch: RuntimeConfigPatch): BossHelperAgentValidationError[] {
   const errors: BossHelperAgentValidationError[] = []
+
+  if (patch.customGreeting != null) {
+    pushRemovedFieldError(errors, 'customGreeting')
+  }
+
+  if (patch.greetingVariable != null) {
+    pushRemovedFieldError(errors, 'greetingVariable')
+  }
+
+  if (patch.aiGreeting != null) {
+    pushRemovedFieldError(errors, 'aiGreeting')
+  }
+
+  if (patch.aiReply != null) {
+    pushRemovedFieldError(errors, 'aiReply')
+  }
 
   if (patch.deliveryLimit != null) {
     const value = patch.deliveryLimit.value
@@ -59,7 +87,11 @@ export function validateConfigPatch(patch: Partial<FormData>): BossHelperAgentVa
   }
 
   if (patch.delay != null) {
-    const delayEntries = Object.entries(patch.delay) as Array<[keyof FormData['delay'], number | undefined]>
+    if (patch.delay.messageSending != null) {
+      pushRemovedFieldError(errors, 'delay.messageSending')
+    }
+    const delayEntries = Object.entries(patch.delay)
+      .filter(([key]) => key !== 'messageSending') as Array<[keyof FormData['delay'], number | undefined]>
     for (const [key, value] of delayEntries) {
       if (value == null) {
         continue

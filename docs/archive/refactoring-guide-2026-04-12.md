@@ -1,6 +1,8 @@
 # BossHelper Refactoring Guide
 
 > Archived on 2026-04-12.
+>
+> Historical snapshot only. This archive predates the later delivery-only cleanup; active code has since removed the chat/websocket/greeting stack referenced below.
 
 > **This is the entry point.** Hand this file to the next agent to start refactoring.
 

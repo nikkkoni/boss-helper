@@ -13,10 +13,6 @@ const metaQueryMocks = vi.hoisted(() => ({
       ...patch,
     })),
     getRuntimeConfigSnapshot: vi.fn(() => ({
-      aiReply: {
-        enable: false,
-        prompt: '',
-      },
       deliveryLimit: {
         value: 100,
       },
@@ -87,10 +83,6 @@ describe('useAgentMetaQueries', () => {
     }))
     metaQueryMocks.conf.getRuntimeConfigSnapshot.mockClear()
     metaQueryMocks.conf.getRuntimeConfigSnapshot.mockReturnValue({
-      aiReply: {
-        enable: false,
-        prompt: '',
-      },
       deliveryLimit: {
         value: 100,
       },
@@ -324,7 +316,7 @@ describe('useAgentMetaQueries', () => {
     )
   })
 
-  it('requires explicit confirmation before enabling or editing active aiReply automation externally', async () => {
+  it('rejects removed automation fields in runtime config patches', async () => {
     const { useAgentMetaQueries } = await import('@/pages/zhipin/hooks/useAgentMetaQueries')
     const queries = useAgentMetaQueries(createOptions())
 
@@ -339,64 +331,27 @@ describe('useAgentMetaQueries', () => {
       }),
     ).resolves.toEqual(
       expect.objectContaining({
-        code: 'high-risk-action-confirmation-required',
-        message:
-          'config.update 涉及启用或修改已启用的 aiReply（AI 自动回复），外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true 后才会执行',
+        code: 'validation-failed',
         ok: false,
         retryable: false,
         suggestedAction: 'fix-input',
       }),
     )
 
-    metaQueryMocks.conf.getRuntimeConfigSnapshot.mockReturnValueOnce({
-      aiReply: {
-        enable: true,
-        prompt: 'current prompt',
-      },
-      deliveryLimit: {
-        value: 100,
-      },
-    })
-
     await expect(
       queries.updateConfig({
         configPatch: {
-          aiReply: {
-            prompt: 'updated prompt',
+          customGreeting: {
+            enable: true,
+            value: 'hello',
           },
         } as never,
       }),
     ).resolves.toEqual(
       expect.objectContaining({
-        code: 'high-risk-action-confirmation-required',
+        code: 'validation-failed',
         ok: false,
       }),
-    )
-
-    await expect(
-      queries.updateConfig({
-        confirmHighRisk: true,
-        configPatch: {
-          aiReply: {
-            enable: true,
-            prompt: 'reply prompt',
-          },
-        } as never,
-      }),
-    ).resolves.toEqual(
-      expect.objectContaining({
-        code: 'config-updated',
-        ok: true,
-      }),
-    )
-    expect(metaQueryMocks.conf.applyRuntimeConfigPatch).toHaveBeenLastCalledWith(
-      {
-        aiReply: {
-          enable: true,
-          prompt: 'reply prompt',
-        },
-      },
-      { persist: undefined },
     )
   })
 })

@@ -65,7 +65,6 @@ function getCommandTimeoutMs(command, override) {
     case 'jobs.current':
     case 'jobs.refresh':
     case 'navigate':
-    case 'chat.send':
       return 10_000
     case 'plan.preview':
       return 120_000

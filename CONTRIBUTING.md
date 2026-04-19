@@ -26,8 +26,7 @@
 | `src/utils/selectors.ts` | Boss 页面路由识别和选择器注册表 |
 | `src/site-adapters/zhipin/adapter.ts` | Zhipin 站点适配与路由构造 |
 | `src/pages/zhipin/hooks/` | 批处理控制、页面查询、agent controller |
-| `src/composables/useApplying/services/` | 投递 pipeline、过滤、AI、招呼语 |
-| `src/composables/useWebSocket/` | 聊天协议编解码与发送 |
+| `src/composables/useApplying/services/` | 投递 pipeline、过滤与 AI |
 | `src/message/` | 跨上下文消息协议与命令模型 |
 | `scripts/` | bridge、CLI、MCP、orchestrator、本地运维脚本 |
 | `docs/` | 面向当前仓库的说明文档 |
@@ -84,7 +83,7 @@ pnpm lint && pnpm check && pnpm test -- --run
 
 ## 文档同步要求
 
-如果修改了命令、payload、事件、bridge 端点、MCP tools、聊天协议或数据处理边界，必须同步更新对应文档：
+如果修改了命令、payload、事件、bridge 端点、MCP tools 或数据处理边界，必须同步更新对应文档：
 
 - `README.md`
 - `docs/architecture-analysis.md`

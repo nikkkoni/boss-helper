@@ -14,7 +14,6 @@ const zhipinIndexMocks = vi.hoisted(() => ({
   elmGetterRm: vi.fn(async () => undefined),
   getActiveSiteAdapter: vi.fn(),
   getMountContainerSelectors: vi.fn(() => ['.job-search-wrapper']),
-  initBossChatStream: vi.fn(),
   joinSelectors: vi.fn((selectors: string[]) => selectors.join(',')),
   logger: {
     info: vi.fn(),
@@ -58,10 +57,6 @@ vi.mock('@/utils/selectors', () => ({
   joinSelectors: zhipinIndexMocks.joinSelectors,
 }))
 
-vi.mock('@/pages/zhipin/hooks/useChatStream', () => ({
-  initBossChatStream: zhipinIndexMocks.initBossChatStream,
-}))
-
 describe('pages/zhipin index', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
@@ -74,7 +69,6 @@ describe('pages/zhipin index', () => {
     zhipinIndexMocks.elmGetterRm.mockReset()
     zhipinIndexMocks.getActiveSiteAdapter.mockReset()
     zhipinIndexMocks.getMountContainerSelectors.mockClear()
-    zhipinIndexMocks.initBossChatStream.mockReset()
     zhipinIndexMocks.joinSelectors.mockClear()
     zhipinIndexMocks.logger.info.mockReset()
   })
@@ -105,7 +99,6 @@ describe('pages/zhipin index', () => {
     await run()
 
     expect(zhipinIndexMocks.logger.info).toHaveBeenCalledWith('加载/web/geek/job页面Hook')
-    expect(zhipinIndexMocks.initBossChatStream).toHaveBeenCalledTimes(1)
     expect(zhipinIndexMocks.joinSelectors).toHaveBeenCalledWith(['.job-search-wrapper'])
     expect(zhipinIndexMocks.elmGetterRm).toHaveBeenCalledTimes(2)
     expect(document.querySelector('#boss-helper-job-wrap')).not.toBeNull()

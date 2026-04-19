@@ -3,7 +3,6 @@ export const sameHrKey = 'local:sameHr'
 
 export {
   getBossToken,
-  requestBossData,
   requestCard,
   requestDetail,
   sendPublishReq,

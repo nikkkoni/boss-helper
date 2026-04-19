@@ -24,18 +24,6 @@ const { deliverLock } = useCommon()
     type="success"
     description="滚动到底部，差不多150个岗位左右，也会自动停止, 刷新或者变更期望重新获取新的岗位即可。"
   />
-  <Alert id="config-alert-2" style="margin-bottom: 10px" type="success" show-icon>
-    <template #title>
-      使用自定义招呼语前 推荐禁用boss直聘自带招呼语
-      <a
-        href="https://www.zhipin.com/web/geek/notify-set?type=greetSet"
-        target="_blank"
-        rel="noreferrer"
-      >
-        点我前往设置
-      </a>
-    </template>
-  </Alert>
   <Alert
     id="config-alert-3"
     style="margin-bottom: 10px"

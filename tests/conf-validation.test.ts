@@ -10,7 +10,6 @@ function createValidPatch(): Partial<FormData> {
       deliveryStarts: 1,
       deliveryInterval: 2,
       deliveryPageNext: 3,
-      messageSending: 4,
     },
     salaryRange: {
       enable: true,
@@ -48,7 +47,6 @@ describe('validateConfigPatch', () => {
         deliveryStarts: -1,
         deliveryInterval: 2,
         deliveryPageNext: 3,
-        messageSending: 4,
       },
       companySizeRange: {
         enable: true,

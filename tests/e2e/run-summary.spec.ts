@@ -120,7 +120,6 @@ test('surfaces paused and completed run summaries through CLI stats and MCP cont
             'job-failed',
             'job-succeeded',
             'job-filtered',
-            'chat-sent',
           ],
         },
         goal: '优先观察进行中的 run',

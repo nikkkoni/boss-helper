@@ -11,7 +11,7 @@ import SelectllmPromptEditor from './selectllm/SelectllmPromptEditor.vue'
 import SelectllmTestDialog from './selectllm/SelectllmTestDialog.vue'
 
 const props = defineProps<{
-  data: 'aiGreeting' | 'aiFiltering' | 'aiReply'
+  data: 'aiFiltering'
 }>()
 
 const conf = useConf()

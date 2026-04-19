@@ -57,7 +57,6 @@ export interface AgentOrchestratorOptions {
   watch: boolean
   watchMs: number
   reviewMode: AgentReviewMode
-  greetingTemplate: string
   printResume: boolean
   help: boolean
 }

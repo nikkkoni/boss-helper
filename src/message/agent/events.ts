@@ -17,7 +17,6 @@ export const bossHelperAgentEventTypes = [
   'batch-error',
   'job-started',
   'job-pending-review',
-  'chat-sent',
   'job-succeeded',
   'job-filtered',
   'job-failed',

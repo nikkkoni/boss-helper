@@ -53,15 +53,6 @@ export const formInfoData: FormInfoData = {
     'data-help':
       '投递工作的公司规模, 推荐使用boss自带选项进行筛选。严格宽松定义在薪资高级配置中有写',
   },
-  customGreeting: {
-    label: '自定义招呼语',
-    'data-help':
-      '因为boss不支持将自定义的招呼语设置为默认招呼语。开启表示发送boss默认的招呼语后还会发送自定义招呼语',
-  },
-  greetingVariable: {
-    label: '招呼语变量',
-    'data-help': '使用mitem模板引擎来对招呼语进行渲染;',
-  },
   activityFilter: {
     label: '活跃度过滤',
     'data-help': '打开后会自动过滤掉最近未活跃的Boss发布的工作。以免浪费每天的100次机会。',
@@ -95,61 +86,6 @@ export const formInfoData: FormInfoData = {
   deliveryLimit: {
     label: '投递数量',
     'data-help': '达到上限后会自动暂停，默认100次, 当前boss上限为150',
-  },
-  aiGreeting: {
-    label: 'AI招呼语',
-    'data-help':
-      '即使前面招呼语开了也不会发送，只会发送AI生成的招呼语，让gpt来打招呼真是太棒了，毕竟开场白很重要。',
-    example: [
-      `我现在需要求职，所以请你来写求职招呼语来向boss或hr打招呼，你需要代入我的身份也就是一名求职者.
-  ## 我的简历:
-  \`\`\`
-  
-  \`\`\`
-  ## 待处理的岗位信息:
-  <岗位信息>
-  岗位名:{{ card.jobName }}   薪资: {{ card.salaryDesc }}
-  学历要求: {{ card.degreeName }}
-  技能要求: {{ data.skills }}
-  岗位标签:{{ card.jobLabels }}
-    <岗位描述>
-    {{ card.postDescription }}
-    <岗位描述/>
-  </岗位信息>
-  `,
-      [
-        {
-          role: 'system',
-          content: `## 角色
-  求职小能手
-  
-  ## input：
-  1 **求职者信息**
-  \`\`\`
-  1. ....
-  2. ....
-  3. ....
-  \`\`\`
-  
-  ## outputformat
-  招呼语字符串，无书信格式和前缀，和聊天开场白一样的介绍求职者`,
-        },
-        {
-          role: 'user',
-          content: `### 待处理的岗位信息:\`\`\`
-  <岗位信息>
-  岗位名:{{ card.jobName }}   薪资: {{ card.salaryDesc }}
-  学历要求: {{ card.degreeName }}
-  技能要求: {{ data.skills }}
-  岗位标签:{{ card.jobLabels }}
-    <岗位描述>
-    {{ card.postDescription }}
-    <岗位描述/>
-  </岗位信息>
-  \`\`\``,
-        },
-      ],
-    ],
   },
   aiFiltering: {
     label: 'AI过滤',
@@ -227,10 +163,6 @@ export const formInfoData: FormInfoData = {
       ],
     ],
   },
-  aiReply: {
-    label: 'AI回复',
-    'data-help': '万一消息太多，回不过来了呢，也许能和AiHR聊到地球爆炸？魔法击败魔法',
-  },
   record: {
     label: '内容记录',
     'data-help': '拿这些数据去训练个Ai岂不是美滋滋咯？',
@@ -247,11 +179,6 @@ export const formInfoData: FormInfoData = {
     deliveryPageNext: {
       label: '投递翻页',
       'data-help': '投递完下一页之后等待的间隔,太快易风控,默认值60s',
-    },
-    messageSending: {
-      label: '消息发送',
-      'data-help': '暂未实现 ,在发送消息前允许等待一定的时间让用户来修改或手动发送,默认值5s',
-      disable: true,
     },
   },
   amap: {
@@ -337,15 +264,8 @@ export const defaultFormData: FormData = {
     value: [500, 2000, true],
     enable: false,
   },
-  customGreeting: {
-    value: '',
-    enable: false,
-  },
   deliveryLimit: {
     value: 120,
-  },
-  greetingVariable: {
-    value: false,
   },
   activityFilter: {
     value: true,
@@ -368,20 +288,12 @@ export const defaultFormData: FormData = {
   useCache: {
     value: false,
   },
-  aiGreeting: {
-    enable: false,
-    prompt: '',
-  },
   aiFiltering: {
     enable: false,
     prompt: '',
     score: 10,
     externalMode: false,
     externalTimeoutMs: 120000,
-  },
-  aiReply: {
-    enable: false,
-    prompt: '',
   },
   amap: {
     key: '',
@@ -400,7 +312,6 @@ export const defaultFormData: FormData = {
     deliveryStarts: 3,
     deliveryInterval: 5,
     deliveryPageNext: 60,
-    messageSending: 5,
   },
   version: '20240401',
 }

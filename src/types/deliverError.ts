@@ -14,7 +14,6 @@ export class BossHelperError extends Error {
 
 export interface AIFilteringScoreDetail {
   accepted?: boolean
-  greeting?: string
   negative?: Array<{ reason: string; score: number }>
   positive?: Array<{ reason: string; score: number }>
   rating?: number
@@ -56,6 +55,5 @@ export const ActivityError = createDeliverErrorClass('活跃度过滤')
 export const GoldHunterError = createDeliverErrorClass('猎头过滤')
 export const UnknownError = createDeliverErrorClass('未知错误', 'danger')
 export const PublishError = createDeliverErrorClass('投递出错', 'danger')
-export const GreetError = createDeliverErrorClass('打招呼出错', 'danger')
 export const LimitError = createDeliverErrorClass('达到限制', 'danger')
 export const RateLimitError = createDeliverErrorClass('操作频繁', 'danger')

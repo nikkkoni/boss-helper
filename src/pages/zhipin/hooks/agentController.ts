@@ -1,7 +1,4 @@
 import type {
-  BossHelperAgentChatHistoryPayload,
-  BossHelperAgentChatListPayload,
-  BossHelperAgentChatSendPayload,
   BossHelperAgentConfigUpdatePayload,
   BossHelperAgentJobCurrentPayload,
   BossHelperAgentController,
@@ -42,9 +39,6 @@ export function createAgentController(options: {
     planPreview: queries.planPreview,
     readinessGet: queries.readinessGet,
     navigate: queries.navigate,
-    chatList: queries.chatList,
-    chatHistory: queries.chatHistory,
-    chatSend: queries.chatSend,
     jobsReview: queries.jobsReview,
     logsQuery: queries.logsQuery,
     jobsList: queries.jobsList,
@@ -73,14 +67,6 @@ export function createAgentController(options: {
           return queries.readinessGet()
         case 'navigate':
           return queries.navigate(request.payload as BossHelperAgentNavigatePayload | undefined)
-        case 'chat.list':
-          return queries.chatList(request.payload as BossHelperAgentChatListPayload | undefined)
-        case 'chat.history':
-          return queries.chatHistory(
-            request.payload as BossHelperAgentChatHistoryPayload | undefined,
-          )
-        case 'chat.send':
-          return queries.chatSend(request.payload as BossHelperAgentChatSendPayload | undefined)
         case 'logs.query':
           return queries.logsQuery(request.payload as BossHelperAgentLogsQueryPayload | undefined)
         case 'jobs.list':

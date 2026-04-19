@@ -83,13 +83,10 @@ MCP client
 | `boss_helper_run_report` | 读取 current / recent run 审计报告 |
 | `boss_helper_logs_query` | 查询结构化日志 |
 
-### 聊天、配置与事件
+### 配置与事件
 
 | Tool | 作用 |
 | --- | --- |
-| `boss_helper_chat_list` | 读取当前页面采集到的聊天会话 |
-| `boss_helper_chat_history` | 读取某个会话历史 |
-| `boss_helper_chat_send` | 发送聊天消息 |
 | `boss_helper_config_get` | 读取当前配置 |
 | `boss_helper_config_update` | 更新配置 |
 | `boss_helper_batch` | 顺序执行一组命令 |
@@ -182,28 +179,6 @@ MCP client
 
 用于排障和复盘，不是日常第一跳工具。它只面向 current / recent run，适合在暂停、异常、中断或结束后使用。
 
-### `boss_helper_chat_list`
-
-读取的是当前页面可采集到的会话摘要，不是 Boss 全量历史聊天。
-
-当页面已经采集到聊天消息时，`chat.list` 的会话摘要会附带 `to_uid` / `to_name`，可直接转交给 `boss_helper_chat_send` 复用。
-当你只有岗位而还没有会话摘要时，可先读 `boss_helper_jobs_detail`；若页面可解析出聊天目标，返回的岗位详情会附带 `chatTarget`。
-`boss_helper_chat_send` 也支持直接传 `encryptJobId`，由页面侧自动解析聊天目标。
-
-支持：
-
-- `pendingReplyOnly=true`
-- `latestRole`
-- `needsReply`
-- `pendingReplyCount`
-- `totalConversations`
-
-推荐流程是：
-
-1. `boss_helper_chat_list`
-2. `boss_helper_chat_history`
-3. 最后才决定是否 `boss_helper_chat_send`
-
 ## 高风险动作
 
 以下工具调用前必须显式确认风险：
@@ -212,8 +187,7 @@ MCP client
 | --- | --- |
 | `boss_helper_start` | 必须传 `confirmHighRisk=true` |
 | `boss_helper_resume` | 必须传 `confirmHighRisk=true` |
-| `boss_helper_chat_send` | 必须传 `confirmHighRisk=true` |
-| `boss_helper_config_update` | 当 patch 会启用或修改已启用的 `aiReply` 时，必须传 `confirmHighRisk=true` |
+| `boss_helper_config_update` | 若 patch 触发字段级校验失败，需先修正参数再调用 |
 
 额外说明：
 
@@ -279,7 +253,6 @@ MCP client
 - `reason`
 - `positive`
 - `negative`
-- 仅在接受时填写 `greeting`
 
 ## MCP 客户端注册示例
 

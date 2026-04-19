@@ -6,7 +6,6 @@ import { compilePipeline, withStepName } from './pipelineCompiler'
 
 export interface CreateApplyingPipelineOptions extends ApplyingHandleOptions {
   includeAiFiltering?: boolean
-  includeGreeting?: boolean
 }
 
 /**
@@ -19,7 +18,6 @@ export async function createApplyingPipeline(options: CreateApplyingPipelineOpti
   const loadCard = createLoadCardStep()
   const resolveAmap = createResolveAmapStep()
   const includeAiFiltering = options.includeAiFiltering !== false
-  const includeGreeting = options.includeGreeting !== false
   const pipeline: Pipeline = [
     withStepName('communicated', h.communicated()),
     withStepName('sameCompanyFilter', h.SameCompanyFilter()),
@@ -41,7 +39,6 @@ export async function createApplyingPipeline(options: CreateApplyingPipelineOpti
         withStepName('amap', h.amap()),
         includeAiFiltering ? withStepName('aiFiltering', h.aiFiltering()) : undefined,
       ],
-      includeGreeting ? withStepName('greeting', h.greeting()) : undefined,
     ],
   ]
 

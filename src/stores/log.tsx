@@ -54,10 +54,6 @@ export interface logData {
   aiFilteringAjson?: Record<string, unknown>
   aiFilteringAtext?: string
   aiFilteringScore?: AIFilteringScoreDetail
-  aiGreetingQ?: string
-  aiGreetingR?: string | null
-  aiGreetingA?: string
-  externalGreeting?: string
   pipelineError?: PipelineErrorContext
 }
 
@@ -99,7 +95,6 @@ export const stateNames = [
   ['warning', '猎头过滤'],
   ['danger', '未知错误'],
   ['danger', '投递出错'],
-  ['danger', '打招呼出错'],
 ] as const satisfies readonly LogStateName[]
 
 const useLogStore = defineStore('log', () => {

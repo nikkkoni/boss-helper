@@ -13,7 +13,7 @@ const conf = useConf()
 const { deliverLock } = useCommon()
 const aiBoxShow = ref(false)
 const aiConfBoxShow = ref(false)
-const aiBox = ref<'aiGreeting' | 'aiFiltering' | 'aiReply' | 'record'>('aiGreeting')
+const aiBox = ref<'aiFiltering'>('aiFiltering')
 
 function change(v: Partial<FormDataAi>) {
   v.enable = !v.enable
@@ -24,19 +24,6 @@ function change(v: Partial<FormDataAi>) {
 <template>
   <ElSpace wrap fill :fill-ratio="32" style="width: 100%">
     <formSwitch
-      :label="formInfoData.aiGreeting.label"
-      :data-help="formInfoData.aiGreeting['data-help']"
-      :data="conf.formData.aiGreeting"
-      :lock="deliverLock"
-      @show="
-        () => {
-          aiBox = 'aiGreeting'
-          aiBoxShow = true
-        }
-      "
-      @change="change"
-    />
-    <formSwitch
       :label="formInfoData.aiFiltering.label"
       :data-help="formInfoData.aiFiltering['data-help']"
       :data="conf.formData.aiFiltering"
@@ -44,19 +31,6 @@ function change(v: Partial<FormDataAi>) {
       @show="
         () => {
           aiBox = 'aiFiltering'
-          aiBoxShow = true
-        }
-      "
-      @change="change"
-    />
-    <formSwitch
-      :label="formInfoData.aiReply.label"
-      :data-help="formInfoData.aiReply['data-help']"
-      :data="conf.formData.aiReply"
-      disabled
-      @show="
-        () => {
-          aiBox = 'aiReply'
           aiBoxShow = true
         }
       "
@@ -71,7 +45,7 @@ function change(v: Partial<FormDataAi>) {
 
   <configLLM v-model="aiConfBoxShow" />
   <selectLLM
-    v-if="aiBoxShow && aiBox !== 'record'"
+    v-if="aiBoxShow"
     v-model="aiBoxShow"
     :key="aiBox"
     :data="aiBox"

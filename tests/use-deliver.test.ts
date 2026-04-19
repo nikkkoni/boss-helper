@@ -269,7 +269,7 @@ describe('useDeliver', () => {
     const errorJob = createJob({
       encryptJobId: 'job-error',
       status: {
-        msg: '打招呼出错',
+        msg: '投递出错',
         setStatus(status, msg = '') {
           errorJob.status.status = status
           errorJob.status.msg = msg

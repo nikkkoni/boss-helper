@@ -653,7 +653,6 @@ describe('agent mcp context service', () => {
                     reason: '外部审核未通过',
                     source: 'external',
                   },
-                  greeting: '你好，我想进一步了解这个岗位',
                   pipelineError: {
                     errorMessage: '外部审核未通过',
                     errorName: 'AI筛选',
@@ -1228,7 +1227,6 @@ describe('agent mcp context service', () => {
             'job-failed',
             'job-succeeded',
             'job-filtered',
-            'chat-sent',
           ],
         },
         goal: '优先观察进行中的 run',

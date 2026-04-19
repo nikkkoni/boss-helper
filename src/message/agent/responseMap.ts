@@ -1,7 +1,5 @@
 import type { BossHelperAgentCommand } from './commands'
 import type {
-  BossHelperAgentChatHistoryData,
-  BossHelperAgentChatListData,
   BossHelperAgentConfigSnapshot,
   BossHelperAgentConfigUpdateData,
   BossHelperAgentJobCurrentData,
@@ -27,9 +25,6 @@ export type BossHelperAgentResponseDataMap = {
   'plan.preview': BossHelperAgentPlanPreviewData
   'readiness.get': BossHelperAgentReadinessData
   navigate: BossHelperAgentNavigateData
-  'chat.list': BossHelperAgentChatListData
-  'chat.history': BossHelperAgentChatHistoryData
-  'chat.send': BossHelperAgentStatsData
   'logs.query': BossHelperAgentLogsQueryData
   'jobs.list': BossHelperAgentJobsListData
   'jobs.current': BossHelperAgentJobCurrentData

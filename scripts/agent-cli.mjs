@@ -22,9 +22,7 @@ usage:
   node ./scripts/agent-cli.mjs stats
   node ./scripts/agent-cli.mjs start --payload '{"jobIds":["encryptJobId-1"],"confirmHighRisk":true}'
   node ./scripts/agent-cli.mjs resume --payload '{"confirmHighRisk":true}'
-  node ./scripts/agent-cli.mjs config.update --payload '{"configPatch":{"aiReply":{"enable":true,"prompt":"Please confirm role fit first."}},"confirmHighRisk":true}'
-  node ./scripts/agent-cli.mjs chat.send --payload '{"to_uid":"123","to_name":"encryptBossId","content":"你好，我对这个岗位很感兴趣","confirmHighRisk":true}'
-  node ./scripts/agent-cli.mjs chat.send --payload '{"encryptJobId":"encryptJobId-1","content":"你好，我对这个岗位很感兴趣","confirmHighRisk":true}'
+  node ./scripts/agent-cli.mjs config.update --payload '{"configPatch":{"deliveryLimit":{"value":80}}}'
   node ./scripts/agent-cli.mjs logs.query --payload '{"limit":10,"status":["AI筛选"]}'
   node ./scripts/agent-cli.mjs jobs.current --payload '{"includeDetail":true}'
   node ./scripts/agent-cli.mjs batch --payload '[{"command":"stats"},{"command":"jobs.list","payload":{"statusFilter":["wait"]}}]'
@@ -145,7 +143,7 @@ function printHint(data) {
   }
 
   if (data.code === 'high-risk-action-confirmation-required') {
-    console.error('\nHint: start / resume / chat.send，以及启用或修改已启用 aiReply 的 config.update 都是高风险动作，需要在 payload 中显式传 {"confirmHighRisk":true} 后才会执行。')
+    console.error('\nHint: start 与 resume 都是高风险动作，需要在 payload 中显式传 {"confirmHighRisk":true} 后才会执行。')
   }
 }
 

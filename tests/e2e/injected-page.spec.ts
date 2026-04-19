@@ -37,7 +37,6 @@ async function applyStableConfig(page: import('@playwright/test').Page) {
         deliveryStarts: 0,
         deliveryInterval: 0,
         deliveryPageNext: 0,
-        messageSending: 0,
       },
       notification: {
         value: false,

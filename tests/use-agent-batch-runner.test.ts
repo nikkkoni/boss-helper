@@ -68,15 +68,6 @@ const runnerMocks = vi.hoisted(() => ({
         enable: false,
         externalMode: false,
       },
-      aiGreeting: {
-        enable: false,
-      },
-      aiReply: {
-        enable: false,
-      },
-      customGreeting: {
-        enable: false,
-      },
       delay: {
         deliveryPageNext: 1,
         deliveryStarts: 1,
@@ -530,7 +521,7 @@ describe('useAgentBatchRunner', () => {
       encryptJobId: 'old-job',
       jobName: 'Old Role',
       status: {
-        msg: '打招呼出错',
+        msg: '投递出错',
         status: 'error',
       },
     }

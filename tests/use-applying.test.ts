@@ -1,31 +1,16 @@
 // @vitest-environment jsdom
 
-import { ElMessage } from 'element-plus'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
-  messageSendSpy,
   mockAmapDistance,
   mockAmapGeocode,
   mockExternalReview,
-  mockRequestBossData,
 } = vi.hoisted(() => ({
-  messageSendSpy: vi.fn(),
   mockAmapDistance: vi.fn(),
   mockAmapGeocode: vi.fn(),
   mockExternalReview: vi.fn(),
-  mockRequestBossData: vi.fn(),
 }))
-
-vi.mock('@/composables/useApplying/utils', async () => {
-  const actual = await vi.importActual<typeof import('@/composables/useApplying/utils')>(
-    '@/composables/useApplying/utils',
-  )
-  return {
-    ...actual,
-    requestBossData: mockRequestBossData,
-  }
-})
 
 vi.mock('@/utils/amap', () => ({
   amapDistance: mockAmapDistance,
@@ -34,20 +19,6 @@ vi.mock('@/utils/amap', () => ({
 
 vi.mock('@/pages/zhipin/hooks/agentReview', () => ({
   requestExternalAIFilterReview: mockExternalReview,
-}))
-
-vi.mock('@/composables/useWebSocket', () => ({
-  Message: class {
-    args: Record<string, unknown>
-
-    constructor(args: Record<string, unknown>) {
-      this.args = args
-    }
-
-    async send() {
-      messageSendSpy(this.args)
-    }
-  },
 }))
 
 import {
@@ -59,7 +30,6 @@ import {
 import { handles } from '@/composables/useApplying/handles'
 import type { Handler, Step } from '@/composables/useApplying/type'
 import { sameCompanyKey, sameHrKey } from '@/composables/useApplying/utils'
-import { useChat } from '@/composables/useChat'
 import { useModel } from '@/composables/useModel'
 import type { modelData } from '@/composables/useModel'
 import type { Llm } from '@/composables/useModel/type'
@@ -158,16 +128,11 @@ describe('useApplying handles', () => {
     setupUser()
     const conf = resetConf()
     resetStatistics()
-    useChat().chatMessages.value = []
     useModel().modelData = []
     conf.formData.aiFiltering.enable = false
-    conf.formData.aiGreeting.enable = false
-    conf.formData.customGreeting.enable = false
-    messageSendSpy.mockReset()
     mockAmapDistance.mockReset()
     mockAmapGeocode.mockReset()
     mockExternalReview.mockReset()
-    mockRequestBossData.mockReset()
   })
 
   it('filters repeated contacts and increments repeat statistics', async () => {
@@ -467,7 +432,7 @@ describe('useApplying handles', () => {
     await expect(step({ data: job }, ctx)).rejects.toThrow('工作内容含有排除关键词 [外包]')
   })
 
-  it('uses external ai review responses and preserves greeting', async () => {
+  it('uses external ai review responses without carrying greeting state', async () => {
     const conf = useConf()
     const job = createJob({ card: createJobCard() })
     const ctx = createLogContext(job)
@@ -478,7 +443,6 @@ describe('useApplying handles', () => {
     conf.formData.aiFiltering.score = 80
     mockExternalReview.mockResolvedValueOnce({
       accepted: false,
-      greeting: '你好，先聊一下',
       negative: [{ reason: '通勤太远', score: 20 }],
       positive: [],
       rating: 60,
@@ -488,8 +452,7 @@ describe('useApplying handles', () => {
     await expect(getHandler(handles().aiFiltering())({ data: job }, ctx)).rejects.toBeInstanceOf(
       AIFilteringError,
     )
-    expect(ctx.externalGreeting).toBe('你好，先聊一下')
-    expect(ctx.message).toBe('你好，先聊一下')
+    expect(ctx.message).toBeUndefined()
     expect(ctx.aiFilteringScore).toEqual(
       expect.objectContaining({
         accepted: false,
@@ -580,7 +543,6 @@ describe('useApplying handles', () => {
     conf.formData.aiFiltering.score = 60
     mockExternalReview.mockResolvedValueOnce({
       accepted: true,
-      greeting: '',
       negative: [],
       positive: [{ reason: '匹配度高', score: 80 }],
       rating: 80,
@@ -594,7 +556,6 @@ describe('useApplying handles', () => {
         source: 'external',
       }),
     )
-    expect(ctx.externalGreeting).toBeUndefined()
 
     conf.formData.aiFiltering.externalMode = false
     conf.formData.aiFiltering.model = 'model-1'
@@ -696,178 +657,6 @@ describe('useApplying handles', () => {
     )
   })
 
-  it('sends custom or external greetings through websocket message', async () => {
-    const conf = useConf()
-    const job = createJob({ card: createJobCard() })
-
-    conf.formData.aiFiltering.enable = false
-    conf.formData.aiGreeting.enable = false
-    mockRequestBossData.mockResolvedValue({
-      data: {
-        bossId: 2,
-        encryptBossId: 'encrypt-boss-2',
-      },
-    })
-
-    conf.formData.customGreeting.enable = true
-    conf.formData.customGreeting.value = '你好 {{ card.jobName }}'
-    conf.formData.greetingVariable.value = true
-
-    const customGreeting = getObjectStep(handles().greeting())
-    const customCtx = createLogContext(job)
-
-    await customGreeting.after?.({ data: job }, customCtx)
-    expect(messageSendSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        content: '你好 Frontend Engineer',
-      }),
-    )
-
-    const externalCtx = createLogContext(job, { externalGreeting: '外部招呼语' })
-    await customGreeting.after?.({ data: job }, externalCtx)
-    expect(messageSendSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        content: '外部招呼语',
-      }),
-    )
-  })
-
-  it('records ai usage and sends ai greetings through websocket message', async () => {
-    const conf = useConf()
-    const model = useModel()
-    const job = createJob({ card: createJobCard() })
-
-    conf.formData.aiGreeting.enable = true
-    conf.formData.aiGreeting.model = 'model-1'
-    model.modelData = [
-      createModelItem({
-        data: {
-          advanced: {},
-          api_key: 'secret',
-          model: 'gpt-4o-mini',
-          mode: 'openai',
-          other: {
-            pricingInputPerMillion: 2,
-            pricingOutputPerMillion: 4,
-          },
-          url: 'https://api.example.com',
-        },
-      }),
-    ]
-
-    vi.spyOn(model, 'getModel').mockReturnValueOnce({
-      message: vi.fn(async () => ({
-        content: '你好，很高兴了解这个岗位',
-        prompt: 'greeting prompt',
-        reasoning_content: 'greeting reasoning',
-        usage: {
-          input_tokens: 2000,
-          output_tokens: 1000,
-          total_tokens: 3000,
-        },
-      })),
-    } as unknown as Llm)
-
-    const greeting = getObjectStep(handles().greeting())
-    const ctx = createLogContext(job, {
-      bossData: {
-        data: {
-          bossId: 2,
-          encryptBossId: 'encrypt-boss-2',
-        },
-      } as unknown as logData['bossData'],
-    })
-
-    await greeting.after?.({ data: job }, ctx)
-
-    expect(ctx.aiGreetingQ).toBe('greeting prompt')
-    expect(ctx.aiGreetingA).toBe('你好，很高兴了解这个岗位')
-    expect(ctx.aiGreetingR).toBe('greeting reasoning')
-    expect(ctx.message).toBe('你好，很高兴了解这个岗位')
-    expect(messageSendSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        content: '你好，很高兴了解这个岗位',
-      }),
-    )
-    expect(useStatistics().todayData.aiRequestCount).toBe(1)
-    expect(useStatistics().todayData.aiInputTokens).toBe(2000)
-    expect(useStatistics().todayData.aiOutputTokens).toBe(1000)
-    expect(useStatistics().todayData.aiTotalTokens).toBe(3000)
-    expect(useStatistics().todayData.aiTotalCost).toBe(0.008)
-  })
-
-  it('covers greeting no-op, custom fixed messages and ai greeting empty responses', async () => {
-    const conf = useConf()
-    const model = useModel()
-    const job = createJob({ card: createJobCard() })
-
-    const noBaseGreeting = getObjectStep(handles().greeting())
-    await expect(
-      noBaseGreeting.after?.({ data: job }, createLogContext(job)),
-    ).resolves.toBeUndefined()
-    expect(messageSendSpy).not.toHaveBeenCalled()
-
-    conf.formData.customGreeting.enable = true
-    conf.formData.customGreeting.value = '固定招呼'
-    conf.formData.greetingVariable.value = false
-
-    const customGreeting = getObjectStep(handles().greeting())
-    const customCtx = createLogContext(job, {
-      bossData: {
-        data: {
-          bossId: 2,
-          encryptBossId: 'encrypt-boss-2',
-        },
-      } as unknown as logData['bossData'],
-    })
-
-    await customGreeting.after?.({ data: job }, customCtx)
-    expect(mockRequestBossData).not.toHaveBeenCalled()
-    expect(messageSendSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        content: '固定招呼',
-      }),
-    )
-
-    conf.formData.customGreeting.enable = false
-    conf.formData.aiGreeting.enable = true
-    conf.formData.aiGreeting.model = 'model-1'
-    model.modelData = [createModelItem()]
-    vi.spyOn(model, 'getModel').mockReturnValueOnce({
-      message: vi.fn(async () => ({
-        content: null,
-        prompt: 'greeting prompt',
-        reasoning_content: 'analysis',
-      })),
-    } as unknown as Llm)
-
-    const aiGreeting = getObjectStep(handles().greeting())
-    const aiCtx = createLogContext(job, {
-      bossData: {
-        data: {
-          bossId: 3,
-          encryptBossId: 'encrypt-boss-3',
-        },
-      } as unknown as logData['bossData'],
-    })
-
-    await expect(aiGreeting.after?.({ data: job }, aiCtx)).resolves.toBeUndefined()
-    expect(aiCtx.aiGreetingQ).toBe('greeting prompt')
-  })
-
-  it('reports missing uid when greeting setup cannot resolve a user', () => {
-    const conf = useConf()
-    const user = useUser()
-
-    conf.formData.aiGreeting.enable = false
-    conf.formData.customGreeting.enable = false
-    user.info.value = undefined
-    clearPageUser()
-
-    expect(() => handles().greeting()).toThrow('没有获取到uid')
-    expect(ElMessage.error).toHaveBeenCalledWith('没有获取到uid,请刷新重试')
-  })
-
   it('covers activity fallback timestamps and amap guard branches', async () => {
     const conf = useConf()
     conf.formData.activityFilter.value = true
@@ -956,8 +745,6 @@ describe('useApplying handles', () => {
     conf.formData.activityFilter.value = false
     conf.formData.amap.enable = true
     conf.formData.aiFiltering.enable = false
-    conf.formData.aiGreeting.enable = false
-    conf.formData.customGreeting.enable = false
 
     const job = createJob({ card: createJobCard() })
     const ctx = createLogContext(job)
@@ -990,8 +777,6 @@ describe('useApplying handles', () => {
     conf.formData.friendStatus.value = false
     conf.formData.activityFilter.value = false
     conf.formData.aiFiltering.enable = false
-    conf.formData.aiGreeting.enable = false
-    conf.formData.customGreeting.enable = false
 
     conf.formData.jobAddress.enable = true
     conf.formData.jobAddress.value = []

@@ -598,7 +598,6 @@ function buildAgentWorkflow(sectionResults, readiness, summary) {
           'job-failed',
           'job-succeeded',
           'job-filtered',
-          'chat-sent',
         ],
         ['limit-reached', 'batch-error', 'batch-completed'],
       ),
@@ -766,9 +765,6 @@ function toRunReportDecisionLogFromLog(entry, runId) {
   if (typeof entry?.error === 'string' && entry.error) {
     detail.error = entry.error
   }
-  if (typeof entry?.greeting === 'string' && entry.greeting) {
-    detail.greeting = entry.greeting
-  }
   if (isRecord(entry?.aiScore)) {
     detail.aiScore = entry.aiScore
   }
@@ -824,7 +820,6 @@ function toRunReportDecisionLogFromEvent(event, runId) {
     case 'batch-completed':
     case 'job-started':
     case 'state-changed':
-    case 'chat-sent':
       audit = {
         category: 'execution',
         outcome: 'info',
@@ -1503,7 +1498,6 @@ export function createAgentContextService(bridgeClient) {
           typeof entry.detail?.review?.finalDecisionAt === 'string'
             ? entry.detail.review.finalDecisionAt
             : entry.timestamp,
-        greeting: typeof entry.detail?.greeting === 'string' ? entry.detail.greeting : null,
         handledBy:
           typeof entry.detail?.review?.handledBy === 'string'
             ? entry.detail.review.handledBy

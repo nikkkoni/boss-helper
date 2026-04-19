@@ -1,5 +1,3 @@
-import { ElMessage } from 'element-plus'
-
 import { useModel } from '@/composables/useModel'
 import { requestExternalAIFilterReview } from '@/pages/zhipin/hooks/agentReview'
 import { useConf } from '@/stores/conf'
@@ -10,7 +8,6 @@ import { AIFilteringError } from '@/types/deliverError'
 
 import { runInternalAIFiltering } from './services/aiFiltering'
 import { buildAmapPrompt } from './services/amapStep'
-import { useChatPromptBridge } from './services/chatPrompt'
 import {
   createActivityFilterStep,
   createAmapStep,
@@ -27,12 +24,6 @@ import {
   createSalaryRangeStep,
   getCurrentApplyingUserId,
 } from './services/filterSteps'
-import {
-  composeGreetingStep,
-  createAIGreetingStep,
-  createCustomGreetingStep,
-  createExternalGreetingStep,
-} from './services/greetingSteps'
 import type { StepFactory } from './type'
 import { errorHandle, sameCompanyKey, sameHrKey } from './utils'
 
@@ -40,7 +31,6 @@ export interface ApplyingHandleOptions {
   currentUserId?: number | string | null
   formData?: FormData
   getModelStore?: () => ReturnType<typeof useModel>
-  onChatPrompt?: (ctx: logData, s: string) => void
   requestExternalReview?: typeof requestExternalAIFilterReview
   statistics?: { todayData: Statistics }
 }
@@ -51,7 +41,6 @@ export function handles(options: ApplyingHandleOptions = {}) {
   const formData = options.formData ?? conf.formData
   const statistics = options.statistics ?? useStatistics()
   const getModelStore = () => options.getModelStore?.() ?? useModel()
-  const getChatBossMessage = () => options.onChatPrompt ?? useChatPromptBridge().chatBossMessage
   const requestExternalReview = options.requestExternalReview ?? requestExternalAIFilterReview
 
   const currentUserId = options.currentUserId ?? getCurrentApplyingUserId()
@@ -118,7 +107,6 @@ export function handles(options: ApplyingHandleOptions = {}) {
           ctx.aiFilteringAtext = `分数${rating ?? '未提供'}\n结论:${reason}\n阈值:${threshold}`
           ctx.aiFilteringScore = {
             accepted: review.accepted,
-            greeting: review.greeting,
             negative: review.negative ?? [],
             positive: review.positive ?? [],
             rating,
@@ -126,15 +114,10 @@ export function handles(options: ApplyingHandleOptions = {}) {
             source: 'external',
             threshold,
           }
-          if (review.greeting) {
-            ctx.externalGreeting = review.greeting
-            ctx.message = review.greeting
-          }
 
           if (!review.accepted) {
             throw new AIFilteringError(reason, {
               accepted: false,
-              greeting: review.greeting,
               negative: review.negative ?? [],
               positive: review.positive ?? [],
               rating,
@@ -152,7 +135,7 @@ export function handles(options: ApplyingHandleOptions = {}) {
           ctx,
           gpt: model.getModel(curModel, formData.aiFiltering.prompt),
           model: curModel,
-          onPrompt: (s) => getChatBossMessage()(ctx, s),
+          onPrompt: () => {},
           threshold,
         })
       } catch (e) {
@@ -164,34 +147,6 @@ export function handles(options: ApplyingHandleOptions = {}) {
         throw new AIFilteringError(errorHandle(e), ctx.aiFilteringScore, toCause(e))
       }
     }
-  }
-
-  const aiGreeting: StepFactory = () => {
-    const model = getModelStore()
-    const curModel = model.modelData.find((v) => conf.formData.aiGreeting.model === v.key)
-    if (!curModel) {
-      ElMessage.warning('没有找到招呼语的模型')
-      return
-    }
-    return createAIGreetingStep({
-      getModel: () => model.getModel(curModel, formData.aiGreeting.prompt),
-      model: curModel,
-      onPrompt: getChatBossMessage(),
-    })()
-  }
-
-  const greeting: StepFactory = () => {
-    const externalGreetingAfter = createExternalGreetingStep()
-    const base = formData.aiGreeting.enable
-      ? aiGreeting()
-      : formData.customGreeting.enable
-        ? createCustomGreetingStep({
-            template: formData.customGreeting.value,
-            useVariables: formData.greetingVariable.value,
-          })()
-        : undefined
-
-    return composeGreetingStep(base, externalGreetingAfter)
   }
 
   return {
@@ -209,7 +164,6 @@ export function handles(options: ApplyingHandleOptions = {}) {
     jobFriendStatus,
     aiFiltering,
     activityFilter,
-    greeting,
     amap,
   }
 }

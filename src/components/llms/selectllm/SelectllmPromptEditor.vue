@@ -19,7 +19,7 @@ import type { Prompt } from '@/composables/useModel/type'
 
 const props = defineProps<{
   copyOnlineResume: () => Promise<void>
-  data: 'aiGreeting' | 'aiFiltering' | 'aiReply'
+  data: 'aiFiltering'
   inputExample: () => void
   removeMessage: (item: Prompt[number]) => void
   roleOptions: { label: string; value: string }[]

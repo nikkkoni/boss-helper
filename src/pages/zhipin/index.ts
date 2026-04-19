@@ -7,7 +7,6 @@ import { logger } from '@/utils/logger'
 import { SELECTOR_TIMEOUT_MS, getMountContainerSelectors, joinSelectors } from '@/utils/selectors'
 
 import Ui from './components/Ui.vue'
-import { initBossChatStream } from './hooks/useChatStream'
 
 import './index.scss'
 
@@ -61,7 +60,6 @@ function removeAd() {
 
 export async function run() {
   logger.info('加载/web/geek/job页面Hook')
-  initBossChatStream()
   removeAd()
   return mountVue()
 }

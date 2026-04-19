@@ -59,7 +59,6 @@ describe('previewAgentPlan', () => {
       expect(options).toEqual(
         expect.objectContaining({
           includeAiFiltering: false,
-          includeGreeting: false,
         }),
       )
 

@@ -26,7 +26,7 @@ CLI / MCP / 外部脚本
 
 | 组件 | 作用 |
 | --- | --- |
-| 浏览器扩展 | 真正执行页面内的读取、投递、聊天和状态汇总 |
+| 浏览器扩展 | 真正执行页面内的读取、投递和状态汇总 |
 | `agent-bridge.mjs` | 监听 localhost HTTP / HTTPS / SSE，对外暴露命令与事件接口 |
 | `agent-relay.html` | 在普通浏览器页面中连接 bridge 和扩展 |
 | `agent-cli.mjs` | bridge 的命令行封装 |
@@ -137,12 +137,7 @@ pnpm agent:cli navigate --payload '{"city":"湖州","multiBusinessDistrict":"330
 ```bash
 pnpm agent:cli start --payload '{"jobIds":["encryptJobId-1"],"confirmHighRisk":true}'
 pnpm agent:cli resume --payload '{"confirmHighRisk":true}'
-pnpm agent:cli chat.send --payload '{"to_uid":"123","to_name":"bossId","content":"你好","confirmHighRisk":true}'
-pnpm agent:cli chat.send --payload '{"encryptJobId":"encryptJobId-1","content":"你好","confirmHighRisk":true}'
 ```
-
-`chat.list` 返回的会话摘要会尽量携带 `to_uid` / `to_name`，方便直接复用到 `chat.send`。
-`jobs.detail` 也会在可解析时附带 `chatTarget`，适合刚投递成功后立刻补发定制消息。
 
 ## 状态语义
 
@@ -261,18 +256,6 @@ x-boss-helper-agent-token: <token>
 
 - `Content-Length` framed stdio
 - newline-delimited JSON-RPC
-
-## 聊天 protobuf 相关文件
-
-聊天功能依赖 Boss 的 protobuf 协议。关键文件：
-
-- `src/assets/chat.proto`
-- `src/composables/useWebSocket/type.ts`
-- `src/composables/useWebSocket/protobuf.ts`
-- `src/pages/zhipin/services/chatStreamHooks.ts`
-- `src/pages/zhipin/services/chatStreamMessages.ts`
-
-如果修改聊天协议，实现与文档需要一起更新。
 
 ## 常见错误
 

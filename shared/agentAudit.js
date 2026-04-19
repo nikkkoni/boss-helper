@@ -23,7 +23,6 @@ const STEP_REASON_CODES = Object.freeze({
 	company: 'company-filter',
 	companySizeRange: 'company-size-filter',
 	goldHunterFilter: 'gold-hunter-filter',
-	greeting: 'greeting-failed',
 	hrPosition: 'hr-position-filter',
 	jobAddress: 'job-address-filter',
 	jobContent: 'job-content-filter',
@@ -44,7 +43,6 @@ const STATUS_REASON_CODES = Object.freeze({
 	工作内容筛选: 'job-content-filter',
 	工作地址筛选: 'job-address-filter',
 	岗位名筛选: 'job-title-filter',
-	打招呼出错: 'greeting-failed',
 	投递出错: 'apply-failed',
 	投递成功: 'delivery-succeeded',
 	操作频繁: 'rate-limited',
@@ -78,7 +76,6 @@ const BUSINESS_STEPS = new Set([
 ])
 
 const PAGE_STEPS = new Set([
-	'greeting',
 	'loadCard',
 ])
 
@@ -117,7 +114,6 @@ function isPageFailure(step, message, status) {
 		PAGE_STEPS.has(step)
 		|| hasMessageToken(message, /没有获取到uid|没有获取到token|卡片读取失败|详情.*失败|页面/i)
 		|| (status === '投递出错' && hasMessageToken(message, /token|uid|登录|页面/i))
-		|| (status === '打招呼出错' && hasMessageToken(message, /uid|页面|会话/i))
 	)
 }
 
@@ -199,7 +195,7 @@ export function resolveBossHelperAgentLogAudit(input = {}) {
 	const status = trimString(input.status, '未知状态')
 	const message = trimString(input.message, trimString(input.fallback, status))
 	const step = trimString(input.step, '')
-	const dangerStatuses = new Set(['打招呼出错', '投递出错', '未知错误'])
+	const dangerStatuses = new Set(['投递出错', '未知错误'])
 
 	if (status === '投递成功') {
 		return {

@@ -345,13 +345,6 @@ describe('useAgentJobQueries', () => {
 
     jobList.replace([job])
     jobList.set(job.encryptJobId, job)
-    mockRequestBossData.mockResolvedValueOnce({
-      data: {
-        bossId: 9,
-        encryptBossId: 'boss-encrypt-9',
-      },
-    })
-
     const queries = useAgentJobQueries(createQueryOptions())
     const response = await queries.jobsDetail({ encryptJobId: 'job-detail' })
 
@@ -363,10 +356,6 @@ describe('useAgentJobQueries', () => {
     expect(response.data?.job.friendStatus).toBe(1)
     expect(response.data?.job.gps).toEqual({ longitude: 121.6, latitude: 31.2 })
     expect(response.data?.job.hasCard).toBe(true)
-    expect(response.data?.job.chatTarget).toEqual({
-      to_name: 'boss-encrypt-9',
-      to_uid: '9',
-    })
   })
 
   it('returns normalized logs from logs.query in reverse chronological order', async () => {
@@ -374,7 +363,7 @@ describe('useAgentJobQueries', () => {
     const newerJob = createJob({ encryptJobId: 'job-new', jobName: 'New Job' })
     const log = useLog()
 
-    log.add(olderJob, null, { listData: olderJob, aiGreetingA: '你好' }, 'older message')
+    log.add(olderJob, null, { listData: olderJob }, 'older message')
     log.add(
       newerJob,
       null,
@@ -414,7 +403,6 @@ describe('useAgentJobQueries', () => {
       reasonCode: 'delivery-succeeded',
     })
     expect(response.data?.items[1]?.encryptJobId).toBe('job-old')
-    expect(response.data?.items[1]?.greeting).toBe('你好')
   })
 
   it('surfaces structured audit fields in logs.query for stable reason codes', async () => {

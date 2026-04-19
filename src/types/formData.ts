@@ -34,9 +34,7 @@ export interface FormData {
   jobAddress: Omit<FormDataSelect, 'include'>
   salaryRange: FormSalaryRangeInput
   companySizeRange: FormDataRangeInput
-  customGreeting: FormDataInput
   deliveryLimit: FormDataInputNumber
-  greetingVariable: FormDataCheckbox
   activityFilter: FormDataCheckbox
   friendStatus: FormDataCheckbox
   sameCompanyFilter: FormDataCheckbox
@@ -44,9 +42,7 @@ export interface FormData {
   goldHunterFilter: FormDataCheckbox
   notification: FormDataCheckbox
   useCache: FormDataCheckbox
-  aiGreeting: FormDataAi
   aiFiltering: FormDataAi & { score: number; externalMode?: boolean; externalTimeoutMs?: number }
-  aiReply: FormDataAi
   amap: {
     key: string
     origins: string
@@ -67,14 +63,13 @@ export interface FormData {
 export type FormInfoData = {
   [key in keyof Omit<
     FormData,
-    'config_level' | 'aiGreeting' | 'aiFiltering' | 'delay' | 'userId' | 'version' | 'amap'
+    'config_level' | 'aiFiltering' | 'delay' | 'userId' | 'version' | 'amap'
   >]: {
     label: string
     'data-help'?: string
   }
 } & {
   config_level: { options: Array<{ value: ConfigLevel; label: string }>; 'data-help'?: string }
-  aiGreeting: FormInfoAi
   aiFiltering: FormInfoAi
   delay: ConfInfoDelay
   amap: {
@@ -139,7 +134,6 @@ interface ConfDelay {
   deliveryStarts: number
   deliveryInterval: number
   deliveryPageNext: number
-  messageSending: number
 }
 
 type ConfInfoDelay = {
@@ -149,3 +143,13 @@ type ConfInfoDelay = {
     disable?: boolean
   }
 }
+
+export type PersistedFormData = Partial<Omit<FormData, 'delay'>> & {
+  aiGreeting?: (FormDataAi & { vip?: boolean }) | undefined
+  aiReply?: (FormDataAi & { vip?: boolean }) | undefined
+  customGreeting?: FormDataInput | undefined
+  delay?: Partial<FormData['delay']> & { messageSending?: number }
+  greetingVariable?: FormDataCheckbox | undefined
+}
+
+export type RuntimeConfigPatch = PersistedFormData

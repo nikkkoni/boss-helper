@@ -1,4 +1,4 @@
-import type { FormData } from '@/types/formData'
+import type { RuntimeConfigPatch } from '@/types/formData'
 
 import { BOSS_HELPER_AGENT_BRIDGE_REQUEST, BOSS_HELPER_AGENT_CHANNEL } from './constants'
 import type { BossHelperAgentJobPipelineStatus } from './types'
@@ -14,9 +14,6 @@ export const bossHelperAgentCommands = [
   'plan.preview',
   'readiness.get',
   'navigate',
-  'chat.list',
-  'chat.history',
-  'chat.send',
   'logs.query',
   'jobs.list',
   'jobs.current',
@@ -28,7 +25,7 @@ export const bossHelperAgentCommands = [
 ] as const
 
 export type BossHelperAgentCommand = (typeof bossHelperAgentCommands)[number]
-export type BossHelperAgentConfigPatch = Partial<FormData>
+export type BossHelperAgentConfigPatch = RuntimeConfigPatch
 
 export interface BossHelperAgentRequest<T extends BossHelperAgentCommand = BossHelperAgentCommand> {
   channel: typeof BOSS_HELPER_AGENT_CHANNEL
@@ -98,31 +95,10 @@ export interface BossHelperAgentJobDetailPayload {
 export interface BossHelperAgentJobReviewPayload {
   accepted: boolean
   encryptJobId: string
-  greeting?: string
   negative?: Array<{ reason: string; score: number }>
   positive?: Array<{ reason: string; score: number }>
   rating?: number
   reason?: string
-}
-
-export interface BossHelperAgentChatSendPayload {
-  confirmHighRisk: boolean
-  content: string
-  encryptJobId?: string
-  form_uid?: number | string
-  to_name: string
-  to_uid: number | string
-}
-
-export interface BossHelperAgentChatListPayload {
-  limit?: number
-  pendingReplyOnly?: boolean
-}
-
-export interface BossHelperAgentChatHistoryPayload {
-  conversationId: string
-  limit?: number
-  offset?: number
 }
 
 export interface BossHelperAgentLogsQueryPayload {
@@ -143,9 +119,6 @@ export interface BossHelperAgentRequestPayloadMap {
   'plan.preview': BossHelperAgentPlanPreviewPayload | undefined
   'readiness.get': undefined
   navigate: BossHelperAgentNavigatePayload | undefined
-  'chat.list': BossHelperAgentChatListPayload | undefined
-  'chat.history': BossHelperAgentChatHistoryPayload
-  'chat.send': BossHelperAgentChatSendPayload
   'logs.query': BossHelperAgentLogsQueryPayload | undefined
   'jobs.list': BossHelperAgentJobsListPayload | undefined
   'jobs.current': BossHelperAgentJobCurrentPayload | undefined

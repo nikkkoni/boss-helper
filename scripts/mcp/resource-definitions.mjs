@@ -52,14 +52,11 @@ function buildReviewLoopResource() {
    - \`reason\`
    - \`positive\`
    - \`negative\`
-   - \`greeting\`（只在接受时填写）
 5. 如果返回 \`review-not-found\`，不要盲重试，先重新读取事件和岗位上下文。
 
 建议：
 
 - 审核理由尽量具体，避免“感觉不错”这类空泛结论。
-- 拒绝时不需要生成招呼语。
-- 接受时的招呼语要基于岗位与简历匹配点，而不是通用模板。
 `
 }
 

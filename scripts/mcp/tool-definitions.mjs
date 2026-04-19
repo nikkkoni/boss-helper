@@ -254,7 +254,6 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
         properties: {
           encryptJobId: { type: 'string' },
           accepted: { type: 'boolean' },
-          greeting: { type: 'string' },
           rating: { type: 'number' },
           reason: { type: 'string' },
           positive: scoreArraySchema(),
@@ -286,58 +285,6 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
       handler: (args) => commandCall('logs.query', args),
     },
     {
-      name: 'boss_helper_chat_list',
-      description: '读取当前页面采集到的聊天会话摘要。',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          limit: { type: 'number' },
-          pendingReplyOnly: { type: 'boolean' },
-          timeoutMs: { type: 'number' },
-          waitForRelay: { type: 'boolean' },
-        },
-        additionalProperties: false,
-      },
-      handler: (args) => commandCall('chat.list', args),
-    },
-    {
-      name: 'boss_helper_chat_history',
-      description: '读取当前页面采集到的某个会话历史。',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          conversationId: { type: 'string' },
-          limit: { type: 'number' },
-          offset: { type: 'number' },
-          timeoutMs: { type: 'number' },
-          waitForRelay: { type: 'boolean' },
-        },
-        required: ['conversationId'],
-        additionalProperties: false,
-      },
-      handler: (args) => commandCall('chat.history', args),
-    },
-    {
-      name: 'boss_helper_chat_send',
-      description: '通过当前页面可用的 Boss 通道发送聊天消息。高风险动作，必须显式传 confirmHighRisk=true 才会执行。必须提供 to_uid + to_name，或提供 encryptJobId，二选一。',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          confirmHighRisk: { type: 'boolean' },
-          content: { type: 'string' },
-          encryptJobId: { type: 'string' },
-          to_uid: { type: 'string' },
-          to_name: { type: 'string' },
-          form_uid: { type: 'string' },
-          timeoutMs: { type: 'number' },
-          waitForRelay: { type: 'boolean' },
-        },
-        required: ['confirmHighRisk', 'content'],
-        additionalProperties: false,
-      },
-      handler: (args) => commandCall('chat.send', args),
-    },
-    {
       name: 'boss_helper_config_get',
       description: '读取当前运行时配置快照。',
       inputSchema: simpleCommandSchema(),
@@ -345,7 +292,7 @@ export function createToolDefinitions({ bridgeClient, contextService }) {
     },
     {
       name: 'boss_helper_config_update',
-      description: '更新运行时配置，返回字段级校验错误或更新结果；若 patch 会启用或修改已启用的 aiReply，则需显式传 confirmHighRisk=true。',
+      description: '更新运行时配置，返回字段级校验错误或更新结果。',
       inputSchema: {
         type: 'object',
         properties: {

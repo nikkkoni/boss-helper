@@ -77,7 +77,7 @@ export abstract class Llm<C = unknown> {
   abstract chat(message: string): Promise<string>
   abstract message(
     args: LlmMessageArgs,
-    type: 'aiGreeting' | 'aiFiltering' | 'aiReply',
+    type: 'aiFiltering',
   ): Promise<MessageResponse>
 }
 

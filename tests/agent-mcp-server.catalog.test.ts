@@ -35,7 +35,6 @@ describe('agent mcp server catalog', () => {
       expect(toolNames).toContain('boss_helper_jobs_refresh')
       expect(toolNames).toContain('boss_helper_start')
       expect(toolNames).toContain('boss_helper_resume')
-      expect(toolNames).toContain('boss_helper_chat_send')
       expect(toolList.find((tool) => tool.name === 'boss_helper_start')).toEqual(
         expect.objectContaining({
           inputSchema: expect.objectContaining({
@@ -47,22 +46,6 @@ describe('agent mcp server catalog', () => {
         expect.objectContaining({
           inputSchema: expect.objectContaining({
             required: expect.arrayContaining(['confirmHighRisk']),
-          }),
-        }),
-      )
-      expect(toolList.find((tool) => tool.name === 'boss_helper_chat_send')).toEqual(
-        expect.objectContaining({
-          inputSchema: expect.objectContaining({
-            required: expect.arrayContaining(['confirmHighRisk', 'content']),
-          }),
-        }),
-      )
-      expect(toolList.find((tool) => tool.name === 'boss_helper_chat_list')).toEqual(
-        expect.objectContaining({
-          inputSchema: expect.objectContaining({
-            properties: expect.objectContaining({
-              pendingReplyOnly: expect.any(Object),
-            }),
           }),
         }),
       )
@@ -373,35 +356,6 @@ describe('agent mcp server catalog', () => {
         }),
       )
 
-      const chatListCall = await server.client.request('tools/call', {
-        arguments: {
-          pendingReplyOnly: true,
-        },
-        name: 'boss_helper_chat_list',
-      })
-      const chatList = (chatListCall.result?.structuredContent ?? {}) as Record<string, any>
-      expect(chatList).toEqual(
-        expect.objectContaining({
-          ok: true,
-          command: 'chat.list',
-          data: expect.objectContaining({
-            code: 'chat-list',
-            data: expect.objectContaining({
-              pendingReplyCount: 1,
-              total: 1,
-              totalConversations: 2,
-              conversations: [
-                expect.objectContaining({
-                  conversationId: 'uid:2',
-                  latestRole: 'boss',
-                  needsReply: true,
-                }),
-              ],
-            }),
-          }),
-        }),
-      )
-
       const resources = await server.client.request('resources/list')
       const resourceUris = ((resources.result?.resources ?? []) as Array<{ uri: string }>).map((resource) => resource.uri)
       expect(resourceUris).toEqual(
@@ -480,7 +434,6 @@ describe('agent mcp server catalog', () => {
           'POST /command:logs.query',
           'POST /command:plan.preview',
           'POST /command:plan.preview',
-          'POST /command:chat.list',
           'POST /command:jobs.current',
           'POST /command:jobs.refresh',
           'POST /command:resume.get',

@@ -206,9 +206,6 @@ export function buildAgentRiskSummary(options: {
 
   const aiFilteringEnabled = toBoolean(config?.aiFiltering?.enable)
   const aiFilteringExternal = aiFilteringEnabled && toBoolean(config?.aiFiltering?.externalMode)
-  const aiGreetingEnabled = toBoolean(config?.aiGreeting?.enable)
-  const aiReplyEnabled = toBoolean(config?.aiReply?.enable)
-  const customGreetingEnabled = toBoolean(config?.customGreeting?.enable)
 
   const warnings: BossHelperAgentRiskWarning[] = []
 
@@ -277,16 +274,6 @@ export function buildAgentRiskSummary(options: {
         'cache-disabled',
         '本地缓存已关闭，页面刷新或重载后去重与恢复信息会更依赖实时页面状态。',
         'info',
-      ),
-    )
-  }
-
-  if (aiReplyEnabled) {
-    warnings.push(
-      createWarning(
-        'ai-reply-enabled',
-        'AI 自动回复已开启，聊天自动化风险高于只读分析或单次投递。',
-        'warn',
       ),
     )
   }
@@ -388,9 +375,6 @@ export function buildAgentRiskSummary(options: {
     automation: {
       aiFilteringEnabled,
       aiFilteringExternal,
-      aiGreetingEnabled,
-      aiReplyEnabled,
-      customGreetingEnabled,
     },
     delivery: {
       limit: deliveryLimit,

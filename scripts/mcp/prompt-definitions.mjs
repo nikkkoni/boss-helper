@@ -80,12 +80,10 @@ function buildTargetedDeliveryPrompt(args = {}) {
 
 function buildReviewClosurePrompt(args = {}) {
   const policy = getPromptArg(args, 'policy', '优先高匹配、低风险岗位')
-  const greetingStyle = getPromptArg(args, 'greetingStyle', '简洁、职业、贴合岗位亮点')
 
   return `你正在处理 Boss Helper 的 \`job-pending-review\` 事件。
 
 审核策略：${policy}
-招呼语风格：${greetingStyle}
 
 请按下面闭环执行：
 
@@ -93,8 +91,7 @@ function buildReviewClosurePrompt(args = {}) {
 2. 如信息不完整，调用 \`boss_helper_jobs_detail\`；如需要确认履历匹配，再调用 \`boss_helper_resume_get\`。
 3. 基于真实岗位描述做明确结论，而不是泛化判断。
 4. 调用 \`boss_helper_jobs_review\` 时，必须提交 \`accepted\`、\`rating\`、\`reason\`、\`positive\`、\`negative\`。
-5. 只有在 \`accepted=true\` 时才附带 \`greeting\`，且内容要体现岗位与简历的真实匹配点。
-6. 如果返回 \`review-not-found\`，说明事件已失效或被处理，先刷新上下文，不要盲重试同一请求。
+5. 如果返回 \`review-not-found\`，说明事件已失效或被处理，先刷新上下文，不要盲重试同一请求。
 
 你的输出重点是：给出可追溯的审核依据，并确保 tool 参数结构完整。`
 }
@@ -132,10 +129,6 @@ export function createPromptDefinitions() {
         {
           name: 'policy',
           description: '审核策略，例如“优先稳定性、少量高匹配岗位”。',
-        },
-        {
-          name: 'greetingStyle',
-          description: '通过审核时招呼语的风格，例如“简洁职业、不要模板腔”。',
         },
       ],
       handler: async (args) => makePromptResult(

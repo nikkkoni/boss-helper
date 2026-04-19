@@ -191,7 +191,7 @@ class Gpt extends Llm<openaiLLMConf> {
     onPrompt = (_s: string) => {},
     json = false,
     structuredOutput,
-  }: LlmMessageArgs, _type: 'aiGreeting' | 'aiFiltering' | 'aiReply'): Promise<MessageResponse> {
+  }: LlmMessageArgs, _type: 'aiFiltering'): Promise<MessageResponse> {
     const prompts = this.buildPrompt(data)
     const prompt = prompts[prompts.length - 1].content
     onPrompt(prompt)

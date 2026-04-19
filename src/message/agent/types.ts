@@ -8,7 +8,6 @@ export type {
 	BossHelperAgentSuggestedAction,
 } from '../../../shared/agentProtocol.js'
 
-export * from './chat'
 export * from './jobs'
 export * from './meta'
 export * from './planning'

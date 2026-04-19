@@ -7,7 +7,7 @@
 - Key entrypoints:
   - `src/entrypoints/background.ts`: validates relay origin/token and forwards external commands.
   - `src/entrypoints/main-world.ts`: selects the site adapter, mounts Vue, and runs page modules.
-  - `src/pages/zhipin/hooks/useDeliveryControl.ts`: page-side command hub for `start`, `resume`, `jobs.*`, `config.update`, and `chat.send`.
+  - `src/pages/zhipin/hooks/useDeliveryControl.ts`: page-side command hub for `start`, `resume`, `jobs.*`, and `config.update`.
   - `scripts/agent-bridge.mjs` and `scripts/mcp/`: transport layers, not the place for Zhipin business logic.
 
 ## Boundaries
@@ -34,7 +34,7 @@
 - A connected relay is not enough; use `boss_helper_bootstrap_guide` or `boss_helper_agent_context` before page actions. `readiness.get` is mainly for lower-level debugging.
 - Prefer the read-only flow `boss_helper_bootstrap_guide` or `boss_helper_agent_context` -> `boss_helper_plan_preview` -> `start`.
 - When `suggestedAction=refresh-page`, prefer `boss_helper_jobs_refresh`; it reloads the current supported jobs page without changing search params.
-- External `start`, `resume`, `chat.send`, and `config.update` that enables or edits enabled `aiReply` require `confirmHighRisk=true`. Blocked `start` and `resume` responses include a `preflight` summary.
+- External `start` and `resume` require `confirmHighRisk=true`. Blocked `start` and `resume` responses include a `preflight` summary.
 
 ## Tests, Generated Files, Docs
 

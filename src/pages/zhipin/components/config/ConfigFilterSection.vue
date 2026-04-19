@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ElAlert, ElButton, ElCheckbox, ElInput, ElLink, ElPopover, ElSpace } from 'element-plus'
+import { ElAlert, ElButton, ElCheckbox, ElLink, ElPopover, ElSpace } from 'element-plus'
 
 import Alert from '@/components/Alert'
 import formItem from '@/components/form/FormItem.vue'
@@ -186,22 +186,8 @@ function syncSalaryRange() {
       />
     </form-item>
 
-    <form-item
-      v-if="conf.config_level.intermediate"
-      v-bind="formInfoData.customGreeting"
-      v-model:enable="conf.formData.customGreeting.enable"
-    >
-      <ElInput v-model.lazy="conf.formData.customGreeting.value" type="textarea" />
-      <ElButton style="margin-left: 5px"> 高级 </ElButton>
-    </form-item>
   </ElSpace>
   <ElSpace wrap>
-    <ElCheckbox
-      v-if="conf.config_level.expert"
-      v-bind="formInfoData.greetingVariable"
-      v-model="conf.formData.greetingVariable.value"
-      border
-    />
     <ElCheckbox
       v-if="conf.config_level.intermediate"
       v-bind="formInfoData.activityFilter"

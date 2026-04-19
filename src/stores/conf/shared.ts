@@ -1,4 +1,4 @@
-import type { FormData } from '@/types/formData'
+import type { FormData, PersistedFormData } from '@/types/formData'
 import { jsonClone } from '@/utils/deepmerge'
 
 export const formDataKey = 'local:web-geek-job-FormData'
@@ -12,18 +12,25 @@ export const legacySignedKeyStorageKeys = [
   'sync:signedKeyInfo',
 ] as const
 
-export function sanitizeSensitiveFormData(data: Partial<FormData>) {
+export function stripRemovedConfigFields(data: PersistedFormData) {
   const snapshot = jsonClone(data)
-  delete snapshot.userId
-  if (snapshot.aiGreeting) {
-    delete (snapshot.aiGreeting as FormData['aiGreeting'] & { vip?: boolean }).vip
-  }
+  delete snapshot.customGreeting
+  delete snapshot.greetingVariable
+  delete snapshot.aiGreeting
+  delete snapshot.aiReply
   if (snapshot.aiFiltering) {
     delete (snapshot.aiFiltering as FormData['aiFiltering'] & { vip?: boolean }).vip
   }
-  if (snapshot.aiReply) {
-    delete (snapshot.aiReply as FormData['aiReply'] & { vip?: boolean }).vip
+  if (snapshot.delay) {
+    delete (snapshot.delay as { messageSending?: number }).messageSending
   }
+
+  return snapshot as Partial<FormData>
+}
+
+export function sanitizeSensitiveFormData(data: PersistedFormData) {
+  const snapshot = stripRemovedConfigFields(data)
+  delete snapshot.userId
   if (snapshot.amap) {
     snapshot.amap.key = ''
   }

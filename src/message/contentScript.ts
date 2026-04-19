@@ -197,9 +197,6 @@ function getCommandTimeout(command: BossHelperAgentCommand) {
     case 'jobs.refresh':
     case 'navigate':
     case 'plan.preview':
-    case 'chat.list':
-    case 'chat.history':
-    case 'chat.send':
     case 'resume.get':
       return command === 'plan.preview' ? 120_000 : 10_000
     case 'stop':

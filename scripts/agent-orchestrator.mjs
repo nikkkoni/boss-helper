@@ -36,12 +36,11 @@ options:
   --exclude <a,b>              negative keywords
   --min-score <n>              minimum score to start/review accept, default 1
   --start                      start targeted delivery for selected jobs
-  --watch                      subscribe agent-events while running
-  --watch-ms <ms>              stop watching after timeout, default 180000
-  --review-mode <mode>         none | heuristic | accept | reject, default heuristic
-  --greeting-template <text>   template for accepted review greeting, supports {{jobName}} {{brandName}}
-  --print-resume               print resume text summary
-   --help                       show help`)
+   --watch                      subscribe agent-events while running
+   --watch-ms <ms>              stop watching after timeout, default 180000
+   --review-mode <mode>         none | heuristic | accept | reject, default heuristic
+   --print-resume               print resume text summary
+    --help                       show help`)
 }
 
 function getResponseData(data) {
@@ -86,7 +85,6 @@ export function parseArgs(argv) {
     watch: false,
     watchMs: 180000,
     reviewMode: 'heuristic',
-    greetingTemplate: '',
     printResume: false,
     help: false,
   }
@@ -166,11 +164,6 @@ export function parseArgs(argv) {
     }
     if (token === '--review-mode' && next) {
       options.reviewMode = normalizeReviewMode(next)
-      index += 1
-      continue
-    }
-    if (token === '--greeting-template' && next) {
-      options.greetingTemplate = next
       index += 1
       continue
     }
@@ -295,16 +288,6 @@ function analyzeJob(detail) {
   }
 }
 
-function renderGreeting(job) {
-  if (!options.greetingTemplate) {
-    return undefined
-  }
-
-  return options.greetingTemplate
-    .replaceAll('{{jobName}}', job.jobName || '')
-    .replaceAll('{{brandName}}', job.brandName || '')
-}
-
 async function readJobs(detailLimit) {
   const jobsList = await sendCommand('jobs.list')
   const jobsListData = getResponseData(jobsList)
@@ -354,7 +337,6 @@ async function streamAgentEvents(onEvent) {
     'batch-error',
     'limit-reached',
     'rate-limited',
-    'chat-sent',
   ].join(',')
 
   const response = await fetch(`${buildBaseUrl()}/agent-events?types=${encodeURIComponent(types)}`, {
@@ -450,7 +432,6 @@ async function autoReviewPendingJob(eventPayload, detailsCache) {
   const payload = {
     accepted,
     encryptJobId,
-    greeting: accepted ? renderGreeting(detail.job) : undefined,
     positive: analysis.positive,
     negative: analysis.negative,
     rating: analysis.score,

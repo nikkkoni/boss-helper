@@ -5,7 +5,7 @@ import { defaultFormData } from '@/stores/conf/info'
 import { jsonClone } from '@/utils/deepmerge'
 
 describe('buildAgentRiskSummary', () => {
-  it('reports high risk when duplicate guardrails are weak and ai reply is enabled', () => {
+  it('reports high risk when duplicate guardrails are weak and delivery volume is aggressive', () => {
     const config = jsonClone(defaultFormData)
     config.deliveryLimit.value = 150
     config.sameCompanyFilter.value = false
@@ -13,7 +13,6 @@ describe('buildAgentRiskSummary', () => {
     config.friendStatus.value = false
     config.notification.value = false
     config.useCache.value = false
-    config.aiReply.enable = true
 
     const result = buildAgentRiskSummary({
       config,
@@ -68,7 +67,6 @@ describe('buildAgentRiskSummary', () => {
       expect.arrayContaining([
         expect.objectContaining({ code: 'high-delivery-limit', severity: 'warn' }),
         expect.objectContaining({ code: 'duplicate-guardrails-weakened', severity: 'warn' }),
-        expect.objectContaining({ code: 'ai-reply-enabled', severity: 'warn' }),
         expect.objectContaining({ code: 'delivery-limit-nearby', severity: 'info' }),
       ]),
     )
@@ -82,7 +80,6 @@ describe('buildAgentRiskSummary', () => {
     config.friendStatus.value = true
     config.notification.value = true
     config.useCache.value = true
-    config.aiReply.enable = false
 
     const result = buildAgentRiskSummary({
       config,

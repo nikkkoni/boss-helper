@@ -1,7 +1,4 @@
 import type {
-  BossHelperAgentChatHistoryPayload,
-  BossHelperAgentChatListPayload,
-  BossHelperAgentChatSendPayload,
   BossHelperAgentConfigUpdatePayload,
   BossHelperAgentJobCurrentPayload,
   BossHelperAgentJobDetailPayload,
@@ -15,8 +12,6 @@ import type {
   BossHelperAgentStartPayload,
 } from './commands'
 import type {
-  BossHelperAgentChatHistoryData,
-  BossHelperAgentChatListData,
   BossHelperAgentConfigSnapshot,
   BossHelperAgentConfigUpdateData,
   BossHelperAgentJobCurrentData,
@@ -58,13 +53,6 @@ export interface BossHelperAgentController {
     payload?: BossHelperAgentPlanPreviewPayload,
   ) => Promise<BossHelperAgentResponse<BossHelperAgentPlanPreviewData>>
   readinessGet: () => Promise<BossHelperAgentResponse<BossHelperAgentReadinessData>>
-  chatHistory: (
-    payload: BossHelperAgentChatHistoryPayload,
-  ) => Promise<BossHelperAgentResponse<BossHelperAgentChatHistoryData>>
-  chatList: (
-    payload?: BossHelperAgentChatListPayload,
-  ) => Promise<BossHelperAgentResponse<BossHelperAgentChatListData>>
-  chatSend: (payload: BossHelperAgentChatSendPayload) => Promise<BossHelperAgentResponse>
   pause: () => Promise<BossHelperAgentResponse>
   resume: (payload?: BossHelperAgentResumePayload) => Promise<BossHelperAgentResponse>
   resumeGet: () => Promise<BossHelperAgentResponse<BossHelperAgentResumeData>>

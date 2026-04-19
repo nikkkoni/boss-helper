@@ -5,7 +5,7 @@ import { reactive, ref, toRaw } from 'vue'
 
 import { counter } from '@/message'
 import { useUser } from '@/stores/user'
-import type { ConfigLevel, FormData } from '@/types/formData'
+import type { ConfigLevel, FormData, PersistedFormData, RuntimeConfigPatch } from '@/types/formData'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { exportJson, ImportJsonCancelledError, importJson } from '@/utils/jsonImportExport'
 import { logger } from '@/utils/logger'
@@ -19,14 +19,15 @@ import {
   formDataTemplatesKey,
   legacySignedKeyStorageKeys,
   legacyAmapKeyStorageKey,
+  stripRemovedConfigFields,
   sanitizeSensitiveFormData,
 } from './shared'
 
 export * from './info'
 export * from './shared'
 
-type FormDataTemplates = Record<string, Partial<FormData>>
-export type FormDataMigration = [string, (from: Partial<FormData>) => Partial<FormData>]
+type FormDataTemplates = Record<string, PersistedFormData>
+export type FormDataMigration = [string, (from: PersistedFormData) => PersistedFormData]
 const confStorageMigrations = [
   { oldKey: legacyAmapKeyStorageKey, newKey: amapKeyStorageKey },
 ] as const
@@ -49,16 +50,16 @@ export const FORM_DATA_MIGRATIONS: readonly FormDataMigration[] = [
   [
     '20260417',
     (from) => {
-      delete (from.aiGreeting as (Partial<FormData['aiGreeting']> & { vip?: boolean }) | undefined)?.vip
       delete (from.aiFiltering as (Partial<FormData['aiFiltering']> & { vip?: boolean }) | undefined)?.vip
-      delete (from.aiReply as (Partial<FormData['aiReply']> & { vip?: boolean }) | undefined)?.vip
+      delete (from.aiGreeting as { vip?: boolean } | undefined)?.vip
+      delete (from.aiReply as { vip?: boolean } | undefined)?.vip
       return from
     },
   ],
 ]
 
 export function applyFormDataMigrations(
-  from: Partial<FormData>,
+  from: PersistedFormData,
   migrations: readonly FormDataMigration[] = FORM_DATA_MIGRATIONS,
 ) {
   for (const [version, migrate] of migrations) {
@@ -80,9 +81,13 @@ export const useConf = defineStore('conf', () => {
 
   registerUserConfigSnapshotGetter(() => formData)
 
-  async function formDataHandler(from: Partial<FormData>) {
+  async function formDataHandler(from: PersistedFormData) {
     try {
       from = applyFormDataMigrations(from)
+      from = {
+        ...from,
+        ...stripRemovedConfigFields(from),
+      }
       const user = useUser()
       const uid = user.getUserId()
       // eslint-disable-next-line eqeqeq
@@ -109,7 +114,7 @@ export const useConf = defineStore('conf', () => {
 
   async function init() {
     await migrateStorageKeys(confStorageMigrations, counter)
-    let from = await counter.storageGet<Partial<FormData>>(formDataKey, {})
+    let from = await counter.storageGet<PersistedFormData>(formDataKey, {})
     const legacyAmapKey = typeof from.amap?.key === 'string' ? from.amap.key.trim() : ''
     let sessionAmapKey = await counter.storageGet<string>(amapKeyStorageKey)
 
@@ -125,14 +130,14 @@ export const useConf = defineStore('conf', () => {
     await Promise.all(legacySignedKeyStorageKeys.map((key) => counter.storageRm(key)))
 
     from = (await formDataHandler(from)) ?? from
-    const data = deepmerge<FormData>(defaultFormData, from)
+    const data = deepmerge<FormData>(defaultFormData, stripRemovedConfigFields(from))
     data.amap.key = sessionAmapKey ?? ''
     Object.assign(formData, data)
     await loadTemplates()
     isLoaded.value = true
   }
 
-  function sanitizeTemplateData(data: Partial<FormData>) {
+  function sanitizeTemplateData(data: PersistedFormData) {
     return sanitizeSensitiveFormData(data)
   }
 
@@ -192,7 +197,7 @@ export const useConf = defineStore('conf', () => {
       throw new Error('模板不存在')
     }
 
-    deepmerge(formData, sanitizeTemplateData(template), { clone: false })
+    deepmerge(formData, stripRemovedConfigFields(template), { clone: false })
     logger.debug('formData模板已应用', name)
     ElMessage.success(`模板已应用: ${name}，请按需保存`)
   }
@@ -211,10 +216,10 @@ export const useConf = defineStore('conf', () => {
   }
 
   async function applyRuntimeConfigPatch(
-    patch: Partial<FormData>,
+    patch: RuntimeConfigPatch,
     options: { persist?: boolean } = {},
   ) {
-    const sanitizedPatch = jsonClone(patch)
+    const sanitizedPatch = stripRemovedConfigFields(jsonClone(patch))
     delete sanitizedPatch.userId
     delete sanitizedPatch.version
 
@@ -235,7 +240,10 @@ export const useConf = defineStore('conf', () => {
   }
 
   async function confReload() {
-    const v = deepmerge<FormData>(defaultFormData, await counter.storageGet(formDataKey, {}))
+    const v = deepmerge<FormData>(
+      defaultFormData,
+      stripRemovedConfigFields(await counter.storageGet<PersistedFormData>(formDataKey, {})),
+    )
     v.amap.key = (await counter.storageGet<string>(amapKeyStorageKey)) ?? ''
     deepmerge(formData, v, { clone: false })
     logger.debug('formData已重置')
@@ -243,14 +251,17 @@ export const useConf = defineStore('conf', () => {
   }
 
   async function confExport() {
-    const data = deepmerge<FormData>(defaultFormData, await counter.storageGet(formDataKey, {}))
+    const data = deepmerge<FormData>(
+      defaultFormData,
+      stripRemovedConfigFields(await counter.storageGet<PersistedFormData>(formDataKey, {})),
+    )
     data.amap.key = ''
-    exportJson(data, '打招呼配置')
+    exportJson(data, '投递配置')
   }
 
   async function confImport() {
     try {
-      let jsonData = await importJson<Partial<FormData>>()
+      let jsonData = await importJson<PersistedFormData>()
 
       jsonData.userId = undefined
       if (typeof jsonData.amap?.key === 'string' && jsonData.amap.key.trim()) {
@@ -258,7 +269,7 @@ export const useConf = defineStore('conf', () => {
       }
       jsonData = (await formDataHandler(jsonData)) ?? jsonData
       // await setStorage(formDataKey, jsonData)
-      deepmerge(formData, jsonData, { clone: false })
+      deepmerge(formData, stripRemovedConfigFields(jsonData), { clone: false })
       ElMessage.success('导入成功, 切记要手动保存哦')
     } catch (error) {
       if (error instanceof ImportJsonCancelledError) {

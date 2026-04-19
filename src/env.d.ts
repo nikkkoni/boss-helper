@@ -4,23 +4,6 @@ export {}
 
 declare global {
   interface Window {
-    socket: WebSocket
-    ChatWebsocket?: {
-      send: (e: { toArrayBuffer: () => ArrayBuffer }) => void
-    }
-    GeekChatCore?: {
-      getInstance: () => {
-        getClient: () => {
-          client: {
-            send: (e: { toArrayBuffer: () => ArrayBuffer }) => void
-          }
-        }
-      }
-    }
-    EventBus?: {
-      publish: (e: string, ...data: unknown[]) => void
-      subscribe: (e: string, t: (...data: unknown[]) => void) => void
-    }
     _PAGE: {
       isGeekChat: boolean
       // zp_token: string; 7.18 寄！
@@ -57,8 +40,6 @@ declare global {
     __q_jobList?: unknown
     __q_log?: unknown
     __q_useUser?: unknown
-    _q_ChatProtobufHandler?: unknown
-    _q_ChatProtobufMessage?: unknown
     [key: string]: any
   }
 

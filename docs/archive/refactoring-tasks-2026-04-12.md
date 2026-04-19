@@ -3,6 +3,8 @@
 > Archived on 2026-04-12.
 >
 > Generated: 2026-04-11 | Companion: [architecture-analysis.md](../architecture-analysis.md)
+>
+> Historical snapshot only. This archive predates the later delivery-only cleanup; active code has since removed the chat/websocket/greeting files referenced below.
 
 本文档包含全部重构任务的详细说明。每个任务包含：目标、涉及文件、具体步骤、验收标准。
 按优先级分为 4 个 Wave，建议按顺序执行。

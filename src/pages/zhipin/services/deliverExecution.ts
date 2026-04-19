@@ -119,7 +119,7 @@ export async function handleDeliverSuccess(options: {
   const { data, ctx, deps, result } = options
   ctx.runId = deps.agentRuntime.currentRun?.runId ?? null
   deps.agentRuntime.clearFailureGuardrailState()
-  deps.log.add(data, null, ctx, ctx.message)
+  deps.log.add(data, null, ctx)
   deps.statistics.todayData.success++
   data.status.setStatus('success', '投递成功')
   logger.debug('投递成功', ctx)
@@ -134,7 +134,6 @@ export async function handleDeliverSuccess(options: {
         current: deps.counters.current + 1,
         total: result.candidateCount,
       },
-      detail: ctx.message ? { greeting: ctx.message } : undefined,
     }),
   )
 
