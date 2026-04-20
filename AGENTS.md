@@ -23,13 +23,13 @@
 - CI order for risky changes: `pnpm lint`, `pnpm check`, `pnpm test:coverage`, `pnpm build:chrome`, `pnpm exec playwright test`, `pnpm build:firefox`, `pnpm build:edge`
 - Single Vitest file: `pnpm test -- tests/use-delivery-control.test.ts`
 - E2E requires `.output/chrome-mv3`; run `pnpm build:chrome` first, then `pnpm exec playwright test tests/e2e/readiness.spec.ts` or `pnpm test:e2e`
-- Bridge and relay checks: `pnpm agent:doctor` and `pnpm agent:cli status`
+- Bridge lifecycle checks: `pnpm agent:doctor`, `pnpm agent:cli status`, and `pnpm agent:stop` when you need to shut bridge down
 
 ## Live Automation
 
 - If a task touches MCP, bridge, relay, or CLI automation, read `docs/llm-agent-mcp.md` and `docs/bridge-mcp-deployment.md` first.
-- `pnpm agent:mcp` now auto-bootstraps bridge, real Chrome profile, relay, and Boss page by default; pass `--no-bootstrap` for tests or already-prepared manual chains.
-- `pnpm agent:start` is the fastest local unattended bootstrap; it opens a real Chrome profile, relay page, and Boss page, but does not directly automate the Boss page.
+- `pnpm agent:mcp` no longer auto-bootstraps browser state by default; prefer a manually prepared real-browser chain, or pass `--bootstrap` only when you explicitly want it to open relay and Boss URLs.
+- `pnpm agent:start` is the fastest local bootstrap for preparing bridge/build artifacts and opening relay/Boss URLs in a real browser, but it does not directly automate the Boss page.
 - `opencode.json` assumes the local bridge is on `127.0.0.1:4317/4318`; using other ports breaks the repo-local `boss_helper` MCP until that config or env is updated.
 - A connected relay is not enough; use `boss_helper_bootstrap_guide` or `boss_helper_agent_context` before page actions. `readiness.get` is mainly for lower-level debugging.
 - Prefer the read-only flow `boss_helper_bootstrap_guide` or `boss_helper_agent_context` -> `boss_helper_plan_preview` -> `start`.

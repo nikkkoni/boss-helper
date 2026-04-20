@@ -38,8 +38,23 @@ export function parseFiltering(content: string) {
 }
 
 export function errorHandle(e: unknown): string {
-  if (e instanceof Error) {
-    return e.message
+  const message = e instanceof Error ? e.message : `${e}`
+  const normalized = message.toLowerCase()
+
+  if (
+    normalized.includes('the user aborted a request')
+    || normalized.includes('request aborted')
+    || normalized.includes('signal is aborted')
+    || normalized.includes('aborterror')
+    || normalized.includes('timeouterror')
+    || normalized.includes('timed out')
+    || normalized.includes('timeout')
+  ) {
+    return '请求超时'
   }
-  return `${e}`
+
+  if (e instanceof Error) {
+    return message
+  }
+  return message
 }

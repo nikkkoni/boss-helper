@@ -8,7 +8,7 @@
 
 `pnpm agent:mcp` 不是“浏览器扩展直接开放端口”。它仍然只是把现有 bridge 能力包装成 MCP tools。
 
-与旧版本不同的是：当前 `pnpm agent:mcp` 默认会在后台尝试自动补齐 bridge、真实 Chrome profile、relay 和 Boss 页面链路；但它不会绕过 Boss 页面登录、验证码或风控，也不会直接驱动 Boss 页面。
+当前 `pnpm agent:mcp` 默认不会自动拉起浏览器链路。推荐先由用户在真实浏览器中准备好 bridge、relay、扩展和 Boss 页面；如确有需要，可显式传 `--bootstrap` 让 MCP 后台补齐 bridge、扩展构建，并尝试打开 relay 与目标 Boss 页面这两个普通 URL。
 
 真实链路是：
 
@@ -23,15 +23,21 @@ MCP client
 
 因此在任何 MCP 调用前，都仍要确认：
 
-- 扩展已经在当前 Chrome profile 中安装并加载
+- 扩展已经在当前真实浏览器环境中安装并加载
 - relay 页面已连接扩展事件端口
 - 至少存在一个支持的 Boss 职位页
 - 页面已登录并完成初始化
 
-如果你已经手工准备好了 bridge / relay / 浏览器链路，或在测试环境中不希望自动拉起浏览器，可使用：
+如果你已经手工准备好了 bridge / relay / 浏览器链路，直接运行：
 
 ```bash
-pnpm agent:mcp -- --no-bootstrap
+pnpm agent:mcp
+```
+
+如需让 MCP 显式触发轻量 bootstrap，可使用：
+
+```bash
+pnpm agent:mcp -- --bootstrap
 ```
 
 ## 推荐工作流
@@ -96,7 +102,7 @@ pnpm agent:mcp -- --no-bootstrap
 | Tool | 作用 |
 | --- | --- |
 | `boss_helper_config_get` | 读取当前配置 |
-| `boss_helper_config_update` | 更新配置 |
+| `boss_helper_config_update` | 更新配置；已移除的问候 / 聊天字段会触发 `validation-failed` |
 | `boss_helper_batch` | 顺序执行一组命令 |
 | `boss_helper_events_recent` | 读取最近事件快照 |
 | `boss_helper_wait_for_event` | 等待下一条匹配事件 |
@@ -187,7 +193,7 @@ pnpm agent:mcp -- --no-bootstrap
 
 用于排障和复盘，不是日常第一跳工具。它只面向 current / recent run，适合在暂停、异常、中断或结束后使用。
 
-## 高风险动作
+## 高风险动作与配置校验
 
 以下工具调用前必须显式确认风险：
 
@@ -195,12 +201,13 @@ pnpm agent:mcp -- --no-bootstrap
 | --- | --- |
 | `boss_helper_start` | 必须传 `confirmHighRisk=true` |
 | `boss_helper_resume` | 必须传 `confirmHighRisk=true` |
-| `boss_helper_config_update` | 若 patch 触发字段级校验失败，需先修正参数再调用 |
+| `boss_helper_config_update` | 不需要高风险确认，但若 patch 包含已移除字段或非法值，会返回 `validation-failed` |
 
 额外说明：
 
 - `start` / `resume` 在未确认时会返回结构化 `preflight` 摘要，便于你先读风险再决定是否真执行
 - 即使传了 `confirmHighRisk=true`，也不能绕过页面侧的每日投递额度和其他护栏
+- `config.update` 当前是 delivery-only 配置更新接口；像 `customGreeting`、`greetingVariable`、`aiGreeting`、`aiReply`、`delay.messageSending` 这类已移除字段应先从 patch 中删掉再调用
 
 ## Readiness 与错误恢复
 
@@ -276,7 +283,7 @@ pnpm agent:mcp -- --no-bootstrap
 }
 ```
 
-默认情况下，`agent:mcp` 会尝试自动补齐这条链路；但首次 profile 登录、验证码和风控处理仍需要人工完成。
+即使显式使用 `--bootstrap`，首次登录、证书接受、验证码和风控处理仍需要人工在真实浏览器中完成。任务结束后，如需关闭本地 companion bridge，可运行 `pnpm agent:stop`。
 
 ## 推荐实践
 

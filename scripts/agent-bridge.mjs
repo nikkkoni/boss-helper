@@ -767,7 +767,7 @@ const httpsServer = createHttpsServer(
 
 server.listen(PORT, HOST, () => {
   logger.log(`listening on http://${HOST}:${PORT}`)
-  logger.log(`open https://${HOST}:${HTTPS_PORT}/ in a Chromium browser and connect the extension relay`)
+  logger.log(`open https://${HOST}:${HTTPS_PORT}/ in your real logged-in Boss browser and connect the extension relay`)
   logger.log(`authenticate API clients with header ${AGENT_BRIDGE_AUTH_HEADER}`)
 })
 

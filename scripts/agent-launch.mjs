@@ -16,8 +16,6 @@ const repoRoot = dirname(scriptDir)
 const bridgeScript = join(scriptDir, 'agent-bridge.mjs')
 const pidFile = process.env.BOSS_HELPER_AGENT_PID_FILE ?? join(repoRoot, '.boss-helper-agent-bridge.pid')
 const logFile = process.env.BOSS_HELPER_AGENT_LOG_FILE ?? join(repoRoot, '.boss-helper-agent-bridge.log')
-const DEFAULT_MACOS_BROWSER = 'Google Chrome'
-
 /** @param {string[]} argv @returns {AgentLaunchOptions} */
 function parseArgs(argv) {
   const options = {
@@ -154,8 +152,7 @@ function openRelayPage(url) {
   }
 
   if (process.platform === 'darwin') {
-    const browser = options.browser || DEFAULT_MACOS_BROWSER
-    const args = ['-a', browser, url]
+    const args = options.browser ? ['-a', options.browser, url] : [url]
     spawn('open', args, { detached: true, stdio: 'ignore' }).unref()
     return
   }
@@ -184,7 +181,7 @@ export async function main() {
     relayUrl,
   })
 
-  console.error('\nNext: 在 Chromium 浏览器中先信任本地证书，再保持 relay 页面打开；如果 URL 里带了 extensionId，页面会自动预填。')
+  console.error('\nNext: 在你已登录 Boss 的真实浏览器中先信任本地证书，再保持 relay 页面打开；如果 URL 里带了 extensionId，页面会自动预填。')
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

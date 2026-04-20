@@ -21,9 +21,31 @@ function extractStatusCode(message: string) {
   return Number(match[1])
 }
 
+function isAbortLikeError(error: unknown) {
+  const name = error instanceof Error ? error.name.toLowerCase() : ''
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase()
+
+  if (name === 'aborterror' || name === 'timeouterror') {
+    return true
+  }
+
+  return [
+    'the user aborted a request',
+    'request aborted',
+    'signal is aborted',
+    '请求超时',
+    'timed out',
+    'timeout',
+  ].some((token) => message.includes(token))
+}
+
 function toRequestError(error: unknown) {
   if (error instanceof RequestError) {
     return error
+  }
+
+  if (isAbortLikeError(error)) {
+    return new RequestError('请求超时')
   }
 
   const message = error instanceof Error ? error.message : String(error)
@@ -222,11 +244,7 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
           resolve(await parseResponse(response, responseType))
         })
         .catch((e) => {
-          if (e.name === 'AbortError') {
-            reject(new RequestError('请求超时'))
-          } else {
-            reject(toRequestError(e))
-          }
+          reject(toRequestError(e))
         })
         .finally(() => {
           axiosLoad()

@@ -28,7 +28,7 @@ CLI / MCP / 外部脚本
 - 浏览器扩展负责页面内职位读取、筛选、投递与状态展示
 - `SiteAdapter` 与 `src/utils/selectors.ts` 收敛 Boss 页面 DOM 和路由耦合
 - applying pipeline 负责规则过滤、高德通勤与 AI 筛选等执行步骤
-- `scripts/` 提供本地 bridge、CLI、MCP server 和 orchestrator
+- `scripts/` 提供本地 bridge、bootstrap、CLI、MCP server 和 orchestrator
 - 支持 Chrome / Edge / Firefox 构建，本地调试优先推荐 Chrome
 
 ## 当前能力
@@ -52,7 +52,7 @@ CLI / MCP / 外部脚本
 
 - Node.js `20.19.0`
 - pnpm `9.x`
-- Chromium 浏览器
+- Chromium 系浏览器；建议直接使用你日常登录 Boss 的真实浏览器
 - 已登录的 Boss 直聘网页账号
 
 ### 本地加载扩展
@@ -93,9 +93,9 @@ pnpm lint && pnpm check && pnpm test -- --run
 
 ## Agent / CLI / MCP
 
-`pnpm agent:start` 现在会一键自举本地 bridge、受管真实 Chrome profile、relay 页面和默认 Boss 职位页，适合作为本机无人值守入口。
+`pnpm agent:start` 现在只负责准备本地 bridge、扩展构建，并在你的真实浏览器里打开 relay 页面和默认 Boss 职位页；它不再启动、持有或接管任何受管浏览器实例。
 
-`pnpm agent:mcp` 默认也会在后台复用同一套自举逻辑；MCP server 会先完成握手，再在首个 tool/resource 调用前等待 bootstrap 完成。这个 bootstrap 只会打开真实 Chrome / relay / Boss 页面，不会直接驱动 Boss 页面。测试或已有手工链路场景可显式传 `--no-bootstrap`。
+`pnpm agent:mcp` 默认不再自动自举浏览器链路。推荐先手动运行 `pnpm agent:start` 或至少 `pnpm agent:bridge`，再在真实浏览器里打开 relay / Boss 页面；如果你明确希望 MCP 在后台补齐 bridge、扩展构建并尝试打开这两个普通页面，可显式传 `--bootstrap`。
 
 最短启动路径：
 
@@ -105,16 +105,21 @@ pnpm lint && pnpm check && pnpm test -- --run
 pnpm agent:start
 ```
 
-2. 首次使用时命令会自动构建 Chrome 扩展、打开受管真实 Chrome profile，并默认打开 relay 页面与 `https://www.zhipin.com/web/geek/jobs`。
-3. 在该 Chrome profile 中手动安装仓库内的扩展目录：`.output/chrome-mv3/`。安装一次后，后续同一 profile 可直接复用。
-4. 如果当前 profile 还没有 Boss 登录态，请在自动打开的浏览器里登录一次；后续同一 profile 可直接复用。
-5. 启动脚本只负责打开真实浏览器、relay 和 Boss 页面；后续对 Boss 的任何操作都应走 `MCP -> bridge -> extension -> page` 的间接链路，不直接驱动浏览器页面。
-6. 有头模式下默认使用系统已安装的真实 `Google Chrome`；只有 `--headless` 时才会回退到无头命令行模式。
-7. 运行：
+2. 首次使用时命令会自动构建 Chrome 扩展，并尝试在系统默认真实浏览器里打开 relay 页面与 `https://www.zhipin.com/web/geek/jobs`。
+3. 在你实际使用的真实浏览器中手动安装仓库内的扩展目录：`.output/chrome-mv3/`。
+4. 如果当前浏览器还没有 Boss 登录态，请在该浏览器里手动登录并处理证书、验证码或风控。
+5. 启动脚本不会创建受管 profile、不会无头启动浏览器，也不会直接驱动 Boss 页面；后续所有操作都应走 `MCP -> bridge -> extension -> page` 的间接链路。
+6. 运行：
 
 ```bash
 pnpm agent:doctor
 pnpm agent:cli status
+```
+
+7. 使用结束后如需关闭本地 bridge：
+
+```bash
+pnpm agent:stop
 ```
 
 8. 如需 MCP：
@@ -126,21 +131,23 @@ pnpm agent:mcp
 常用附加参数：
 
 ```bash
-pnpm agent:start -- --profile-dir ./local/boss-profile --headed
-pnpm agent:bootstrap -- --headless --target-url 'https://www.zhipin.com/web/geek/jobs?query=运维'
-pnpm agent:mcp -- --no-bootstrap
+pnpm agent:bootstrap -- --target-url 'https://www.zhipin.com/web/geek/jobs?query=运维'
+pnpm agent:bootstrap -- --no-open --no-build
+pnpm agent:stop
+pnpm agent:mcp -- --bootstrap
 ```
 
 常用脚本：
 
 | 命令 | 作用 |
 | --- | --- |
-| `pnpm agent:start` | 一键拉起 bridge、真实 Chrome profile、relay 和默认 Boss 页 |
-| `pnpm agent:bootstrap` | 执行一次自举并输出结构化结果；默认不持有浏览器进程，也不直接操控 Boss 页面 |
+| `pnpm agent:start` | 准备 bridge / 扩展，并尝试在真实浏览器打开 relay 和默认 Boss 页 |
+| `pnpm agent:bootstrap` | 执行一次轻量自举并输出结构化结果；不会持有浏览器进程，也不直接操控 Boss 页面 |
 | `pnpm agent:bridge` | 只启动本地 bridge |
+| `pnpm agent:stop` | 按 pid 文件安全停止本地 bridge |
 | `pnpm agent:cli <command>` | 通过 CLI 调用 bridge |
 | `pnpm agent:doctor` | 诊断 bridge / relay / extension 状态 |
-| `pnpm agent:mcp` | 启动 stdio MCP server，并默认自动补齐本地 bootstrap |
+| `pnpm agent:mcp` | 启动 stdio MCP server；默认不自动拉起浏览器链路 |
 | `pnpm agent:orchestrate` | 运行仓库内置的自动化编排示例 |
 
 `navigate` / 搜索定位补充：

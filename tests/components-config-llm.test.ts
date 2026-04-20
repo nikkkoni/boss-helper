@@ -53,6 +53,7 @@ describe('ConfigLLM.vue', () => {
   it('copies and deletes model entries through component actions', async () => {
     const store = useModel()
     store.modelData = [createModelItem('one', 'Primary')]
+    const saveSpy = vi.spyOn(store, 'saveModel').mockResolvedValue(undefined)
 
     const wrapper = shallowMount(ConfigLLM, {
       props: {
@@ -61,24 +62,26 @@ describe('ConfigLLM.vue', () => {
     })
 
     const state = ((wrapper.vm.$ as unknown) as { setupState: unknown }).setupState as {
-      copy: (data: ReturnType<typeof createModelItem>) => void
-      del: (data: ReturnType<typeof createModelItem>) => void
+      copy: (data: ReturnType<typeof createModelItem>) => Promise<void>
+      del: (data: ReturnType<typeof createModelItem>) => Promise<void>
     }
 
-    state.copy(store.modelData[0] as ReturnType<typeof createModelItem>)
+    await state.copy(store.modelData[0] as ReturnType<typeof createModelItem>)
     expect(store.modelData).toHaveLength(2)
     expect(store.modelData[1].key).toBe('mock-uuid')
     expect(store.modelData[1].name).toBe('Primary 副本')
 
-    state.del(store.modelData[0] as ReturnType<typeof createModelItem>)
+    await state.del(store.modelData[0] as ReturnType<typeof createModelItem>)
     expect(store.modelData).toHaveLength(1)
     expect(store.modelData[0].name).toBe('Primary 副本')
+    expect(saveSpy).toHaveBeenCalledTimes(2)
   })
 
   it('imports, exports and closes using model store actions', async () => {
     const store = useModel()
     store.modelData = [createModelItem('one', 'Primary')]
     const initSpy = vi.spyOn(store, 'initModel').mockResolvedValue(undefined)
+    const saveSpy = vi.spyOn(store, 'saveModel').mockResolvedValue(undefined)
 
     mockImportJson.mockResolvedValueOnce([createModelItem('two', 'Imported')])
 
@@ -89,13 +92,14 @@ describe('ConfigLLM.vue', () => {
     })
 
     const state = ((wrapper.vm.$ as unknown) as { setupState: unknown }).setupState as {
-      close: () => void
+      close: () => Promise<void>
       exportllm: () => void
       importllm: () => Promise<void>
     }
 
     await state.importllm()
     expect(store.modelData).toEqual([expect.objectContaining({ key: 'two', name: 'Imported' })])
+    expect(saveSpy).toHaveBeenCalledTimes(1)
 
     state.exportllm()
     expect(mockExportJson).toHaveBeenCalledWith(
@@ -103,14 +107,15 @@ describe('ConfigLLM.vue', () => {
       'Ai模型配置',
     )
 
-    state.close()
+    await state.close()
     expect(initSpy).toHaveBeenCalledTimes(1)
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
   })
 
-  it('creates a new model or updates an existing one', () => {
+  it('creates a new model or updates an existing one', async () => {
     const store = useModel()
     store.modelData = [createModelItem('one', 'Primary')]
+    const saveSpy = vi.spyOn(store, 'saveModel').mockResolvedValue(undefined)
 
     const wrapper = shallowMount(ConfigLLM, {
       props: {
@@ -119,21 +124,22 @@ describe('ConfigLLM.vue', () => {
     })
 
     const state = ((wrapper.vm.$ as unknown) as { setupState: unknown }).setupState as {
-      create: (data: ReturnType<typeof createModelItem>) => void
+      create: (data: ReturnType<typeof createModelItem>) => Promise<void>
     }
 
-    state.create({
+    await state.create({
       ...createModelItem('one', 'Updated'),
       color: '#67c23a',
     })
     expect(store.modelData[0]).toEqual(expect.objectContaining({ color: '#67c23a', name: 'Updated' }))
 
-    state.create({
+    await state.create({
       ...createModelItem('', 'New Item'),
     })
     expect(store.modelData).toHaveLength(2)
     expect(store.modelData[1].key).toBe('mock-uuid')
     expect(store.modelData[1].name).toBe('New Item')
+    expect(saveSpy).toHaveBeenCalledTimes(2)
   })
 
   it('opens edit mode and resets draft state for new models', () => {

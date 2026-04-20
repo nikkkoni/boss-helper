@@ -7,7 +7,7 @@ import { runMcpServer } from './mcp/server.mjs'
 import { bootstrapAgentEnvironment, parseBootstrapArgs } from './agent-bootstrap.mjs'
 
 function shouldAutoBootstrap() {
-  return process.env.BOSS_HELPER_AGENT_MCP_AUTO_BOOTSTRAP !== 'false'
+  return process.env.BOSS_HELPER_AGENT_MCP_AUTO_BOOTSTRAP === 'true'
 }
 
 function parseMcpArgs(argv) {
@@ -42,9 +42,7 @@ if (mcpOptions.autoBootstrap) {
   bootstrapPromise = bootstrapAgentEnvironment(mcpOptions.bootstrapOptions)
     .then((result) => {
       writeStderrLine(`boss-helper mcp bootstrap ready: relay=${result.relayUrl}`)
-      if (result.pageReady !== true) {
-        writeStderrLine('boss-helper mcp bootstrap waiting for page readiness: login or risk handling may still be required')
-      }
+      writeStderrLine('boss-helper mcp bootstrap opened relay and target URLs in a real browser context; login or risk handling may still be required')
       return result
     })
     .catch((error) => {

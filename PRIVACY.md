@@ -1,6 +1,6 @@
 # Boss Helper Privacy
 
-最后更新：2026-04-17
+最后更新：2026-04-19
 
 本文档描述的是当前仓库的实际行为，不代表上游仓库、第三方分发版本或任何非本仓库维护的浏览器商店条目。
 
@@ -17,7 +17,7 @@ Boss Helper 的大部分能力在本地浏览器和本地 companion 进程内运
 - 多账号切换所需的账号元数据与本地 Cookie 管理信息
 - 你自行配置的 OpenAI 兼容模型信息与 API Key
 - 高德地图 key，单独存放在浏览器会话存储中
-- 使用本地 bridge 时生成的 `.boss-helper-agent-token`、`.boss-helper-agent-cert.json`、`.boss-helper-agent-bridge.log`、`.boss-helper-agent-bridge.pid`
+- 使用本地 bridge / bootstrap 时生成的 `.boss-helper-agent-token`、`.boss-helper-agent-cert.json`、`.boss-helper-agent-bridge.log`、`.boss-helper-agent-bridge.pid`、`.boss-helper-agent-extension-build.json`
 
 这些数据默认保存在本地设备，不会因为你单纯打开仓库而自动同步到当前 GitHub 仓库维护者。
 
@@ -25,7 +25,7 @@ Boss Helper 的大部分能力在本地浏览器和本地 companion 进程内运
 
 ### Boss 直聘站点
 
-扩展运行在 `zhipin.com` 页面中，会读取页面 DOM、调用站点接口、监听聊天通道，并在你触发投递或聊天时与 Boss 直聘站点交互。
+扩展运行在 `zhipin.com` 页面中，会读取页面 DOM、调用站点接口，并在你触发职位读取、筛选、投递、简历读取或账号切换等操作时与 Boss 直聘站点交互。
 
 ### 高德地图
 
@@ -48,7 +48,7 @@ Boss Helper 的大部分能力在本地浏览器和本地 companion 进程内运
 - 在扩展 UI 中修改或删除模型配置、地图 key 与运行配置
 - 关闭或不启用高德、OpenAI、自定义 AI 功能
 - 卸载扩展或清理浏览器扩展存储
-- 删除仓库根目录中的本地 companion 文件，例如 token、证书、日志和 pid 文件
+- 删除仓库根目录中的本地 companion 文件，例如 token、证书、日志、pid 和构建元数据
 
 ## 联系方式
 

@@ -13,7 +13,7 @@ vi.mock('@/composables/useVue', () => ({
 }))
 
 import { counter } from '@/message'
-import { useConf } from '@/stores/conf'
+import { defaultFormData, formDataKey, useConf } from '@/stores/conf'
 import { useUser, waitForRootUserInfo } from '@/stores/user'
 
 import { setupPinia } from './helpers/pinia'
@@ -334,6 +334,12 @@ describe('stores/user', () => {
       },
     } as never)
     expect(setStatisticsMock).toHaveBeenCalledTimes(1)
+    expect(await counter.storageGet(formDataKey, {})).toEqual(
+      expect.objectContaining({
+        deliveryLimit: expect.objectContaining({ value: 6 }),
+        notification: expect.objectContaining({ value: defaultFormData.notification.value }),
+      }),
+    )
 
     await expect(user.changeUser()).resolves.toBeUndefined()
     expect(ElMessage.error).toHaveBeenCalledWith('请先选择要切换的账号')

@@ -17,6 +17,8 @@ export async function createApplyingPipeline(options: CreateApplyingPipelineOpti
   const h = handles(options)
   const loadCard = createLoadCardStep()
   const resolveAmap = createResolveAmapStep()
+  const amapStep = h.amap()
+  const aiFilteringStep = h.aiFiltering()
   const includeAiFiltering = options.includeAiFiltering !== false
   const pipeline: Pipeline = [
     withStepName('communicated', h.communicated()),
@@ -34,11 +36,13 @@ export async function createApplyingPipeline(options: CreateApplyingPipelineOpti
       withStepName('jobAddress', h.jobAddress()),
       withStepName('jobFriendStatus', h.jobFriendStatus()),
       withStepName('jobContent', h.jobContent()),
-      [
-        withStepName('resolveAmap', resolveAmap),
-        withStepName('amap', h.amap()),
-        includeAiFiltering ? withStepName('aiFiltering', h.aiFiltering()) : undefined,
-      ],
+      amapStep != null
+        ? [
+            withStepName('resolveAmap', resolveAmap),
+            withStepName('amap', amapStep),
+          ]
+        : undefined,
+      includeAiFiltering ? withStepName('aiFiltering', aiFilteringStep) : undefined,
     ],
   ]
 

@@ -56,21 +56,83 @@ describe('agent script robustness', () => {
     const { parseBootstrapArgs } = await import('../scripts/agent-bootstrap.mjs')
     expect(parseBootstrapArgs([])).toEqual(
       expect.objectContaining({
-        headless: expect.any(Boolean),
-        hold: false,
-        noBrowser: false,
+        forceBuild: false,
+        noBuild: false,
+        noOpen: false,
       }),
     )
   })
 
-  it('keeps hold enabled for agent:start style bootstrap', async () => {
+  it('rejects deprecated managed-browser bootstrap flags', async () => {
     // @ts-ignore scripts are typechecked separately via tsconfig.scripts.json
     const { parseBootstrapArgs } = await import('../scripts/agent-bootstrap.mjs')
-    expect(parseBootstrapArgs(['--hold'])).toEqual(
-      expect.objectContaining({
-        hold: true,
-      }),
-    )
+    expect(() => parseBootstrapArgs(['--hold'])).toThrow('已移除')
+  })
+
+  it('stops bridge safely when pid matches agent-bridge', async () => {
+    const kill = vi.fn((pid: number, signal?: NodeJS.Signals | 0) => {
+      if (signal === 0) {
+        if (kill.mock.calls.filter(([calledPid, calledSignal]) => calledPid === pid && calledSignal === 'SIGTERM').length > 0) {
+          const error = new Error('process gone') as NodeJS.ErrnoException
+          error.code = 'ESRCH'
+          throw error
+        }
+        return true
+      }
+      return true
+    })
+    const readFile = vi.fn(async () => '123\n')
+    const rm = vi.fn(async () => undefined)
+    const spawnSync = vi.fn(() => ({ error: undefined, stdout: 'node ./scripts/agent-bridge.mjs\n' }))
+
+    vi.doMock('node:fs/promises', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('node:fs/promises')>()
+      return {
+        ...actual,
+        readFile,
+        rm,
+      }
+    })
+    vi.doMock('node:child_process', () => ({ spawnSync }))
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({ ok: false }) })))
+    vi.stubGlobal('AbortSignal', { timeout: vi.fn(() => Symbol('timeout')) } as unknown as typeof AbortSignal)
+    vi.stubGlobal('process', { ...process, kill } as typeof process)
+
+    // @ts-ignore scripts are typechecked separately via tsconfig.scripts.json
+    const { stopBridge } = await import('../scripts/agent-stop.mjs')
+    const result = await stopBridge({ help: false, host: '127.0.0.1', port: 4317, timeoutMs: 100 })
+
+    expect(result).toEqual(expect.objectContaining({ ok: true, code: 'bridge-stopped', stopped: true, pid: 123 }))
+    expect(kill).toHaveBeenCalledWith(123, 'SIGTERM')
+    expect(rm).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses to stop mismatched pid targets', async () => {
+    const kill = vi.fn(() => true)
+    const readFile = vi.fn(async () => '321\n')
+    const rm = vi.fn(async () => undefined)
+    const spawnSync = vi.fn(() => ({ error: undefined, stdout: 'node something-else.mjs\n' }))
+
+    vi.doMock('node:fs/promises', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('node:fs/promises')>()
+      return {
+        ...actual,
+        readFile,
+        rm,
+      }
+    })
+    vi.doMock('node:child_process', () => ({ spawnSync }))
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ ok: true }) })))
+    vi.stubGlobal('AbortSignal', { timeout: vi.fn(() => Symbol('timeout')) } as unknown as typeof AbortSignal)
+    vi.stubGlobal('process', { ...process, kill } as typeof process)
+
+    // @ts-ignore scripts are typechecked separately via tsconfig.scripts.json
+    const { stopBridge } = await import('../scripts/agent-stop.mjs')
+    const result = await stopBridge({ help: false, host: '127.0.0.1', port: 4317, timeoutMs: 100 })
+
+    expect(result).toEqual(expect.objectContaining({ ok: false, code: 'bridge-pid-mismatch', pid: 321 }))
+    expect(kill).not.toHaveBeenCalledWith(321, 'SIGTERM')
+    expect(rm).not.toHaveBeenCalled()
   })
 
   it('derives the fixed extension id from the manifest key', async () => {

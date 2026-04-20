@@ -143,6 +143,17 @@ describe('request', () => {
     )
   })
 
+  it('maps background abort-like errors into timeout messages', async () => {
+    mockCounterRequest.mockRejectedValueOnce(new Error('The user aborted a request.'))
+
+    await expect(request.get({ isBackground: true, url: 'https://example.com/bg-timeout' })).rejects.toEqual(
+      expect.objectContaining({
+        message: '请求超时',
+        name: '请求错误',
+      }),
+    )
+  })
+
   it('delegates background requests to counter.request and extracts status codes from errors', async () => {
     mockCounterRequest.mockResolvedValueOnce(new Error('状态码: 503: upstream failed'))
 

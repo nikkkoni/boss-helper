@@ -12,10 +12,11 @@ import { openai } from './openai'
 import type { Llm, Prompt } from './type'
 
 export const confModelKey = 'conf-model'
-const sessionConfModelKey = 'session:conf-model'
+const persistedConfModelKey = `local:${confModelKey}`
 const legacyConfModelKey = 'sync:conf-model'
 const modelStorageMigrations = [
-  { oldKey: legacyConfModelKey, newKey: sessionConfModelKey },
+  { oldKey: legacyConfModelKey, newKey: persistedConfModelKey },
+  { oldKey: 'session:conf-model', newKey: persistedConfModelKey },
 ] as const
 export const llms = [openai.info]
 export const llmIcon = llms.reduce(
@@ -55,7 +56,7 @@ export const useModel = defineStore('model', () => {
 
   async function init() {
     await migrateStorageKeys(modelStorageMigrations, counter)
-    const data = await counter.storageGet<modelData[]>(sessionConfModelKey)
+    const data = await counter.storageGet<modelData[]>(persistedConfModelKey)
     logger.debug('ai模型数据', data)
     modelData.value = data ?? []
   }
@@ -81,7 +82,7 @@ export const useModel = defineStore('model', () => {
   }
 
   async function save() {
-    await counter.storageSet(sessionConfModelKey, toRaw(modelData.value))
+    await counter.storageSet(persistedConfModelKey, toRaw(modelData.value))
     ElMessage.success('保存成功')
   }
 

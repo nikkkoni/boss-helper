@@ -6,7 +6,7 @@
 
 - Node.js `20.19.0`
 - pnpm `9.x`
-- Chromium 浏览器，用于本地验证 relay / agent / MCP 链路
+- 一个已登录 Boss 的真实 Chromium 浏览器，用于本地验证 relay / agent / MCP 链路
 
 默认不应提交的本地文件：
 
@@ -14,6 +14,8 @@
 - `.boss-helper-agent-cert.json`
 - `.boss-helper-agent-bridge.log`
 - `.boss-helper-agent-bridge.pid`
+- `.boss-helper-agent-extension-build.json`
+- `.boss-helper-agent-profile/`
 - `.env*`
 - `.output/`
 
@@ -76,7 +78,7 @@ pnpm lint && pnpm check && pnpm test -- --run
 | 改动类型 | 追加验证 |
 | --- | --- |
 | 选择器 / DOM 自动化 / adapter | `pnpm build:chrome`，并在 Boss 页面手工验证 |
-| bridge / relay / MCP / CLI | `pnpm agent:doctor`、`pnpm agent:cli status` |
+| bridge / relay / MCP / CLI | `pnpm agent:doctor`、`pnpm agent:cli status`，必要时 `pnpm agent:stop` |
 | 扩展生命周期或跨上下文通信 | `pnpm test:e2e` |
 | 覆盖率敏感重构 | `pnpm test:coverage` |
 | 多浏览器构建链路 | `pnpm build` |

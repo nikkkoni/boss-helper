@@ -8,8 +8,10 @@ import type { CookieInfo } from '@/message'
 import { amapKeyStorageKey, formDataKey, sanitizeSensitiveFormData } from '@/stores/conf/shared'
 import { useStatistics } from '@/stores/statistics'
 import type { FormData } from '@/types/formData'
-import { jsonClone } from '@/utils/deepmerge'
+import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { logger } from '@/utils/logger'
+
+import { defaultFormData } from './conf'
 
 function toCookieGender(gender?: number): CookieInfo['gender'] {
   if (gender === 0) {
@@ -228,7 +230,10 @@ const useUserStore = defineStore('user', () => {
       if (typeof targetAccount.form.amap?.key === 'string' && targetAccount.form.amap.key.trim()) {
         await counter.storageSet(amapKeyStorageKey, targetAccount.form.amap.key.trim())
       }
-      await counter.storageSet(formDataKey, sanitizeSensitiveFormData(targetAccount.form))
+      const nextFormData = deepmerge<FormData>(jsonClone(defaultFormData), targetAccount.form, {
+        clone: false,
+      })
+      await counter.storageSet(formDataKey, sanitizeSensitiveFormData(nextFormData))
     }
 
     if (targetAccount.statistics != null) {

@@ -11,11 +11,11 @@ export interface other {
 
 export const other: LlmInfo<other>['other'] = {
   value: {
-    timeout: {
-      value: 1800,
-      type: 'inputNumber',
-      desc: 'GPT请求的超时时间,超时后不会进行重试将跳过岗位,默认1800s / 30分钟',
-    },
+      timeout: {
+        value: 1800,
+        type: 'inputNumber',
+        desc: 'GPT请求的超时时间，单位为秒；超时后不会进行重试将跳过岗位，默认 1800 秒 / 30 分钟',
+      },
     background: {
       value: false,
       type: 'switch',

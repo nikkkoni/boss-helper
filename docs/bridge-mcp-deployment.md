@@ -36,8 +36,8 @@ CLI / MCP / 外部脚本
 
 - Node.js `20.19.0`
 - pnpm `9.x`
-- 系统已安装的 `Google Chrome`
-- 已构建 Boss Helper 扩展，并在受管 profile 中手动安装 `.output/chrome-mv3/`
+- 一个你愿意长期使用、已登录 Boss 的真实 Chromium 浏览器
+- 已构建 Boss Helper 扩展，并在真实浏览器中手动安装 `.output/chrome-mv3/`
 - 至少打开一个支持的 Boss 职位页
 - 默认端口 `4317` 和 `4318` 可用
 
@@ -60,25 +60,14 @@ pnpm agent:start
 
 - 检查 bridge 是否已健康运行，必要时后台拉起 `agent-bridge.mjs`
 - 在 token 变化或首次使用时自动执行 `pnpm build:chrome`
-- 有头模式下打开一个受管的系统 `Google Chrome` persistent profile
-- 自动打开 relay 页面并预填当前扩展的默认 extension ID
-- 默认打开 `https://www.zhipin.com/web/geek/jobs`
+- 尝试在系统默认真实浏览器中打开 relay 页面并预填当前扩展的默认 extension ID
+- 尝试在同一浏览器中打开 `https://www.zhipin.com/web/geek/jobs`
 
-说明：当前 bootstrap 只负责拉起真实浏览器、relay 和 Boss 页面，不会直接通过 Playwright 页面对象操控 Boss，也不会用命令行强制注入扩展。请先在该 Chrome profile 里手动安装 `.output/chrome-mv3/`，后续所有 Boss 操作都应通过 MCP -> bridge -> extension -> page 的间接链路完成。`--headless` 仅用于无头命令行场景。
+说明：当前 bootstrap 只负责准备 bridge、扩展构建，并尝试打开 relay / Boss 页面，不会创建受管 profile，不会无头持有浏览器，也不会直接通过 Playwright 页面对象操控 Boss。请先在你实际使用的真实浏览器里手动安装 `.output/chrome-mv3/`，后续所有 Boss 操作都应通过 MCP -> bridge -> extension -> page 的间接链路完成。
 
-### 2. 首次 profile 登录 Boss
+### 2. 在真实浏览器中完成登录
 
-首次使用某个 profile 时，仍需要你在自动打开的真实 Chrome 中完成 Boss 登录。之后同一 `profileDir` 可直接复用登录态。
-
-默认 profile 目录：
-
-- `.boss-helper-agent-profile/`
-
-如需自定义：
-
-```bash
-pnpm agent:start -- --profile-dir ./local/boss-profile --headed
-```
+首次使用时，仍需要你在真实浏览器中完成 Boss 登录、证书接受、验证码和风控处理。后续建议持续复用同一真实浏览器环境，而不是让脚本托管浏览器生命周期。
 
 ### 3. 运行诊断
 
@@ -87,39 +76,50 @@ pnpm agent:doctor
 pnpm agent:cli status
 ```
 
-### 4. 如需 MCP
+### 4. 结束后关闭 bridge
+
+```bash
+pnpm agent:stop
+```
+
+`agent:stop` 会按 `.boss-helper-agent-bridge.pid` 做安全校验，只在 pid 指向当前仓库的 `agent-bridge.mjs` 时才真正停止，避免误杀其他进程。
+
+### 5. 如需 MCP
 
 ```bash
 pnpm agent:mcp
 ```
 
-`agent:mcp` 现在默认也会后台触发同一套 bootstrap，但它不会阻塞 MCP initialize 握手；而是在首个 tool/resource 调用前等待 bootstrap 完成。
+`agent:mcp` 默认不再自动触发 bootstrap。
 
-如果你已经手工准备好 bridge / relay / 浏览器链路，或在测试环境里不希望自动拉起浏览器，可显式关闭：
+如果你已经手工准备好 bridge / relay / 浏览器链路，直接运行即可：
 
 ```bash
-pnpm agent:mcp -- --no-bootstrap
+pnpm agent:mcp
 ```
 
-## 受管自举参数
+如需由 MCP 后台补齐 bridge、扩展构建并尝试打开 relay / Boss 页面，可显式开启：
+
+```bash
+pnpm agent:mcp -- --bootstrap
+```
+
+## bootstrap 参数
 
 `pnpm agent:start` 与 `pnpm agent:bootstrap` 共享这些常用参数：
 
-- `--profile-dir <path>`: 指定真实 Chrome persistent profile 目录
 - `--target-url <url>`: 自定义启动后打开的 Boss 页面
-- `--headless`: 对已有登录态 profile 做无头启动
-- `--headed`: 强制有头启动
 - `--force-build`: 无论是否已有产物都重建 Chrome 扩展
 - `--no-build`: 跳过自动构建；要求 `.output/chrome-mv3` 已存在
-- `--no-browser`: 只确保 bridge 和扩展构建，不拉起真实浏览器
+- `--no-open`: 只确保 bridge 和扩展构建，不主动打开 relay / Boss 页面
 
 其中：
 
-- `agent:start` 会持有受管浏览器进程，适合作为常驻入口
-- `agent:bootstrap` 只做一次自举并输出结构化结果，适合被其他脚本复用；默认也不会直接操控 Boss 页面
+- `agent:start` 适合作为本地轻量入口，但不会持有受管浏览器进程
+- `agent:bootstrap` 只做一次轻量自举并输出结构化结果，适合被其他脚本复用；默认也不会直接操控 Boss 页面
 
 
-首次访问 relay HTTPS 页面时仍可能需要接受本地自签名证书；受管浏览器会忽略 HTTPS 错误，但手工浏览器不会。
+首次访问 relay HTTPS 页面时通常仍需要在当前真实浏览器中手动接受本地自签名证书；bootstrap 不会替你绕过证书警告。
 
 ## 手动启动方式
 
@@ -127,6 +127,12 @@ pnpm agent:mcp -- --no-bootstrap
 
 ```bash
 pnpm agent:bridge
+```
+
+### 关闭 bridge
+
+```bash
+pnpm agent:stop
 ```
 
 默认地址：
@@ -139,7 +145,7 @@ pnpm agent:bridge
 - `https://127.0.0.1:4318/`
 - `https://localhost:4318/`
 
-进入页面后填入扩展 ID，并保持页面常驻。`agent:start` 打开的 relay URL 会自动预填当前默认扩展 ID；如果当前 profile 实际安装的是别的扩展实例，应以 Chrome profile 中实际安装的扩展 ID 为准。如果扩展事件端口没有连上，bridge 会把该 relay 视为“未就绪”，不会向它派发命令。
+进入页面后填入扩展 ID，并保持页面常驻。`agent:start` 打开的 relay URL 会自动预填当前默认扩展 ID；如果当前真实浏览器里安装的是别的扩展实例，应以实际安装的扩展 ID 为准。如果扩展事件端口没有连上，bridge 会把该 relay 视为“未就绪”，不会向它派发命令。
 
 ### 常用 CLI 命令
 
@@ -150,6 +156,7 @@ pnpm agent:cli readiness.get
 pnpm agent:cli stats
 pnpm agent:cli jobs.current --payload '{"includeDetail":true}'
 pnpm agent:cli plan.preview
+pnpm agent:cli config.update --payload '{"configPatch":{"notification":{"value":false}}}'
 pnpm agent:cli navigate --payload '{"city":"湖州","multiBusinessDistrict":"330523","query":"运维"}'
 ```
 
@@ -165,6 +172,11 @@ pnpm agent:cli navigate --payload '{"city":"湖州","multiBusinessDistrict":"330
 pnpm agent:cli start --payload '{"jobIds":["encryptJobId-1"],"confirmHighRisk":true}'
 pnpm agent:cli resume --payload '{"confirmHighRisk":true}'
 ```
+
+配置更新说明：
+
+- `config.update` 当前不需要 `confirmHighRisk`
+- 当前构建已经是 delivery-only；如果 `configPatch` 包含已移除的问候 / 聊天字段，例如 `customGreeting`、`greetingVariable`、`aiGreeting`、`aiReply`、`delay.messageSending`，会返回 `validation-failed` 与 `suggestedAction=fix-input`
 
 ## 状态语义
 
@@ -183,7 +195,7 @@ pnpm agent:cli resume --payload '{"confirmHighRisk":true}'
 
 ## 环境变量
 
-### bridge / CLI / orchestrator
+### bridge / CLI
 
 | 环境变量 | 默认值 | 作用 |
 | --- | --- | --- |
@@ -195,13 +207,20 @@ pnpm agent:cli resume --payload '{"confirmHighRisk":true}'
 | `BOSS_HELPER_AGENT_MAX_BODY_BYTES` | `1048576` | bridge JSON 请求体大小限制 |
 | `BOSS_HELPER_AGENT_TOKEN_FILE` | `.boss-helper-agent-token` | token 文件路径 |
 | `BOSS_HELPER_AGENT_CERT_FILE` | `.boss-helper-agent-cert.json` | 本地证书文件路径 |
-| `BOSS_HELPER_AGENT_PID_FILE` | `.boss-helper-agent-bridge.pid` | `agent:start` 记录的 bridge pid 文件 |
-| `BOSS_HELPER_AGENT_LOG_FILE` | `.boss-helper-agent-bridge.log` | `agent:start` 记录的 bridge 日志文件 |
+| `BOSS_HELPER_AGENT_PID_FILE` | `.boss-helper-agent-bridge.pid` | bridge 由 bootstrap / start 自动拉起时记录的 pid 文件 |
+| `BOSS_HELPER_AGENT_LOG_FILE` | `.boss-helper-agent-bridge.log` | bridge 由 bootstrap / start 自动拉起时记录的日志文件 |
+
+### bootstrap
+
+| 环境变量 | 默认值 | 作用 |
+| --- | --- | --- |
+| `BOSS_HELPER_AGENT_TARGET_URL` | `https://www.zhipin.com/web/geek/jobs` | 自举后默认打开的 Boss 页面 |
 
 ### MCP
 
 | 环境变量 | 默认值 | 作用 |
 | --- | --- | --- |
+| `BOSS_HELPER_AGENT_MCP_AUTO_BOOTSTRAP` | `false` | 是否在 MCP server 启动后自动触发本地 bootstrap |
 | `BOSS_HELPER_AGENT_MCP_MAX_CONTENT_LENGTH` | `1048576` | MCP stdio 单帧最大长度 |
 
 环境变量示例：
@@ -210,6 +229,7 @@ pnpm agent:cli resume --payload '{"confirmHighRisk":true}'
 export BOSS_HELPER_AGENT_HOST=127.0.0.1
 export BOSS_HELPER_AGENT_PORT=4317
 export BOSS_HELPER_AGENT_HTTPS_PORT=4318
+export BOSS_HELPER_AGENT_TARGET_URL='https://www.zhipin.com/web/geek/jobs?query=运维'
 export BOSS_HELPER_AGENT_BRIDGE_TOKEN=replace-with-your-own-token
 export BOSS_HELPER_AGENT_TIMEOUT=45000
 ```
@@ -218,12 +238,13 @@ export BOSS_HELPER_AGENT_TIMEOUT=45000
 
 默认位于仓库根目录，且应被 `.gitignore` 忽略：
 
-| 文件 | 作用 |
+| 文件 / 目录 | 作用 |
 | --- | --- |
 | `.boss-helper-agent-token` | bridge 共享 token |
 | `.boss-helper-agent-cert.json` | localhost 自签名证书 |
 | `.boss-helper-agent-bridge.log` | 后台 bridge 启动日志 |
 | `.boss-helper-agent-bridge.pid` | 后台 bridge 进程 ID |
+| `.boss-helper-agent-extension-build.json` | 记录最近一次自动构建对应的 bridge token、bootstrap 版本与扩展路径 |
 
 ## HTTP / HTTPS / SSE 接口
 
@@ -263,7 +284,7 @@ x-boss-helper-agent-token: <token>
 
 ## MCP 部署
 
-`pnpm agent:mcp` 默认会尝试自动补齐 bridge / 受管浏览器 / relay 链路，但仍然只是本地 stdio MCP server，不会绕过页面登录、验证码或风控。
+`pnpm agent:mcp` 默认只启动本地 stdio MCP server，不会自动拉起浏览器链路，也不会绕过页面登录、验证码或风控。
 
 最小注册示例：
 

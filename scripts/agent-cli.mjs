@@ -134,7 +134,7 @@ function printHint(data) {
 
   if (data.code === 'relay-not-connected') {
     console.error(
-      `\nHint: 先运行 node ./scripts/agent-bridge.mjs，然后在 Chromium 浏览器打开 ${getBridgeRuntime().httpsBaseUrl}/，填写扩展 ID 并保持 relay 页面常驻。`,
+      `\nHint: 先运行 pnpm agent:bridge，然后在你已登录 Boss 的真实浏览器打开 ${getBridgeRuntime().httpsBaseUrl}/，填写扩展 ID 并保持 relay 页面常驻。`,
     )
   }
 
@@ -164,10 +164,10 @@ async function runDoctor() {
     }
 
     if (!result.checks.bridgeListening) {
-      result.nextSteps.push('运行 node ./scripts/agent-bridge.mjs 启动本地 companion 服务。')
+      result.nextSteps.push('运行 pnpm agent:bridge 或 pnpm agent:start 启动本地 companion bridge。')
     }
     if (!result.checks.relayConnected) {
-      result.nextSteps.push(`在 Chromium 浏览器打开 ${getBridgeRuntime().httpsBaseUrl}/ 并保持页面打开。`)
+      result.nextSteps.push(`在你已登录 Boss 的真实浏览器打开 ${getBridgeRuntime().httpsBaseUrl}/ 并保持页面打开。`)
     }
     if (!result.checks.knownExtensionId) {
       result.nextSteps.push('在 relay 页面填写扩展 ID，然后点击“保存并重连”。')
@@ -183,7 +183,7 @@ async function runDoctor() {
       ok: false,
       code: 'doctor-failed',
       message: error instanceof Error ? error.message : 'unknown error',
-      nextSteps: ['运行 node ./scripts/agent-bridge.mjs 启动本地 companion 服务。'],
+      nextSteps: ['运行 pnpm agent:bridge 或 pnpm agent:start 启动本地 companion bridge。'],
     })
     process.exitCode = 1
   }
@@ -272,7 +272,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       message: error instanceof Error ? error.message : 'unknown error',
     })
     if (options) {
-      console.error('\nHint: 如果 companion 服务未启动，请先运行 node ./scripts/agent-bridge.mjs。')
+      console.error('\nHint: 如果 companion bridge 未启动，请先运行 pnpm agent:bridge 或 pnpm agent:start。')
     }
     process.exitCode = 1
   }

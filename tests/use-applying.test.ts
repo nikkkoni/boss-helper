@@ -39,6 +39,7 @@ import type { logData } from '@/stores/log'
 import { useStatistics } from '@/stores/statistics'
 import { useUser } from '@/stores/user'
 import {
+  AmapError,
   AIFilteringError,
   FriendStatusError,
   JobAddressError,
@@ -607,6 +608,16 @@ describe('useApplying handles', () => {
     await expect(
       getHandler(handles().aiFiltering())({ data: job }, createLogContext(job)),
     ).rejects.toThrow('llm unavailable')
+
+    getModelSpy.mockReturnValueOnce({
+      message: vi.fn(async () => {
+        throw new Error('The user aborted a request.')
+      }),
+    } as unknown as Llm)
+
+    await expect(
+      getHandler(handles().aiFiltering())({ data: job }, createLogContext(job)),
+    ).rejects.toThrow('请求超时')
   })
 
   it('handles missing amap straight distance data without throwing optional-chain errors', async () => {
@@ -653,6 +664,51 @@ describe('useApplying handles', () => {
       expect.objectContaining({
         accepted: true,
         rating: 10,
+      }),
+    )
+  })
+
+  it('does not resolve amap when ai filtering is enabled but amap is disabled', async () => {
+    const conf = useConf()
+    const model = useModel()
+    const job = createJob({ card: createJobCard() })
+    const ctx = createLogContext(job)
+
+    conf.formData.sameCompanyFilter.value = false
+    conf.formData.sameHrFilter.value = false
+    conf.formData.friendStatus.value = false
+    conf.formData.activityFilter.value = false
+    conf.formData.aiFiltering.enable = true
+    conf.formData.aiFiltering.externalMode = false
+    conf.formData.aiFiltering.model = 'model-1'
+    conf.formData.aiFiltering.score = 0
+    conf.formData.amap.enable = false
+    model.modelData = [createModelItem()]
+
+    vi.spyOn(model, 'getModel').mockReturnValueOnce({
+      message: vi.fn(async () => ({
+        content: '```json\n{"negative":[],"positive":[{"reason":"匹配","score":10}]}\n```',
+        prompt: 'prompt body',
+        reasoning_content: null,
+      })),
+    } as unknown as Llm)
+
+    const pipeline = await createHandle()
+    await expect(
+      (async () => {
+        for (const step of pipeline.before) {
+          await step({ data: job }, ctx)
+        }
+      })(),
+    ).resolves.toBeUndefined()
+
+    expect(mockAmapGeocode).not.toHaveBeenCalled()
+    expect(mockAmapDistance).not.toHaveBeenCalled()
+    expect(ctx.aiFilteringScore).toEqual(
+      expect.objectContaining({
+        accepted: true,
+        rating: 10,
+        source: 'internal',
       }),
     )
   })
@@ -758,11 +814,12 @@ describe('useApplying handles', () => {
           await step({ data: job }, ctx)
         }
       })(),
-    ).rejects.toBeInstanceOf(JobAddressError)
+    ).rejects.toBeInstanceOf(AmapError)
 
     expect(ctx.pipelineError).toEqual(
       expect.objectContaining({
         errorMessage: '错误: 地图服务不可用',
+        errorName: '高德地图筛选',
         jobId: 'job-1',
         stage: 'before',
         step: 'resolveAmap',

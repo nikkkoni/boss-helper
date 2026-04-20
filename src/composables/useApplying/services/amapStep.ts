@@ -1,5 +1,5 @@
 import type { logData } from '@/stores/log'
-import { JobAddressError, UnknownError } from '@/types/deliverError'
+import { AmapError, UnknownError } from '@/types/deliverError'
 import { amapDistance, amapGeocode } from '@/utils/amap'
 import { logger } from '@/utils/logger'
 
@@ -35,12 +35,12 @@ export function createResolveAmapStep(): Handler {
           args.data.card?.address ?? args.data.card?.jobInfo?.address ?? '',
         )
       if (!ctx.amap.geocode?.location) {
-        throw new JobAddressError('未获取到地址经纬度')
+        throw new AmapError('未获取到地址经纬度')
       }
       ctx.amap.distance = await amapDistance(ctx.amap.geocode.location)
     } catch (e) {
       logger.error('高德地图错误', e)
-      throw new JobAddressError(`错误: ${e instanceof Error ? e.message : '未知'}`, {
+      throw new AmapError(`错误: ${e instanceof Error ? e.message : '未知'}`, {
         cause: e instanceof Error ? e : undefined,
       })
     }

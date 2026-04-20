@@ -217,9 +217,11 @@ describe('useConf store', () => {
     expect(elMessageSuccess).toHaveBeenCalledWith('模板已保存: Team A')
 
     conf.formData.deliveryLimit.value = 1
+    conf.formData.sameCompanyFilter.value = true
     await conf.applyTemplate('Team A')
     expect(conf.formData.deliveryLimit.value).toBe(7)
     expect(conf.formData.amap.key).toBe('')
+    expect(conf.formData.sameCompanyFilter.value).toBe(defaultFormData.sameCompanyFilter.value)
 
     await conf.deleteTemplate('Team A')
     expect(conf.templateNames).toEqual([])
@@ -288,14 +290,25 @@ describe('useConf store', () => {
       amap: {
         key: 'new-key',
       },
+      friendStatus: {
+        value: false,
+      },
       deliveryLimit: {
         value: 11,
       },
       userId: 99,
     } as never)
+    conf.formData.friendStatus.value = true
     await conf.confImport()
     expect(conf.formData.deliveryLimit.value).toBe(11)
+    expect(conf.formData.friendStatus.value).toBe(false)
     expect(await counter.storageGet(amapKeyStorageKey)).toBe('new-key')
+    expect(await counter.storageGet(formDataKey, {})).toEqual(
+      expect.objectContaining({
+        deliveryLimit: expect.objectContaining({ value: 11 }),
+        friendStatus: expect.objectContaining({ value: false }),
+      }),
+    )
 
     vi.spyOn(importModule, 'importJson').mockRejectedValueOnce(new Error('bad import'))
     await conf.confImport()
@@ -304,5 +317,24 @@ describe('useConf store', () => {
     vi.spyOn(counter, 'storageSet').mockRejectedValueOnce(new Error('save failed'))
     await conf.confSaving()
     expect(elMessageError).toHaveBeenCalledWith('保存失败: save failed')
+  })
+
+  it('resets missing fields to defaults before applying imported config', async () => {
+    const conf = useConf()
+    conf.formData.sameCompanyFilter.value = true
+    conf.formData.notification.value = false
+
+    const importModule = await import('@/utils/jsonImportExport')
+    vi.spyOn(importModule, 'importJson').mockResolvedValueOnce({
+      deliveryLimit: {
+        value: 15,
+      },
+    } as never)
+
+    await conf.confImport()
+
+    expect(conf.formData.deliveryLimit.value).toBe(15)
+    expect(conf.formData.sameCompanyFilter.value).toBe(defaultFormData.sameCompanyFilter.value)
+    expect(conf.formData.notification.value).toBe(defaultFormData.notification.value)
   })
 })

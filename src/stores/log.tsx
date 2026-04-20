@@ -89,6 +89,7 @@ export const stateNames = [
   ['warning', '公司规模筛选'],
   ['warning', '工作内容筛选'],
   ['warning', 'Hr职位筛选'],
+  ['warning', '高德地图筛选'],
   ['warning', 'AI筛选'],
   ['warning', '好友状态'],
   ['warning', '活跃度过滤'],

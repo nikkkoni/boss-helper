@@ -137,7 +137,7 @@ describe('useModel', () => {
   })
 
   it('replaces persisted models on repeated init without duplicating entries', async () => {
-    __setStorageItem('session:conf-model', [
+    __setStorageItem('local:conf-model', [
       createModelItem({ key: 'persisted', name: 'Persisted model' }),
     ])
 
@@ -222,6 +222,12 @@ describe('useModel', () => {
     )
 
     expect(mockRequestPost).toHaveBeenCalledTimes(2)
+    expect(mockRequestPost).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        timeout: 1800 * 1000,
+      }),
+    )
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'AI请求重试',
       expect.objectContaining({ attempt: 1, nextAttempt: 2 }),
@@ -362,7 +368,21 @@ describe('useModel', () => {
     await store.saveModel()
 
     expect(
-      await import('@/message').then((mod) => mod.counter.storageGet('session:conf-model')),
+      await import('@/message').then((mod) => mod.counter.storageGet('local:conf-model')),
     ).toEqual([expect.objectContaining({ key: 'normal' })])
+  })
+
+  it('migrates session model storage into persistent local storage on init', async () => {
+    __setStorageItem('session:conf-model', [
+      createModelItem({ key: 'session-model', name: 'Session Model' }),
+    ])
+
+    const store = useModel()
+    await store.initModel()
+
+    expect(store.modelData).toEqual([expect.objectContaining({ key: 'session-model' })])
+    expect(
+      await import('@/message').then((mod) => mod.counter.storageGet('local:conf-model')),
+    ).toEqual([expect.objectContaining({ key: 'session-model' })])
   })
 })

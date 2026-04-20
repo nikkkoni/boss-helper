@@ -212,7 +212,7 @@ function buildBootstrapSteps(readiness, relayUrl) {
       'start-bridge',
       readiness.bridgeOnline
         ? 'bridge 已在线，可继续检查 relay 与页面状态。'
-        : '需要先启动本地 companion bridge。推荐运行 pnpm agent:start 或 pnpm agent:bridge。',
+        : '需要先启动本地 companion bridge。推荐运行 pnpm agent:start 或 pnpm agent:bridge；结束后可用 pnpm agent:stop 关闭。',
     ),
     createBootstrapStep(
       'relay',
@@ -286,7 +286,7 @@ function buildBootstrapSteps(readiness, relayUrl) {
 function buildBootstrapNextSteps(readiness, summary, relayUrl) {
   switch (summary.stage) {
     case 'bridge-offline':
-      return ['先启动本地 bridge：pnpm agent:start 或 pnpm agent:bridge。']
+      return ['先启动本地 bridge：pnpm agent:start 或 pnpm agent:bridge；结束后如需关闭可运行 pnpm agent:stop。']
     case 'relay-offline':
       return [`在 ${relayUrl} 打开 relay 页面，并保持该页面常驻。`]
     case 'relay-not-ready':

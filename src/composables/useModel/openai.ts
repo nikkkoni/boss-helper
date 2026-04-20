@@ -55,6 +55,15 @@ function getLastChoiceMessage(response: OpenAIChatResponse | null | undefined) {
   return lastChoice?.message
 }
 
+function normalizeTimeoutMs(timeout: number | undefined) {
+  if (!Number.isFinite(timeout) || timeout == null || timeout <= 0) {
+    return undefined
+  }
+
+  // Existing configs/documentation use seconds for model timeout values.
+  return timeout >= 10_000 ? timeout : timeout * 1000
+}
+
 export type openaiLLMConf = LlmConf<
   'openai',
   {
@@ -293,7 +302,7 @@ class Gpt extends Llm<openaiLLMConf> {
           Authorization: `Bearer ${this.conf.api_key}`,
           'Content-Type': 'application/json',
         },
-        timeout: this.conf.other.timeout,
+        timeout: normalizeTimeoutMs(this.conf.other.timeout),
         responseType: 'json',
         onStream,
         isBackground: this.conf.other.background,

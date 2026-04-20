@@ -189,9 +189,15 @@ export const useConf = defineStore('conf', () => {
       throw new Error('模板不存在')
     }
 
-    deepmerge(formData, stripRemovedConfigFields(template), { clone: false })
+    const nextFormData = deepmerge<FormData>(
+      jsonClone(defaultFormData),
+      stripRemovedConfigFields(template),
+      { clone: false },
+    )
+    nextFormData.amap.key = (await counter.storageGet<string>(amapKeyStorageKey)) ?? ''
+    deepmerge(formData, nextFormData, { clone: false })
     logger.debug('formData模板已应用', name)
-    ElMessage.success(`模板已应用: ${name}，请按需保存`)
+    ElMessage.success(`模板已应用: ${name}`)
   }
 
   async function deleteTemplate(name: string) {
@@ -260,9 +266,16 @@ export const useConf = defineStore('conf', () => {
         await counter.storageSet(amapKeyStorageKey, jsonData.amap.key.trim())
       }
       jsonData = (await formDataHandler(jsonData)) ?? jsonData
-      // await setStorage(formDataKey, jsonData)
-      deepmerge(formData, stripRemovedConfigFields(jsonData), { clone: false })
-      ElMessage.success('导入成功, 切记要手动保存哦')
+      const nextFormData = deepmerge<FormData>(
+        jsonClone(defaultFormData),
+        stripRemovedConfigFields(jsonData),
+        { clone: false },
+      )
+      nextFormData.amap.key = (await counter.storageGet<string>(amapKeyStorageKey)) ?? ''
+      deepmerge(formData, nextFormData, { clone: false })
+      await persistSensitiveFields(formData)
+      await counter.storageSet(formDataKey, sanitizeSensitiveFormData(formData))
+      ElMessage.success('导入成功，配置已热更新')
     } catch (error) {
       if (error instanceof ImportJsonCancelledError) {
         return

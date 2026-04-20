@@ -164,26 +164,28 @@ test('surfaces analyze-jobs workflow with candidateFocus and scoped planFocus th
       expect.objectContaining({
         stage: 'analyze-jobs',
         goal: '先做小范围岗位分析与只读预演',
-        candidateFocus: {
+        candidateFocus: expect.objectContaining({
           inspectFirst: [
             expect.objectContaining({
               encryptJobId: 'job-1',
               hasCard: true,
               jobName: 'Frontend Engineer',
               reason: 'loaded-card',
+              status: 'pending',
             }),
           ],
           loadedCardCount: 1,
           visibleCount: 1,
-        },
-        planFocus: {
-          firstAction: 'refresh-candidates',
+        }),
+        eventFocus: null,
+        planFocus: expect.objectContaining({
+          firstAction: 'narrow-to-ready',
           inspectFirst: [
             expect.objectContaining({
-              decision: 'skip',
+              decision: 'ready',
               encryptJobId: 'job-1',
               jobName: 'Frontend Engineer',
-              stage: 'current-status',
+              stage: 'ready',
             }),
           ],
           scope: {
@@ -191,11 +193,11 @@ test('surfaces analyze-jobs workflow with candidateFocus and scoped planFocus th
             targetJobIds: ['job-1'],
           },
           summary: expect.objectContaining({
-            readyCount: 0,
+            readyCount: 1,
             scopedCount: 1,
-            skipCount: 1,
+            skipCount: 0,
           }),
-        },
+        }),
         recommendedTools: expect.arrayContaining([
           'boss_helper_agent_context',
           'boss_helper_jobs_current',
@@ -217,9 +219,9 @@ test('surfaces analyze-jobs workflow with candidateFocus and scoped planFocus th
             targetJobIds: ['job-1'],
           }),
           summary: expect.objectContaining({
-            readyCount: 0,
+            readyCount: 1,
             scopedCount: 1,
-            skipCount: 1,
+            skipCount: 0,
           }),
         }),
       }),
@@ -253,38 +255,42 @@ test('surfaces analyze-jobs candidate-focus fallback when no current job is sele
     expect(context.workflow).toEqual(
       expect.objectContaining({
         stage: 'analyze-jobs',
-        candidateFocus: {
+        goal: '先做小范围岗位分析与只读预演',
+        candidateFocus: expect.objectContaining({
           inspectFirst: [
             expect.objectContaining({
               encryptJobId: secondJob.encryptJobId,
               hasCard: true,
               jobName: secondJob.jobName,
               reason: 'loaded-card',
+              status: 'pending',
             }),
             expect.objectContaining({
               encryptJobId: 'job-1',
               hasCard: false,
               jobName: 'Frontend Engineer',
               reason: 'list-order',
+              status: 'pending',
             }),
           ],
           loadedCardCount: 1,
           visibleCount: 2,
-        },
-        planFocus: {
-          firstAction: 'refresh-candidates',
+        }),
+        eventFocus: null,
+        planFocus: expect.objectContaining({
+          firstAction: 'narrow-to-ready',
           inspectFirst: [
             expect.objectContaining({
-              decision: 'skip',
+              decision: 'ready',
               encryptJobId: 'job-1',
               jobName: 'Frontend Engineer',
-              stage: 'current-status',
+              stage: 'ready',
             }),
             expect.objectContaining({
-              decision: 'skip',
+              decision: 'ready',
               encryptJobId: secondJob.encryptJobId,
               jobName: secondJob.jobName,
-              stage: 'current-status',
+              stage: 'ready',
             }),
           ],
           scope: {
@@ -292,11 +298,19 @@ test('surfaces analyze-jobs candidate-focus fallback when no current job is sele
             targetJobIds: [secondJob.encryptJobId, 'job-1'],
           },
           summary: expect.objectContaining({
-            readyCount: 0,
+            readyCount: 2,
             scopedCount: 2,
-            skipCount: 2,
+            skipCount: 0,
           }),
-        },
+        }),
+        recommendedTools: expect.arrayContaining([
+          'boss_helper_agent_context',
+          'boss_helper_jobs_current',
+          'boss_helper_jobs_list',
+          'boss_helper_jobs_detail',
+          'boss_helper_resume_get',
+          'boss_helper_plan_preview',
+        ]),
       }),
     )
     expect(context.sections?.plan).toEqual(

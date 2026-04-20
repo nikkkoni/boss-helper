@@ -32,16 +32,18 @@ function createModelKey() {
   return crypto.randomUUID()
 }
 
-function del(d: modelData) {
+async function del(d: modelData) {
   modelStore.modelData = modelStore.modelData.filter((v) => d.key !== v.key)
+  await modelStore.saveModel()
   ElMessage.success('删除成功')
 }
 
-function copy(d: modelData) {
+async function copy(d: modelData) {
   d = jsonClone(d)
   d.key = createModelKey()
   d.name = `${d.name} 副本`
   modelStore.modelData.push(d)
+  await modelStore.saveModel()
   ElMessage.success('复制成功')
 }
 
@@ -57,7 +59,7 @@ function newllm() {
   createBoxShow.value = true
 }
 
-function create(d: modelData) {
+async function create(d: modelData) {
   if (d.key) {
     const old = modelStore.modelData.find((v) => v.key === d.key)
     if (old) {
@@ -70,11 +72,12 @@ function create(d: modelData) {
     d.key = createModelKey()
     modelStore.modelData.push(d)
   }
+  await modelStore.saveModel()
   createBoxShow.value = false
 }
 
-function close() {
-  modelStore.initModel()
+async function close() {
+  await modelStore.initModel()
   show.value = false
 }
 
@@ -82,18 +85,18 @@ function exportllm() {
   exportJson(jsonClone(modelStore.modelData), 'Ai模型配置')
 }
 
-function importllm() {
-  importJson<modelData[]>()
-    .then((data) => {
-      modelStore.modelData = data
-      ElMessage.success('导入成功, 请手动保存')
-    })
-    .catch((error) => {
-      if (error instanceof ImportJsonCancelledError) {
-        return
-      }
-      ElMessage.error(error instanceof Error ? error.message : '导入失败')
-    })
+async function importllm() {
+  try {
+    const data = await importJson<modelData[]>()
+    modelStore.modelData = jsonClone(data)
+    await modelStore.saveModel()
+    ElMessage.success('导入成功')
+  } catch (error) {
+    if (error instanceof ImportJsonCancelledError) {
+      return
+    }
+    ElMessage.error(error instanceof Error ? error.message : '导入失败')
+  }
 }
 </script>
 

@@ -40,25 +40,10 @@ export interface AgentLaunchOptions {
 export interface AgentBootstrapOptions {
   browser: string
   forceBuild: boolean
-  headless: boolean
   host: string
-  hold: boolean
-  noBrowser: boolean
   noBuild: boolean
+  noOpen: boolean
   port: number
-  profileDir: string
-  startupTimeoutMs: number
-  targetUrl: string
-}
-
-export interface AgentManagedBrowserOptions {
-  browser: string
-  extensionId: string
-  extensionPath: string
-  headless: boolean
-  host: string
-  port: number
-  profileDir: string
   targetUrl: string
 }
 
