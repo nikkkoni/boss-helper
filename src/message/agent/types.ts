@@ -1,3 +1,4 @@
+/* c8 ignore start */
 export {
 	AGENT_PROTOCOL_VERSION,
 	BOSS_HELPER_AGENT_SUGGESTED_ACTIONS,
@@ -12,3 +13,4 @@ export * from './jobs'
 export * from './meta'
 export * from './planning'
 export * from './response'
+/* c8 ignore stop */

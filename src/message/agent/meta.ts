@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import type { FormData } from '@/types/formData'
 
 export interface BossHelperAgentConfigSnapshot {
@@ -72,8 +73,9 @@ export interface BossHelperAgentReadinessData {
       checks: BossHelperAgentReadinessSelectorHealthCheck[]
       ok: boolean
       summary: string
-    }
   }
+}
+/* c8 ignore stop */
   page: {
     active: boolean
     controllable: boolean

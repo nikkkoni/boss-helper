@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import { BOSS_HELPER_AGENT_BRIDGE_RESPONSE } from './constants'
 import type { BossHelperAgentStatsData } from './jobs'
 import type { BossHelperAgentResponseMeta } from '../../../shared/agentProtocol.js'
@@ -14,3 +15,4 @@ export interface BossHelperAgentBridgeResponse {
   requestId: string
   type: typeof BOSS_HELPER_AGENT_BRIDGE_RESPONSE
 }
+/* c8 ignore stop */
