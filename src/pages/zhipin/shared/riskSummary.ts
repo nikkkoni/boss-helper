@@ -59,6 +59,14 @@ function toNonNegativeInteger(value: unknown) {
   return Math.max(0, Math.trunc(Number(value)))
 }
 
+function toNonNegativeNumber(value: unknown) {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+
+  return Math.max(0, Number(value))
+}
+
 function createWarning(
   code: string,
   message: string,
@@ -197,6 +205,8 @@ export function buildAgentRiskSummary(options: {
   const remainingInRun = Math.max(runDeliveryGuardrailLimit - usedInRun, 0)
   const runReached = runDeliveryGuardrailLimit > 0 && usedInRun >= runDeliveryGuardrailLimit
   const sessionDuplicates = buildSessionDuplicateSummary(logs, typeof todayData?.date === 'string' ? todayData.date : '')
+  const deliveryInterval = toNonNegativeNumber(config?.delay?.deliveryInterval)
+  const deliveryIntervalRandomOffset = toNonNegativeNumber(config?.delay?.deliveryIntervalRandomOffset)
 
   const sameCompanyFilter = toBoolean(config?.sameCompanyFilter?.value)
   const sameHrFilter = toBoolean(config?.sameHrFilter?.value)
@@ -273,6 +283,16 @@ export function buildAgentRiskSummary(options: {
       createWarning(
         'cache-disabled',
         '本地缓存已关闭，页面刷新或重载后去重与恢复信息会更依赖实时页面状态。',
+        'info',
+      ),
+    )
+  }
+
+  if (deliveryInterval > 0 && deliveryInterval <= 5 && deliveryIntervalRandomOffset === 0) {
+    warnings.push(
+      createWarning(
+        'delivery-interval-randomization-disabled',
+        `当前投递间隔固定为 ${deliveryInterval} 秒，未启用随机附加等待，固定节奏更容易触发频率风控。`,
         'info',
       ),
     )

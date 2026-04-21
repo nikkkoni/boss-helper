@@ -170,15 +170,20 @@ export const formInfoData: FormInfoData = {
   delay: {
     deliveryStarts: {
       label: '投递开始',
-      'data-help': '点击投递按钮会等待一段时间,默认值10s',
+      'data-help': '点击投递按钮后会先等待一段时间，默认值 3s',
     },
     deliveryInterval: {
       label: '投递间隔',
-      'data-help': '每个投递的间隔,太快易风控,默认值2s',
+      'data-help': '每次投递之间的基础间隔，太快易风控，默认值 5s',
+    },
+    deliveryIntervalRandomOffset: {
+      label: '随机附加',
+      'data-help': '每次投递会在基础间隔上随机额外增加 0 到该值的秒数，用于打散固定节奏；设为 0 可关闭，默认值 3s',
+      min: 0,
     },
     deliveryPageNext: {
       label: '投递翻页',
-      'data-help': '投递完下一页之后等待的间隔,太快易风控,默认值60s',
+      'data-help': '投递完翻到下一页之后等待的间隔，太快易风控，默认值 60s',
     },
   },
   amap: {
@@ -311,6 +316,7 @@ export const defaultFormData: FormData = {
   delay: {
     deliveryStarts: 3,
     deliveryInterval: 5,
+    deliveryIntervalRandomOffset: 3,
     deliveryPageNext: 60,
   },
   version: '20240401',

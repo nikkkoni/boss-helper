@@ -67,6 +67,7 @@ function createDeps(): DeliverExecutionDependencies {
       formData: {
         delay: {
           deliveryInterval: 5,
+          deliveryIntervalRandomOffset: 3,
         },
         deliveryLimit: {
           value: 120,
@@ -354,6 +355,7 @@ describe('deliverExecution', () => {
   it('continues finalization even when cache persistence fails', async () => {
     const deps = createDeps()
     const data = createJob({ encryptJobId: 'job-cache' })
+    deps.conf.formData.delay.deliveryIntervalRandomOffset = 0
 
     await finalizeDeliverIteration({
       cachePipelineResultFn: vi.fn(async () => {
@@ -371,6 +373,7 @@ describe('deliverExecution', () => {
   it('applies rate-limit backoff to the current iteration without mutating deliveryInterval', async () => {
     const deps = createDeps()
     const data = createJob()
+    deps.conf.formData.delay.deliveryIntervalRandomOffset = 0
     const result = await handleDeliverFailure({
       data,
       error: new RateLimitError('频率限制'),
@@ -400,6 +403,26 @@ describe('deliverExecution', () => {
     })
 
     expect(delayMock).toHaveBeenLastCalledWith(8)
+    expect(deps.statistics.todayData.total).toBe(1)
+  })
+
+  it('adds a randomized offset on top of the base delivery interval', async () => {
+    const deps = createDeps()
+    const data = createJob({ encryptJobId: 'job-randomized' })
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+    try {
+      await finalizeDeliverIteration({
+        cachePipelineResultFn: deps.cachePipelineResultFn,
+        conf: deps.conf,
+        data,
+        statistics: deps.statistics,
+      })
+    } finally {
+      randomSpy.mockRestore()
+    }
+
+    expect(delayMock).toHaveBeenLastCalledWith(6.5)
     expect(deps.statistics.todayData.total).toBe(1)
   })
 })

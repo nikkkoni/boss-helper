@@ -117,6 +117,51 @@ describe('buildAgentRiskSummary', () => {
     })
   })
 
+  it('surfaces an interval warning when random delivery offset is disabled', () => {
+    const config = jsonClone(defaultFormData)
+    config.deliveryLimit.value = 80
+    config.sameCompanyFilter.value = true
+    config.sameHrFilter.value = true
+    config.friendStatus.value = true
+    config.notification.value = true
+    config.useCache.value = true
+    config.delay.deliveryInterval = 5
+    config.delay.deliveryIntervalRandomOffset = 0
+
+    const result = buildAgentRiskSummary({
+      config,
+      progress: {
+        state: 'idle',
+        stopRequested: false,
+      },
+      todayData: {
+        date: '2026-04-13',
+        success: 12,
+        total: 20,
+        company: 0,
+        jobTitle: 0,
+        jobContent: 0,
+        aiFiltering: 0,
+        hrPosition: 0,
+        jobAddress: 0,
+        salaryRange: 0,
+        amap: 0,
+        companySizeRange: 0,
+        activityFilter: 0,
+        goldHunterFilter: 0,
+        repeat: 1,
+      },
+    })
+
+    expect(result.level).toBe('medium')
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'delivery-interval-randomization-disabled',
+        severity: 'info',
+      }),
+    )
+  })
+
   it('breaks down duplicate guardrail hits from current-session logs', () => {
     const config = jsonClone(defaultFormData)
     const result = buildAgentRiskSummary({

@@ -57,7 +57,7 @@ const { deliverLock } = useCommon()
         >
           <ElInputNumber
             v-model="conf.formData.delay[key]"
-            :min="1"
+            :min="item.min ?? 1"
             :max="99999"
             :disabled="item.disable"
           />

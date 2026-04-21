@@ -133,6 +133,7 @@ export interface FormDataAi {
 interface ConfDelay {
   deliveryStarts: number
   deliveryInterval: number
+  deliveryIntervalRandomOffset: number
   deliveryPageNext: number
 }
 
@@ -141,6 +142,7 @@ type ConfInfoDelay = {
     label: string
     'data-help'?: string
     disable?: boolean
+    min?: number
   }
 }
 

@@ -67,6 +67,7 @@ export interface DeliverExecutionDependencies {
     formData: {
       delay: {
         deliveryInterval: number
+        deliveryIntervalRandomOffset: number
       }
       deliveryLimit: {
         value: number
@@ -401,6 +402,19 @@ export async function executeDeliverJob(options: {
 /**
  * 无论单岗位执行成功还是失败，都在迭代末尾更新缓存并执行节流等待。
  */
+function resolveIterationDelaySeconds(options: {
+  deliveryInterval: number
+  deliveryIntervalRandomOffset: number
+  extraDelaySeconds?: number
+}) {
+  const randomOffset = Math.max(0, options.deliveryIntervalRandomOffset)
+  const randomizedDelay = randomOffset > 0
+    ? Math.random() * randomOffset
+    : 0
+
+  return options.deliveryInterval + randomizedDelay + (options.extraDelaySeconds ?? 0)
+}
+
 export async function finalizeDeliverIteration(options: {
   cachePipelineResultFn: typeof cachePipelineResult
   conf: DeliverExecutionDependencies['conf']
@@ -421,5 +435,9 @@ export async function finalizeDeliverIteration(options: {
   }
 
   options.statistics.todayData.total++
-  await delay(options.conf.formData.delay.deliveryInterval + (options.extraDelaySeconds ?? 0))
+  await delay(resolveIterationDelaySeconds({
+    deliveryInterval: options.conf.formData.delay.deliveryInterval,
+    deliveryIntervalRandomOffset: options.conf.formData.delay.deliveryIntervalRandomOffset,
+    extraDelaySeconds: options.extraDelaySeconds,
+  }))
 }

@@ -9,6 +9,7 @@ function createValidPatch(): Partial<FormData> {
     delay: {
       deliveryStarts: 1,
       deliveryInterval: 2,
+      deliveryIntervalRandomOffset: 3,
       deliveryPageNext: 3,
     },
     salaryRange: {
@@ -46,6 +47,7 @@ describe('validateConfigPatch', () => {
       delay: {
         deliveryStarts: -1,
         deliveryInterval: 2,
+        deliveryIntervalRandomOffset: -1,
         deliveryPageNext: 3,
       },
       companySizeRange: {
@@ -64,6 +66,7 @@ describe('validateConfigPatch', () => {
       expect.arrayContaining([
         expect.objectContaining({ field: 'deliveryLimit.value', code: 'invalid-delivery-limit' }),
         expect.objectContaining({ field: 'delay.deliveryStarts', code: 'invalid-delay-value' }),
+        expect.objectContaining({ field: 'delay.deliveryIntervalRandomOffset', code: 'invalid-delay-value' }),
         expect.objectContaining({ field: 'companySizeRange.value', code: 'range-order-invalid' }),
         expect.objectContaining({ field: 'aiFiltering.score', code: 'invalid-ai-filter-score' }),
         expect.objectContaining({ field: 'aiFiltering.externalTimeoutMs', code: 'invalid-ai-filter-timeout' }),
