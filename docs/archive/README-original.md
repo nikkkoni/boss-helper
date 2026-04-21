@@ -2,8 +2,7 @@
 > 这是上游 README 的历史快照，仅作参考。
 >
 > 其中的仓库链接、浏览器商店地址、反馈问卷、联系方式和发布信息都不代表当前仓库。
->
-> 当前仓库请以 [`README.md`](./README.md) 和 `docs/` 目录中的文档为准。
+> 当前仓库请以 [`../../README.md`](../../README.md) 和 `../../docs/` 目录中的文档为准。
 
 > [!CAUTION]
 > 本项目仅供学习交流，禁止用于商业用途
@@ -77,29 +76,3 @@ greasyfork地址(0.2旧版本): <https://greasyfork.org/zh-CN/scripts/491340>
 5. 提交 Pull 请求。
 
 ## 鸣谢
-
-- <https://github.com/yangfeng20/boss_batch_push>
-- <https://github.com/lisonge/vite-plugin-monkey>
-- <https://github.com/chatanywhere/GPT_API_free>
-
-- <https://uiverse.io/>
-- <https://www.runoob.com/manual/mqtt/protocol/MQTT-3.1.1-CN.pdf>
-
-## 类似项目
-
-- <https://github.com/Frrrrrrrrank/auto_job__find__chatgpt__rpa>
-- <https://github.com/noBaldAaa/find-job>
-
-## 最后
-
-嗯...
-
-## Star 趋势
-
-<a href="https://star-history.com/#ocyss/boos-helper&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ocyss/boos-helper&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ocyss/boos-helper&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ocyss/boos-helper&type=Date" />
- </picture>
-</a>

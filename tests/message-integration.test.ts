@@ -33,11 +33,6 @@ describe('agent message integration', () => {
     setBossHelperWindowBridgeTargetForTest(bridgeTarget)
     const dispatchSpy = vi.spyOn(bridgeTarget, 'dispatchEvent')
 
-    const {
-      BOSS_HELPER_AGENT_BRIDGE_TOKEN,
-      BOSS_HELPER_AGENT_CHANNEL,
-      BOSS_HELPER_AGENT_EVENT_FORWARD,
-    } = await import('@/message/agent')
     const background = (await import('@/entrypoints/background')).default
     const { registerAgentMessageBridge } = await import('@/message/contentScript')
     const { useDeliveryControl } = await import('@/pages/zhipin/hooks/useDeliveryControl')
@@ -45,10 +40,6 @@ describe('agent message integration', () => {
       '@/pages/zhipin/hooks/agentEvents'
     )
     const { useConf } = await import('@/stores/conf')
-    const {
-      BOSS_HELPER_AGENT_BRIDGE_REQUEST,
-      BOSS_HELPER_AGENT_EVENT_BRIDGE,
-    } = await import('@/message/agent')
 
     useConf().isLoaded = true
 

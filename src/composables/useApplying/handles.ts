@@ -1,7 +1,6 @@
 import { useModel } from '@/composables/useModel'
 import { requestExternalAIFilterReview } from '@/pages/zhipin/hooks/agentReview'
 import { useConf } from '@/stores/conf'
-import type { logData } from '@/stores/log'
 import { useStatistics } from '@/stores/statistics'
 import type { Statistics, FormData } from '@/types/formData'
 import { AIFilteringError } from '@/types/deliverError'

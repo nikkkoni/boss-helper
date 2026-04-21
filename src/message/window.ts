@@ -21,10 +21,6 @@ let privateBridgeElements: PrivateBridgeElements | null = null
 let windowBridgeTarget: EventTarget | null = null
 let windowBridgeEventType: string | null = null
 
-function isShadowRoot(value: unknown): value is ShadowRoot {
-  return typeof ShadowRoot !== 'undefined' && value instanceof ShadowRoot
-}
-
 function isWindowBusMessage(value: unknown): value is BossHelperWindowBusMessage {
   return (
     !!value &&

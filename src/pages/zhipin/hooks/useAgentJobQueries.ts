@@ -13,7 +13,7 @@ import {
   type BossHelperAgentLogsQueryData,
   type BossHelperAgentLogsQueryPayload,
 } from '@/message/agent'
-import { jobList, type MyJobListData } from '@/stores/jobs'
+import { jobList } from '@/stores/jobs'
 import { useLog } from '@/stores/log'
 import { resolveBossHelperAgentLogAudit } from '../../../../shared/agentAudit.js'
 

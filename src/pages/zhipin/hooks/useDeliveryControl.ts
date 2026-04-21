@@ -29,7 +29,7 @@ function normalizeTargetJobIds(jobIds?: string[]) {
   return [...new Set(jobIds.map((jobId) => jobId.trim()).filter(Boolean))]
 }
 
-function buildHighRiskStartMessage(preflight: BossHelperAgentExecutionPreflight) {
+function buildHighRiskStartMessage(_preflight: BossHelperAgentExecutionPreflight) {
   return 'start 属于高风险动作，外部 bridge / CLI / MCP 调用需显式传 confirmHighRisk=true 并先完成上下文检查后才会执行'
 }
 

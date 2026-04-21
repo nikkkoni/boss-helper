@@ -50,14 +50,6 @@ function createJob(overrides: Partial<bossZpJobItemData> = {}) {
   } as bossZpJobItemData
 }
 
-function createCard(overrides: Partial<bossZpCardData> = {}) {
-  return {
-    encryptUserId: 'boss-user-1',
-    securityId: 'security-1',
-    ...overrides,
-  } as bossZpCardData
-}
-
 describe('useApplying utils', () => {
   beforeEach(() => {
     document.cookie = 'bst=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'

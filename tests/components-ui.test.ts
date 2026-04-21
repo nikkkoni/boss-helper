@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 
 const {
   mockConf,
@@ -39,8 +39,8 @@ vi.mock('@vueuse/core', async () => {
   const actual = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core')
   return {
     ...actual,
-    useMouse: () => ({ x: { value: 10 }, y: { value: 20 } }),
-    useMouseInElement: () => ({ isOutside: { value: true } }),
+    useMouse: () => ({ x: ref(10), y: ref(20) }),
+    useMouseInElement: () => ({ isOutside: ref(true) }),
   }
 })
 
