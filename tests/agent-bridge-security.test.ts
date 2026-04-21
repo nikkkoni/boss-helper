@@ -5,10 +5,11 @@ import { once } from 'node:events'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-const repoRoot = '/Users/wang/Documents/boss/boss-helper'
+const repoRoot = join(fileURLToPath(new URL('.', import.meta.url)), '..')
 
 type BridgeProcess = {
   child: ChildProcessWithoutNullStreams
