@@ -3,6 +3,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ref } from 'vue'
 
 import { setupPinia } from './helpers/pinia'
@@ -143,7 +144,7 @@ describe('Selectllm.vue', () => {
 
   it('renders multi-turn form mode without binding v-model to ElForm', () => {
     const source = readFileSync(
-      '/Users/wang/Documents/boss/boss-helper/src/components/llms/selectllm/SelectllmPromptEditor.vue',
+      join(process.cwd(), 'src/components/llms/selectllm/SelectllmPromptEditor.vue'),
       'utf8',
     )
 
@@ -153,7 +154,7 @@ describe('Selectllm.vue', () => {
 
   it('uses the current repository variable table link instead of the upstream fork', () => {
     const source = readFileSync(
-      '/Users/wang/Documents/boss/boss-helper/src/components/llms/selectllm/SelectllmPromptEditor.vue',
+      join(process.cwd(), 'src/components/llms/selectllm/SelectllmPromptEditor.vue'),
       'utf8',
     )
 
