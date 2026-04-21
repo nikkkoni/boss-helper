@@ -1,15 +1,7 @@
 <script lang="ts" setup>
-import { useMouse, useMouseInElement } from '@vueuse/core'
-import {
-  ElCheckbox,
-  ElConfigProvider,
-  ElMessage,
-  ElTabPane,
-  ElTabs,
-  ElText,
-  ElTooltip,
-} from 'element-plus'
-import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { useMouseInElement } from '@vueuse/core'
+import { ElCheckbox, ElConfigProvider, ElMessage, ElTabPane, ElTabs, ElTooltip } from 'element-plus'
+import { computed, onMounted, onUnmounted, ref, shallowRef, unref, watch } from 'vue'
 
 import { useModel } from '@/composables/useModel'
 import { getActiveSiteAdapter } from '@/site-adapters'
@@ -34,18 +26,19 @@ const user = useUser()
 const model = useModel()
 const { initPager } = usePager()
 const { registerWindowAgentBridge } = useDeliveryControl()
-const { x, y } = useMouse({ type: 'client' })
 const deliver = useDeliver()
 const { todayData } = useStatistics()
 const conf = useConf()
 let unregisterAgentBridge: (() => void) | undefined
 
 const helpVisible = ref(false)
+const activeTab = ref('statistics')
 const searchRef = ref()
 const tabsRef = ref()
 const helpContent = ref('鼠标移到对应元素查看提示')
 const { isOutside } = useMouseInElement(tabsRef)
 const currentHelpElement = shallowRef<HTMLElement | null>(null)
+const helpAnchorRect = ref({ x: 0, y: 0, width: 0, height: 0 })
 const boxStyles = ref<Record<string, string | number>>({
   display: 'none',
 })
@@ -58,12 +51,7 @@ function getSelectors() {
 const triggerRef = computed(() => {
   return {
     getBoundingClientRect() {
-      return DOMRect.fromRect({
-        width: 0,
-        height: 0,
-        x: x.value,
-        y: y.value,
-      })
+      return DOMRect.fromRect(helpAnchorRect.value)
     },
   }
 })
@@ -73,12 +61,38 @@ const helpMaxWidth = computed(() =>
     ? boxStyles.value.width
     : '320px',
 )
+const userInfo = computed(() => unref(user.info))
+const currentUserLabel = computed(() => userInfo.value?.showName ?? userInfo.value?.name ?? '未识别当前账号')
+const pageProgressLabel = computed(() =>
+  deliver.total > 0 ? `${Math.min(deliver.current + 1, deliver.total)}/${deliver.total}` : '待开始',
+)
+const dashboardMetrics = computed(() => [
+  {
+    label: '今日投递',
+    value: `${todayData.success}/${conf.formData.deliveryLimit.value}`,
+    caption: '已完成 / 当日上限',
+    help: '这里显示今天已经完成的投递数量以及当前配置的上限。',
+  },
+  {
+    label: '当前页面',
+    value: pageProgressLabel.value,
+    caption: deliver.total > 0 ? '当前页面扫描进度' : '等待开始处理',
+    help: '这里显示当前页面岗位列表的处理进度。',
+  },
+  {
+    label: '当前账号',
+    value: currentUserLabel.value,
+    caption: helpVisible.value ? '帮助模式已开启' : '帮助模式未开启',
+    help: '这里显示当前识别到的 Boss 账号和帮助模式状态。',
+  },
+])
 
 function hideHelpBox() {
   currentHelpElement.value = null
   boxStyles.value = {
     display: 'none',
   }
+  helpAnchorRect.value = { x: 0, y: 0, width: 0, height: 0 }
 }
 
 function findHelpTarget(dom: HTMLElement | null) {
@@ -104,13 +118,22 @@ function updateHelpBox(target: HTMLElement | null) {
   }
 
   const bounding = target.getBoundingClientRect()
+  const styles = window.getComputedStyle(target)
+  helpAnchorRect.value = {
+    x: bounding.left + bounding.width / 2,
+    y: bounding.top + bounding.height / 2,
+    width: 0,
+    height: 0,
+  }
   boxStyles.value = {
     width: `${bounding.width}px`,
     height: `${bounding.height}px`,
     left: `${bounding.left}px`,
     top: `${bounding.top}px`,
     display: 'block',
-    backgroundColor: '#3eaf7c33',
+    backgroundColor: 'rgb(110 231 183 / 18%)',
+    borderRadius: styles.borderRadius || '18px',
+    boxShadow: 'inset 0 0 0 1px rgb(20 184 166 / 24%)',
     transition: 'all 0.08s linear',
   }
 }
@@ -258,70 +281,108 @@ onUnmounted(() => {
 
 <template>
   <ElConfigProvider namespace="ehp">
-    <h2 style="display: flex; align-items: center">
-      Helper
-      <ElText v-if="todayData.total > 0" style="margin-right: 15px">
-        今日投递: {{ todayData.success }}/{{ conf.formData.deliveryLimit.value }}
-      </ElText>
-      <ElText v-if="deliver.total > 0">
-        当前页面处理: {{ deliver.current + 1 }}/{{ deliver.total }}
-      </ElText>
-    </h2>
-    <div
-      style="z-index: 999; position: fixed; pointer-events: none; border-width: 1px"
-      :style="boxStyles"
-    />
-    <ElTooltip :visible="helpVisible && !isOutside" :virtual-ref="triggerRef">
-      <template #content>
-        <div :style="`width: auto;max-width:${helpMaxWidth};font-size:17px;`">
-          {{ helpContent }}
+    <div class="helper-dashboard">
+      <section class="helper-dashboard__hero">
+        <div class="helper-dashboard__copy" data-help="这里集中展示当前工作台状态与关键入口。">
+          <span class="helper-dashboard__eyebrow">Boss Helper Workspace</span>
+          <h2>投递控制台</h2>
+          <p>把筛选、统计、配置和日志整合进一个更清晰的工作台，减少在页面里来回寻找入口。</p>
+          <p class="helper-dashboard__summary">
+            今日投递: {{ todayData.success }}/{{ conf.formData.deliveryLimit.value }}
+          </p>
         </div>
-      </template>
-    </ElTooltip>
-    <ElTabs ref="tabsRef" data-help="鼠标移到对应元素查看提示">
-      <ElTabPane label="统计" data-help="失败是成功她妈">
-        <Statistics />
-      </ElTabPane>
-      <ElTabPane ref="searchRef" label="筛选" />
-      <ElTabPane label="配置" data-help="好好看，好好学">
-        <Config />
-      </ElTabPane>
-      <ElTabPane label="日志" data-help="反正你也不看">
-        <Logs />
-      </ElTabPane>
-      <ElTabPane
-        label="关于"
-        class="hp-about-box"
-        data-help="项目是写不完美的,但总要去追求完美"
-      >
-        <About />
-      </ElTabPane>
-      <ElTabPane>
-        <template #label>
-          <ElCheckbox v-model="helpVisible" label="帮助" size="large" @click.stop="" />
+
+        <div class="helper-dashboard__toolbar">
+          <label class="helper-help-toggle" data-help="开启后，把鼠标悬停在控件上即可查看帮助说明。">
+            <span class="helper-help-toggle__title">帮助模式</span>
+            <ElCheckbox v-model="helpVisible" label="悬停说明" size="large" @click.stop="" />
+          </label>
+
+          <div class="helper-status-pill" data-help="这里展示当前识别到的账号和帮助高亮状态。">
+            <span class="helper-status-pill__dot" />
+            <div>
+              <strong>{{ currentUserLabel }}</strong>
+              <span>{{ helpVisible ? '帮助高亮已开启' : '帮助高亮已关闭' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="helper-metric-grid">
+          <article
+            v-for="item in dashboardMetrics"
+            :key="item.label"
+            class="helper-metric-card"
+            :data-help="item.help"
+          >
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <p>{{ item.caption }}</p>
+          </article>
+        </div>
+      </section>
+
+      <div class="helper-help-overlay" :style="boxStyles" />
+
+      <ElTooltip :visible="helpVisible && !isOutside" :virtual-ref="triggerRef" placement="top">
+        <template #content>
+          <div :style="`width: auto;max-width:${helpMaxWidth};font-size:16px;line-height:1.6;`">
+            {{ helpContent }}
+          </div>
         </template>
-        我去, 给你发现小彩蛋了哇! 不过这里啥都没有, 但还是要谢谢你来查看帮助. 虽然点歪了一些些...
-        <br />
-        文案不理解的可以提供建议进行调整
-      </ElTabPane>
-    </ElTabs>
-    <Teleport to="#boss-helper-job-wrap,.page-job-inner .page-job-content">
-      <Card />
-    </Teleport>
-    <!-- <Teleport to=".page-job-wrapper">
-    <chatVue
-      style="
-        position: fixed;
-        top: 70px;
-        left: 20px;
-        height: calc(100vh - 80px);
-        display: flex;
-        flex-direction: column;
-        width: 28%;
-        max-width: 540px;
-      "
-    />
-  </Teleport> -->
+      </ElTooltip>
+
+      <ElTabs
+        v-model="activeTab"
+        ref="tabsRef"
+        class="helper-tabs"
+        data-help="鼠标移到对应元素查看提示"
+      >
+        <ElTabPane label="统计概览" name="statistics" data-help="失败是成功她妈">
+          <section class="helper-panel">
+            <Statistics />
+          </section>
+        </ElTabPane>
+        <ElTabPane ref="searchRef" class="helper-search-pane" label="筛选条件" name="filter" />
+        <ElTabPane label="投递配置" name="config" data-help="好好看，好好学">
+          <section class="helper-panel">
+            <Config />
+          </section>
+        </ElTabPane>
+        <ElTabPane label="运行日志" name="logs" data-help="反正你也不看">
+          <section class="helper-panel">
+            <Logs />
+          </section>
+        </ElTabPane>
+        <ElTabPane
+          label="项目说明"
+          name="about"
+          class="hp-about-box"
+          data-help="项目是写不完美的,但总要去追求完美"
+        >
+          <section class="helper-panel helper-panel--about">
+            <About />
+          </section>
+        </ElTabPane>
+      </ElTabs>
+
+      <Teleport to="#boss-helper-job-wrap,.page-job-inner .page-job-content">
+        <Card />
+      </Teleport>
+      <!-- <Teleport to=".page-job-wrapper">
+      <chatVue
+        style="
+          position: fixed;
+          top: 70px;
+          left: 20px;
+          height: calc(100vh - 80px);
+          display: flex;
+          flex-direction: column;
+          width: 28%;
+          max-width: 540px;
+        "
+      />
+    </Teleport> -->
+    </div>
   </ElConfigProvider>
 </template>
 
@@ -333,28 +394,299 @@ onUnmounted(() => {
   }
 }
 
+.helper-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #0f172a;
+}
+
+.helper-dashboard__hero {
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  border-radius: 28px;
+  border: 1px solid rgb(148 163 184 / 24%);
+  background:
+    radial-gradient(circle at top right, rgb(251 191 36 / 24%), transparent 34%),
+    radial-gradient(circle at left bottom, rgb(14 165 233 / 16%), transparent 38%),
+    linear-gradient(160deg, rgb(255 255 255 / 88%), rgb(248 250 252 / 96%));
+  box-shadow:
+    0 28px 60px rgb(15 23 42 / 12%),
+    inset 0 1px 0 rgb(255 255 255 / 78%);
+  backdrop-filter: blur(18px);
+}
+
+.helper-dashboard__copy,
+.helper-dashboard__toolbar,
+.helper-metric-grid {
+  position: relative;
+  z-index: 1;
+}
+
+.helper-dashboard__eyebrow {
+  display: inline-flex;
+  margin-bottom: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.helper-dashboard__copy h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 1.2rem + 1vw, 2.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.helper-dashboard__copy p {
+  max-width: 760px;
+  margin: 12px 0 0;
+  color: #475569;
+  line-height: 1.75;
+}
+
+.helper-dashboard__summary {
+  display: inline-flex;
+  margin-top: 18px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgb(15 118 110 / 10%);
+  color: #0f172a !important;
+  font-weight: 700;
+}
+
+.helper-dashboard__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.helper-help-toggle,
+.helper-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 60%);
+  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 16%);
+}
+
+.helper-help-toggle {
+  min-width: 240px;
+  justify-content: space-between;
+}
+
+.helper-help-toggle__title {
+  font-weight: 700;
+}
+
+.helper-status-pill {
+  flex: 1;
+  min-width: 0;
+}
+
+.helper-status-pill__dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+  box-shadow: 0 0 0 8px rgb(20 184 166 / 12%);
+}
+
+.helper-status-pill strong,
+.helper-status-pill span {
+  display: block;
+}
+
+.helper-status-pill strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.98rem;
+}
+
+.helper-status-pill span {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.helper-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.helper-metric-card {
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgb(255 255 255 / 60%);
+  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 16%);
+}
+
+.helper-metric-card span,
+.helper-metric-card p {
+  color: #64748b;
+}
+
+.helper-metric-card span {
+  display: inline-flex;
+  margin-bottom: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.helper-metric-card strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.18rem;
+  font-weight: 700;
+}
+
+.helper-metric-card p {
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
+.helper-help-overlay {
+  z-index: 999;
+  position: fixed;
+  pointer-events: none;
+  border-width: 1px;
+  border-radius: 18px;
+  backdrop-filter: blur(4px);
+}
+
+.helper-tabs .ehp-tabs__header {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.helper-tabs .ehp-tabs__nav-wrap {
+  display: flex;
+  justify-content: center;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.helper-tabs .ehp-tabs__nav-wrap::after {
+  display: none;
+}
+
+.helper-tabs .ehp-tabs__nav-scroll {
+  display: inline-flex;
+  justify-content: center;
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 74%);
+  box-shadow:
+    inset 0 0 0 1px rgb(148 163 184 / 18%),
+    0 18px 32px rgb(15 23 42 / 8%);
+}
+
+.helper-tabs .ehp-tabs__nav {
+  width: auto;
+  justify-content: center;
+  margin: 0 auto;
+  gap: 8px;
+  border: 0;
+}
+
+.helper-tabs .ehp-tabs__nav-prev,
+.helper-tabs .ehp-tabs__nav-next {
+  display: none;
+}
+
+.helper-tabs .ehp-tabs__active-bar {
+  display: none;
+}
+
+.helper-tabs .ehp-tabs__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: #475569;
+  line-height: 1.1;
+  text-align: center;
+  font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.helper-tabs .ehp-tabs__item.is-active {
+  background: linear-gradient(135deg, #0f766e, #0ea5e9);
+  color: #fff;
+  box-shadow: 0 14px 28px rgb(14 165 233 / 22%);
+}
+
+.helper-tabs .ehp-tabs__item:hover {
+  color: #0f172a;
+}
+
+.helper-panel,
+.helper-search-pane {
+  margin-top: 18px;
+  padding: 22px;
+  border-radius: 26px;
+  border: 1px solid rgb(148 163 184 / 18%);
+  background: rgb(255 255 255 / 82%);
+  box-shadow:
+    0 22px 44px rgb(15 23 42 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 72%);
+  backdrop-filter: blur(18px);
+}
+
+.helper-search-pane {
+  min-height: 120px;
+}
+
+.helper-panel--about {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 .hp-about-box {
   display: flex;
-  .hp-about {
-    display: flex;
-    flex-direction: column;
-  }
-  html.dark & {
-    color: #cfd3dc;
-  }
 }
 
-.ehp-checkbox {
-  color: #5e5e5e;
-  &.is-checked .ehp-checkbox__label {
-    color: #000000 !important;
-  }
-  .dark &.is-checked .ehp-checkbox__label {
-    color: #cfd3dc !important;
-  }
+.helper-dashboard .ehp-checkbox {
+  color: #475569;
 }
 
-.ehp-form {
+.helper-dashboard .ehp-checkbox.is-checked .ehp-checkbox__label {
+  color: #0f172a !important;
+}
+
+.helper-dashboard .ehp-form {
   .ehp-link {
     font-size: 12px;
   }
@@ -366,7 +698,112 @@ onUnmounted(() => {
     padding-left: 4px;
   }
 }
-.ehp-tabs__content {
+
+.helper-dashboard .ehp-alert,
+.helper-dashboard .ehp-collapse-item__header,
+.helper-dashboard .ehp-collapse-item__wrap,
+.helper-dashboard .ehp-form-item,
+.helper-dashboard .ehp-statistic,
+.helper-dashboard .ehp-progress-bar__outer,
+.helper-dashboard .ehp-table,
+.helper-dashboard .ehp-button-group,
+.helper-dashboard .ehp-button {
+  border-radius: 18px;
+}
+
+.helper-dashboard .ehp-tabs__content {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
   overflow: unset !important;
+}
+
+html.dark {
+  .helper-dashboard {
+    color: #e2e8f0;
+  }
+
+  .helper-dashboard__hero {
+    border-color: rgb(71 85 105 / 44%);
+    background:
+      radial-gradient(circle at top right, rgb(6 182 212 / 14%), transparent 32%),
+      radial-gradient(circle at left bottom, rgb(168 85 247 / 12%), transparent 36%),
+      linear-gradient(165deg, rgb(15 23 42 / 92%), rgb(30 41 59 / 94%));
+    box-shadow:
+      0 28px 60px rgb(2 6 23 / 42%),
+      inset 0 1px 0 rgb(255 255 255 / 6%);
+  }
+
+  .helper-dashboard__eyebrow {
+    color: #67e8f9;
+  }
+
+  .helper-dashboard__copy p,
+  .helper-status-pill span,
+  .helper-metric-card span,
+  .helper-metric-card p,
+  .helper-dashboard .ehp-checkbox {
+    color: #94a3b8;
+  }
+
+  .helper-dashboard__summary,
+  .helper-help-toggle,
+  .helper-status-pill,
+  .helper-metric-card,
+  .helper-tabs .ehp-tabs__nav-scroll,
+  .helper-panel,
+  .helper-search-pane {
+    background: rgb(15 23 42 / 66%);
+    border-color: rgb(71 85 105 / 42%);
+    box-shadow:
+      inset 0 0 0 1px rgb(71 85 105 / 26%),
+      0 24px 44px rgb(2 6 23 / 28%);
+  }
+
+  .helper-dashboard__summary {
+    color: #e2e8f0 !important;
+    background: rgb(14 165 233 / 18%);
+  }
+
+  .helper-dashboard .ehp-checkbox.is-checked .ehp-checkbox__label,
+  .helper-tabs .ehp-tabs__item,
+  .helper-tabs .ehp-tabs__item:hover {
+    color: #e2e8f0 !important;
+  }
+
+  .helper-tabs .ehp-tabs__item.is-active {
+    background: linear-gradient(135deg, #0891b2, #6366f1);
+    box-shadow: 0 14px 28px rgb(99 102 241 / 22%);
+  }
+}
+
+@media (max-width: 960px) {
+  .helper-dashboard__toolbar,
+  .helper-metric-grid {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .helper-dashboard__toolbar {
+    justify-content: stretch;
+  }
+
+  .helper-help-toggle,
+  .helper-status-pill {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .helper-dashboard__hero,
+  .helper-panel,
+  .helper-search-pane {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .helper-tabs .ehp-tabs__item {
+    padding: 0 14px;
+  }
 }
 </style>

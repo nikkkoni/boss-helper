@@ -1,20 +1,15 @@
 <script lang="ts" setup>
 import type { Action } from 'element-plus'
-import {
-  ElAvatar,
-  ElConfigProvider,
-  ElDropdown,
-  ElDropdownItem,
-  ElDropdownMenu,
-  ElMessage,
-  ElMessageBox,
-} from 'element-plus'
-import { h, onMounted, ref } from 'vue'
+import { ElAvatar, ElConfigProvider, ElMessage, ElMessageBox } from 'element-plus'
+import { computed, h, onMounted, ref, unref } from 'vue'
 
 import SafeHtml from '@/components/SafeHtml.vue'
 import userVue from '@/components/conf/User.vue'
 import { counter } from '@/message'
+import { useUser } from '@/stores/user'
 import { logger } from '@/utils/logger'
+
+const user = useUser()
 
 const confBox = ref(false)
 
@@ -24,9 +19,37 @@ const confs = {
 
 const confKey = ref<keyof typeof confs>('user')
 const dark = ref(false)
+const launcherExpanded = ref(false)
+const protocolStorageKey = 'boss-protocol'
+const protocolVersion = '2025/06/14'
+const userInfo = computed(() => unref(user.info))
+const storedAccounts = computed(() => unref(user.cookieTableData) ?? [])
+
+const currentUserLabel = computed(() => userInfo.value?.showName ?? userInfo.value?.name ?? '当前页面未识别账号')
+const currentUserAvatar = computed(
+  () => userInfo.value?.tinyAvatar ?? userInfo.value?.largeAvatar ?? 'https://avatars.githubusercontent.com/u/68412205?v=4',
+)
+const quickStats = computed(() => [
+  {
+    label: '已保存账号',
+    value: String(storedAccounts.value.length),
+    caption: '本地账户档案',
+  },
+  {
+    label: '主题模式',
+    value: dark.value ? 'Dark' : 'Light',
+    caption: dark.value ? '夜间界面已开启' : '清晰亮色界面',
+  },
+  {
+    label: '帮助入口',
+    value: 'README',
+    caption: '协议说明与文档入口',
+  },
+])
 
 counter.storageGet('theme-dark', false).then((res) => {
   dark.value = res
+  document.documentElement.classList.toggle('dark', dark.value)
 })
 
 async function themeChange() {
@@ -40,6 +63,16 @@ async function themeChange() {
   }
   document.documentElement.classList.toggle('dark', dark.value)
   await counter.storageSet('theme-dark', dark.value)
+}
+
+function toggleLauncher() {
+  launcherExpanded.value = !launcherExpanded.value
+}
+
+function openUserCenter() {
+  launcherExpanded.value = true
+  confKey.value = 'user'
+  confBox.value = true
 }
 
 // logger.log(monkeyWindow, window, unsafeWindow);
@@ -59,58 +92,116 @@ const protocolNotice = `1. 使用前先好好了解项目，阅读 README、docs
 问题反馈: <a href="https://github.com/nikkkoni/boss-helper/issues" target="_blank" rel="noreferrer">https://github.com/nikkkoni/boss-helper/issues</a>
 文档入口: <a href="https://github.com/nikkkoni/boss-helper#readme" target="_blank" rel="noreferrer">README 与 docs</a>`
 
+function openProtocolNotice() {
+  ElMessageBox({
+    title: '注意事项',
+    autofocus: true,
+    confirmButtonText: '了解并同意!',
+    message: () => h(SafeHtml, { class: 'protocol-notice', tag: 'div', html: protocolNotice }),
+    customStyle:
+      '--el-messagebox-width: unset; white-space: pre-wrap; width: unset;max-width: unset;' as never,
+    callback: (action: Action) => {
+      if (action === 'confirm') {
+        counter.storageSet(protocolStorageKey, protocolVersion)
+      }
+    },
+  })
+}
+
+async function ensureProtocolNotice() {
+  const protocolDate = await counter.storageGet<string>(protocolStorageKey)
+  if (protocolDate !== protocolVersion) {
+    openProtocolNotice()
+  }
+}
+
 onMounted(async () => {
   logger.info('BossHelper挂载成功')
   ElMessage('BossHelper挂载成功!')
 
-  const protocol = 'boss-protocol'
-  const protocol_val = '2025/06/14'
-  const protocol_date = await counter.storageGet<string>(protocol)
-  if (protocol_date !== protocol_val) {
-    ElMessageBox({
-      title: '注意事项',
-      autofocus: true,
-      confirmButtonText: '了解并同意!',
-      message: () => h(SafeHtml, { class: 'protocol-notice', tag: 'div', html: protocolNotice }),
-      customStyle:
-        '--el-messagebox-width: unset; white-space: pre-wrap; width: unset;max-width: unset;' as never,
-      callback: (action: Action) => {
-        if (action === 'confirm') {
-          counter.storageSet(protocol, protocol_val)
-        }
-      },
-    })
-  }
+  void user.initUser()
+  void user.initCookie()
+  await ensureProtocolNotice()
 })
 </script>
 
 <template>
   <ElConfigProvider namespace="ehp">
-    <ElDropdown trigger="click">
-      <ElAvatar :size="30" src="https://avatars.githubusercontent.com/u/68412205?v=4"> H </ElAvatar>
-      <template #dropdown>
-        <ElDropdownMenu>
-          <ElDropdownItem disabled> BossHelp配置项 </ElDropdownItem>
-          <ElDropdownItem divided disabled />
-          <ElDropdownItem
-            v-for="(v, k) in confs"
-            :key="k"
-            :disabled="v.disabled"
-            @click="
-              () => {
-                confKey = k
-                confBox = true
-              }
-            "
-          >
-            {{ v.name }}
-          </ElDropdownItem>
-          <ElDropdownItem disabled @click="themeChange">
-            暗黑模式（{{ dark ? '开' : '关' }}）
-          </ElDropdownItem>
-        </ElDropdownMenu>
-      </template>
-    </ElDropdown>
+    <div class="boss-helper-launcher" :class="launcherExpanded ? 'is-expanded' : 'is-collapsed'">
+      <div class="boss-helper-launcher__panel">
+        <button
+          v-if="!launcherExpanded"
+          type="button"
+          class="boss-helper-launcher__fab"
+          aria-label="展开 Boss Helper 控制台"
+          @click="toggleLauncher"
+        >
+          <ElAvatar :size="42" :src="currentUserAvatar">
+            {{ currentUserLabel.slice(0, 1) }}
+          </ElAvatar>
+        </button>
+
+        <template v-else>
+          <div class="boss-helper-launcher__halo boss-helper-launcher__halo--primary" />
+          <div class="boss-helper-launcher__halo boss-helper-launcher__halo--secondary" />
+
+          <div class="boss-helper-launcher__top">
+            <div class="boss-helper-launcher__title-block">
+              <div class="boss-helper-launcher__brand">
+                <span class="boss-helper-launcher__eyebrow">Boss Helper</span>
+                <strong>Automation Console</strong>
+              </div>
+              <span class="boss-helper-launcher__user-line">{{ currentUserLabel }}</span>
+            </div>
+
+            <div class="boss-helper-launcher__top-actions">
+              <button type="button" class="boss-helper-launcher__toggle" @click="toggleLauncher">
+                收起
+              </button>
+
+              <button type="button" class="boss-helper-launcher__theme" @click="themeChange">
+                <span class="boss-helper-launcher__theme-track">
+                  <span class="boss-helper-launcher__theme-thumb" />
+                </span>
+                <span>{{ dark ? '夜间' : '明亮' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="boss-helper-launcher__profile">
+            <ElAvatar :size="52" :src="currentUserAvatar">
+              {{ currentUserLabel.slice(0, 1) }}
+            </ElAvatar>
+            <div class="boss-helper-launcher__profile-copy">
+              <strong>{{ currentUserLabel }}</strong>
+              <p>浏览器扩展控制台</p>
+            </div>
+          </div>
+
+          <div class="boss-helper-launcher__stats">
+            <article v-for="item in quickStats" :key="item.label" class="boss-helper-launcher__stat">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <small>{{ item.caption }}</small>
+            </article>
+          </div>
+
+          <div class="boss-helper-launcher__actions">
+            <button
+              type="button"
+              class="boss-helper-launcher__action boss-helper-launcher__action--primary"
+              @click="openUserCenter"
+            >
+              账户配置
+            </button>
+            <button type="button" class="boss-helper-launcher__action" @click="openProtocolNotice">
+              帮助说明
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <Teleport to="body">
       <component :is="confs[confKey].component" id="help-conf-box" v-model="confBox" />
     </Teleport>

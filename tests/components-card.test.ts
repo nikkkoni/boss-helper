@@ -38,7 +38,7 @@ describe('Card.vue', () => {
     mockJobList.list = [createJob()]
   })
 
-  it('uses WheelEvent deltaX for horizontal scrolling when wheelDelta is unavailable', () => {
+  it('maps vertical wheel input to horizontal board scrolling', () => {
     const wrapper = mount(Card, {
       global: {
         stubs: {
@@ -57,9 +57,35 @@ describe('Card.vue', () => {
     const unwrap = <T,>(value: { value: T } | T): T =>
       value != null && typeof value === 'object' && 'value' in value ? value.value : value
 
-    state.scroll(new WheelEvent('wheel', { deltaX: 36, deltaY: 0 }))
+    state.scroll(new WheelEvent('wheel', { deltaX: 0, deltaY: 72 }))
 
     expect(grid.scrollLeft).toBe(36)
     expect(unwrap(state.autoScroll)).toBe(false)
+  })
+
+  it('moves the candidate board with nav buttons', async () => {
+    const wrapper = mount(Card, {
+      global: {
+        stubs: {
+          ElSwitch: true,
+        },
+      },
+    })
+
+    const grid = wrapper.get('.card-grid').element as HTMLDivElement
+    grid.scrollLeft = 0
+    Object.defineProperty(grid, 'clientWidth', {
+      value: 400,
+      configurable: true,
+    })
+    const scrollByMock = vi.fn(({ left }: { left: number; behavior: ScrollBehavior }) => {
+      grid.scrollLeft += left
+    })
+    grid.scrollBy = scrollByMock as unknown as typeof grid.scrollBy
+
+    await wrapper.get('.boss-helper-card__nav--next').trigger('click')
+
+    expect(scrollByMock).toHaveBeenCalledWith({ left: 300, behavior: 'smooth' })
+    expect(grid.scrollLeft).toBe(300)
   })
 })
