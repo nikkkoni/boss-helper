@@ -7,6 +7,8 @@ import { browser, storage } from '#imports'
 import {
   AGENT_PROTOCOL_VERSION,
   BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+  BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
+  BOSS_HELPER_AGENT_EVENT_BRIDGE,
   BOSS_HELPER_AGENT_EVENT_FORWARD,
   createBossHelperAgentResponse,
   isBossHelperAgentEventBridgeMessage,
@@ -18,7 +20,8 @@ import {
   type BossHelperAgentResponse,
 } from '@/message/agent'
 import {
-  isBossHelperSameOriginWindowMessage,
+  getBossHelperWindowBridgeTarget,
+  onBossHelperWindowMessage,
   postBossHelperWindowMessage,
 } from '@/message/window'
 
@@ -125,38 +128,49 @@ export const [provideContentCounter] = defineProxy(
 
 export class ProvideContentAdapter implements Adapter {
   sendMessage: SendMessage = (message) => {
-    postBossHelperWindowMessage(window.parent, message)
+    postBossHelperWindowMessage(getBossHelperWindowBridgeTarget(), {
+      payload: message,
+      source: 'content-script',
+      type: 'comctx',
+    })
   }
 
   onMessage: OnMessage = (callback) => {
-    const handler = (event: MessageEvent<Partial<Message<Record<string, any>>> | undefined>) => {
-      if (!isBossHelperSameOriginWindowMessage(event, window.parent)) {
-        return
-      }
-      callback(event.data)
-    }
-    window.parent.addEventListener('message', handler)
-    return () => window.parent.removeEventListener('message', handler)
+    return onBossHelperWindowMessage(
+      getBossHelperWindowBridgeTarget(),
+      (payload, message) => {
+        if (message.source === 'content-script') {
+          return
+        }
+        callback(payload as Partial<Message<Record<string, any>>> | undefined)
+      },
+      { messageType: 'comctx' },
+    )
   }
 }
 
 async function forwardAgentRequestToPage(
   request: BossHelperAgentRequest,
-): Promise<BossHelperAgentResponse> {
+): Promise<BossHelperAgentResponse<unknown>> {
   const requestId = request.requestId ?? crypto.randomUUID()
+  const bridgeTarget = getBossHelperWindowBridgeTarget()
 
   return new Promise((resolve) => {
-    const handleResponse = (event: MessageEvent) => {
-      if (!isBossHelperSameOriginWindowMessage(event) || !isBossHelperAgentBridgeResponse(event.data)) {
-        return
-      }
-      if (event.data.requestId !== requestId) {
-        return
-      }
+    const stopListening = onBossHelperWindowMessage(
+      bridgeTarget,
+      (payload) => {
+        if (!isBossHelperAgentBridgeResponse(payload)) {
+          return
+        }
+        if (payload.requestId !== requestId) {
+          return
+        }
 
-      cleanup()
-      resolve(event.data.payload)
-    }
+        cleanup()
+        resolve(payload.payload)
+      },
+      { messageType: BOSS_HELPER_AGENT_BRIDGE_RESPONSE },
+    )
 
     const timeout = window.setTimeout(() => {
       cleanup()
@@ -171,7 +185,7 @@ async function forwardAgentRequestToPage(
 
     const cleanup = () => {
       window.clearTimeout(timeout)
-      window.removeEventListener('message', handleResponse)
+      stopListening()
     }
 
     const payload: BossHelperAgentBridgeRequest = {
@@ -184,8 +198,11 @@ async function forwardAgentRequestToPage(
       },
     }
 
-    window.addEventListener('message', handleResponse)
-    postBossHelperWindowMessage(window, payload)
+    postBossHelperWindowMessage(bridgeTarget, {
+      payload,
+      source: 'content-script',
+      type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+    })
   })
 }
 
@@ -222,18 +239,22 @@ function handleRuntimeAgentRequest(message: unknown) {
 }
 
 export function registerAgentMessageBridge() {
-  const forwardPageEventToBackground = (event: MessageEvent) => {
-    if (!isBossHelperSameOriginWindowMessage(event) || !isBossHelperAgentEventBridgeMessage(event.data)) {
-      return
-    }
-
-    void browser.runtime.sendMessage({
-      type: BOSS_HELPER_AGENT_EVENT_FORWARD,
-      payload: event.data.payload,
-    })
-  }
-
-  window.addEventListener('message', forwardPageEventToBackground)
+  const stopForwarding = onBossHelperWindowMessage(
+    getBossHelperWindowBridgeTarget(),
+    (payload, message) => {
+      if (message.source === 'content-script') {
+        return
+      }
+      if (!isBossHelperAgentEventBridgeMessage(payload)) {
+        return
+      }
+      void browser.runtime.sendMessage({
+        type: BOSS_HELPER_AGENT_EVENT_FORWARD,
+        payload: payload.payload,
+      })
+    },
+    { messageType: BOSS_HELPER_AGENT_EVENT_BRIDGE },
+  )
 
   if (globalThis.chrome?.runtime?.onMessage) {
     globalThis.chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -245,10 +266,12 @@ export function registerAgentMessageBridge() {
       void responsePromise.then(sendResponse)
       return true
     })
-    return
+    return stopForwarding
   }
 
   browser.runtime.onMessage.addListener((message) => {
     return handleRuntimeAgentRequest(message)
   })
+
+  return stopForwarding
 }

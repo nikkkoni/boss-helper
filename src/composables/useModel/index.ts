@@ -57,7 +57,7 @@ export const useModel = defineStore('model', () => {
   async function init() {
     await migrateStorageKeys(modelStorageMigrations, counter)
     const data = await counter.storageGet<modelData[]>(persistedConfModelKey)
-    logger.debug('ai模型数据', data)
+    logger.debug('ai模型数据已加载', { count: data?.length ?? 0 })
     modelData.value = data ?? []
   }
 

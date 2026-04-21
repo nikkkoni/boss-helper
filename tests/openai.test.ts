@@ -2,11 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createJob } from './helpers/jobs'
 
-const {
-  mockLoggerWarn,
-  mockRequestPost,
-  mockRunBatchedAIRequest,
-} = vi.hoisted(() => ({
+const { mockLoggerWarn, mockRequestPost, mockRunBatchedAIRequest } = vi.hoisted(() => ({
   mockLoggerWarn: vi.fn(),
   mockRequestPost: vi.fn(),
   mockRunBatchedAIRequest: vi.fn(async (_key: string, task: () => unknown) => task()),
@@ -53,7 +49,6 @@ import { RequestError } from '@/utils/request'
 const createConf = () => ({
   advanced: {
     json: true,
-    stream: false,
   },
   api_key: 'secret',
   model: 'gpt-4o-mini',
@@ -71,20 +66,20 @@ describe('openai llm', () => {
 
   it('falls back from structured output to json_object when the provider rejects json_schema', async () => {
     const model = new openai.Gpt(createConf(), '你好 {{ data.jobName }}')
-    const schemaUnsupportedError = new RequestError('response_format json_schema is not supported here')
+    const schemaUnsupportedError = new RequestError(
+      'response_format json_schema is not supported here',
+    )
     schemaUnsupportedError.statusCode = 400
 
-    mockRequestPost
-      .mockRejectedValueOnce(schemaUnsupportedError)
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              content: '{"accepted":true}',
-            },
+    mockRequestPost.mockRejectedValueOnce(schemaUnsupportedError).mockResolvedValueOnce({
+      choices: [
+        {
+          message: {
+            content: '{"accepted":true}',
           },
-        ],
-      })
+        },
+      ],
+    })
 
     const response = await model.message(
       {
@@ -112,45 +107,5 @@ describe('openai llm', () => {
       }),
     )
     expect(response.content).toEqual({ accepted: true })
-  })
-
-  it('parses streaming chunks while ignoring malformed frames', async () => {
-    const model = new openai.Gpt(
-      {
-        ...createConf(),
-        advanced: {
-          json: false,
-          stream: true,
-        },
-      },
-      '你好 {{ data.jobName }}',
-    )
-
-    mockRequestPost.mockImplementationOnce(
-      async ({ onStream }: { onStream?: (reader: AsyncIterable<{ data?: string }>) => Promise<void> }) => {
-        await onStream?.((async function* () {
-          yield { data: '{"choices":[{"delta":{"content":"Hello"}}]}' }
-          yield { data: 'not-json' }
-          yield { data: '{"choices":[{"delta":{"content":" world"}}]}' }
-          yield { data: '[DONE]' }
-        })())
-
-        return {
-          choices: [],
-        }
-      },
-    )
-
-    const response = await model.message(
-      {
-        data: {
-          data: createJob({ jobName: '前端工程师' }),
-        },
-      },
-      'aiFiltering',
-    )
-
-    expect(response.content).toBe('Hello world')
-    expect(response.usage).toBeUndefined()
   })
 })

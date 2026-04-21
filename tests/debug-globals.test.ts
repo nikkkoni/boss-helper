@@ -18,7 +18,7 @@ describe('debug global exposure', () => {
 
     expect(deliveryControlSource).toContain('registerWindowAgentBridge: () =>')
     expect(agentWindowBridgeSource).toContain(
-      'if (import.meta.env.DEV) {\n    targetWindow.__bossHelperAgent = options.controller\n  }',
+      'if (import.meta.env.DEV) {\n    window.__bossHelperAgent = options.controller\n  }',
     )
     expect(confStoreSource).toContain(
       'if (import.meta.env.DEV) {\n  window.__q_useConf = useConf\n}',

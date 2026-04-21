@@ -9,25 +9,16 @@ import {
   BOSS_HELPER_AGENT_EVENT_BRIDGE,
   type BossHelperAgentController,
 } from '@/message/agent'
+import {
+  getBossHelperPrivateBridgeEventType,
+  getBossHelperWindowBridgeTarget,
+  postBossHelperWindowMessage,
+} from '@/message/window'
 import { registerWindowAgentBridge } from '@/pages/zhipin/hooks/agentWindowBridge'
 
-function createWindowEvent(
-  data: unknown,
-  options: {
-    origin?: string
-    source?: Window | null
-  } = {},
-) {
-  const event = new MessageEvent('message', {
-    data,
-    origin: options.origin ?? window.location.origin,
-  })
-  Object.defineProperty(event, 'source', {
-    configurable: true,
-    value: options.source ?? window,
-  })
-  return event
-}
+import { usePrivateBridgeTarget } from './helpers/private-bridge'
+
+usePrivateBridgeTarget()
 
 async function waitForAssert(assertion: () => void, attempts = 20) {
   let lastError: unknown
@@ -73,7 +64,8 @@ describe('registerWindowAgentBridge', () => {
   it('forwards agent events and posts bridge responses for valid requests', async () => {
     const handle = vi.fn(async () => ({ code: 'stats', ok: true, message: 'ok' }))
     const stopEvents = vi.fn()
-    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => {})
+    const bridgeTarget = getBossHelperWindowBridgeTarget()
+    const dispatchSpy = vi.spyOn(bridgeTarget, 'dispatchEvent')
 
     const unregister = registerWindowAgentBridge({
       controller: createController(handle),
@@ -88,38 +80,53 @@ describe('registerWindowAgentBridge', () => {
       },
     })
 
-    expect(postMessageSpy).toHaveBeenCalledWith(
-      {
-        type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
-        payload: expect.objectContaining({ message: 'event payload', type: 'job-started' }),
-      },
-      window.location.origin,
-    )
+    const eventBridgeCalls = dispatchSpy.mock.calls.map(([event]) => event as CustomEvent<string>)
+    expect(
+      eventBridgeCalls.some(
+        (event) => {
+          if (event.type !== getBossHelperPrivateBridgeEventType()) {
+            return false
+          }
+          const detail = JSON.parse(event.detail) as { payload?: { message?: string }; type?: string }
+          return detail.type === BOSS_HELPER_AGENT_EVENT_BRIDGE && detail.payload?.message === 'event payload'
+        },
+      ),
+    ).toBe(true)
 
-    window.dispatchEvent(
-      createWindowEvent({
+    postBossHelperWindowMessage(bridgeTarget, {
+      payload: {
         type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
         requestId: 'req-1',
         payload: {
           channel: BOSS_HELPER_AGENT_CHANNEL,
           command: 'stats',
         },
-      }),
-    )
+      },
+      type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+    })
 
     await waitForAssert(() => {
       expect(handle).toHaveBeenCalledWith({
         channel: BOSS_HELPER_AGENT_CHANNEL,
         command: 'stats',
       })
-      expect(postMessageSpy).toHaveBeenCalledWith(
-        {
-          type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
-          requestId: 'req-1',
-          payload: expect.objectContaining({ code: 'stats', message: 'ok', ok: true }),
-        },
-        window.location.origin,
-      )
+      const calls = dispatchSpy.mock.calls.map(([event]) => event as CustomEvent<string>)
+      expect(
+        calls.some(
+          (event) => {
+            if (event.type !== getBossHelperPrivateBridgeEventType()) {
+              return false
+            }
+            const detail = JSON.parse(event.detail) as {
+              payload?: { payload?: { code?: string }; requestId?: string }
+              type?: string
+            }
+            return detail.type === BOSS_HELPER_AGENT_BRIDGE_RESPONSE
+              && detail.payload?.requestId === 'req-1'
+              && detail.payload?.payload?.code === 'stats'
+          },
+        ),
+      ).toBe(true)
     })
 
     unregister()
@@ -127,7 +134,8 @@ describe('registerWindowAgentBridge', () => {
   })
 
   it('normalizes controller failures before posting bridge responses', async () => {
-    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => {})
+    const bridgeTarget = getBossHelperWindowBridgeTarget()
+    const dispatchSpy = vi.spyOn(bridgeTarget, 'dispatchEvent')
     const unregister = registerWindowAgentBridge({
       controller: createController(
         vi.fn(async () => {
@@ -137,84 +145,89 @@ describe('registerWindowAgentBridge', () => {
       onEvent: () => vi.fn(),
     })
 
-    window.dispatchEvent(
-      createWindowEvent({
+    postBossHelperWindowMessage(bridgeTarget, {
+      payload: {
         type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
         requestId: 'req-2',
         payload: {
           channel: BOSS_HELPER_AGENT_CHANNEL,
           command: 'stats',
         },
-      }),
-    )
+      },
+      type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+    })
 
     await waitForAssert(() => {
-      expect(postMessageSpy).toHaveBeenCalledWith(
-        {
-          type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
-          requestId: 'req-2',
-          payload: expect.objectContaining({
-            code: 'controller-error',
-            message: 'stats exploded',
-            ok: false,
-            retryable: true,
-            suggestedAction: 'refresh-page',
-          }),
-        },
-        window.location.origin,
-      )
+      const calls = dispatchSpy.mock.calls.map(([event]) => event as CustomEvent<string>)
+      expect(
+        calls.some(
+          (event) => {
+            if (event.type !== getBossHelperPrivateBridgeEventType()) {
+              return false
+            }
+            const detail = JSON.parse(event.detail) as {
+              payload?: { payload?: { code?: string; message?: string }; requestId?: string }
+              type?: string
+            }
+            return detail.type === BOSS_HELPER_AGENT_BRIDGE_RESPONSE
+              && detail.payload?.requestId === 'req-2'
+              && detail.payload?.payload?.code === 'controller-error'
+              && detail.payload?.payload?.message === 'stats exploded'
+          },
+        ),
+      ).toBe(true)
     })
 
     unregister()
   })
 
-  it('ignores invalid or cross-origin messages and removes the listener on unregister', async () => {
+  it('ignores invalid messages and removes the listener on unregister', async () => {
     const handle = vi.fn(async () => ({ code: 'stats', ok: true, message: 'ok' }))
-    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => {})
+    const bridgeTarget = getBossHelperWindowBridgeTarget()
+    const dispatchSpy = vi.spyOn(bridgeTarget, 'dispatchEvent')
     const unregister = registerWindowAgentBridge({
       controller: createController(handle),
       onEvent: () => vi.fn(),
     })
 
-    window.dispatchEvent(
-      createWindowEvent(
-        {
-          type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
-          requestId: 'req-cross-origin',
-          payload: {
-            channel: BOSS_HELPER_AGENT_CHANNEL,
-            command: 'stats',
-          },
-        },
-        { origin: 'https://evil.example' },
-      ),
-    )
-    window.dispatchEvent(
-      createWindowEvent({
+    postBossHelperWindowMessage(bridgeTarget, {
+      payload: {
         type: 'ignored-message',
         payload: {
           channel: BOSS_HELPER_AGENT_CHANNEL,
           command: 'stats',
         },
-      }),
-    )
+      },
+      type: 'ignored-message',
+    })
 
     await Promise.resolve()
     expect(handle).not.toHaveBeenCalled()
-    expect(postMessageSpy).not.toHaveBeenCalled()
+    expect(
+      dispatchSpy.mock.calls.some(
+        ([event]) => {
+          if ((event as CustomEvent<string>).type !== getBossHelperPrivateBridgeEventType()) {
+            return false
+          }
+          const detail = JSON.parse((event as CustomEvent<string>).detail) as { type?: string }
+          return detail.type === BOSS_HELPER_AGENT_BRIDGE_RESPONSE
+        },
+      ),
+    ).toBe(false)
 
     unregister()
 
-    window.dispatchEvent(
-      createWindowEvent({
+    postBossHelperWindowMessage(bridgeTarget, {
+      payload: {
         type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
         requestId: 'req-after-unregister',
         payload: {
           channel: BOSS_HELPER_AGENT_CHANNEL,
           command: 'stats',
         },
-      }),
-    )
+      },
+      type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
+    })
 
     await Promise.resolve()
     expect(handle).not.toHaveBeenCalled()

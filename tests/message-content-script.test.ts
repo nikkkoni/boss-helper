@@ -15,23 +15,24 @@ import {
   ProvideContentAdapter,
   registerAgentMessageBridge,
 } from '@/message/contentScript'
+import {
+  getBossHelperPrivateBridgeEventType,
+  getBossHelperWindowBridgeTarget,
+  postBossHelperWindowMessage,
+} from '@/message/window'
 
 import {
   __emitRuntimeMessage,
   __getStorageItem,
   browser,
 } from './mocks/wxt-imports'
+import { usePrivateBridgeTarget } from './helpers/private-bridge'
 
-function createSameOriginMessageEvent(data: unknown, source: Window = window) {
-  const event = new MessageEvent('message', {
-    data,
-    origin: window.location.origin,
-  })
-  Object.defineProperty(event, 'source', {
-    configurable: true,
-    value: source,
-  })
-  return event
+usePrivateBridgeTarget()
+
+function dispatchBridgeMessage(detail: { payload: unknown; type: string }) {
+  const bridgeTarget = getBossHelperWindowBridgeTarget()
+  postBossHelperWindowMessage(bridgeTarget, detail)
 }
 
 describe('message/contentScript', () => {
@@ -113,57 +114,72 @@ describe('message/contentScript', () => {
     expect(callback).toHaveBeenCalledTimes(1)
   })
 
-  it('bridges parent window messages with same-origin checks', () => {
+  it('bridges private comctx messages through the bridge target', () => {
     const adapter = new ProvideContentAdapter()
-    const postMessageSpy = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => undefined)
+    const bridgeTarget = getBossHelperWindowBridgeTarget()
+    const dispatchSpy = vi.spyOn(bridgeTarget, 'dispatchEvent')
     const callback = vi.fn()
     const unregister = adapter.onMessage(callback) as () => void
 
     adapter.sendMessage({ type: 'ping' } as never, undefined as never)
 
-    const foreignEvent = new MessageEvent('message', {
-      data: { type: 'foreign' },
-      origin: 'https://evil.example',
+    dispatchBridgeMessage({
+      payload: { type: 'safe' },
+      type: 'comctx',
     })
-    Object.defineProperty(foreignEvent, 'source', {
-      configurable: true,
-      value: window.parent,
-    })
-    window.dispatchEvent(foreignEvent)
-
-    window.dispatchEvent(createSameOriginMessageEvent({ type: 'safe' }, window.parent))
     unregister()
-    window.dispatchEvent(createSameOriginMessageEvent({ type: 'after-unregister' }, window.parent))
+    dispatchBridgeMessage({
+      payload: { type: 'after-unregister' },
+      type: 'comctx',
+    })
 
-    expect(postMessageSpy).toHaveBeenCalledWith({ type: 'ping' }, window.location.origin)
+    const bridgeEvents = dispatchSpy.mock.calls.map(([event]) => event as CustomEvent<string>)
+    expect(
+      bridgeEvents.some(
+        (event) => {
+          if (event.type !== getBossHelperPrivateBridgeEventType()) {
+            return false
+          }
+          const detail = JSON.parse(event.detail) as { payload?: { type?: string }; type?: string }
+          return detail.type === 'comctx' && detail.payload?.type === 'ping'
+        },
+      ),
+    ).toBe(true)
     expect(callback).toHaveBeenCalledTimes(1)
     expect(callback).toHaveBeenCalledWith({ type: 'safe' })
   })
 
-  it('forwards page events to background and resolves runtime requests through the window bridge', async () => {
-    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(((data: unknown, _origin: string) => {
-      if ((data as { type?: string }).type !== BOSS_HELPER_AGENT_BRIDGE_REQUEST) {
-        return undefined
-      }
-
-      window.dispatchEvent(
-        createSameOriginMessageEvent(
-          {
-            type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
-            requestId: (data as { requestId: string }).requestId,
+  it('forwards page events to background and resolves runtime requests through the private bridge', async () => {
+    const bridgeTarget = getBossHelperWindowBridgeTarget()
+    const originalDispatch = bridgeTarget.dispatchEvent.bind(bridgeTarget)
+    const dispatchSpy = vi.spyOn(bridgeTarget, 'dispatchEvent').mockImplementation((event) => {
+      if ((event as CustomEvent<string>).type === getBossHelperPrivateBridgeEventType()) {
+        const detail = JSON.parse((event as CustomEvent<string>).detail) as { payload?: unknown; type?: string }
+        if (detail.type === BOSS_HELPER_AGENT_BRIDGE_REQUEST) {
+          const payload = detail.payload as { requestId: string }
+          postBossHelperWindowMessage(bridgeTarget, {
             payload: {
-              ok: true,
-              code: 'stats',
-              message: 'ok',
+              payload: {
+                ok: true,
+                code: 'stats',
+                message: 'ok',
+              },
+              requestId: payload.requestId,
+              type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
             },
-          },
-          window,
-        ),
-      )
-      return undefined
-    }) as never)
+            type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
+          })
+        }
+      }
+      return originalDispatch(event)
+    })
 
-    browser.runtime.sendMessage = vi.fn(async () => undefined) as typeof browser.runtime.sendMessage
+    browser.runtime.sendMessage = vi.fn(async (_extensionIdOrMessage: unknown, maybeMessage?: unknown) => {
+      if (maybeMessage !== undefined) {
+        return { ok: true }
+      }
+      return undefined
+    }) as typeof browser.runtime.sendMessage
 
     registerAgentMessageBridge()
 
@@ -172,17 +188,18 @@ describe('message/contentScript', () => {
       command: 'stats',
     })
 
-    window.dispatchEvent(
-      createSameOriginMessageEvent({
-        type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
+    dispatchBridgeMessage({
+      payload: {
         payload: {
           id: 'evt-1',
           createdAt: new Date().toISOString(),
           message: 'job started',
           type: 'job-started',
         },
-      }),
-    )
+        type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
+      },
+      type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
+    })
 
     expect(response).toEqual(
       expect.objectContaining({
@@ -190,13 +207,22 @@ describe('message/contentScript', () => {
         ok: true,
       }),
     )
-    expect(postMessageSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payload: expect.objectContaining({ command: 'stats' }),
-        type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
-      }),
-      window.location.origin,
-    )
+    const bridgeEvents = dispatchSpy.mock.calls.map(([event]) => event as CustomEvent<string>)
+    expect(
+      bridgeEvents.some(
+        (event) => {
+          if (event.type !== getBossHelperPrivateBridgeEventType()) {
+            return false
+          }
+          const detail = JSON.parse(event.detail) as {
+            payload?: { payload?: { command?: string } }
+            type?: string
+          }
+          return detail.type === BOSS_HELPER_AGENT_BRIDGE_REQUEST
+            && detail.payload?.payload?.command === 'stats'
+        },
+      ),
+    ).toBe(true)
     expect(browser.runtime.sendMessage).toHaveBeenCalledWith({
       type: BOSS_HELPER_AGENT_EVENT_FORWARD,
       payload: expect.objectContaining({
@@ -210,7 +236,8 @@ describe('message/contentScript', () => {
   it('uses the chrome sendResponse listener path and command-specific timeouts', async () => {
     vi.useFakeTimers()
 
-    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => undefined)
+    const bridgeTarget = getBossHelperWindowBridgeTarget()
+    const dispatchSpy = vi.spyOn(bridgeTarget, 'dispatchEvent')
     const setTimeoutSpy = vi.spyOn(window, 'setTimeout')
     vi.stubGlobal(
       'chrome',
@@ -269,7 +296,13 @@ describe('message/contentScript', () => {
         suggestedAction: 'refresh-page',
       }),
     )
-    expect(postMessageSpy).toHaveBeenCalledTimes(3)
-  })
 
+    expect(
+      dispatchSpy.mock.calls.filter(
+        ([event]) =>
+          (event as CustomEvent<{ detail?: { type?: string } }>).type
+          === getBossHelperPrivateBridgeEventType(),
+      ).length,
+    ).toBeGreaterThanOrEqual(3)
+  })
 })

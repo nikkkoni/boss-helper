@@ -3,10 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  BOSS_HELPER_AGENT_BRIDGE_REQUEST,
-  BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
   BOSS_HELPER_AGENT_CHANNEL,
-  BOSS_HELPER_AGENT_EVENT_BRIDGE,
   type BossHelperAgentResponseMeta,
 } from '@/message/agent'
 
@@ -50,11 +47,6 @@ const deliveryControlMocks = vi.hoisted(() => ({
     data,
     ...meta,
   })),
-  isBossHelperAgentBridgeRequest: vi.fn((value: any) => {
-    return value?.type === BOSS_HELPER_AGENT_BRIDGE_REQUEST && value?.payload?.channel === BOSS_HELPER_AGENT_CHANNEL
-  }),
-  isBossHelperSameOriginWindowMessage: vi.fn(() => true),
-  postBossHelperWindowMessage: vi.fn(),
   confStore: {
     formData: {
       deliveryLimit: {
@@ -206,6 +198,7 @@ const deliveryControlMocks = vi.hoisted(() => ({
     return deliveryControlMocks.queries
   }),
   onBossHelperAgentEvent: vi.fn(),
+  registerWindowAgentBridge: vi.fn(() => vi.fn()),
 }))
 
 vi.mock('@/site-adapters', () => ({
@@ -222,13 +215,11 @@ vi.mock('@/message/agent', async (importOriginal) => {
   return {
     ...actual,
     createBossHelperAgentResponse: deliveryControlMocks.createBossHelperAgentResponse,
-    isBossHelperAgentBridgeRequest: deliveryControlMocks.isBossHelperAgentBridgeRequest,
   }
 })
 
-vi.mock('@/message/window', () => ({
-  isBossHelperSameOriginWindowMessage: deliveryControlMocks.isBossHelperSameOriginWindowMessage,
-  postBossHelperWindowMessage: deliveryControlMocks.postBossHelperWindowMessage,
+vi.mock('@/pages/zhipin/hooks/agentWindowBridge', () => ({
+  registerWindowAgentBridge: deliveryControlMocks.registerWindowAgentBridge,
 }))
 
 vi.mock('@/stores/conf', () => ({
@@ -259,32 +250,6 @@ async function loadDeliveryControl() {
   return import('@/pages/zhipin/hooks/useDeliveryControl')
 }
 
-async function waitForAssert(assertion: () => void, attempts = 20) {
-  let lastError: unknown
-  for (let index = 0; index < attempts; index += 1) {
-    try {
-      assertion()
-      return
-    } catch (error) {
-      lastError = error
-      await Promise.resolve()
-    }
-  }
-  throw lastError
-}
-
-function createSameOriginEvent(data: unknown) {
-  const event = new MessageEvent('message', {
-    data,
-    origin: window.location.origin,
-  })
-  Object.defineProperty(event, 'source', {
-    configurable: true,
-    value: window,
-  })
-  return event
-}
-
 describe('useDeliveryControl', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -295,10 +260,6 @@ describe('useDeliveryControl', () => {
     deliveryControlMocks.jsonClone.mockClear()
     deliveryControlMocks.deepmerge.mockClear()
     deliveryControlMocks.createBossHelperAgentResponse.mockClear()
-    deliveryControlMocks.isBossHelperAgentBridgeRequest.mockClear()
-    deliveryControlMocks.isBossHelperSameOriginWindowMessage.mockReset()
-    deliveryControlMocks.isBossHelperSameOriginWindowMessage.mockReturnValue(true)
-    deliveryControlMocks.postBossHelperWindowMessage.mockClear()
     deliveryControlMocks.confStore.isLoaded = false
     deliveryControlMocks.confStore.confInit.mockClear()
     deliveryControlMocks.agentRuntime.ensureRunSummaryLoaded.mockClear()
@@ -308,6 +269,8 @@ describe('useDeliveryControl', () => {
     deliveryControlMocks.useAgentBatchRunner.mockClear()
     deliveryControlMocks.useAgentQueries.mockClear()
     deliveryControlMocks.onBossHelperAgentEvent.mockReset()
+    deliveryControlMocks.registerWindowAgentBridge.mockReset()
+    deliveryControlMocks.registerWindowAgentBridge.mockReturnValue(vi.fn())
 
     deliveryControlMocks.runner.currentProgressSnapshot.mockReset()
     deliveryControlMocks.runner.pauseBatch.mockReset()
@@ -551,94 +514,33 @@ describe('useDeliveryControl', () => {
     expect(deliveryControlMocks.runner.resumeBatch).not.toHaveBeenCalled()
   })
 
-  it('forwards agent events and shapes window bridge responses', async () => {
-    let stopEvents = 0
-    deliveryControlMocks.onBossHelperAgentEvent.mockImplementation((listener: (payload: unknown) => void) => {
-      listener({ type: 'job-started', message: 'event payload' })
-      return () => {
-        stopEvents += 1
-      }
-    })
-
+  it('wires registerWindowAgentBridge through the dedicated bridge module', async () => {
+    const unregisterSpy = vi.fn()
+    deliveryControlMocks.registerWindowAgentBridge.mockReturnValueOnce(unregisterSpy)
     const { useDeliveryControl } = await loadDeliveryControl()
     const unregister = useDeliveryControl().registerWindowAgentBridge()
 
-    expect(deliveryControlMocks.postBossHelperWindowMessage).toHaveBeenCalledWith(window, {
-      type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
-      payload: { type: 'job-started', message: 'event payload' },
-    })
-    expect(deliveryControlMocks.agentRuntime.recordEvent).toHaveBeenCalledWith(
-      { type: 'job-started', message: 'event payload' },
-      { state: 'idle' },
-    )
-
-    window.dispatchEvent(
-      createSameOriginEvent({
-        type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
-        requestId: 'req-1',
-        payload: {
-          channel: BOSS_HELPER_AGENT_CHANNEL,
-          command: 'stats',
-        },
+    expect(deliveryControlMocks.registerWindowAgentBridge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        controller: expect.objectContaining({
+          handle: expect.any(Function),
+          pause: expect.any(Function),
+          start: expect.any(Function),
+          stats: expect.any(Function),
+          stop: expect.any(Function),
+        }),
+        onEvent: deliveryControlMocks.onBossHelperAgentEvent,
       }),
     )
-    expect(deliveryControlMocks.runner.stats).toHaveBeenCalledTimes(1)
-    await waitForAssert(() => {
-      expect(
-        deliveryControlMocks.postBossHelperWindowMessage.mock.calls.some(
-          ([, payload]) =>
-            (payload as Record<string, unknown>).type === BOSS_HELPER_AGENT_BRIDGE_RESPONSE
-            && (payload as Record<string, unknown>).requestId === 'req-1'
-            && (payload as Record<string, any>).payload?.code === 'stats',
-        ),
-      ).toBe(true)
-    })
-
-    unregister()
-    expect(stopEvents).toBe(1)
+    expect(unregister).toBe(unregisterSpy)
   })
 
-  it('returns controller errors through the window bridge and unregisters listeners', async () => {
-    deliveryControlMocks.runner.stats.mockRejectedValue(new Error('stats exploded'))
-    deliveryControlMocks.onBossHelperAgentEvent.mockImplementation(() => vi.fn())
-
-    const addSpy = vi.spyOn(window, 'addEventListener')
-    const removeSpy = vi.spyOn(window, 'removeEventListener')
+  it('returns the unregister function from the bridge module unchanged', async () => {
+    const unregisterSpy = vi.fn()
+    deliveryControlMocks.registerWindowAgentBridge.mockReturnValueOnce(unregisterSpy)
     const { useDeliveryControl } = await loadDeliveryControl()
     const unregister = useDeliveryControl().registerWindowAgentBridge()
 
-    window.dispatchEvent(
-      createSameOriginEvent({
-        type: BOSS_HELPER_AGENT_BRIDGE_REQUEST,
-        requestId: 'req-2',
-        payload: {
-          channel: BOSS_HELPER_AGENT_CHANNEL,
-          command: 'stats',
-        },
-      }),
-    )
-    await waitForAssert(() => {
-      expect(deliveryControlMocks.createBossHelperAgentResponse).toHaveBeenCalledWith(
-        false,
-        'controller-error',
-        'stats exploded',
-      )
-    })
-    await waitForAssert(() => {
-      expect(
-        deliveryControlMocks.postBossHelperWindowMessage.mock.calls.some(
-          ([, payload]) =>
-            (payload as Record<string, unknown>).type === BOSS_HELPER_AGENT_BRIDGE_RESPONSE
-            && (payload as Record<string, unknown>).requestId === 'req-2'
-            && (payload as Record<string, any>).payload?.code === 'controller-error'
-            && (payload as Record<string, any>).payload?.message === 'stats exploded',
-        ),
-      ).toBe(true)
-    })
-
-    unregister()
-
-    expect(addSpy).toHaveBeenCalledWith('message', expect.any(Function))
-    expect(removeSpy).toHaveBeenCalledWith('message', expect.any(Function))
+    expect(unregister).toBe(unregisterSpy)
   })
 })

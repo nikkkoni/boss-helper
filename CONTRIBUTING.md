@@ -15,7 +15,6 @@
 - `.boss-helper-agent-bridge.log`
 - `.boss-helper-agent-bridge.pid`
 - `.boss-helper-agent-extension-build.json`
-- `.boss-helper-agent-profile/`
 - `.env*`
 - `.output/`
 

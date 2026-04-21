@@ -23,7 +23,7 @@ MCP client
 
 因此在任何 MCP 调用前，都仍要确认：
 
-- 扩展已经在当前真实浏览器环境中安装并加载
+- 扩展已经在当前真实浏览器的固定 Chrome Profile 中通过 `chrome://extensions` 安装并加载，而不是 WXT / Playwright / `--load-extension` 的临时会话
 - relay 页面已连接扩展事件端口
 - 至少存在一个支持的 Boss 职位页
 - 页面已登录并完成初始化

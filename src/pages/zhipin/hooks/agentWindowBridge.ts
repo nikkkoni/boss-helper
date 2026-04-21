@@ -1,12 +1,19 @@
 import {
+  BOSS_HELPER_AGENT_BRIDGE_REQUEST,
   BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
   BOSS_HELPER_AGENT_EVENT_BRIDGE,
   createBossHelperAgentResponse,
   isBossHelperAgentBridgeRequest,
+  type BossHelperAgentBridgeResponse,
+  type BossHelperAgentResponse,
   type BossHelperAgentController,
   type BossHelperAgentEvent,
 } from '@/message/agent'
-import { isBossHelperSameOriginWindowMessage, postBossHelperWindowMessage } from '@/message/window'
+import {
+  getBossHelperWindowBridgeTarget,
+  onBossHelperWindowMessage,
+  postBossHelperWindowMessage,
+} from '@/message/window'
 import { jsonClone } from '@/utils/deepmerge'
 
 import { onBossHelperAgentEvent } from './agentEvents'
@@ -16,55 +23,64 @@ type AgentEventSubscriber = (listener: (payload: BossHelperAgentEvent) => void) 
 export function registerWindowAgentBridge(options: {
   controller: BossHelperAgentController
   onEvent?: AgentEventSubscriber
-  targetWindow?: Window & typeof globalThis
+  targetWindow?: EventTarget
 }) {
-  const targetWindow = options.targetWindow ?? window
+  const targetWindow = options.targetWindow ?? getBossHelperWindowBridgeTarget()
   const onEvent = options.onEvent ?? onBossHelperAgentEvent
 
   if (import.meta.env.DEV) {
-    targetWindow.__bossHelperAgent = options.controller
+    window.__bossHelperAgent = options.controller
   }
 
   const stopAgentEventBridge = onEvent((payload) => {
     postBossHelperWindowMessage(targetWindow, {
-      type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
       payload: jsonClone(payload),
+      source: 'main-world',
+      type: BOSS_HELPER_AGENT_EVENT_BRIDGE,
     })
   })
 
-  const onMessage = (event: MessageEvent) => {
-    if (
-      !isBossHelperSameOriginWindowMessage(event, targetWindow) ||
-      !isBossHelperAgentBridgeRequest(event.data)
-    ) {
-      return
-    }
+  const stopBridgeRequests = onBossHelperWindowMessage(
+    targetWindow,
+    (payload, message) => {
+      if (message.source === 'main-world') {
+        return
+      }
+      if (!isBossHelperAgentBridgeRequest(payload)) {
+        return
+      }
 
-    void options.controller
-      .handle(event.data.payload)
-      .catch((error) =>
-        createBossHelperAgentResponse(
-          false,
-          'controller-error',
-          error instanceof Error ? error.message : '未知错误',
-        ),
-      )
-      .then((payload) => {
-        postBossHelperWindowMessage(targetWindow, {
-          type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
-          requestId: event.data.requestId,
-          payload: jsonClone(payload),
+      void options.controller
+        .handle(payload.payload)
+        .catch((error) =>
+          createBossHelperAgentResponse(
+            false,
+            'controller-error',
+            error instanceof Error ? error.message : '未知错误',
+          ),
+        )
+        .then((responsePayload) => {
+          const response: BossHelperAgentResponse<unknown> = jsonClone(responsePayload)
+          const bridgeResponse: BossHelperAgentBridgeResponse = {
+            payload: response,
+            requestId: payload.requestId,
+            type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
+          }
+          postBossHelperWindowMessage(targetWindow, {
+            payload: bridgeResponse,
+            source: 'main-world',
+            type: BOSS_HELPER_AGENT_BRIDGE_RESPONSE,
+          })
         })
-      })
-  }
-
-  targetWindow.addEventListener('message', onMessage)
+    },
+    { messageType: BOSS_HELPER_AGENT_BRIDGE_REQUEST },
+  )
 
   return () => {
     stopAgentEventBridge()
-    if (import.meta.env.DEV && targetWindow.__bossHelperAgent === options.controller) {
-      delete targetWindow.__bossHelperAgent
+    stopBridgeRequests()
+    if (import.meta.env.DEV && window.__bossHelperAgent === options.controller) {
+      delete window.__bossHelperAgent
     }
-    targetWindow.removeEventListener('message', onMessage)
   }
 }

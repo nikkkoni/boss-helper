@@ -173,7 +173,6 @@ describe('useModel', () => {
         data: {
           advanced: {
             json: true,
-            stream: false,
             temperature: 0.5,
           },
           api_key: 'secret',
@@ -243,59 +242,6 @@ describe('useModel', () => {
         },
       }),
     )
-  })
-
-  it('returns stream-mode responses without usage metadata', async () => {
-    const store = useModel()
-    const openaiModel = store.getModel(
-      createModelItem({
-        data: {
-          advanced: {
-            stream: true,
-          },
-          api_key: 'secret',
-          model: 'gpt-4o-mini',
-          mode: 'openai',
-          other: {},
-          url: 'https://api.example.com/v1/chat/completions',
-        },
-      }),
-      '你好 {{ data.jobName }}',
-    ) as Llm
-
-    mockRequestPost.mockImplementationOnce(
-      async ({
-        onStream,
-      }: {
-        onStream?: (reader: AsyncIterable<{ data?: string }>) => Promise<void>
-      }) => {
-        await onStream?.(
-          (async function* () {
-            yield { data: '{"choices":[{"delta":{"content":"Hello"}}]}' }
-            yield { data: '{"choices":[{"delta":{"content":" world"}}]}' }
-            yield { data: '[DONE]' }
-          })(),
-        )
-
-        return {
-          choices: [],
-        }
-      },
-    )
-
-    const response = await openaiModel.message(
-      {
-        data: {
-          card: createJobCard(),
-          data: createJob({ jobName: '前端工程师' }),
-        },
-        onPrompt: vi.fn(),
-      },
-      'aiFiltering',
-    )
-
-    expect(response.content).toBe('Hello world')
-    expect(response.usage).toBeUndefined()
   })
 
   it('does not mutate choices when reading OpenAI chat responses', async () => {

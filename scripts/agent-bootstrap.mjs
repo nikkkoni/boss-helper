@@ -227,9 +227,12 @@ async function main() {
     ...result,
   })
 
-  writeStderrLine(`Next: 请在真实浏览器中保持 relay 页面常驻: ${result.relayUrl}`)
-  writeStderrLine(`Next: 请在同一真实浏览器中打开 Boss 页面: ${result.targetUrl}`)
-  writeStderrLine(`Next: 如未安装扩展，请在当前真实浏览器中手动加载 ${chromeExtensionPath}，默认扩展 ID 为 ${BOSS_HELPER_AGENT_EXTENSION_ID}。`)
+  writeStderrLine(`Next: 请在固定的真实 Chrome Profile 中保持 relay 页面常驻: ${result.relayUrl}`)
+  writeStderrLine(`Next: 请在同一真实 Chrome Profile 中打开 Boss 页面: ${result.targetUrl}`)
+  writeStderrLine(
+    `Next: 如未安装扩展，请在当前真实 Chrome Profile 的 chrome://extensions 中开启开发者模式并加载 ${chromeExtensionPath}。默认扩展 ID 为 ${BOSS_HELPER_AGENT_EXTENSION_ID}。`,
+  )
+  writeStderrLine('Next: 不要依赖临时 --load-extension、Playwright E2E 或 WXT dev 浏览器会话；那类会话关闭或重启后不会把扩展持久安装到你的日常 Chrome。')
   writeStderrLine('Next: 后续所有 Boss 操作仅通过 MCP/bridge/extension/page 间接链路执行，不使用受管浏览器自举。')
 }
 

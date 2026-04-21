@@ -63,11 +63,13 @@ pnpm agent:start
 - 尝试在系统默认真实浏览器中打开 relay 页面并预填当前扩展的默认 extension ID
 - 尝试在同一浏览器中打开 `https://www.zhipin.com/web/geek/jobs`
 
-说明：当前 bootstrap 只负责准备 bridge、扩展构建，并尝试打开 relay / Boss 页面，不会创建受管 profile，不会无头持有浏览器，也不会直接通过 Playwright 页面对象操控 Boss。请先在你实际使用的真实浏览器里手动安装 `.output/chrome-mv3/`，后续所有 Boss 操作都应通过 MCP -> bridge -> extension -> page 的间接链路完成。
+说明：当前 bootstrap 只负责准备 bridge、扩展构建，并尝试打开 relay / Boss 页面，不会创建受管 profile，不会无头持有浏览器，也不会直接通过 Playwright 页面对象操控 Boss。请先在你实际使用的固定真实 Chrome Profile 里手动安装 `.output/chrome-mv3/`，后续所有 Boss 操作都应通过 MCP -> bridge -> extension -> page 的间接链路完成。
+
+要让扩展在重启 Chrome 后继续保留，首次一定要在同一个真实 Chrome Profile 中打开 `chrome://extensions`，开启“开发者模式”，再选择“加载已解压的扩展程序”并指向 `.output/chrome-mv3/`。如果你是在 `pnpm dev`、Playwright E2E，或任何 `--load-extension` 的临时浏览器会话里看到扩展，那个会话结束后扩展不会持久保留到你的日常 Chrome。
 
 ### 2. 在真实浏览器中完成登录
 
-首次使用时，仍需要你在真实浏览器中完成 Boss 登录、证书接受、验证码和风控处理。后续建议持续复用同一真实浏览器环境，而不是让脚本托管浏览器生命周期。
+首次使用时，仍需要你在同一个真实 Chrome Profile 中完成 Boss 登录、证书接受、验证码和风控处理。后续建议持续复用这个固定浏览器环境，而不是让脚本托管浏览器生命周期。
 
 ### 3. 运行诊断
 

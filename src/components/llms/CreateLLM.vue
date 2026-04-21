@@ -143,7 +143,7 @@ async function test() {
   const data: modelData = JSON.parse(JSON.stringify(props.model || { name: '', key: '' }))
   data.name = createName.value
   data.data = buildModelConfig()
-  logger.debug(data)
+  logger.debug('测试模型配置', { key: data.key, mode: data.data?.mode, name: data.name })
 
   const gpt = getModel(data, testIn.value) as Llm
   testOut.value = ''
@@ -153,10 +153,6 @@ async function test() {
       {
         data: {},
         test: true,
-        onStream: (d: string) => {
-          logger.debug('TestResStream', d)
-          testOut.value += d
-        },
       },
       'aiFiltering',
     )

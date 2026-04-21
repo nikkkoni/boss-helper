@@ -10,7 +10,7 @@ export interface BossHelperAgentResponse<T = BossHelperAgentStatsData> extends B
 }
 
 export interface BossHelperAgentBridgeResponse {
-  payload: BossHelperAgentResponse
+  payload: BossHelperAgentResponse<unknown>
   requestId: string
   type: typeof BOSS_HELPER_AGENT_BRIDGE_RESPONSE
 }

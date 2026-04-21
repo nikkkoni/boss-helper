@@ -11,22 +11,6 @@ import type {
   BossHelperAgentResponse,
 } from '../../../src/message/agent'
 
-type BridgeRequestEnvelope = {
-  payload: {
-    channel: '__boss_helper_agent__'
-    command: BossHelperAgentCommand
-    payload?: unknown
-  }
-  requestId: string
-  type: '__boss_helper_agent_bridge_request__'
-}
-
-type BridgeResponseEnvelope = {
-  payload: BossHelperAgentResponse<unknown>
-  requestId: string
-  type: '__boss_helper_agent_bridge_response__'
-}
-
 const currentDir = dirname(fileURLToPath(import.meta.url))
 export const repoRoot = resolve(currentDir, '../../..')
 export const chromeExtensionPath = resolve(repoRoot, '.output/chrome-mv3')
@@ -77,45 +61,23 @@ export async function callAgentCommand<TCommand extends BossHelperAgentCommand>(
   command: TCommand,
   payload?: BossHelperAgentRequestPayloadMap[TCommand],
 ) {
-  return page.evaluate(
-    ({ command, payload }) => {
-      const requestId = `e2e-${Math.random().toString(36).slice(2)}`
+  const worker = page.context().serviceWorkers()[0] ?? await page.context().waitForEvent('serviceworker')
+  return worker.evaluate(
+    async ({ command, pageUrl, payload }) => {
+      const tabs = await chrome.tabs.query({ url: ['*://zhipin.com/*', '*://*.zhipin.com/*'] })
+      const target = tabs.find((tab) => tab.url === pageUrl) ?? tabs.find((tab) => tab.active) ?? tabs[0]
+      if (!target?.id) {
+        throw new Error(`agent bridge timeout: ${command}`)
+      }
 
-      return new Promise<BossHelperAgentResponse<unknown>>((resolve, reject) => {
-        const timeout = window.setTimeout(() => {
-          window.removeEventListener('message', onMessage)
-          reject(new Error(`agent bridge timeout: ${command}`))
-        }, 10_000)
-
-        const onMessage = (event: MessageEvent<BridgeResponseEnvelope>) => {
-          if (event.source !== window || event.origin !== window.location.origin) {
-            return
-          }
-          if (event.data?.type !== '__boss_helper_agent_bridge_response__' || event.data.requestId !== requestId) {
-            return
-          }
-
-          window.clearTimeout(timeout)
-          window.removeEventListener('message', onMessage)
-          resolve(event.data.payload)
-        }
-
-        window.addEventListener('message', onMessage)
-        window.postMessage(
-          {
-            type: '__boss_helper_agent_bridge_request__',
-            requestId,
-            payload: {
-              channel: '__boss_helper_agent__',
-              command,
-              ...(payload === undefined ? {} : { payload }),
-            },
-          } satisfies BridgeRequestEnvelope,
-          window.location.origin,
-        )
+      return chrome.tabs.sendMessage(target.id, {
+        channel: '__boss_helper_agent__',
+        command,
+        ...(payload === undefined ? {} : { payload }),
+        requestId: `e2e-${Math.random().toString(36).slice(2)}`,
       })
     },
-    { command, payload },
+    { command, pageUrl: page.url(), payload },
   ) as Promise<BossHelperAgentResponse<unknown>>
 }
 

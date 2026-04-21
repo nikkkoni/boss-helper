@@ -172,7 +172,6 @@ bridge 侧会在仓库根目录生成本地文件：
 - `.boss-helper-agent-bridge.log`
 - `.boss-helper-agent-bridge.pid`
 - `.boss-helper-agent-extension-build.json`
-- `.boss-helper-agent-profile/`
 
 ## 外部依赖
 

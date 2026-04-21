@@ -43,7 +43,6 @@
     "comctx": "^1.4.3",
     "dompurify": "^3.3.3",
     "element-plus": "^2.13.0",
-    "fetch-event-stream": "^0.1.6",
     "mitem": "^1.0.10",
     "nanoassert": "^2.0.0",
     "openai": "^4.104.0",

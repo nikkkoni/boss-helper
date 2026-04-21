@@ -70,7 +70,14 @@ pnpm build:chrome
 - Edge: `.output/edge-mv3/`
 - Firefox: `.output/firefox-mv2/`
 
-在浏览器开发者模式中加载对应目录即可。
+要让扩展在重启 Chrome 后继续保留，请在你日常使用的同一个 Chrome Profile 中完成安装：
+
+1. 打开 `chrome://extensions`
+2. 开启“开发者模式”
+3. 点击“加载已解压的扩展程序”，选择 `.output/chrome-mv3/`
+4. 后续重新执行 `pnpm build:chrome` 后，只需要在同一个扩展卡片上点“重新加载”，不需要重新安装目录
+
+`pnpm dev`、Playwright E2E，或任何 `--load-extension` 方式启动的临时浏览器会话，都不会把扩展持久安装到你的日常 Chrome Profile；那类会话关闭或重启后，扩展会消失。
 
 ### 常用开发命令
 
@@ -106,23 +113,24 @@ pnpm agent:start
 ```
 
 2. 首次使用时命令会自动构建 Chrome 扩展，并尝试在系统默认真实浏览器里打开 relay 页面与 `https://www.zhipin.com/web/geek/jobs`。
-3. 在你实际使用的真实浏览器中手动安装仓库内的扩展目录：`.output/chrome-mv3/`。
-4. 如果当前浏览器还没有 Boss 登录态，请在该浏览器里手动登录并处理证书、验证码或风控。
+3. 在你实际使用的固定真实 Chrome Profile 中，打开 `chrome://extensions`，手动安装仓库内的扩展目录：`.output/chrome-mv3/`。
+4. 如果当前浏览器还没有 Boss 登录态，请在同一个 Chrome Profile 里手动登录并处理证书、验证码或风控。
 5. 启动脚本不会创建受管 profile、不会无头启动浏览器，也不会直接驱动 Boss 页面；后续所有操作都应走 `MCP -> bridge -> extension -> page` 的间接链路。
-6. 运行：
+6. 不要把 `pnpm dev`、Playwright E2E 或 `--load-extension` 临时浏览器会话当作安装方式；那类会话重启后扩展不会保留。
+7. 运行：
 
 ```bash
 pnpm agent:doctor
 pnpm agent:cli status
 ```
 
-7. 使用结束后如需关闭本地 bridge：
+8. 使用结束后如需关闭本地 bridge：
 
 ```bash
 pnpm agent:stop
 ```
 
-8. 如需 MCP：
+9. 如需 MCP：
 
 ```bash
 pnpm agent:mcp

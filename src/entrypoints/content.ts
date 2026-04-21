@@ -1,9 +1,17 @@
-import { defineContentScript, injectScript } from '#imports'
+import { browser, defineContentScript } from '#imports'
 import {
   ProvideContentAdapter,
   provideContentCounter,
   registerAgentMessageBridge,
 } from '@/message/contentScript'
+import {
+  createBossHelperMainWorldScriptUrl,
+  createBossHelperPrivateBridgeEventType,
+  ensureBossHelperPrivateBridge,
+  getBossHelperMainWorldScriptMarker,
+  setBossHelperWindowBridgeEventType,
+  setBossHelperWindowBridgeTargetForTest,
+} from '@/message/window'
 import { isSupportedSiteUrl } from '@/site-adapters'
 import {
   DOM_READY_TIMEOUT_MS,
@@ -19,6 +27,45 @@ import 'element-plus/theme-chalk/src/message.scss'
 export default defineContentScript({
   matches: ['*://zhipin.com/*', '*://*.zhipin.com/*'],
   async main(_ctx) {
+    const bridgeToken = crypto.randomUUID()
+    const bridgeEventType = createBossHelperPrivateBridgeEventType(bridgeToken)
+    const { bridge, host } = ensureBossHelperPrivateBridge()
+    setBossHelperWindowBridgeTargetForTest(host)
+    setBossHelperWindowBridgeEventType(bridgeEventType)
+
+    const loadMainWorldScript = async () => {
+      const script = document.createElement('script')
+      script.src = createBossHelperMainWorldScriptUrl(
+        browser.runtime.getURL('/main-world.js'),
+        bridgeEventType,
+      )
+      script.setAttribute(`data-${getBossHelperMainWorldScriptMarker()}`, 'true')
+
+      const loadedPromise = new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          script.removeEventListener('load', onLoad)
+          script.removeEventListener('error', onError)
+        }
+
+        const onLoad = () => {
+          cleanup()
+          resolve()
+        }
+
+        const onError = () => {
+          cleanup()
+          reject(new Error(`Failed to load script: ${script.src}`))
+        }
+
+        script.addEventListener('load', onLoad)
+        script.addEventListener('error', onError)
+      })
+
+      bridge.append(script)
+      await loadedPromise
+      return script
+    }
+
     const reportSelectorHealth = () => {
       if (!isSupportedSiteUrl(location.href)) {
         return
@@ -34,7 +81,7 @@ export default defineContentScript({
     }
 
     provideContentCounter(new ProvideContentAdapter())
-    registerAgentMessageBridge()
+    const stopAgentMessageBridge = registerAgentMessageBridge()
 
     void waitForDocumentReady(DOM_READY_TIMEOUT_MS)
       .then(() => {
@@ -42,8 +89,14 @@ export default defineContentScript({
       })
       .catch(() => {})
 
-    await injectScript('/main-world.js', {
-      keepInDom: true,
-    })
+    const script = await loadMainWorldScript()
+
+    return () => {
+      stopAgentMessageBridge?.()
+      setBossHelperWindowBridgeEventType(null)
+      if (script.isConnected) {
+        script.remove()
+      }
+    }
   },
 })

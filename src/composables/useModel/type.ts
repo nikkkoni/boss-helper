@@ -25,7 +25,6 @@ export interface LlmMessageArgs {
   amap?: string
   data: LlmMessageData
   onPrompt?: (s: string) => void
-  onStream?: (s: string) => void
   json?: boolean
   structuredOutput?: StructuredOutputOptions
   test?: boolean
@@ -75,10 +74,7 @@ export abstract class Llm<C = unknown> {
     }
   }
   abstract chat(message: string): Promise<string>
-  abstract message(
-    args: LlmMessageArgs,
-    type: 'aiFiltering',
-  ): Promise<MessageResponse>
+  abstract message(args: LlmMessageArgs, type: 'aiFiltering'): Promise<MessageResponse>
 }
 
 export interface MessageResponse<T = string> {

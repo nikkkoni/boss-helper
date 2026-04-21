@@ -8,8 +8,12 @@ const contentMocks = vi.hoisted(() => {
   class MockProvideContentAdapter {}
 
   return {
+    browser: {
+      runtime: {
+        getURL: vi.fn((path: string) => `chrome-extension://test${path}`),
+      },
+    },
     defineContentScript: vi.fn((definition) => definition),
-    injectScript: vi.fn(async () => undefined),
     provideContentCounter: vi.fn(),
     registerAgentMessageBridge: vi.fn(),
     isSupportedSiteUrl: vi.fn(() => true),
@@ -21,8 +25,8 @@ const contentMocks = vi.hoisted(() => {
 })
 
 vi.mock('#imports', () => ({
+  browser: contentMocks.browser,
   defineContentScript: contentMocks.defineContentScript,
-  injectScript: contentMocks.injectScript,
 }))
 
 vi.mock('@/message/contentScript', () => ({
@@ -46,14 +50,57 @@ async function loadEntrypoint() {
   return (await import('@/entrypoints/content')).default
 }
 
+async function loadWindowModule() {
+  return import('@/message/window')
+}
+
+async function startEntrypoint() {
+  const originalAppend = Element.prototype.append
+  let injectedScript: HTMLScriptElement | null = null
+  const appendSpy = vi.spyOn(Element.prototype, 'append').mockImplementation(function append(
+    this: Element,
+    ...nodes: Array<string | Node>
+  ) {
+    for (const node of nodes) {
+      if (node instanceof HTMLScriptElement) {
+        injectedScript = node
+      }
+    }
+
+    return Reflect.apply(originalAppend, this, nodes)
+  })
+
+  const entrypoint = await loadEntrypoint()
+  const mainPromise = entrypoint.main({} as never)
+  const windowModule = await loadWindowModule()
+  const bridge = windowModule.getBossHelperWindowBridgeTarget() as HTMLElement
+  if (!injectedScript) {
+    throw new Error('Expected main-world script to be injected')
+  }
+  const script: HTMLScriptElement = injectedScript
+
+  script.dispatchEvent(new Event('load'))
+
+  const cleanup = await mainPromise
+  appendSpy.mockRestore()
+
+  return {
+    bridge,
+    cleanup,
+    script,
+    windowModule,
+  }
+}
+
 describe('content entrypoint', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules()
     contentMocks.defineContentScript.mockClear()
-    contentMocks.injectScript.mockReset()
-    contentMocks.injectScript.mockResolvedValue(undefined)
+    contentMocks.browser.runtime.getURL.mockReset()
+    contentMocks.browser.runtime.getURL.mockImplementation((path: string) => `chrome-extension://test${path}`)
     contentMocks.provideContentCounter.mockClear()
-    contentMocks.registerAgentMessageBridge.mockClear()
+    contentMocks.registerAgentMessageBridge.mockReset()
+    contentMocks.registerAgentMessageBridge.mockReturnValue(undefined)
     contentMocks.isSupportedSiteUrl.mockReset()
     contentMocks.isSupportedSiteUrl.mockReturnValue(true)
     contentMocks.waitForDocumentReady.mockReset()
@@ -64,21 +111,34 @@ describe('content entrypoint', () => {
     contentMocks.formatSelectorHealth.mockReturnValue('summary')
     vi.restoreAllMocks()
     window.history.replaceState({}, '', '/web/geek/job')
+
+    const { resetBossHelperPrivateBridgeForTest } = await loadWindowModule()
+    resetBossHelperPrivateBridgeForTest()
   })
 
-  it('registers content bridges and injects the main-world script', async () => {
-    const entrypoint = await loadEntrypoint()
+  it('registers content bridges and injects the main-world script into the private bridge', async () => {
+    const stopAgentBridge = vi.fn()
+    contentMocks.registerAgentMessageBridge.mockReturnValueOnce(stopAgentBridge)
 
-    await entrypoint.main({} as never)
+    const { bridge, cleanup, script, windowModule } = await startEntrypoint()
 
     expect(contentMocks.provideContentCounter).toHaveBeenCalledTimes(1)
     expect(contentMocks.provideContentCounter.mock.calls[0][0]).toBeInstanceOf(
       contentMocks.ProvideContentAdapter,
     )
     expect(contentMocks.registerAgentMessageBridge).toHaveBeenCalledTimes(1)
-    expect(contentMocks.injectScript).toHaveBeenCalledWith('/main-world.js', {
-      keepInDom: true,
-    })
+    expect(contentMocks.browser.runtime.getURL).toHaveBeenCalledWith('/main-world.js')
+    expect(script).toBeTruthy()
+    expect(script.parentElement?.id).toBe(windowModule.getBossHelperPrivateBridgeNodeId())
+    expect(bridge.id).toBe(windowModule.getBossHelperPrivateBridgeHostId())
+    expect(script.src).toMatch(/^chrome-extension:\/\/test\/main-world\.js\?bridgeEvent=/)
+    expect(script.getAttribute(`data-${windowModule.getBossHelperMainWorldScriptMarker()}`)).toBe('true')
+    expect(document.head.querySelector('script')).toBeNull()
+
+    cleanup?.()
+
+    expect(stopAgentBridge).toHaveBeenCalledTimes(1)
+    expect(script.isConnected).toBe(false)
   })
 
   it('warns when supported pages fail selector health after document ready', async () => {
@@ -86,8 +146,7 @@ describe('content entrypoint', () => {
     contentMocks.collectSelectorHealth.mockReturnValue([{ ok: false }, { ok: true }])
     contentMocks.formatSelectorHealth.mockReturnValue('1 failed')
 
-    const entrypoint = await loadEntrypoint()
-    await entrypoint.main({} as never)
+    const { cleanup } = await startEntrypoint()
     await Promise.resolve()
 
     expect(contentMocks.waitForDocumentReady).toHaveBeenCalledWith(321)
@@ -99,6 +158,8 @@ describe('content entrypoint', () => {
         summary: '1 failed',
       }),
     )
+
+    cleanup?.()
   })
 
   it('skips selector warnings on unsupported pages', async () => {
@@ -106,21 +167,23 @@ describe('content entrypoint', () => {
     contentMocks.isSupportedSiteUrl.mockReturnValue(false)
     contentMocks.collectSelectorHealth.mockReturnValue([{ ok: false }])
 
-    const entrypoint = await loadEntrypoint()
-    await entrypoint.main({} as never)
+    const { cleanup } = await startEntrypoint()
     await Promise.resolve()
 
     expect(contentMocks.collectSelectorHealth).not.toHaveBeenCalled()
     expect(warnSpy).not.toHaveBeenCalled()
+
+    cleanup?.()
   })
 
   it('swallows document ready failures', async () => {
     contentMocks.waitForDocumentReady.mockRejectedValue(new Error('timeout'))
 
-    const entrypoint = await loadEntrypoint()
+    const { cleanup } = await startEntrypoint()
 
-    await expect(entrypoint.main({} as never)).resolves.toBeUndefined()
     await Promise.resolve()
     expect(contentMocks.collectSelectorHealth).not.toHaveBeenCalled()
+
+    cleanup?.()
   })
 })

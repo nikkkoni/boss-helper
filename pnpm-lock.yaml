@@ -23,9 +23,6 @@ importers:
       element-plus:
         specifier: ^2.13.0
         version: 2.13.6(typescript@5.9.3)(vue@3.5.32(typescript@5.9.3))
-      fetch-event-stream:
-        specifier: ^0.1.6
-        version: 0.1.6
       mitem:
         specifier: ^1.0.10
         version: 1.0.10
@@ -1978,9 +1975,6 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
-
-  fetch-event-stream@0.1.6:
-    resolution: {integrity: sha512-GREtJ5HNikdU2AXtZ6E/5bk+aslMU6ie5mPG6H9nvsdDkkHQ6m5lHwmmmDTOBexok9hApQ7EprsXCdmz9ZC68w==}
 
   filesize@11.0.15:
     resolution: {integrity: sha512-30TpbYxQxCpi4XdVjkwXYQ37CzZltV38+P7MYroQ+4NK/Dmx9mxixFNrolzcmEIBsjT/uowC9T7kiy2+C12r1A==}
@@ -5745,8 +5739,6 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:
       picomatch: 4.0.4
-
-  fetch-event-stream@0.1.6: {}
 
   filesize@11.0.15: {}
 

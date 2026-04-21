@@ -4,7 +4,8 @@ import { defineProxy } from 'comctx'
 
 import type { ContentCounter } from './contentScript'
 import {
-  isBossHelperSameOriginWindowMessage,
+  getBossHelperWindowBridgeTarget,
+  onBossHelperWindowMessage,
   postBossHelperWindowMessage,
 } from './window'
 
@@ -18,18 +19,24 @@ export const [, injectCounter] = defineProxy(() => ({}) as ContentCounter, {
 
 export default class InjectAdapter implements Adapter {
   sendMessage: SendMessage = (message) => {
-    postBossHelperWindowMessage(window, message)
+    postBossHelperWindowMessage(getBossHelperWindowBridgeTarget(), {
+      payload: message,
+      source: 'main-world',
+      type: 'comctx',
+    })
   }
 
   onMessage: OnMessage = (callback) => {
-    const handler = (event: MessageEvent<Partial<Message<Record<string, any>>> | undefined>) => {
-      if (!isBossHelperSameOriginWindowMessage(event)) {
-        return
-      }
-      callback(event.data)
-    }
-    window.addEventListener('message', handler)
-    return () => window.removeEventListener('message', handler)
+    return onBossHelperWindowMessage(
+      getBossHelperWindowBridgeTarget(),
+      (payload, message) => {
+        if (message.source === 'main-world') {
+          return
+        }
+        callback(payload as Partial<Message<Record<string, any>>> | undefined)
+      },
+      { messageType: 'comctx' },
+    )
   }
 }
 

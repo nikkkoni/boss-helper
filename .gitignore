@@ -48,6 +48,7 @@ logapi.zhipin.*.pem
 .boss-helper-agent-bridge.pid
 .boss-helper-agent-extension-build.json
 .boss-helper-agent-profile/
+.tmp/chrome-profile-repair-backup/
 
 # Local tool config
 opencode.json

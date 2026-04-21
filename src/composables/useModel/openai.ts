@@ -1,15 +1,10 @@
-import type { OnStream } from '@/utils/request'
-import { RequestError, request } from '@/utils/request'
 import { runBatchedAIRequest } from '@/utils/concurrency'
-import { parseStructuredJson } from '@/utils/parse'
-import {
-  createCircuitBreaker,
-  isLikelyNetworkError,
-  retryAsync,
-} from '@/utils/retry'
 import { logger } from '@/utils/logger'
+import { parseStructuredJson } from '@/utils/parse'
+import { RequestError, request } from '@/utils/request'
+import { createCircuitBreaker, isLikelyNetworkError, retryAsync } from '@/utils/retry'
 
-import { desc, other } from './common'
+import { other } from './common'
 import type { LlmConf, LlmInfo, LlmMessageArgs, MessageResponse, Prompt } from './type'
 import { Llm } from './type'
 
@@ -30,7 +25,9 @@ function isStructuredOutputUnsupported(error: unknown) {
   }
 
   const message = error.message.toLowerCase()
-  return ['json_schema', 'response_format', 'schema', 'structured output'].some((token) => message.includes(token))
+  return ['json_schema', 'response_format', 'schema', 'structured output'].some((token) =>
+    message.includes(token),
+  )
 }
 
 type OpenAIChoiceMessage = {
@@ -73,7 +70,6 @@ export type openaiLLMConf = LlmConf<
   } & other & {
       advanced: {
         json?: boolean
-        stream?: boolean
         temperature?: number
         top_p?: number
         presence_penalty?: number
@@ -132,14 +128,6 @@ const info: LlmInfo<openaiLLMConf> = {
         type: 'switch',
         desc: '仅支持较新的模型,会强制gpt返回json格式,效果好一点,能有效减少响应解析错误',
       },
-      stream: {
-        value: false,
-        type: 'switch',
-        desc: desc.stream,
-        config: {
-          disabled: true,
-        },
-      },
       temperature: {
         value: 0.65,
         type: 'slider',
@@ -195,69 +183,40 @@ class Gpt extends Llm<openaiLLMConf> {
     return msg?.content ?? ''
   }
 
-  async message({
-    data = {},
-    onPrompt = (_s: string) => {},
-    json = false,
-    structuredOutput,
-  }: LlmMessageArgs, _type: 'aiFiltering'): Promise<MessageResponse> {
+  async message(
+    { data = {}, onPrompt = (_s: string) => {}, json = false, structuredOutput }: LlmMessageArgs,
+    _type: 'aiFiltering',
+  ): Promise<MessageResponse> {
     const prompts = this.buildPrompt(data)
     const prompt = prompts[prompts.length - 1].content
     onPrompt(prompt)
-    let stream = ''
     const ans: MessageResponse = { prompt }
 
     const res = await this.post({
       prompt: prompts,
       json,
       structuredOutput,
-      onStream: async (reader) => {
-        for await (const event of reader) {
-          const payload = typeof event?.data === 'string' ? event.data.trim() : ''
-          if (!payload || payload === '[DONE]') {
-            continue
-          }
-
-          try {
-            const chunk = JSON.parse(payload)
-            const delta = chunk?.choices?.[0]?.delta
-            const content = typeof delta?.content === 'string' ? delta.content : ''
-            if (content) {
-              stream += content
-            }
-          } catch {
-            // Ignore malformed stream chunks and keep consuming the response.
-          }
-        }
-      },
     })
 
-    if (!this.conf.advanced.stream) {
-      const msg = getLastChoiceMessage(res)
-      const content = msg?.content ?? ''
-      ans.content = structuredOutput && typeof content === 'string'
-        ? parseStructuredJson(content)
-        : content
-      ans.reasoning_content = (msg?.reasoning_content as string)?.replaceAll('\n', '')
-      ans.usage = {
-        input_tokens: res?.usage?.prompt_tokens ?? 0,
-        output_tokens: res?.usage?.completion_tokens ?? 0,
-        total_tokens: res?.usage?.total_tokens ?? 0,
-      }
-    } else {
-      ans.content = stream
+    const msg = getLastChoiceMessage(res)
+    const content = msg?.content ?? ''
+    ans.content =
+      structuredOutput && typeof content === 'string' ? parseStructuredJson(content) : content
+    ans.reasoning_content = (msg?.reasoning_content as string)?.replaceAll('\n', '')
+    ans.usage = {
+      input_tokens: res?.usage?.prompt_tokens ?? 0,
+      output_tokens: res?.usage?.completion_tokens ?? 0,
+      total_tokens: res?.usage?.total_tokens ?? 0,
     }
     return ans
   }
 
   private async post({
     prompt,
-    onStream,
     json = false,
     structuredOutput,
   }: {
     prompt: Prompt
-    onStream?: OnStream
     json?: boolean
     structuredOutput?: {
       name: string
@@ -273,25 +232,25 @@ class Gpt extends Llm<openaiLLMConf> {
     })
 
     const doRequest = async (useStructuredOutput: boolean) => {
-      const responseFormat = useStructuredOutput && structuredOutput
-        ? {
-            type: 'json_schema',
-            json_schema: {
-              name: structuredOutput.name,
-              strict: true,
-              schema: structuredOutput.schema,
-            },
-          }
-        : this.conf.advanced.json && json
-          ? { type: 'json_object' }
-          : undefined
+      const responseFormat =
+        useStructuredOutput && structuredOutput
+          ? {
+              type: 'json_schema',
+              json_schema: {
+                name: structuredOutput.name,
+                strict: true,
+                schema: structuredOutput.schema,
+              },
+            }
+          : this.conf.advanced.json && json
+            ? { type: 'json_object' }
+            : undefined
 
       return request.post({
         url: this.conf.url,
         data: JSON.stringify({
           messages: prompt,
           model: this.conf.model,
-          stream: this.conf.advanced.stream,
           temperature: this.conf.advanced.temperature,
           top_p: this.conf.advanced.top_p,
           presence_penalty: this.conf.advanced.presence_penalty,
@@ -303,8 +262,6 @@ class Gpt extends Llm<openaiLLMConf> {
           'Content-Type': 'application/json',
         },
         timeout: normalizeTimeoutMs(this.conf.other.timeout),
-        responseType: 'json',
-        onStream,
         isBackground: this.conf.other.background,
       })
     }
@@ -335,9 +292,9 @@ class Gpt extends Llm<openaiLLMConf> {
             shouldRetry: (error) => {
               if (error instanceof RequestError) {
                 return (
-                  error.statusCode === 429
-                  || (error.statusCode != null && error.statusCode >= 500)
-                  || isLikelyNetworkError(error)
+                  error.statusCode === 429 ||
+                  (error.statusCode != null && error.statusCode >= 500) ||
+                  isLikelyNetworkError(error)
                 )
               }
               return isLikelyNetworkError(error)

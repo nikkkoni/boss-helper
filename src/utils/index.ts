@@ -1,10 +1,9 @@
-import { counter } from '@/message'
-
 // 通知
 export async function notification(
   content: string,
   type: 'basic' | 'image' | 'list' | 'progress' = 'basic',
 ) {
+  const { counter } = await import('@/message')
   return counter.notify({
     title: 'Boss直聘批量投简历',
     message: content,

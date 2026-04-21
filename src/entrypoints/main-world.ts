@@ -1,9 +1,9 @@
 import { createPinia } from 'pinia'
-import { createApp } from 'vue'
+import { createApp, type Component } from 'vue'
 
 import { defineUnlistedScript } from '#imports'
-import App from '@/App.vue'
 import { getRootVue } from '@/composables/useVue'
+import { initializeBossHelperWindowBridgeTargetFromRuntime } from '@/message/window'
 import { getSiteAdapterByUrl, isSupportedSiteUrl, setActiveSiteAdapter } from '@/site-adapters'
 import { loader } from '@/utils'
 import { logger } from '@/utils/logger'
@@ -98,7 +98,7 @@ function reportSelectorHealth(stage: string, pathname = location.pathname) {
   }
 }
 
-async function main(router: { path: string }) {
+async function main(router: { path: string }, appRootComponent: Component) {
   const adapter = setActiveSiteAdapter(getSiteAdapterByUrl(location.href))
   const selectors = getActiveSelectorRegistry()
   reportSelectorHealth('route-enter', router.path)
@@ -115,7 +115,7 @@ async function main(router: { path: string }) {
   })
   const helper = document.querySelector(selectors.extension.appRoot)
   if (!helper) {
-    const app = createApp(App)
+    const app = createApp(appRootComponent)
     app.use(createPinia())
     const appEl = document.createElement('div')
     appEl.id = selectors.extension.appRootId
@@ -130,6 +130,11 @@ async function start() {
   //     GM_getValue("theme-dark", false)
   //   );
 
+  initializeBossHelperWindowBridgeTargetFromRuntime()
+  const [{ default: App }, { default: axios }] = await Promise.all([
+    import('@/App.vue'),
+    import('axios'),
+  ])
   setActiveSiteAdapter(getSiteAdapterByUrl(location.href))
   await waitForDocumentReady(DOM_READY_TIMEOUT_MS)
   reportSelectorHealth('main-world-start')
@@ -140,9 +145,8 @@ async function start() {
   if (!route?.path || !Array.isArray(afterHooks)) {
     throw new Error('未找到页面路由上下文')
   }
-  afterHooks.push((nextRoute) => void main(nextRoute))
-  void main(route)
-  const { default: axios } = await import('axios')
+  afterHooks.push((nextRoute) => void main(nextRoute, App))
+  void main(route, App)
   installAxiosLoaderInterceptors(axios as unknown as AxiosLoaderClient)
 }
 

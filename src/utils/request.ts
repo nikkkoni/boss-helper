@@ -1,5 +1,3 @@
-import type { events } from 'fetch-event-stream'
-
 import { counter } from '@/message'
 
 import { loader } from '.'
@@ -56,7 +54,7 @@ function toRequestError(error: unknown) {
   }
   return requestError
 }
-export type ResponseType = 'text' | 'json' | 'arraybuffer' | 'blob' | 'document' | 'stream'
+export type ResponseType = 'text' | 'json' | 'arraybuffer' | 'blob' | 'document'
 export type ResponseData<TResponseType extends ResponseType> = TResponseType extends 'text'
   ? string
   : TResponseType extends 'arraybuffer'
@@ -65,11 +63,7 @@ export type ResponseData<TResponseType extends ResponseType> = TResponseType ext
       ? Blob
       : TResponseType extends 'document'
         ? Document
-        : TResponseType extends 'stream'
-          ? ReadableStream<Uint8Array>
-          : any
-
-export type OnStream = (reader: ReturnType<typeof events>) => Promise<void>
+        : any
 
 async function parseResponse<TResponseType extends ResponseType>(
   response: Response,
@@ -86,11 +80,6 @@ async function parseResponse<TResponseType extends ResponseType>(
       const html = await response.text()
       return new DOMParser().parseFromString(html, 'text/html') as ResponseData<TResponseType>
     }
-    case 'stream':
-      if (!response.body) {
-        throw new RequestError('没有响应流')
-      }
-      return response.body as ResponseData<TResponseType>
     case 'json':
     default:
       return (await response.json()) as ResponseData<TResponseType>
@@ -102,7 +91,7 @@ interface GmXhrRequest<TContext, TResponseType extends ResponseType> {
   url: string
   headers?: Record<string, string>
 
-  data?: string | URLSearchParams | FormData | ArrayBuffer | Blob | DataView | ReadableStream
+  data?: string | URLSearchParams | FormData | ArrayBuffer | Blob | DataView
 
   /**
    * @available tampermonkey
@@ -134,7 +123,7 @@ interface GmXhrRequest<TContext, TResponseType extends ResponseType> {
   context?: TContext
 
   /**
-   * @tampermonkey  text, json, arraybuffer, blob, document, stream
+   * @tampermonkey  text, json, arraybuffer, blob, document
    * @violentmonkey text, json, arraybuffer, blob, document
    * @default
    * 'text'
@@ -179,7 +168,6 @@ export type RequestArgs<TContext, TResponseType extends ResponseType> = Partial<
     GmXhrRequest<TContext, TResponseType>,
     'method' | 'url' | 'data' | 'headers' | 'timeout' | 'responseType'
   > & {
-    onStream: OnStream
     isBackground: boolean
   }
 >
@@ -227,10 +215,6 @@ export async function request<TContext, TResponseType extends ResponseType = 'js
     } else {
       fetch(url, { ...requestData, signal })
         .then(async (response) => {
-          if (responseType === 'stream' && !response.body) {
-            reject(new RequestError('没有响应体'))
-            return
-          }
           if (!response.ok || response.status >= 400) {
             const errorText = await response.text()
             const error = new RequestError(
