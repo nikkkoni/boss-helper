@@ -50,153 +50,190 @@ const contextItems = computed(() => [
     help: '这里展示当前页面可供候选卡片带快速浏览的岗位数量。',
   },
 ])
+
+const progressFacts = computed(() => [
+  {
+    label: '页面进度',
+    value: props.pageProgressLabel,
+    caption: '用于判断当前页还剩多少岗位待处理。',
+    help: '这里展示当前页面岗位列表的处理进度。',
+  },
+  {
+    label: '今日投递',
+    value: props.todaySummary,
+    caption: '保持观察今日完成数量与投递上限。',
+    help: '这里集中展示当前批处理状态、页面进度和今日投递摘要。',
+  },
+])
+
+const quickActions = computed(() => {
+  const actions: Array<{
+    label: string
+    help: string
+    onClick: () => void
+    accent?: boolean
+    disabled?: boolean
+  }> = [
+    {
+      label: props.primaryActionLabel,
+      help: '按当前状态开始或继续批处理。',
+      onClick: () => emit('primary-action'),
+      accent: true,
+      disabled: props.primaryActionDisabled,
+    },
+  ]
+
+  if (props.showPauseAction) {
+    actions.push({
+      label: '暂停投递',
+      help: '暂停当前批处理，等待当前岗位处理完成后停止。',
+      onClick: () => emit('pause-action'),
+    })
+  }
+
+  if (props.resetVisible) {
+    actions.push({
+      label: '重置筛选',
+      help: '重置当前页已筛掉的岗位状态，便于重新运行当前页。',
+      onClick: () => emit('reset-action'),
+    })
+  }
+
+  actions.push(
+    {
+      label: '打开筛选区',
+      help: '跳转到 Boss 原生搜索和筛选桥接模块。',
+      onClick: () => emit('open-tab', 'filter'),
+    },
+    {
+      label: '调整配置',
+      help: '跳转到投递配置模块，继续调整筛选、外观或 AI 设置。',
+      onClick: () => emit('open-tab', 'config'),
+    },
+    {
+      label: '查看日志',
+      help: '跳转到运行日志模块，查看详情、错误和 AI 过滤内容。',
+      onClick: () => emit('open-tab', 'logs'),
+    },
+  )
+
+  return actions
+})
 </script>
 
 <template>
-  <div class="workspace-status-rail bh-workspace-section-gap">
-    <section
-      class="workspace-status-rail__card bh-glass-surface bh-glass-surface--card"
-      data-help="这里集中展示当前批处理状态、页面进度和今日投递摘要。"
-    >
-      <WorkspaceSectionHeader
-        eyebrow="Status Rail"
-        title="运行状态"
-        description="把当前 run 的状态、状态消息和页面进度固定在侧栏，切换 Tab 时也能持续观察。"
-      />
+  <section
+    class="workspace-status-rail bh-glass-surface bh-glass-surface--card"
+    data-help="这里集中展示运行状态、页面上下文和高频快捷操作。"
+  >
+    <WorkspaceSectionHeader
+      eyebrow="Status Rail"
+      title="运行侧栏"
+      description="把当前 run 的状态、页面上下文和快捷操作收拢进一个统一模块，切换 Tab 时也能持续观察。"
+    />
 
-      <div class="workspace-status-rail__status-row">
-        <span
-          class="workspace-status-rail__status-pill"
-          :class="`workspace-status-rail__status-pill--${deliveryStateTone}`"
-        >
-          {{ deliveryStateLabel }}
-        </span>
-        <span class="workspace-status-rail__summary bh-glass-pill">{{ todaySummary }}</span>
-      </div>
+    <div class="workspace-status-rail__sections bh-workspace-section-gap">
+      <section
+        class="workspace-status-rail__section bh-glass-surface bh-glass-surface--nested"
+        data-help="这里集中展示当前批处理状态、状态消息和关键进度。"
+      >
+        <WorkspaceSectionHeader
+          eyebrow="Run"
+          title="运行状态"
+          description="保持当前 run 的状态、状态消息和进度摘要在同一个视线区域。"
+          compact
+        />
 
-      <p class="workspace-status-rail__message">{{ deliveryStatusMessage }}</p>
-
-      <div class="workspace-status-rail__facts">
-        <article
-          class="workspace-status-rail__fact bh-glass-surface bh-glass-surface--nested"
-          data-help="这里展示当前页面岗位列表的处理进度。"
-        >
-          <span>页面进度</span>
-          <strong>{{ pageProgressLabel }}</strong>
-          <p>用于判断当前页还剩多少岗位待处理。</p>
-        </article>
-
-        <article
-          class="workspace-status-rail__fact bh-glass-surface bh-glass-surface--nested"
-          data-help="这里展示当前页面候选岗位数量，用于配合候选卡片带观察。"
-        >
-          <span>候选面板</span>
-          <strong>{{ totalJobsLabel }}</strong>
-          <p>候选卡片带保持在列表上方，不并入当前侧栏。</p>
-        </article>
-      </div>
-    </section>
-
-    <section
-      class="workspace-status-rail__card bh-glass-surface bh-glass-surface--soft"
-      data-help="这里展示当前页面上下文，帮助判断当前工作台接入的是哪一类 Boss 页面。"
-    >
-      <WorkspaceSectionHeader
-        eyebrow="Context"
-        title="页面上下文"
-        description="帮助你快速确认当前工作台接入的页面、搜索桥接模式和账号上下文。"
-        compact
-      />
-
-      <dl class="workspace-status-rail__context-list">
-        <div
-          v-for="item in contextItems"
-          :key="item.label"
-          class="workspace-status-rail__context-item"
-          :data-help="item.help"
-        >
-          <dt>{{ item.label }}</dt>
-          <dd>{{ item.value }}</dd>
+        <div class="workspace-status-rail__status-row">
+          <span
+            class="workspace-status-rail__status-pill"
+            :class="`workspace-status-rail__status-pill--${deliveryStateTone}`"
+          >
+            {{ deliveryStateLabel }}
+          </span>
         </div>
-      </dl>
-    </section>
 
-    <section
-      class="workspace-status-rail__card bh-glass-surface bh-glass-surface--soft"
-      data-help="这里提供最常用的快捷操作，避免切换到其他 Tab 才能继续下一步。"
-    >
-      <WorkspaceSectionHeader
-        eyebrow="Quick Actions"
-        title="快捷操作"
-        description="保留高频 run 操作，并补充到配置、筛选和日志模块的快速跳转。"
-        compact
-      />
+        <p class="workspace-status-rail__message">{{ deliveryStatusMessage }}</p>
 
-      <div class="workspace-status-rail__actions">
-        <button
-          type="button"
-          class="workspace-status-rail__action bh-glass-button bh-glass-button--accent"
-          :disabled="primaryActionDisabled"
-          data-help="按当前状态开始或继续批处理。"
-          @click="emit('primary-action')"
-        >
-          {{ primaryActionLabel }}
-        </button>
+        <div class="workspace-status-rail__facts">
+          <article
+            v-for="item in progressFacts"
+            :key="item.label"
+            class="workspace-status-rail__fact bh-glass-surface bh-glass-surface--soft"
+            :data-help="item.help"
+          >
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <p>{{ item.caption }}</p>
+          </article>
+        </div>
+      </section>
 
-        <button
-          v-if="showPauseAction"
-          type="button"
-          class="workspace-status-rail__action bh-glass-button"
-          data-help="暂停当前批处理，等待当前岗位处理完成后停止。"
-          @click="emit('pause-action')"
-        >
-          暂停投递
-        </button>
+      <section
+        class="workspace-status-rail__section bh-glass-surface bh-glass-surface--nested"
+        data-help="这里展示当前页面上下文，帮助判断当前工作台接入的是哪一类 Boss 页面。"
+      >
+        <WorkspaceSectionHeader
+          eyebrow="Context"
+          title="页面上下文"
+          description="帮助你快速确认当前工作台接入的页面、搜索桥接模式和账号上下文。"
+          compact
+        />
 
-        <button
-          v-if="resetVisible"
-          type="button"
-          class="workspace-status-rail__action bh-glass-button"
-          data-help="重置当前页已筛掉的岗位状态，便于重新运行当前页。"
-          @click="emit('reset-action')"
-        >
-          重置筛选
-        </button>
+        <dl class="workspace-status-rail__context-list">
+          <div
+            v-for="item in contextItems"
+            :key="item.label"
+            class="workspace-status-rail__context-item"
+            :data-help="item.help"
+          >
+            <dt>{{ item.label }}</dt>
+            <dd>{{ item.value }}</dd>
+          </div>
+        </dl>
+      </section>
 
-        <button
-          type="button"
-          class="workspace-status-rail__action bh-glass-button"
-          data-help="跳转到 Boss 原生搜索和筛选桥接模块。"
-          @click="emit('open-tab', 'filter')"
-        >
-          打开筛选区
-        </button>
+      <section
+        class="workspace-status-rail__section bh-glass-surface bh-glass-surface--nested"
+        data-help="这里提供最常用的快捷操作，避免切换到其他 Tab 才能继续下一步。"
+      >
+        <WorkspaceSectionHeader
+          eyebrow="Quick Actions"
+          title="快捷操作"
+          description="保留高频 run 操作，并补充到配置、筛选和日志模块的快速跳转。"
+          compact
+        />
 
-        <button
-          type="button"
-          class="workspace-status-rail__action bh-glass-button"
-          data-help="跳转到投递配置模块，继续调整筛选、外观或 AI 设置。"
-          @click="emit('open-tab', 'config')"
-        >
-          调整配置
-        </button>
-
-        <button
-          type="button"
-          class="workspace-status-rail__action bh-glass-button"
-          data-help="跳转到运行日志模块，查看详情、错误和 AI 过滤内容。"
-          @click="emit('open-tab', 'logs')"
-        >
-          查看日志
-        </button>
-      </div>
-    </section>
-  </div>
+        <div class="workspace-status-rail__actions">
+          <button
+            v-for="action in quickActions"
+            :key="action.label"
+            type="button"
+            class="workspace-status-rail__action bh-glass-button"
+            :class="{ 'bh-glass-button--accent': action.accent }"
+            :disabled="action.disabled"
+            :data-help="action.help"
+            @click="action.onClick()"
+          >
+            {{ action.label }}
+          </button>
+        </div>
+      </section>
+    </div>
+  </section>
 </template>
 
 <style lang="scss" scoped>
-.workspace-status-rail__card {
+.workspace-status-rail {
   padding: 20px;
+}
+
+.workspace-status-rail__sections {
+  width: 100%;
+}
+
+.workspace-status-rail__section {
+  padding: 18px;
 }
 
 .workspace-status-rail__status-row {
@@ -206,19 +243,15 @@ const contextItems = computed(() => [
   gap: 10px;
 }
 
-.workspace-status-rail__status-pill,
-.workspace-status-rail__summary {
+.workspace-status-rail__status-pill {
   display: inline-flex;
   align-items: center;
   min-height: 38px;
   padding: 0 14px;
+  border: 1px solid transparent;
   border-radius: var(--bh-radius-pill);
   font-size: 0.84rem;
   font-weight: 700;
-}
-
-.workspace-status-rail__status-pill {
-  border: 1px solid transparent;
 }
 
 .workspace-status-rail__status-pill--idle {
@@ -261,10 +294,6 @@ const contextItems = computed(() => [
 
 :global(html.dark) .workspace-status-rail__status-pill--error {
   color: #fda4af;
-}
-
-.workspace-status-rail__summary {
-  color: var(--bh-text-secondary);
 }
 
 .workspace-status-rail__message {
@@ -364,9 +393,13 @@ const contextItems = computed(() => [
 }
 
 @media (max-width: 640px) {
-  .workspace-status-rail__card {
+  .workspace-status-rail {
     padding: 18px;
     border-radius: 22px;
+  }
+
+  .workspace-status-rail__section {
+    padding: 16px;
   }
 }
 </style>

@@ -270,6 +270,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
+  color: var(--bh-text-primary);
 }
 
 .user-center-dialog__eyebrow {
@@ -280,6 +281,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
   margin: 0;
   font-size: clamp(1.7rem, 1.35rem + 0.8vw, 2.2rem);
   letter-spacing: -0.04em;
+  color: var(--bh-text-primary);
 }
 
 .user-center-dialog__title-block p {
@@ -311,6 +313,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 
 .user-center-dialog__summary-card strong {
   font-size: 1.08rem;
+  color: var(--bh-text-primary);
 }
 
 .user-center-dialog__summary-card span,
@@ -345,6 +348,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 .user-center-dialog__table-header h3 {
   margin: 0;
   font-size: 1.08rem;
+  color: var(--bh-text-primary);
 }
 
 .user-center-dialog__table-header p {
@@ -363,12 +367,14 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 
 .user-center-dialog__selection-pill strong {
   font-size: 0.98rem;
+  color: var(--bh-text-primary);
 }
 
 .user-center-dialog__account-cell {
   display: flex;
   align-items: center;
   gap: 10px;
+  color: var(--bh-text-primary);
 }
 
 .user-center-dialog__footer {
@@ -384,6 +390,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 }
 
 .user-center-dialog :deep(.ehp-dialog) {
+  color: var(--bh-text-primary);
   max-width: 1080px;
   overflow: hidden;
   border-radius: var(--bh-radius-dialog);
@@ -399,6 +406,24 @@ function handleCurrentChange(val: CookieInfo | undefined) {
   padding: 24px 24px 0;
 }
 
+.user-center-dialog :deep(.ehp-dialog__title),
+.user-center-dialog :deep(.ehp-dialog__headerbtn),
+.user-center-dialog :deep(.ehp-dialog__body),
+.user-center-dialog :deep(.ehp-dialog__footer),
+.user-center-dialog :deep(.ehp-table),
+.user-center-dialog :deep(.ehp-table td.ehp-table__cell),
+.user-center-dialog :deep(.ehp-table .cell),
+.user-center-dialog :deep(.ehp-button),
+.user-center-dialog :deep(.ehp-alert__title),
+.user-center-dialog :deep(.ehp-alert__description) {
+  color: var(--bh-text-primary);
+}
+
+.user-center-dialog :deep(.ehp-dialog__headerbtn .ehp-icon),
+.user-center-dialog :deep(.ehp-button.is-link) {
+  color: var(--bh-text-secondary);
+}
+
 .user-center-dialog :deep(.ehp-dialog__body) {
   padding: 20px 24px 0;
 }
@@ -412,8 +437,22 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 }
 
 .user-center-dialog :deep(.ehp-table) {
+  --el-table-text-color: var(--bh-text-primary);
+  --el-table-header-text-color: var(--bh-table-head-text);
+  --el-table-row-hover-bg-color: var(--bh-table-current-row);
+  --el-table-current-row-bg-color: var(--bh-table-current-row);
+  --el-fill-color-light: transparent;
+  --el-bg-color: transparent;
+  --el-text-color-primary: var(--bh-text-primary);
+  --el-text-color-regular: var(--bh-text-secondary);
   border-radius: var(--bh-radius-md);
   overflow: hidden;
+}
+
+.user-center-dialog :deep(.ehp-table__inner-wrapper),
+.user-center-dialog :deep(.ehp-table__header-wrapper),
+.user-center-dialog :deep(.ehp-table__body-wrapper) {
+  background: transparent;
 }
 
 .user-center-dialog :deep(.ehp-table th.ehp-table__cell) {

@@ -365,12 +365,39 @@ function syncSalaryRange() {
 
 .config-filter__field-card {
   padding: 14px;
+  min-width: 0;
 }
 
 .config-filter__fields :deep(.ehp-form-item) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   width: 100%;
+  min-width: 0;
   margin-right: 0;
   margin-bottom: 0;
+}
+
+.config-filter__fields :deep(.ehp-form-item__label-wrap),
+.config-filter__fields :deep(.ehp-form-item__label) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.config-filter__fields :deep(.ehp-form-item__label) {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.config-filter__fields :deep(.ehp-form-item__label .ehp-checkbox) {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: 0;
 }
 
 .config-filter__fields :deep(.ehp-form-item__content),
@@ -378,6 +405,11 @@ function syncSalaryRange() {
 .config-filter__fields :deep(.ehp-select-v2),
 .config-filter__fields :deep(.ehp-input-number) {
   width: 100%;
+  min-width: 0;
+}
+
+.config-filter__fields :deep(.ehp-form-item__content) {
+  margin-left: 0 !important;
 }
 
 .config-filter__salary-row {
@@ -386,6 +418,7 @@ function syncSalaryRange() {
   flex-wrap: wrap;
   gap: 10px;
   width: 100%;
+  min-width: 0;
 }
 
 .config-filter__advanced-button {

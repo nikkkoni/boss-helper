@@ -129,21 +129,30 @@ onMounted(async () => {
 
 <template>
   <ElConfigProvider namespace="ehp">
-    <div class="boss-helper-launcher" :class="launcherExpanded ? 'is-expanded' : 'is-collapsed'">
-      <div class="boss-helper-launcher__panel bh-glass-surface bh-glass-surface--hero">
+    <div class="boss-helper-launcher">
+      <Transition name="boss-helper-launcher-shell">
         <button
           v-if="!launcherExpanded"
+          key="collapsed"
           type="button"
-          class="boss-helper-launcher__fab"
+          class="boss-helper-launcher__dock"
           aria-label="展开 Boss Helper 控制台"
           @click="toggleLauncher"
         >
+          <span class="boss-helper-launcher__dock-orb" />
+          <span aria-hidden="true" class="boss-helper-launcher__liquid boss-helper-launcher__liquid--dock" />
+          <span aria-hidden="true" class="boss-helper-launcher__caustic boss-helper-launcher__caustic--dock" />
           <ElAvatar :size="42" :src="currentUserAvatar">
             {{ currentUserLabel.slice(0, 1) }}
           </ElAvatar>
         </button>
 
-        <template v-else>
+        <section v-else key="expanded" class="boss-helper-launcher__panel" aria-label="Boss Helper 控制台">
+          <div aria-hidden="true" class="boss-helper-launcher__liquid boss-helper-launcher__liquid--panel" />
+          <div aria-hidden="true" class="boss-helper-launcher__liquid boss-helper-launcher__liquid--panel-secondary" />
+          <div aria-hidden="true" class="boss-helper-launcher__caustic boss-helper-launcher__caustic--panel" />
+          <div aria-hidden="true" class="boss-helper-launcher__lens boss-helper-launcher__lens--top" />
+          <div aria-hidden="true" class="boss-helper-launcher__lens boss-helper-launcher__lens--bottom" />
           <div class="boss-helper-launcher__halo boss-helper-launcher__halo--primary" />
           <div class="boss-helper-launcher__halo boss-helper-launcher__halo--secondary" />
 
@@ -157,17 +166,15 @@ onMounted(async () => {
             </div>
 
             <div class="boss-helper-launcher__top-actions">
-              <button
-                type="button"
-                class="boss-helper-launcher__toggle bh-glass-button"
-                @click="toggleLauncher"
-              >
-                收起
+              <button type="button" class="boss-helper-launcher__control" @click="toggleLauncher">
+                <span>收起</span>
               </button>
 
               <button
                 type="button"
-                class="boss-helper-launcher__theme bh-glass-button"
+                class="boss-helper-launcher__theme"
+                :class="{ 'is-dark': dark }"
+                :aria-pressed="dark"
                 @click="themeChange"
               >
                 <span class="boss-helper-launcher__theme-track">
@@ -178,7 +185,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="boss-helper-launcher__profile bh-glass-surface bh-glass-surface--nested">
+          <div class="boss-helper-launcher__profile">
             <ElAvatar :size="52" :src="currentUserAvatar">
               {{ currentUserLabel.slice(0, 1) }}
             </ElAvatar>
@@ -189,11 +196,7 @@ onMounted(async () => {
           </div>
 
           <div class="boss-helper-launcher__stats">
-            <article
-              v-for="item in quickStats"
-              :key="item.label"
-              class="boss-helper-launcher__stat bh-glass-surface bh-glass-surface--nested"
-            >
+            <article v-for="item in quickStats" :key="item.label" class="boss-helper-launcher__stat">
               <span>{{ item.label }}</span>
               <strong>{{ item.value }}</strong>
               <small>{{ item.caption }}</small>
@@ -203,21 +206,17 @@ onMounted(async () => {
           <div class="boss-helper-launcher__actions">
             <button
               type="button"
-              class="boss-helper-launcher__action boss-helper-launcher__action--primary bh-glass-button bh-glass-button--accent"
+              class="boss-helper-launcher__action boss-helper-launcher__action--primary"
               @click="openUserCenter"
             >
-              账户配置
+              <span>账户配置</span>
             </button>
-            <button
-              type="button"
-              class="boss-helper-launcher__action bh-glass-button"
-              @click="openProtocolNotice"
-            >
-              帮助说明
+            <button type="button" class="boss-helper-launcher__action" @click="openProtocolNotice">
+              <span>帮助说明</span>
             </button>
           </div>
-        </template>
-      </div>
+        </section>
+      </Transition>
     </div>
 
     <Teleport to="body">

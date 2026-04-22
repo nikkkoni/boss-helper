@@ -14,14 +14,8 @@ defineExpose({
 
 <template>
   <div ref="rootRef" class="helper-dashboard bh-workspace-stack">
-    <section class="helper-dashboard__hero bh-workspace-stack">
-      <div class="helper-dashboard__hero-block">
-        <slot name="header" />
-      </div>
-
-      <div class="helper-dashboard__hero-block">
-        <slot name="metrics" />
-      </div>
+    <section class="helper-dashboard__hero">
+      <slot name="header" />
     </section>
 
     <div class="helper-dashboard__body">
@@ -51,12 +45,6 @@ defineExpose({
 }
 
 .helper-dashboard__hero {
-  position: relative;
-  display: grid;
-  gap: 18px;
-}
-
-.helper-dashboard__hero-block {
   position: relative;
   z-index: 1;
 }

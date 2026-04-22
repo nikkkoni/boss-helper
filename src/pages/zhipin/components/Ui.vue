@@ -23,7 +23,6 @@ import HelpOverlay from './help/HelpOverlay.vue'
 import Logs from './Logs.vue'
 import Statistics from './Statistics.vue'
 import WorkspaceHeader from './workspace/WorkspaceHeader.vue'
-import WorkspaceMetrics from './workspace/WorkspaceMetrics.vue'
 import WorkspaceSectionHeader from './workspace/WorkspaceSectionHeader.vue'
 import WorkspaceShell from './workspace/WorkspaceShell.vue'
 import WorkspaceStatusRail from './workspace/WorkspaceStatusRail.vue'
@@ -61,8 +60,11 @@ const userInfo = computed(() => unref(user.info))
 const currentUserLabel = computed(
   () => userInfo.value?.showName ?? userInfo.value?.name ?? '未识别当前账号',
 )
+const todayProgressLabel = computed(
+  () => `${todayData.success}/${conf.formData.deliveryLimit.value}`,
+)
 const dashboardSummary = computed(
-  () => `今日投递: ${todayData.success}/${conf.formData.deliveryLimit.value}`,
+  () => `今日投递: ${todayProgressLabel.value}`,
 )
 const pageProgressLabel = computed(() =>
   deliver.total > 0 ? `${Math.min(deliver.current + 1, deliver.total)}/${deliver.total}` : '待开始',
@@ -121,13 +123,7 @@ const deliveryStateTone = computed<'completed' | 'error' | 'idle' | 'paused' | '
   }
 })
 const deliveryStatusMessage = computed(() => common.deliverStatusMessage || '未开始')
-const dashboardMetrics = computed(() => [
-  {
-    label: '今日投递',
-    value: `${todayData.success}/${conf.formData.deliveryLimit.value}`,
-    caption: '已完成 / 当日上限',
-    help: '这里显示今天已经完成的投递数量以及当前配置的上限。',
-  },
+const workspaceOverviewItems = computed(() => [
   {
     label: '当前页面',
     value: pageProgressLabel.value,
@@ -137,8 +133,8 @@ const dashboardMetrics = computed(() => [
   {
     label: '当前账号',
     value: currentUserLabel.value,
-    caption: helpVisible.value ? '帮助模式已开启' : '帮助模式未开启',
-    help: '这里显示当前识别到的 Boss 账号和帮助模式状态。',
+    caption: '当前识别到的 Boss 账号',
+    help: '这里显示当前识别到的 Boss 账号。',
   },
 ])
 
@@ -195,13 +191,9 @@ onUnmounted(() => {
       <template #header>
         <WorkspaceHeader
           v-model:help-visible="helpVisible"
-          :current-user-label="currentUserLabel"
-          :today-summary="dashboardSummary"
+          :items="workspaceOverviewItems"
+          :today-progress-label="todayProgressLabel"
         />
-      </template>
-
-      <template #metrics>
-        <WorkspaceMetrics :items="dashboardMetrics" />
       </template>
 
       <HelpOverlay :visible="helpVisible" :root-element="helpRootElement" />

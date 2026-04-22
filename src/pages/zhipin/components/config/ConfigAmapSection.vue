@@ -253,6 +253,7 @@ async function amapGeocodeHandler() {
 .config-amap__field-card,
 .config-amap__metric-card {
   padding: 14px;
+  min-width: 0;
 }
 
 .config-amap__toggle-copy strong {
@@ -279,14 +280,38 @@ async function amapGeocodeHandler() {
 }
 
 .config-amap__field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   margin-right: 0;
   margin-bottom: 0;
+  min-width: 0;
+}
+
+.config-amap__field :deep(.ehp-form-item__label-wrap),
+.config-amap__field :deep(.ehp-form-item__label) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.config-amap__field :deep(.ehp-form-item__label) {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  line-height: 1.4;
+  white-space: normal;
 }
 
 .config-amap__field :deep(.ehp-form-item__content),
 .config-amap__field :deep(.ehp-input),
 .config-amap__field :deep(.ehp-input-number) {
   width: 100%;
+  min-width: 0;
+}
+
+.config-amap__field :deep(.ehp-form-item__content) {
+  margin-left: 0 !important;
 }
 
 .config-amap__token-list {

@@ -14,67 +14,368 @@
 }
 
 .boss-helper-launcher {
-  animation: boss-helper-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  display: grid;
+  align-items: start;
+  justify-items: end;
+  transform-origin: top right;
+  animation: boss-helper-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  --bh-launcher-border: rgb(255 255 255 / 42%);
+  --bh-launcher-border-strong: rgb(255 255 255 / 64%);
+  --bh-launcher-liquid-edge: rgb(255 255 255 / 62%);
+  --bh-launcher-liquid-fill: rgb(255 255 255 / 18%);
+  --bh-launcher-panel-shadow:
+    0 34px 82px rgb(148 163 184 / 24%),
+    inset 0 1px 0 rgb(255 255 255 / 88%),
+    inset 0 -24px 42px rgb(191 219 254 / 22%);
+  --bh-launcher-surface-shadow:
+    0 18px 38px rgb(148 163 184 / 18%),
+    inset 0 1px 0 rgb(255 255 255 / 78%),
+    inset 0 -12px 22px rgb(191 219 254 / 14%);
+}
+
+.boss-helper-launcher-shell-enter-active,
+.boss-helper-launcher-shell-leave-active {
+  transition:
+    opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.62s cubic-bezier(0.2, 0.9, 0.22, 1),
+    filter 0.52s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: top right;
+  will-change: opacity, transform, filter;
+}
+
+.boss-helper-launcher-shell-leave-active {
+  pointer-events: none;
+}
+
+.boss-helper-launcher__dock,
+.boss-helper-launcher__panel {
+  grid-area: 1 / 1;
+}
+
+.boss-helper-launcher__dock.boss-helper-launcher-shell-enter-from,
+.boss-helper-launcher__dock.boss-helper-launcher-shell-leave-to {
+  opacity: 0;
+  filter: blur(10px) saturate(82%);
+  transform: translate3d(0, -4px, 0) scale(0.62);
+}
+
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-from,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-to {
+  opacity: 0;
+  filter: blur(16px) saturate(84%);
+  transform: translate3d(0, -8px, 0) scale(0.82);
+}
+
+.boss-helper-launcher__dock.boss-helper-launcher-shell-enter-active,
+.boss-helper-launcher__dock.boss-helper-launcher-shell-leave-active {
+  animation: boss-helper-liquid-dock 0.62s cubic-bezier(0.2, 0.9, 0.22, 1);
+}
+
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-active {
+  animation: boss-helper-liquid-panel 0.68s cubic-bezier(0.2, 0.9, 0.22, 1);
+}
+
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active .boss-helper-launcher__top {
+  transition-delay: 0.04s;
+}
+
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active .boss-helper-launcher__profile {
+  transition-delay: 0.08s;
+}
+
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active .boss-helper-launcher__stats {
+  transition-delay: 0.12s;
+}
+
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active .boss-helper-launcher__actions {
+  transition-delay: 0.16s;
+}
+
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-from .boss-helper-launcher__top,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-from .boss-helper-launcher__profile,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-from .boss-helper-launcher__stats,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-from .boss-helper-launcher__actions,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-to .boss-helper-launcher__top,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-to .boss-helper-launcher__profile,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-to .boss-helper-launcher__stats,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-to .boss-helper-launcher__actions {
+  opacity: 0;
+  transform: translate3d(0, 12px, 0) scale(0.985);
+}
+
+.boss-helper-launcher__dock,
+.boss-helper-launcher__panel,
+.boss-helper-launcher__control,
+.boss-helper-launcher__theme,
+.boss-helper-launcher__profile,
+.boss-helper-launcher__stat,
+.boss-helper-launcher__action {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--bh-launcher-border);
+  color: var(--bh-text-primary);
+  backdrop-filter: blur(28px) saturate(180%) brightness(1.04);
+  -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.04);
+}
+
+.boss-helper-launcher__dock::before,
+.boss-helper-launcher__panel::before,
+.boss-helper-launcher__control::before,
+.boss-helper-launcher__theme::before,
+.boss-helper-launcher__profile::before,
+.boss-helper-launcher__stat::before,
+.boss-helper-launcher__action::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  border: 1px solid rgb(255 255 255 / 18%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 48%), rgb(255 255 255 / 12%));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 56%),
+    inset 0 -12px 20px rgb(191 219 254 / 12%);
+  opacity: 0.96;
+  pointer-events: none;
+}
+
+.boss-helper-launcher__dock::after,
+.boss-helper-launcher__panel::after,
+.boss-helper-launcher__control::after,
+.boss-helper-launcher__theme::after,
+.boss-helper-launcher__profile::after,
+.boss-helper-launcher__stat::after,
+.boss-helper-launcher__action::after {
+  content: '';
+  position: absolute;
+  inset: -18% -10%;
+  background:
+    radial-gradient(circle at 20% 16%, rgb(255 255 255 / 88%), transparent 18%),
+    radial-gradient(circle at 78% 16%, rgb(191 219 254 / 48%), transparent 24%),
+    radial-gradient(circle at 68% 84%, rgb(125 211 252 / 24%), transparent 28%),
+    linear-gradient(120deg, transparent 34%, rgb(255 255 255 / 36%) 46%, transparent 60%);
+  opacity: 0.76;
+  pointer-events: none;
+}
+
+.boss-helper-launcher__dock > *,
+.boss-helper-launcher__panel > *,
+.boss-helper-launcher__control > *,
+.boss-helper-launcher__theme > *,
+.boss-helper-launcher__profile > *,
+.boss-helper-launcher__stat > *,
+.boss-helper-launcher__action > * {
+  position: relative;
+  z-index: 1;
+}
+
+.boss-helper-launcher__liquid,
+.boss-helper-launcher__caustic,
+.boss-helper-launcher__lens {
+  position: absolute;
+  pointer-events: none;
+}
+
+.boss-helper-launcher__liquid,
+.boss-helper-launcher__caustic {
+  z-index: 0;
+}
+
+.boss-helper-launcher__lens {
+  z-index: 0;
+}
+
+.boss-helper-launcher__liquid {
+  border-radius: inherit;
+  opacity: 0.72;
+  mix-blend-mode: screen;
+}
+
+.boss-helper-launcher__liquid--dock {
+  inset: 6px;
+  background:
+    radial-gradient(circle at 36% 30%, rgb(255 255 255 / 94%), transparent 26%),
+    radial-gradient(circle at 74% 72%, rgb(125 211 252 / 44%), transparent 40%),
+    linear-gradient(150deg, rgb(255 255 255 / 24%), rgb(255 255 255 / 8%));
+  filter: blur(6px);
+  animation: boss-helper-liquid-flow 7.4s ease-in-out infinite alternate;
+}
+
+.boss-helper-launcher__liquid--panel {
+  inset: 10px 12px 42% 10px;
+  border-radius: 32px 30px 52px 30px;
+  background:
+    radial-gradient(circle at 18% 24%, rgb(255 255 255 / 92%), transparent 20%),
+    radial-gradient(circle at 62% 56%, rgb(191 219 254 / 48%), transparent 34%),
+    linear-gradient(145deg, rgb(255 255 255 / 22%), rgb(255 255 255 / 6%));
+  filter: blur(14px);
+  animation: boss-helper-liquid-flow 10s ease-in-out infinite alternate;
+}
+
+.boss-helper-launcher__liquid--panel-secondary {
+  inset: 46% 10px 10px 34%;
+  border-radius: 42px 58px 34px 52px;
+  background:
+    radial-gradient(circle at 26% 24%, rgb(255 255 255 / 86%), transparent 18%),
+    radial-gradient(circle at 76% 74%, rgb(125 211 252 / 36%), transparent 34%),
+    linear-gradient(145deg, rgb(255 255 255 / 16%), rgb(255 255 255 / 4%));
+  filter: blur(16px);
+  opacity: 0.54;
+  animation: boss-helper-liquid-flow 12s ease-in-out infinite alternate-reverse;
+}
+
+.boss-helper-launcher__caustic {
+  opacity: 0.7;
+  mix-blend-mode: screen;
+}
+
+.boss-helper-launcher__caustic--dock {
+  inset: -10% -16%;
+  background:
+    linear-gradient(120deg, transparent 32%, rgb(255 255 255 / 82%) 48%, transparent 60%),
+    linear-gradient(150deg, transparent 40%, rgb(191 219 254 / 34%) 54%, transparent 66%);
+  filter: blur(7px);
+  animation: boss-helper-caustic-sweep 4.2s ease-in-out infinite;
+}
+
+.boss-helper-launcher__caustic--panel {
+  inset: -8% -12%;
+  border-radius: inherit;
+  background:
+    linear-gradient(116deg, transparent 30%, rgb(255 255 255 / 52%) 42%, transparent 54%),
+    linear-gradient(148deg, transparent 46%, rgb(191 219 254 / 26%) 56%, transparent 66%),
+    radial-gradient(circle at 16% 24%, rgb(255 255 255 / 36%), transparent 18%);
+  filter: blur(10px);
+  animation: boss-helper-caustic-sweep 6.8s ease-in-out infinite;
+}
+
+.boss-helper-launcher__lens {
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 18%), rgb(255 255 255 / 4%));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 48%),
+    inset 0 -8px 14px rgb(191 219 254 / 12%);
+  filter: blur(0.2px);
+  opacity: 0.72;
+}
+
+.boss-helper-launcher__lens--top {
+  top: 18px;
+  right: 22px;
+  width: 108px;
+  height: 44px;
+  transform: rotate(-6deg);
+}
+
+.boss-helper-launcher__lens--bottom {
+  right: 18px;
+  bottom: 82px;
+  width: 136px;
+  height: 96px;
+  border-radius: 54px;
+  transform: rotate(9deg);
+  opacity: 0.58;
+}
+
+.boss-helper-launcher__dock {
+  display: inline-flex;
+  width: 60px;
+  height: 60px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0;
+  background:
+    radial-gradient(circle at 32% 24%, rgb(255 255 255 / 98%), transparent 34%),
+    radial-gradient(circle at 74% 74%, rgb(191 219 254 / 42%), transparent 38%),
+    linear-gradient(160deg, rgb(255 255 255 / 72%), rgb(255 255 255 / 20%));
+  box-shadow:
+    0 26px 54px rgb(148 163 184 / 24%),
+    inset 0 1px 0 rgb(255 255 255 / 92%),
+    inset 0 -16px 30px rgb(191 219 254 / 16%);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    filter 0.2s ease;
+  transform: translateZ(0);
+}
+
+.boss-helper-launcher__dock:hover {
+  transform: translateY(-1px) scale(1.015);
+  box-shadow:
+    0 30px 58px rgb(148 163 184 / 28%),
+    inset 0 1px 0 rgb(255 255 255 / 96%),
+    inset 0 -18px 32px rgb(191 219 254 / 18%);
+  filter: saturate(108%);
+}
+
+.boss-helper-launcher__dock-orb {
+  position: absolute;
+  inset: 9px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 34% 28%, rgb(255 255 255 / 94%), transparent 30%),
+    radial-gradient(circle at 70% 72%, rgb(125 211 252 / 46%), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgb(255 255 255 / 26%), transparent 48%);
+  filter: blur(14px);
+  opacity: 0.96;
+}
+
+.boss-helper-launcher__dock .ehp-avatar {
+  position: relative;
+  z-index: 1;
 }
 
 .boss-helper-launcher__panel {
-  --bh-glass-bg: var(--bh-surface-launcher);
-
-  position: relative;
-  overflow: hidden;
+  width: min(344px, calc(100vw - 32px));
   isolation: isolate;
-  width: min(332px, calc(100vw - 32px));
-  padding: 22px;
-  backdrop-filter: blur(var(--bh-blur-xl));
-  -webkit-backdrop-filter: blur(var(--bh-blur-xl));
-  color: var(--bh-text-primary);
-  transition:
-    width 0.22s ease,
-    height 0.22s ease,
-    padding 0.22s ease,
-    border-radius 0.22s ease,
-    box-shadow 0.22s ease;
-}
-
-.boss-helper-launcher__fab {
-  display: inline-flex;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.boss-helper-launcher__fab .ehp-avatar {
-  border: 1px solid var(--bh-avatar-border);
-  box-shadow: var(--bh-avatar-shadow);
+  padding: 24px;
+  border-color: var(--bh-launcher-border-strong);
+  border-radius: 34px 38px 40px 34px;
+  background:
+    radial-gradient(circle at 16% 12%, rgb(255 255 255 / 94%), transparent 18%),
+    radial-gradient(circle at 82% 20%, rgb(191 219 254 / 46%), transparent 26%),
+    radial-gradient(circle at 70% 82%, rgb(125 211 252 / 28%), transparent 30%),
+    linear-gradient(155deg, rgb(255 255 255 / 58%), rgb(255 255 255 / 18%));
+  box-shadow: var(--bh-launcher-panel-shadow);
+  transform: translateZ(0);
 }
 
 .boss-helper-launcher__halo {
   position: absolute;
   border-radius: 999px;
-  filter: blur(18px);
-  opacity: 0.75;
+  filter: blur(40px);
+  opacity: 0.74;
   pointer-events: none;
 }
 
 .boss-helper-launcher__halo--primary {
-  width: 170px;
-  height: 170px;
-  top: -90px;
-  right: -40px;
-  background: var(--bh-halo-primary);
+  width: 200px;
+  height: 200px;
+  top: -84px;
+  right: -26px;
+  background: linear-gradient(135deg, rgb(255 255 255 / 60%), rgb(191 219 254 / 28%));
 }
 
 .boss-helper-launcher__halo--secondary {
-  width: 140px;
-  height: 140px;
-  bottom: -70px;
-  left: -40px;
-  background: var(--bh-halo-secondary);
+  width: 190px;
+  height: 190px;
+  bottom: -84px;
+  left: -42px;
+  background: linear-gradient(135deg, rgb(191 219 254 / 36%), rgb(96 165 250 / 20%));
+}
+
+.boss-helper-launcher__panel .boss-helper-launcher__top,
+.boss-helper-launcher__panel .boss-helper-launcher__profile,
+.boss-helper-launcher__panel .boss-helper-launcher__stats,
+.boss-helper-launcher__panel .boss-helper-launcher__actions {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 .boss-helper-launcher__top,
@@ -83,13 +384,14 @@
 .boss-helper-launcher__actions {
   position: relative;
   z-index: 1;
+  transition:
+    opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .boss-helper-launcher__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  gap: 14px;
 }
 
 .boss-helper-launcher__title-block {
@@ -114,22 +416,48 @@
 }
 
 .boss-helper-launcher__top-actions {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
 }
 
-.boss-helper-launcher__toggle {
-  min-height: 38px;
-  padding: 0 12px;
+.boss-helper-launcher__control {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 16px;
+  background:
+    radial-gradient(circle at 24% 12%, rgb(255 255 255 / 72%), transparent 22%),
+    linear-gradient(160deg, rgb(255 255 255 / 42%), rgb(255 255 255 / 14%));
+  box-shadow: var(--bh-launcher-surface-shadow);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
   font-size: 0.85rem;
   font-weight: 700;
 }
 
+.boss-helper-launcher__control:hover,
+.boss-helper-launcher__theme:hover,
+.boss-helper-launcher__action:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 22px 40px rgb(148 163 184 / 22%),
+    inset 0 1px 0 rgb(255 255 255 / 92%),
+    inset 0 -12px 24px rgb(191 219 254 / 18%);
+}
+
 .boss-helper-launcher__brand strong {
-  font-size: 1.35rem;
+  font-size: clamp(1.84rem, 1.46rem + 1.24vw, 2.24rem);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.06em;
+  line-height: 0.98;
+  text-wrap: balance;
 }
 
 .boss-helper-launcher__eyebrow {
@@ -137,30 +465,78 @@
 }
 
 .boss-helper-launcher__theme {
+  display: inline-flex;
+  min-height: 56px;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 24% 12%, rgb(255 255 255 / 72%), transparent 22%),
+    linear-gradient(160deg, rgb(255 255 255 / 42%), rgb(255 255 255 / 14%));
+  box-shadow: var(--bh-launcher-surface-shadow);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .boss-helper-launcher__theme-track {
-  width: 42px;
-  height: 24px;
-  padding: 3px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 92px;
+  height: 40px;
+  align-items: center;
+  padding: 4px;
   border-radius: 999px;
-  background: var(--bh-theme-track);
+  background:
+    radial-gradient(circle at 28% 24%, rgb(255 255 255 / 76%), transparent 24%),
+    linear-gradient(135deg, rgb(255 255 255 / 34%), rgb(191 219 254 / 26%));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 30%),
+    inset 0 1px 0 rgb(255 255 255 / 58%),
+    inset 0 -6px 16px rgb(191 219 254 / 18%);
 }
 
 .boss-helper-launcher__theme-thumb {
   display: block;
-  width: 18px;
-  height: 18px;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--bh-theme-thumb-bg);
-  box-shadow: var(--bh-theme-thumb-shadow);
-  transition: transform 0.2s ease;
+  background:
+    radial-gradient(circle at 34% 28%, rgb(255 255 255 / 98%), transparent 34%),
+    linear-gradient(180deg, rgb(255 255 255 / 96%), rgb(226 232 240 / 78%));
+  box-shadow:
+    0 10px 22px rgb(125 211 252 / 22%),
+    inset 0 1px 0 rgb(255 255 255 / 90%);
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.22s ease,
+    box-shadow 0.22s ease;
 }
 
-html.dark .boss-helper-launcher__theme-thumb {
-  transform: translateX(18px);
+.boss-helper-launcher__theme.is-dark .boss-helper-launcher__theme-track {
+  background:
+    radial-gradient(circle at 28% 24%, rgb(255 255 255 / 28%), transparent 24%),
+    linear-gradient(135deg, rgb(96 165 250 / 50%), rgb(99 102 241 / 54%));
+}
+
+.boss-helper-launcher__theme.is-dark .boss-helper-launcher__theme-thumb {
+  transform: translateX(52px);
+  background:
+    radial-gradient(circle at 34% 28%, rgb(255 255 255 / 88%), transparent 34%),
+    linear-gradient(180deg, rgb(255 255 255 / 88%), rgb(191 219 254 / 72%));
+}
+
+.boss-helper-launcher__theme > span:last-child {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .boss-helper-launcher__profile {
@@ -169,7 +545,12 @@ html.dark .boss-helper-launcher__theme-thumb {
   gap: 14px;
   align-items: center;
   margin-top: 20px;
-  padding: 14px;
+  padding: 16px;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 20% 16%, rgb(255 255 255 / 72%), transparent 22%),
+    linear-gradient(160deg, rgb(255 255 255 / 42%), rgb(255 255 255 / 14%));
+  box-shadow: var(--bh-launcher-surface-shadow);
 }
 
 .boss-helper-launcher__profile-copy {
@@ -190,8 +571,8 @@ html.dark .boss-helper-launcher__theme-thumb {
 }
 
 .boss-helper-launcher .ehp-avatar {
-  border: 1px solid var(--bh-avatar-border);
-  box-shadow: var(--bh-avatar-shadow);
+  border: 1px solid rgb(255 255 255 / 68%);
+  box-shadow: 0 16px 32px rgb(15 23 42 / 16%);
 }
 
 .boss-helper-launcher__stats {
@@ -207,6 +588,11 @@ html.dark .boss-helper-launcher__theme-thumb {
   flex-direction: column;
   gap: 4px;
   padding: 14px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 24% 14%, rgb(255 255 255 / 64%), transparent 24%),
+    linear-gradient(160deg, rgb(255 255 255 / 38%), rgb(255 255 255 / 10%));
+  box-shadow: var(--bh-launcher-surface-shadow);
 }
 
 .boss-helper-launcher__stat span,
@@ -242,30 +628,160 @@ html.dark .boss-helper-launcher__theme-thumb {
 }
 
 .boss-helper-launcher__action {
+  display: inline-flex;
   min-height: 46px;
+  align-items: center;
+  justify-content: center;
   padding: 0 16px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 24% 12%, rgb(255 255 255 / 70%), transparent 22%),
+    linear-gradient(160deg, rgb(255 255 255 / 38%), rgb(255 255 255 / 12%));
+  box-shadow: var(--bh-launcher-surface-shadow);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
   font-size: 0.95rem;
   font-weight: 600;
 }
 
 .boss-helper-launcher__action--primary {
-  border-radius: var(--bh-radius-sm);
+  color: #0f172a;
+  background:
+    radial-gradient(circle at 22% 12%, rgb(255 255 255 / 78%), transparent 24%),
+    linear-gradient(135deg, rgb(255 255 255 / 54%), rgb(255 255 255 / 16%)),
+    linear-gradient(135deg, rgb(191 219 254 / 58%), rgb(125 211 252 / 34%));
+  box-shadow:
+    0 20px 42px rgb(125 211 252 / 24%),
+    inset 0 1px 0 rgb(255 255 255 / 92%),
+    inset 0 -12px 24px rgb(191 219 254 / 18%);
 }
 
-.boss-helper-launcher.is-collapsed .boss-helper-launcher__panel {
-  width: 58px;
-  height: 58px;
-  padding: 8px;
-  border-radius: 999px;
-  box-shadow: var(--bh-shadow-collapsed);
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active .boss-helper-launcher__top,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active .boss-helper-launcher__profile,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active .boss-helper-launcher__stats,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-enter-active .boss-helper-launcher__actions,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-active .boss-helper-launcher__top,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-active .boss-helper-launcher__profile,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-active .boss-helper-launcher__stats,
+.boss-helper-launcher__panel.boss-helper-launcher-shell-leave-active .boss-helper-launcher__actions {
+  transition:
+    opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.boss-helper-launcher.is-collapsed .boss-helper-launcher__halo,
-.boss-helper-launcher.is-collapsed .boss-helper-launcher__top,
-.boss-helper-launcher.is-collapsed .boss-helper-launcher__profile,
-.boss-helper-launcher.is-collapsed .boss-helper-launcher__stats,
-.boss-helper-launcher.is-collapsed .boss-helper-launcher__actions {
-  display: none;
+html.dark .boss-helper-launcher__dock,
+html.dark .boss-helper-launcher__panel,
+html.dark .boss-helper-launcher__control,
+html.dark .boss-helper-launcher__theme,
+html.dark .boss-helper-launcher__profile,
+html.dark .boss-helper-launcher__stat,
+html.dark .boss-helper-launcher__action {
+  border-color: rgb(255 255 255 / 14%);
+}
+
+html.dark .boss-helper-launcher__liquid--dock {
+  background:
+    radial-gradient(circle at 36% 30%, rgb(255 255 255 / 22%), transparent 26%),
+    radial-gradient(circle at 74% 72%, rgb(96 165 250 / 28%), transparent 40%),
+    linear-gradient(150deg, rgb(255 255 255 / 10%), rgb(255 255 255 / 2%));
+}
+
+html.dark .boss-helper-launcher__liquid--panel {
+  background:
+    radial-gradient(circle at 18% 24%, rgb(255 255 255 / 18%), transparent 20%),
+    radial-gradient(circle at 62% 56%, rgb(56 189 248 / 20%), transparent 34%),
+    linear-gradient(145deg, rgb(255 255 255 / 8%), rgb(255 255 255 / 2%));
+}
+
+html.dark .boss-helper-launcher__liquid--panel-secondary {
+  background:
+    radial-gradient(circle at 26% 24%, rgb(255 255 255 / 14%), transparent 18%),
+    radial-gradient(circle at 76% 74%, rgb(99 102 241 / 16%), transparent 34%),
+    linear-gradient(145deg, rgb(255 255 255 / 6%), rgb(255 255 255 / 1%));
+}
+
+html.dark .boss-helper-launcher__caustic--dock {
+  background:
+    linear-gradient(120deg, transparent 32%, rgb(255 255 255 / 26%) 48%, transparent 60%),
+    linear-gradient(150deg, transparent 40%, rgb(56 189 248 / 16%) 54%, transparent 66%);
+}
+
+html.dark .boss-helper-launcher__caustic--panel {
+  background:
+    linear-gradient(116deg, transparent 30%, rgb(255 255 255 / 18%) 42%, transparent 54%),
+    linear-gradient(148deg, transparent 46%, rgb(56 189 248 / 12%) 56%, transparent 66%),
+    radial-gradient(circle at 16% 24%, rgb(255 255 255 / 10%), transparent 18%);
+}
+
+html.dark .boss-helper-launcher__lens {
+  border-color: rgb(255 255 255 / 10%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 8%), rgb(255 255 255 / 2%));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    inset 0 -8px 14px rgb(56 189 248 / 6%);
+}
+
+html.dark .boss-helper-launcher__dock::before,
+html.dark .boss-helper-launcher__panel::before,
+html.dark .boss-helper-launcher__control::before,
+html.dark .boss-helper-launcher__theme::before,
+html.dark .boss-helper-launcher__profile::before,
+html.dark .boss-helper-launcher__stat::before,
+html.dark .boss-helper-launcher__action::before {
+  border-color: rgb(255 255 255 / 8%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 10%), rgb(255 255 255 / 2%));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    inset 0 -10px 18px rgb(56 189 248 / 6%);
+}
+
+html.dark .boss-helper-launcher__dock {
+  background:
+    radial-gradient(circle at 32% 24%, rgb(255 255 255 / 18%), transparent 36%),
+    radial-gradient(circle at 72% 72%, rgb(96 165 250 / 20%), transparent 40%),
+    linear-gradient(160deg, rgb(15 23 42 / 74%), rgb(30 41 59 / 34%));
+  box-shadow:
+    0 26px 54px rgb(2 6 23 / 42%),
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    inset 0 -16px 30px rgb(14 165 233 / 10%);
+}
+
+html.dark .boss-helper-launcher__panel {
+  background:
+    radial-gradient(circle at 16% 12%, rgb(255 255 255 / 14%), transparent 18%),
+    radial-gradient(circle at 82% 20%, rgb(56 189 248 / 18%), transparent 26%),
+    radial-gradient(circle at 70% 82%, rgb(99 102 241 / 14%), transparent 30%),
+    linear-gradient(155deg, rgb(15 23 42 / 72%), rgb(30 41 59 / 26%));
+  box-shadow:
+    0 34px 82px rgb(2 6 23 / 44%),
+    inset 0 1px 0 rgb(255 255 255 / 10%),
+    inset 0 -24px 42px rgb(56 189 248 / 10%);
+}
+
+html.dark .boss-helper-launcher__control,
+html.dark .boss-helper-launcher__theme,
+html.dark .boss-helper-launcher__profile,
+html.dark .boss-helper-launcher__stat,
+html.dark .boss-helper-launcher__action {
+  background:
+    radial-gradient(circle at 24% 12%, rgb(255 255 255 / 10%), transparent 22%),
+    linear-gradient(160deg, rgb(255 255 255 / 10%), rgb(255 255 255 / 4%));
+  box-shadow:
+    0 20px 40px rgb(2 6 23 / 26%),
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    inset 0 -12px 22px rgb(56 189 248 / 8%);
+}
+
+html.dark .boss-helper-launcher__action--primary {
+  color: #e2e8f0;
+  background:
+    radial-gradient(circle at 22% 12%, rgb(255 255 255 / 14%), transparent 24%),
+    linear-gradient(135deg, rgb(255 255 255 / 12%), rgb(255 255 255 / 4%)),
+    linear-gradient(135deg, rgb(34 211 238 / 18%), rgb(99 102 241 / 18%));
 }
 
 @keyframes boss-helper-enter {
@@ -277,6 +793,71 @@ html.dark .boss-helper-launcher__theme-thumb {
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes boss-helper-liquid-flow {
+  from {
+    transform: translate3d(-3%, -2%, 0) scale(0.98);
+  }
+
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.04);
+  }
+}
+
+@keyframes boss-helper-caustic-sweep {
+  0% {
+    transform: translate3d(-8%, -4%, 0) rotate(-3deg);
+    opacity: 0.42;
+  }
+
+  50% {
+    transform: translate3d(4%, 2%, 0) rotate(2deg);
+    opacity: 0.78;
+  }
+
+  100% {
+    transform: translate3d(10%, 4%, 0) rotate(4deg);
+    opacity: 0.46;
+  }
+}
+
+@keyframes boss-helper-liquid-dock {
+  0% {
+    border-radius: 58% 42% 56% 44% / 46% 58% 42% 54%;
+  }
+
+  55% {
+    border-radius: 46% 54% 48% 52% / 58% 44% 56% 42%;
+  }
+
+  100% {
+    border-radius: 999px;
+  }
+}
+
+@keyframes boss-helper-liquid-panel {
+  0% {
+    border-radius: 42px 34px 46px 30px;
+  }
+
+  55% {
+    border-radius: 32px 44px 36px 42px;
+  }
+
+  100% {
+    border-radius: 34px 38px 40px 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boss-helper-launcher,
+  .boss-helper-launcher *,
+  .boss-helper-launcher *::before,
+  .boss-helper-launcher *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -402,9 +983,8 @@ html.dark .boss-helper-launcher__theme-thumb {
     grid-template-columns: 1fr;
   }
 
-  .boss-helper-launcher.is-collapsed .boss-helper-launcher__panel {
-    width: 54px;
-    height: 54px;
-    padding: 6px;
+  .boss-helper-launcher__dock {
+    width: 56px;
+    height: 56px;
   }
 }
