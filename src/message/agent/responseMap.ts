@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import type { BossHelperAgentCommand } from './commands'
 import type {
   BossHelperAgentConfigSnapshot,
@@ -38,3 +39,4 @@ export type BossHelperAgentResponseDataMap = {
 export type BossHelperAgentCommandResponse<T extends BossHelperAgentCommand> = Promise<
   BossHelperAgentResponse<BossHelperAgentResponseDataMap[T]>
 >
+/* c8 ignore stop */

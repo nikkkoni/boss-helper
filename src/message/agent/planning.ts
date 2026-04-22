@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import type { BossHelperAgentJobSummary } from './jobs'
 
 export type BossHelperAgentPlanDecision =
@@ -39,6 +40,7 @@ export interface BossHelperAgentPlanPreviewItem {
   remainingSteps: string[]
   stage: BossHelperAgentPlanStage
 }
+/* c8 ignore stop */
 
 export interface BossHelperAgentPlanPreviewSummary {
   missingInfoCount: number

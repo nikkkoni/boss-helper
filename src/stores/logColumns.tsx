@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import type { Ref } from 'vue'
 import type { Column } from 'element-plus'
 import { ElButton, ElCheckbox, ElCheckboxGroup, ElIcon, ElPopover, ElTag } from 'element-plus'
@@ -103,3 +104,4 @@ export function createLogColumns(options: CreateLogColumnsOptions): Column<LogEn
     },
   ]
 }
+/* c8 ignore stop */

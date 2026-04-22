@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import type { BossHelperAgentNavigatePayload } from '@/message/agent'
 import type { MyJobListData, JobStatus } from '@/stores/jobs'
 import type { PipelineCacheItem } from '@/types/pipelineCache'
@@ -82,3 +83,4 @@ export interface SiteAdapter<TJobItem = unknown, TJobDetail = unknown> {
   ): MyJobListData[]
   shouldStopOnRepeatedJobList(pathname?: string): boolean
 }
+/* c8 ignore stop */

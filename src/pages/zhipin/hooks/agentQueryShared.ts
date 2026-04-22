@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import type { BossHelperAgentResponse, BossHelperAgentResponseMeta } from '@/message/agent'
 
 export interface UseAgentQueriesOptions {
@@ -15,3 +16,4 @@ export interface UseAgentQueriesOptions {
     meta?: BossHelperAgentResponseMeta,
   ) => Promise<BossHelperAgentResponse>
 }
+/* c8 ignore stop */

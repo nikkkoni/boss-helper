@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import type { Statistics } from '@/types/formData'
 
 import type { BossHelperAgentSuggestedAction } from '../../../shared/agentProtocol.js'
@@ -253,3 +254,4 @@ export interface BossHelperAgentStatsData {
   run: BossHelperAgentRunSummaryData
   todayData: Statistics
 }
+/* c8 ignore stop */

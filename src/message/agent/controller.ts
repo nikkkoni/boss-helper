@@ -1,3 +1,4 @@
+/* c8 ignore start */
 import type {
   BossHelperAgentConfigUpdatePayload,
   BossHelperAgentJobCurrentPayload,
@@ -60,3 +61,4 @@ export interface BossHelperAgentController {
   stop: () => Promise<BossHelperAgentResponse>
   stats: () => Promise<BossHelperAgentResponse>
 }
+/* c8 ignore stop */
