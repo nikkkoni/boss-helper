@@ -20,7 +20,7 @@ export const formInfoData: FormInfoData = {
         label: '高级',
       },
     ],
-    'data-help': '为不同人群展示不同的配置项, 减少上手难度跟配置过多而产生的恐惧',
+    'data-help': '控制当前界面展示的配置深度；级别越高，可见选项越多。',
   },
   company: {
     label: '公司名',
@@ -89,7 +89,7 @@ export const formInfoData: FormInfoData = {
   },
   aiFiltering: {
     label: 'AI过滤',
-    'data-help': '根据工作内容让gpt分析过滤，真是太稳健了，不放过任何一个垃圾',
+    'data-help': '把岗位内容交给 LLM 评分，分数低于阈值的岗位会被过滤。',
     example: [
       `我现在需要求职，让你根据我的需要对岗位进行评分，方便我筛选岗位。
   ## 要求:
@@ -165,7 +165,7 @@ export const formInfoData: FormInfoData = {
   },
   record: {
     label: '内容记录',
-    'data-help': '拿这些数据去训练个Ai岂不是美滋滋咯？',
+    'data-help': '保存运行过程中的内容记录，便于后续排查或分析。',
   },
   delay: {
     deliveryStarts: {

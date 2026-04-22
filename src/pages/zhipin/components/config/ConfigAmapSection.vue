@@ -54,6 +54,10 @@ async function amapGeocodeHandler() {
         title="接入设置"
         description="先开启功能并配置 Key，再用完整地址换算出起点经纬度。"
       >
+        <template #actions>
+          <span class="config-amap__meta bh-glass-pill">接入准备</span>
+        </template>
+
         <div class="config-amap__stack">
           <Alert id="config-amap-2" show-icon type="info">
             <template #title>
@@ -69,27 +73,38 @@ async function amapGeocodeHandler() {
           </Alert>
 
           <div class="config-amap__fields">
-            <div class="config-amap__toggle">
+            <div class="config-amap__field-card bh-glass-surface bh-glass-surface--nested">
+              <div class="config-amap__toggle-copy">
+                <strong>{{ formInfoData.amap.enable.label }}</strong>
+                <p>{{ formInfoData.amap.enable['data-help'] }}</p>
+              </div>
+
               <ElCheckbox
                 v-bind="formInfoData.amap.enable"
                 v-model="conf.formData.amap.enable"
                 border
               />
             </div>
-            <ElFormItem class="config-amap__field config-amap__field--wide" v-bind="formInfoData.amap.key">
-              <ElInput v-model.lazy="conf.formData.amap.key" />
-            </ElFormItem>
-            <ElFormItem class="config-amap__field config-amap__field--wide" v-bind="formInfoData.amap.origins">
-              <ElInput v-model.lazy="conf.formData.amap.origins" :disabled="amapGeocodeLoading">
-                <template #append>
-                  <ElTooltip content="根据完整地址获取经纬度" placement="top">
-                    <ElButton type="primary" :loading="amapGeocodeLoading" @click="amapGeocodeHandler()">
-                      🤖
-                    </ElButton>
-                  </ElTooltip>
-                </template>
-              </ElInput>
-            </ElFormItem>
+
+            <div class="config-amap__field-card bh-glass-surface bh-glass-surface--nested">
+              <ElFormItem class="config-amap__field config-amap__field--wide" v-bind="formInfoData.amap.key">
+                <ElInput v-model.lazy="conf.formData.amap.key" />
+              </ElFormItem>
+            </div>
+
+            <div class="config-amap__field-card bh-glass-surface bh-glass-surface--nested">
+              <ElFormItem class="config-amap__field config-amap__field--wide" v-bind="formInfoData.amap.origins">
+                <ElInput v-model.lazy="conf.formData.amap.origins" :disabled="amapGeocodeLoading">
+                  <template #append>
+                    <ElTooltip content="根据完整地址获取经纬度" placement="top">
+                      <ElButton type="primary" :loading="amapGeocodeLoading" @click="amapGeocodeHandler()">
+                        解析
+                      </ElButton>
+                    </ElTooltip>
+                  </template>
+                </ElInput>
+              </ElFormItem>
+            </div>
           </div>
         </div>
       </ConfigSectionCard>
@@ -99,72 +114,90 @@ async function amapGeocodeHandler() {
         title="通勤阈值"
         description="分别设置直线、驾车和步行的距离或时间上限。"
       >
+        <template #actions>
+          <span class="config-amap__meta bh-glass-pill">距离与时间</span>
+        </template>
+
         <div class="config-amap__fields config-amap__fields--metrics">
-          <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.straightDistance">
-            <ElInputNumber
-              v-model.lazy="conf.formData.amap.straightDistance"
-              :precision="1"
-              :max="1000"
-              :min="0"
-              :step="1"
-            >
-              <template #suffix>
-                <span>km</span>
-              </template>
-            </ElInputNumber>
-          </ElFormItem>
-          <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.drivingDistance">
-            <ElInputNumber
-              v-model.lazy="conf.formData.amap.drivingDistance"
-              :precision="1"
-              :max="1000"
-              :min="0"
-              :step="1"
-            >
-              <template #suffix>
-                <span>km</span>
-              </template>
-            </ElInputNumber>
-          </ElFormItem>
-          <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.drivingDuration">
-            <ElInputNumber
-              v-model.lazy="conf.formData.amap.drivingDuration"
-              :precision="2"
-              :max="1440"
-              :min="0"
-              :step="30"
-            >
-              <template #suffix>
-                <span>分钟</span>
-              </template>
-            </ElInputNumber>
-          </ElFormItem>
-          <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.walkingDistance">
-            <ElInputNumber
-              v-model.lazy="conf.formData.amap.walkingDistance"
-              :precision="1"
-              :max="1000"
-              :min="0"
-              :step="1"
-            >
-              <template #suffix>
-                <span>km</span>
-              </template>
-            </ElInputNumber>
-          </ElFormItem>
-          <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.walkingDuration">
-            <ElInputNumber
-              v-model.lazy="conf.formData.amap.walkingDuration"
-              :precision="2"
-              :max="1440"
-              :min="0"
-              :step="30"
-            >
-              <template #suffix>
-                <span>分钟</span>
-              </template>
-            </ElInputNumber>
-          </ElFormItem>
+          <div class="config-amap__metric-card bh-glass-surface bh-glass-surface--nested">
+            <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.straightDistance">
+              <ElInputNumber
+                v-model.lazy="conf.formData.amap.straightDistance"
+                :precision="1"
+                :max="1000"
+                :min="0"
+                :step="1"
+              >
+                <template #suffix>
+                  <span>km</span>
+                </template>
+              </ElInputNumber>
+            </ElFormItem>
+          </div>
+
+          <div class="config-amap__metric-card bh-glass-surface bh-glass-surface--nested">
+            <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.drivingDistance">
+              <ElInputNumber
+                v-model.lazy="conf.formData.amap.drivingDistance"
+                :precision="1"
+                :max="1000"
+                :min="0"
+                :step="1"
+              >
+                <template #suffix>
+                  <span>km</span>
+                </template>
+              </ElInputNumber>
+            </ElFormItem>
+          </div>
+
+          <div class="config-amap__metric-card bh-glass-surface bh-glass-surface--nested">
+            <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.drivingDuration">
+              <ElInputNumber
+                v-model.lazy="conf.formData.amap.drivingDuration"
+                :precision="2"
+                :max="1440"
+                :min="0"
+                :step="30"
+              >
+                <template #suffix>
+                  <span>分钟</span>
+                </template>
+              </ElInputNumber>
+            </ElFormItem>
+          </div>
+
+          <div class="config-amap__metric-card bh-glass-surface bh-glass-surface--nested">
+            <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.walkingDistance">
+              <ElInputNumber
+                v-model.lazy="conf.formData.amap.walkingDistance"
+                :precision="1"
+                :max="1000"
+                :min="0"
+                :step="1"
+              >
+                <template #suffix>
+                  <span>km</span>
+                </template>
+              </ElInputNumber>
+            </ElFormItem>
+          </div>
+
+          <div class="config-amap__metric-card bh-glass-surface bh-glass-surface--nested">
+            <ElFormItem class="config-amap__field" v-bind="formInfoData.amap.walkingDuration">
+              <ElInputNumber
+                v-model.lazy="conf.formData.amap.walkingDuration"
+                :precision="2"
+                :max="1440"
+                :min="0"
+                :step="30"
+              >
+                <template #suffix>
+                  <span>分钟</span>
+                </template>
+              </ElInputNumber>
+            </ElFormItem>
+          </div>
         </div>
       </ConfigSectionCard>
     </div>
@@ -174,6 +207,10 @@ async function amapGeocodeHandler() {
       title="AI Prompt 参考"
       description="以下变量仅在筛选场景可用，可直接写进 Prompt 中。"
     >
+      <template #actions>
+        <span class="config-amap__meta bh-glass-pill">Prompt Tokens</span>
+      </template>
+
       <div class="config-amap__token-list">
         <code v-for="token in promptExamples" :key="token" class="config-amap__token">
           {{ token }}
@@ -192,8 +229,18 @@ async function amapGeocodeHandler() {
 
 .config-amap__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
   gap: 16px;
+}
+
+.config-amap__meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  color: var(--bh-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .config-amap__stack,
@@ -203,9 +250,26 @@ async function amapGeocodeHandler() {
   gap: 14px;
 }
 
+.config-amap__field-card,
+.config-amap__metric-card {
+  padding: 14px;
+}
+
+.config-amap__toggle-copy strong {
+  display: block;
+  color: var(--bh-text-primary);
+  font-size: 0.94rem;
+}
+
+.config-amap__toggle-copy p {
+  margin: 8px 0 0;
+  color: var(--bh-text-muted);
+  line-height: 1.6;
+}
+
 .config-amap__fields--metrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 14px 18px;
 }
 
@@ -246,7 +310,7 @@ async function amapGeocodeHandler() {
   color: #e2e8f0;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 640px) {
   .config-amap__grid,
   .config-amap__fields--metrics {
     grid-template-columns: 1fr;

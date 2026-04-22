@@ -1,0 +1,202 @@
+:root {
+  --bh-font-sans:
+    'SF Pro Display',
+    'Segoe UI Variable',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    sans-serif;
+
+  --bh-space-2xs: 6px;
+  --bh-space-xs: 10px;
+  --bh-space-sm: 12px;
+  --bh-space-md: 16px;
+  --bh-space-lg: 18px;
+  --bh-space-xl: 22px;
+  --bh-space-2xl: 24px;
+
+  --bh-radius-sm: 16px;
+  --bh-radius-md: 18px;
+  --bh-radius-card: 22px;
+  --bh-radius-panel: 24px;
+  --bh-radius-panel-lg: 28px;
+  --bh-radius-dialog: 30px;
+  --bh-radius-pill: 999px;
+
+  --bh-blur-sm: 14px;
+  --bh-blur-md: 16px;
+  --bh-blur-lg: 18px;
+  --bh-blur-xl: 20px;
+  --bh-help-overlay-blur: 4px;
+  --bh-overlay-blur: 15px;
+
+  --bh-transition-base: 0.2s ease;
+  --bh-transition-fast: 0.08s linear;
+
+  --bh-text-primary: #0f172a;
+  --bh-text-secondary: #475569;
+  --bh-text-muted: #64748b;
+  --bh-text-soft: #94a3b8;
+  --bh-link-hover: #0ea5e9;
+  --bh-focus-ring: #0ea5e9;
+  --bh-salary-text: #f97316;
+
+  --bh-accent: #0f766e;
+  --bh-accent-secondary: #0ea5e9;
+  --bh-accent-line: rgb(14 165 233 / 20%);
+
+  --bh-border-subtle: rgb(148 163 184 / 18%);
+  --bh-border-strong: rgb(148 163 184 / 24%);
+
+  --bh-shadow-soft: 0 14px 28px rgb(15 23 42 / 6%), inset 0 1px 0 rgb(255 255 255 / 72%);
+  --bh-shadow-card: 0 18px 36px rgb(15 23 42 / 8%), inset 0 1px 0 rgb(255 255 255 / 64%);
+  --bh-shadow-panel: 0 22px 44px rgb(15 23 42 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
+  --bh-shadow-hero: 0 28px 60px rgb(15 23 42 / 12%), inset 0 1px 0 rgb(255 255 255 / 78%);
+  --bh-shadow-dialog: 0 30px 70px rgb(15 23 42 / 18%), inset 0 1px 0 rgb(255 255 255 / 82%);
+  --bh-shadow-pill: inset 0 0 0 1px rgb(148 163 184 / 18%), 0 8px 18px rgb(15 23 42 / 5%);
+  --bh-shadow-button: inset 0 0 0 1px rgb(148 163 184 / 20%), 0 10px 20px rgb(15 23 42 / 8%);
+  --bh-shadow-button-hover:
+    inset 0 0 0 1px rgb(59 130 246 / 26%),
+    0 14px 24px rgb(14 165 233 / 12%);
+  --bh-shadow-accent: 0 18px 30px rgb(14 165 233 / 22%), inset 0 1px 0 rgb(255 255 255 / 18%);
+  --bh-shadow-accent-soft:
+    0 22px 40px rgb(14 165 233 / 10%),
+    inset 0 1px 0 rgb(255 255 255 / 52%);
+  --bh-shadow-collapsed:
+    0 18px 34px rgb(15 23 42 / 16%),
+    inset 0 1px 0 rgb(255 255 255 / 82%);
+  --bh-avatar-shadow: 0 14px 28px rgb(15 23 42 / 12%);
+  --bh-theme-thumb-shadow: 0 4px 10px rgb(15 23 42 / 18%);
+
+  --bh-surface-launcher:
+    linear-gradient(150deg, rgb(255 255 255 / 92%), rgb(241 245 249 / 92%)),
+    linear-gradient(135deg, #dbeafe, #fef3c7 55%, #fbcfe8);
+  --bh-surface-hero:
+    radial-gradient(circle at top right, rgb(251 191 36 / 24%), transparent 34%),
+    radial-gradient(circle at left bottom, rgb(14 165 233 / 16%), transparent 38%),
+    linear-gradient(160deg, rgb(255 255 255 / 88%), rgb(248 250 252 / 96%));
+  --bh-surface-panel: linear-gradient(165deg, rgb(255 255 255 / 82%), rgb(248 250 252 / 90%));
+  --bh-surface-card:
+    radial-gradient(circle at top right, rgb(56 189 248 / 12%), transparent 28%),
+    radial-gradient(circle at left bottom, rgb(251 191 36 / 16%), transparent 34%),
+    linear-gradient(165deg, rgb(255 255 255 / 78%), rgb(248 250 252 / 84%));
+  --bh-surface-soft:
+    radial-gradient(circle at top right, rgb(14 165 233 / 8%), transparent 28%),
+    linear-gradient(165deg, rgb(255 255 255 / 92%), rgb(248 250 252 / 98%));
+  --bh-surface-pill:
+    radial-gradient(circle at top right, rgb(56 189 248 / 10%), transparent 32%),
+    linear-gradient(165deg, rgb(255 255 255 / 72%), rgb(248 250 252 / 82%));
+  --bh-surface-pill-accent:
+    linear-gradient(135deg, rgb(15 118 110 / 10%), rgb(14 165 233 / 12%));
+  --bh-surface-dialog:
+    radial-gradient(circle at top right, rgb(251 191 36 / 12%), transparent 28%),
+    radial-gradient(circle at left bottom, rgb(14 165 233 / 14%), transparent 32%),
+    linear-gradient(165deg, rgb(255 255 255 / 94%), rgb(248 250 252 / 98%));
+  --bh-surface-jobcard:
+    radial-gradient(circle at top right, rgb(14 165 233 / 12%), transparent 30%),
+    linear-gradient(180deg, rgb(255 255 255 / 94%), rgb(248 250 252 / 98%));
+  --bh-surface-nested: linear-gradient(165deg, rgb(255 255 255 / 74%), rgb(248 250 252 / 82%));
+  --bh-surface-muted: rgb(248 250 252 / 88%);
+  --bh-surface-overlay: rgb(255 255 255 / 20%);
+  --bh-surface-avatar: rgb(255 255 255 / 92%);
+
+  --bh-accent-gradient: linear-gradient(135deg, #0f766e, #0ea5e9);
+  --bh-theme-track: linear-gradient(135deg, #f59e0b, #fb7185);
+  --bh-accent-pill-bg: rgb(15 118 110 / 10%);
+  --bh-highlight-bg: rgb(110 231 183 / 18%);
+  --bh-highlight-line: rgb(20 184 166 / 24%);
+  --bh-status-dot-bg: linear-gradient(135deg, #14b8a6, #0ea5e9);
+  --bh-status-dot-shadow: 0 0 0 8px rgb(20 184 166 / 12%);
+  --bh-avatar-border: rgb(255 255 255 / 72%);
+  --bh-theme-thumb-bg: #fff;
+  --bh-halo-primary: rgb(251 191 36 / 40%);
+  --bh-halo-secondary: rgb(14 165 233 / 26%);
+
+  --bh-table-head-bg: rgb(241 245 249 / 90%);
+  --bh-table-head-text: #475569;
+  --bh-table-current-row: rgb(14 165 233 / 10%);
+  --bh-progress-track: rgb(226 232 240 / 72%);
+  --bh-scrollbar-thumb: #4b5563;
+}
+
+html.dark {
+  --bh-text-primary: #e2e8f0;
+  --bh-text-secondary: #cbd5e1;
+  --bh-text-muted: #94a3b8;
+  --bh-text-soft: #cbd5e1;
+  --bh-link-hover: #67e8f9;
+  --bh-salary-text: #fb923c;
+
+  --bh-accent: #67e8f9;
+  --bh-accent-secondary: #6366f1;
+  --bh-accent-line: rgb(34 211 238 / 28%);
+
+  --bh-border-subtle: rgb(71 85 105 / 32%);
+  --bh-border-strong: rgb(71 85 105 / 42%);
+
+  --bh-shadow-soft: 0 14px 28px rgb(2 6 23 / 20%), inset 0 1px 0 rgb(255 255 255 / 5%);
+  --bh-shadow-card: 0 24px 44px rgb(2 6 23 / 24%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --bh-shadow-panel: 0 24px 44px rgb(2 6 23 / 28%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --bh-shadow-hero: 0 28px 60px rgb(2 6 23 / 42%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --bh-shadow-dialog: 0 30px 70px rgb(2 6 23 / 42%), inset 0 1px 0 rgb(255 255 255 / 5%);
+  --bh-shadow-pill: inset 0 0 0 1px rgb(71 85 105 / 26%), 0 10px 20px rgb(2 6 23 / 18%);
+  --bh-shadow-button: inset 0 0 0 1px rgb(71 85 105 / 32%), 0 10px 20px rgb(2 6 23 / 18%);
+  --bh-shadow-button-hover:
+    inset 0 0 0 1px rgb(34 211 238 / 28%),
+    0 14px 24px rgb(8 145 178 / 18%);
+  --bh-shadow-accent: 0 18px 30px rgb(99 102 241 / 22%), inset 0 1px 0 rgb(255 255 255 / 14%);
+  --bh-shadow-accent-soft:
+    0 28px 48px rgb(8 145 178 / 18%),
+    inset 0 1px 0 rgb(255 255 255 / 8%);
+  --bh-shadow-collapsed: 0 18px 34px rgb(2 6 23 / 34%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --bh-avatar-shadow: 0 14px 28px rgb(2 6 23 / 32%);
+  --bh-theme-thumb-shadow: 0 4px 10px rgb(2 6 23 / 26%);
+
+  --bh-surface-launcher:
+    linear-gradient(165deg, rgb(15 23 42 / 92%), rgb(30 41 59 / 92%)),
+    linear-gradient(135deg, #082f49, #1e293b 55%, #3b0764);
+  --bh-surface-hero:
+    radial-gradient(circle at top right, rgb(6 182 212 / 14%), transparent 32%),
+    radial-gradient(circle at left bottom, rgb(168 85 247 / 12%), transparent 36%),
+    linear-gradient(165deg, rgb(15 23 42 / 92%), rgb(30 41 59 / 94%));
+  --bh-surface-panel: linear-gradient(165deg, rgb(15 23 42 / 66%), rgb(30 41 59 / 74%));
+  --bh-surface-card:
+    radial-gradient(circle at top right, rgb(6 182 212 / 12%), transparent 28%),
+    radial-gradient(circle at left bottom, rgb(168 85 247 / 12%), transparent 34%),
+    linear-gradient(165deg, rgb(15 23 42 / 28%), rgb(30 41 59 / 12%));
+  --bh-surface-soft:
+    radial-gradient(circle at top right, rgb(14 165 233 / 10%), transparent 28%),
+    linear-gradient(165deg, rgb(15 23 42 / 78%), rgb(30 41 59 / 84%));
+  --bh-surface-pill:
+    radial-gradient(circle at top right, rgb(6 182 212 / 10%), transparent 32%),
+    linear-gradient(165deg, rgb(15 23 42 / 72%), rgb(30 41 59 / 74%));
+  --bh-surface-pill-accent:
+    linear-gradient(135deg, rgb(14 165 233 / 16%), rgb(99 102 241 / 18%));
+  --bh-surface-dialog:
+    radial-gradient(circle at top right, rgb(6 182 212 / 12%), transparent 28%),
+    radial-gradient(circle at left bottom, rgb(168 85 247 / 12%), transparent 32%),
+    linear-gradient(165deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 96%));
+  --bh-surface-jobcard:
+    radial-gradient(circle at top right, rgb(6 182 212 / 12%), transparent 30%),
+    linear-gradient(180deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 96%));
+  --bh-surface-nested: linear-gradient(165deg, rgb(15 23 42 / 62%), rgb(30 41 59 / 70%));
+  --bh-surface-muted: rgb(15 23 42 / 54%);
+  --bh-surface-overlay: rgb(15 23 42 / 20%);
+  --bh-surface-avatar: rgb(15 23 42 / 72%);
+
+  --bh-accent-gradient: linear-gradient(135deg, #0891b2, #6366f1);
+  --bh-accent-pill-bg: rgb(14 165 233 / 18%);
+  --bh-highlight-bg: rgb(34 211 238 / 16%);
+  --bh-highlight-line: rgb(34 211 238 / 28%);
+  --bh-status-dot-bg: linear-gradient(135deg, #06b6d4, #6366f1);
+  --bh-status-dot-shadow: 0 0 0 8px rgb(14 165 233 / 16%);
+  --bh-avatar-border: rgb(71 85 105 / 48%);
+  --bh-halo-primary: rgb(8 145 178 / 24%);
+  --bh-halo-secondary: rgb(99 102 241 / 24%);
+
+  --bh-table-head-bg: rgb(30 41 59 / 92%);
+  --bh-table-head-text: #cbd5e1;
+  --bh-table-current-row: rgb(14 165 233 / 14%);
+  --bh-progress-track: rgb(51 65 85 / 72%);
+  --bh-scrollbar-thumb: #64748b;
+}

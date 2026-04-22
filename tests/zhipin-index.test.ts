@@ -103,6 +103,8 @@ describe('pages/zhipin index', () => {
     expect(zhipinIndexMocks.elmGetterRm).toHaveBeenCalledTimes(2)
     expect(document.querySelector('#boss-helper-job-wrap')).not.toBeNull()
     expect(document.querySelector('#boss-helper-job')).not.toBeNull()
+    expect(document.querySelector('#boss-helper-job-wrap')?.className).toContain('boss-helper-job-shell')
+    expect(document.querySelector('#boss-helper-job')?.className).toContain('boss-helper-job-panel')
     expect(wrapper.getAttribute('help')).toBe('出界了哇!')
     expect(zhipinIndexMocks.createPinia).toHaveBeenCalledTimes(1)
     expect(zhipinIndexMocks.appUse).toHaveBeenCalledWith({ id: 'pinia' })

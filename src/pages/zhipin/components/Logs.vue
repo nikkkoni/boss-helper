@@ -15,6 +15,8 @@ import { ref } from 'vue'
 import JobCard from '@/components/Jobcard.vue'
 import { useLog } from '@/stores/log'
 
+import WorkspaceSectionHeader from './workspace/WorkspaceSectionHeader.vue'
+
 const tableRef = ref<TableV2Instance>()
 const { filterData, columns, dialogData } = useLog()
 
@@ -27,17 +29,46 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
 </script>
 
 <template>
-  <ElAutoResizer :disable-height="true">
-    <template #default="{ width }">
-      <ElTableV2 ref="tableRef" :columns="columns" :data="filterData" :height="360" :width />
-    </template>
-  </ElAutoResizer>
-  <ElDialog v-model="dialogData.show" title="日志详情" width="80%">
+  <div class="logs-workbench">
+    <section class="logs-workbench__table-shell bh-glass-surface bh-glass-surface--card">
+      <WorkspaceSectionHeader
+        eyebrow="Run Logs"
+        title="运行日志"
+        description="按时间顺序查看当前页面的处理记录、错误信息和 AI 过滤细节。"
+        :meta="`${filterData.length} 条记录`"
+      />
+
+      <ElAutoResizer :disable-height="true">
+        <template #default="{ width }">
+          <ElTableV2 ref="tableRef" :columns="columns" :data="filterData" :height="360" :width />
+        </template>
+      </ElAutoResizer>
+    </section>
+  </div>
+  <ElDialog
+    v-model="dialogData.show"
+    title="日志详情"
+    width="80%"
+    class="bh-glass-dialog logs-workbench__dialog"
+  >
     <div class="log-detail">
       <div class="log-detail-left">
+        <WorkspaceSectionHeader
+          eyebrow="Job Snapshot"
+          title="岗位快照"
+          description="保留当前日志对应的岗位卡片结构，便于对照岗位上下文。"
+          compact
+        />
         <JobCard v-if="dialogData.data?.job" :job="dialogData.data.job" />
       </div>
-      <div class="log-detail-right">
+      <div class="log-detail-right bh-glass-surface bh-glass-surface--nested">
+        <WorkspaceSectionHeader
+          eyebrow="Details"
+          title="日志详情"
+          description="查看 AI 过滤内容、错误详情和结构化异常信息。"
+          compact
+        />
+
         <ElTabs class="demo-tabs">
           <ElTabPane v-if="dialogData.data?.data?.aiFilteringQ" label="AI过滤" name="first">
             <ElCollapse v-model="aiFilterActiveNames" accordion>
@@ -83,6 +114,23 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
 </template>
 
 <style lang="scss" scoped>
+.logs-workbench {
+  display: flex;
+  flex-direction: column;
+}
+
+.logs-workbench__table-shell {
+  padding: 14px;
+}
+
+:deep(.logs-workbench__dialog.ehp-dialog) {
+  border-radius: var(--bh-radius-dialog);
+}
+
+:deep(.logs-workbench__dialog .ehp-dialog__body) {
+  padding-top: 8px;
+}
+
 :deep(.ehp-table-v2__row-depth-0) {
   height: 50px;
 }
@@ -100,47 +148,39 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
 
   &-left {
     flex: 0 0 350px;
+    display: flex;
+    flex-direction: column;
   }
 
   &-right {
     flex: 1;
     overflow-y: auto;
-  }
-}
-
-.log-section {
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  margin-bottom: 16px;
-
-  h4 {
-    margin: 0 0 12px;
-    color: #606266;
-  }
-}
-
-.ai-qa {
-  .ai-q {
-    color: #606266;
-    margin-bottom: 8px;
-  }
-  .ai-a {
-    color: #303133;
-    white-space: pre-wrap;
+    padding: 18px;
   }
 }
 
 .ai-text {
   white-space: pre-wrap;
   user-select: text;
-  padding: 8px;
+  padding: 10px 12px;
   line-height: 1.5;
+  border-radius: var(--bh-radius-md);
+  background: var(--bh-surface-muted);
 }
 
 :deep(.ehp-collapse-item.active) {
   .ehp-collapse-item__header {
     border-bottom-color: transparent;
+  }
+}
+
+@media (max-width: 960px) {
+  .log-detail {
+    flex-direction: column;
+  }
+
+  .log-detail-left {
+    flex-basis: auto;
   }
 }
 </style>

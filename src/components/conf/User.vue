@@ -133,17 +133,19 @@ function handleCurrentChange(val: CookieInfo | undefined) {
     <template #header>
       <div class="user-center-dialog__header">
         <div class="user-center-dialog__title-block">
-          <span class="user-center-dialog__eyebrow">Account Center</span>
+          <span class="user-center-dialog__eyebrow bh-eyebrow">Account Center</span>
           <h2>账户配置</h2>
           <p>统一管理已保存账号、切换目标账号，并在执行前确认当前页面登录身份。</p>
         </div>
 
         <div class="user-center-dialog__summary">
-          <article class="user-center-dialog__summary-card">
+          <article class="user-center-dialog__summary-card bh-glass-surface bh-glass-surface--nested">
             <strong>{{ accountCount }}</strong>
             <span>已保存账号</span>
           </article>
-          <article class="user-center-dialog__summary-card user-center-dialog__summary-card--wide">
+          <article
+            class="user-center-dialog__summary-card user-center-dialog__summary-card--wide bh-glass-surface bh-glass-surface--nested"
+          >
             <strong>{{ currentUserLabel }}</strong>
             <span>当前页面账号</span>
           </article>
@@ -170,14 +172,14 @@ function handleCurrentChange(val: CookieInfo | undefined) {
         />
       </div>
 
-      <section class="user-center-dialog__table-shell">
+      <section class="user-center-dialog__table-shell bh-glass-surface bh-glass-surface--nested">
         <div class="user-center-dialog__table-header">
           <div>
             <h3>账户列表</h3>
             <p>选择已保存账号后即可切换；删除操作会直接移除本地存档。</p>
           </div>
 
-          <div class="user-center-dialog__selection-pill">
+          <div class="user-center-dialog__selection-pill bh-glass-pill bh-glass-pill--accent">
             <span>当前选择</span>
             <strong>{{ selectedUserLabel }}</strong>
           </div>
@@ -243,14 +245,19 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 
         <div class="user-center-dialog__footer-actions">
           <ElButton @click="show = false"> 取消 </ElButton>
-        <ElPopconfirm title="确认后将保存数据退出账户并自动刷新" @confirm="handleCreate">
-          <template #reference>
-            <ElButton type="primary" :loading="loading"> 新建&登出 </ElButton>
-          </template>
-        </ElPopconfirm>
-        <ElButton type="primary" :disabled="!currentRow" :loading="loading" @click="handleChange()">
-          切换
-        </ElButton>
+          <ElPopconfirm title="确认后将保存数据退出账户并自动刷新" @confirm="handleCreate">
+            <template #reference>
+              <ElButton type="primary" :loading="loading"> 新建&登出 </ElButton>
+            </template>
+          </ElPopconfirm>
+          <ElButton
+            type="primary"
+            :disabled="!currentRow"
+            :loading="loading"
+            @click="handleChange()"
+          >
+            切换
+          </ElButton>
         </div>
       </div>
     </template>
@@ -266,13 +273,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 }
 
 .user-center-dialog__eyebrow {
-  display: inline-flex;
   margin-bottom: 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #0f766e;
 }
 
 .user-center-dialog__title-block h2 {
@@ -283,7 +284,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 
 .user-center-dialog__title-block p {
   margin: 10px 0 0;
-  color: #64748b;
+  color: var(--bh-text-muted);
   line-height: 1.65;
 }
 
@@ -300,9 +301,6 @@ function handleCurrentChange(val: CookieInfo | undefined) {
   flex-direction: column;
   gap: 4px;
   padding: 16px;
-  border-radius: 20px;
-  background: rgb(255 255 255 / 76%);
-  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 18%);
 }
 
 .user-center-dialog__summary-card--wide strong {
@@ -318,7 +316,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 .user-center-dialog__summary-card span,
 .user-center-dialog__selection-pill span,
 .user-center-dialog__footer-copy {
-  color: #64748b;
+  color: var(--bh-text-muted);
 }
 
 .user-center-dialog__body {
@@ -334,9 +332,6 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 
 .user-center-dialog__table-shell {
   padding: 18px;
-  border-radius: 24px;
-  background: rgb(255 255 255 / 74%);
-  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 18%);
 }
 
 .user-center-dialog__table-header {
@@ -354,7 +349,7 @@ function handleCurrentChange(val: CookieInfo | undefined) {
 
 .user-center-dialog__table-header p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--bh-text-muted);
   line-height: 1.6;
 }
 
@@ -364,8 +359,6 @@ function handleCurrentChange(val: CookieInfo | undefined) {
   flex-direction: column;
   gap: 4px;
   padding: 14px 16px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgb(15 118 110 / 10%), rgb(14 165 233 / 12%));
 }
 
 .user-center-dialog__selection-pill strong {
@@ -390,97 +383,50 @@ function handleCurrentChange(val: CookieInfo | undefined) {
   gap: 12px;
 }
 
-:deep(.user-center-dialog) {
+.user-center-dialog :deep(.ehp-dialog) {
   max-width: 1080px;
-  border-radius: 30px;
   overflow: hidden;
-  border: 1px solid rgb(148 163 184 / 22%);
-  background:
-    radial-gradient(circle at top right, rgb(251 191 36 / 12%), transparent 28%),
-    radial-gradient(circle at left bottom, rgb(14 165 233 / 14%), transparent 32%),
-    linear-gradient(165deg, rgb(255 255 255 / 94%), rgb(248 250 252 / 98%));
-  box-shadow:
-    0 30px 70px rgb(15 23 42 / 18%),
-    inset 0 1px 0 rgb(255 255 255 / 82%);
+  border-radius: var(--bh-radius-dialog);
+  border: 1px solid var(--bh-border-strong);
+  background: var(--bh-surface-dialog);
+  box-shadow: var(--bh-shadow-dialog);
+  backdrop-filter: blur(var(--bh-blur-xl));
+  -webkit-backdrop-filter: blur(var(--bh-blur-xl));
 }
 
-:deep(.user-center-dialog .el-dialog__header) {
+.user-center-dialog :deep(.ehp-dialog__header) {
   margin-right: 0;
   padding: 24px 24px 0;
 }
 
-:deep(.user-center-dialog .el-dialog__body) {
+.user-center-dialog :deep(.ehp-dialog__body) {
   padding: 20px 24px 0;
 }
 
-:deep(.user-center-dialog .el-dialog__footer) {
+.user-center-dialog :deep(.ehp-dialog__footer) {
   padding: 18px 24px 24px;
 }
 
-:deep(.user-center-dialog .el-alert) {
-  border-radius: 18px;
+.user-center-dialog :deep(.ehp-alert) {
+  border-radius: var(--bh-radius-md);
 }
 
-:deep(.user-center-dialog .el-table) {
-  border-radius: 18px;
+.user-center-dialog :deep(.ehp-table) {
+  border-radius: var(--bh-radius-md);
   overflow: hidden;
 }
 
-:deep(.user-center-dialog .el-table th.el-table__cell) {
-  background: rgb(241 245 249 / 90%);
-  color: #475569;
+.user-center-dialog :deep(.ehp-table th.ehp-table__cell) {
+  background: var(--bh-table-head-bg);
+  color: var(--bh-table-head-text);
 }
 
-:deep(.user-center-dialog .el-table tr) {
+.user-center-dialog :deep(.ehp-table tr) {
   background: transparent;
 }
 
-:deep(.user-center-dialog .el-table__row.current-row > td.el-table__cell) {
-  background: rgb(14 165 233 / 10%);
-}
-
-html.dark {
-  .user-center-dialog__eyebrow {
-    color: #67e8f9;
-  }
-
-  .user-center-dialog__title-block p,
-  .user-center-dialog__summary-card span,
-  .user-center-dialog__selection-pill span,
-  .user-center-dialog__table-header p,
-  .user-center-dialog__footer-copy {
-    color: #94a3b8;
-  }
-
-  .user-center-dialog__summary-card,
-  .user-center-dialog__table-shell {
-    background: rgb(15 23 42 / 62%);
-    box-shadow: inset 0 0 0 1px rgb(71 85 105 / 30%);
-  }
-
-  .user-center-dialog__selection-pill {
-    background: linear-gradient(135deg, rgb(14 165 233 / 16%), rgb(99 102 241 / 18%));
-  }
-
-  :deep(.user-center-dialog) {
-    border-color: rgb(71 85 105 / 42%);
-    background:
-      radial-gradient(circle at top right, rgb(6 182 212 / 12%), transparent 28%),
-      radial-gradient(circle at left bottom, rgb(168 85 247 / 12%), transparent 32%),
-      linear-gradient(165deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 96%));
-    box-shadow:
-      0 30px 70px rgb(2 6 23 / 42%),
-      inset 0 1px 0 rgb(255 255 255 / 5%);
-  }
-
-  :deep(.user-center-dialog .el-table th.el-table__cell) {
-    background: rgb(30 41 59 / 92%);
-    color: #cbd5e1;
-  }
-
-  :deep(.user-center-dialog .el-table__row.current-row > td.el-table__cell) {
-    background: rgb(14 165 233 / 14%);
-  }
+.user-center-dialog :deep(.ehp-table__row.current-row > td.ehp-table__cell) {
+  background: var(--bh-table-current-row);
 }
 
 @media (max-width: 900px) {

@@ -1,18 +1,25 @@
 <script lang="ts" setup>
 import { ElSwitch } from 'element-plus'
 import type { ComponentPublicInstance } from 'vue'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import JobCard from '@/components/Jobcard.vue'
 import type { EncryptJobId } from '@/stores/jobs'
 import { jobList } from '@/stores/jobs'
 
+import { useCardVisualEffects } from '../hooks/useCardVisualEffects'
 import { useDeliver } from '../hooks/useDeliver'
 
 const deliver = useDeliver()
 const jobSetRef = ref<Record<EncryptJobId, Element | ComponentPublicInstance | null>>({})
 const autoScroll = ref(true)
 const cards = ref<HTMLDivElement>()
+const boardRef = ref<HTMLDivElement | null>(null)
+const { blurEnabled, updatePointerHighlight, clearPointerHighlight } = useCardVisualEffects()
+
+const currentJobLabel = computed(() => deliver.currentData?.jobName ?? '等待开始')
+const currentStatusLabel = computed(() => deliver.currentData?.status.msg || '尚未开始处理')
+const candidateSummary = computed(() => `${jobList.list.length} 个候选岗位`)
 
 function scroll(e: WheelEvent) {
   if (!cards.value) {
@@ -38,6 +45,22 @@ function nudgeCards(direction: 'prev' | 'next') {
   const left = direction === 'next' ? distance : -distance
   cards.value.scrollBy({ left, behavior: 'smooth' })
   autoScroll.value = false
+}
+
+function handleBoardMouseMove(event: MouseEvent) {
+  if (!boardRef.value) {
+    return
+  }
+
+  updatePointerHighlight(event, boardRef.value)
+}
+
+function handleBoardMouseLeave() {
+  if (!boardRef.value) {
+    return
+  }
+
+  clearPointerHighlight(boardRef.value)
 }
 
 function scrollHandler() {
@@ -74,47 +97,75 @@ watch(
 </script>
 
 <template>
-  <div style="order: -1" class="boss-helper-card">
+  <div
+    ref="boardRef"
+    style="order: -1"
+    class="boss-helper-card bh-glass-surface bh-glass-surface--hero"
+    :class="{ 'boss-helper-card--blur-enabled': blurEnabled }"
+    @mousemove="handleBoardMouseMove"
+    @mouseleave="handleBoardMouseLeave"
+  >
     <div class="boss-helper-card__header">
-      <div>
-        <span class="boss-helper-card__eyebrow">候选岗位看板</span>
-        <h3>{{ jobList.list.length }} 个岗位可快速浏览</h3>
+      <div class="boss-helper-card__copy">
+        <span class="boss-helper-card__eyebrow bh-eyebrow">Candidate Board</span>
+        <div class="boss-helper-card__title-row">
+          <h3>候选岗位面板</h3>
+          <span class="boss-helper-card__summary bh-glass-pill">{{ candidateSummary }}</span>
+        </div>
+        <p>保持横向浏览、自动跟随和左右导航能力，同时把当前处理岗位与状态提示收敛到同一块头部信息中。</p>
       </div>
 
-      <div class="boss-helper-card__controls">
-        <div class="boss-helper-card__nav-group">
-          <button
-            type="button"
-            class="boss-helper-card__nav boss-helper-card__nav--prev"
-            @click="nudgeCards('prev')"
-          >
-            左移
-          </button>
-          <button
-            type="button"
-            class="boss-helper-card__nav boss-helper-card__nav--next"
-            @click="nudgeCards('next')"
-          >
-            右移
-          </button>
-        </div>
+      <div class="boss-helper-card__status-grid">
+        <article class="boss-helper-card__status bh-glass-surface bh-glass-surface--nested">
+          <span>当前岗位</span>
+          <strong>{{ currentJobLabel }}</strong>
+          <small>跟随当前处理中的岗位卡片。</small>
+        </article>
 
-        <div class="boss-helper-card__toggle">
+        <article class="boss-helper-card__status bh-glass-surface bh-glass-surface--nested">
+          <span>当前状态</span>
+          <strong>{{ currentStatusLabel }}</strong>
+          <small>用于判断当前 run 在候选面板里的进度反馈。</small>
+        </article>
+      </div>
+    </div>
+
+    <div class="boss-helper-card__toolbar">
+      <div class="boss-helper-card__nav-group bh-glass-pill" data-help="使用左右导航快速浏览候选岗位卡片，不影响当前自动投递逻辑。">
+        <button
+          type="button"
+          class="boss-helper-card__nav boss-helper-card__nav--prev bh-glass-button"
+          @click="nudgeCards('prev')"
+        >
+          左移
+        </button>
+        <button
+          type="button"
+          class="boss-helper-card__nav boss-helper-card__nav--next bh-glass-button"
+          @click="nudgeCards('next')"
+        >
+          右移
+        </button>
+      </div>
+
+      <div class="boss-helper-card__toggle bh-glass-pill" data-help="开启后会自动把当前处理岗位滚动到视野中，手动滚动后会自动关闭。">
+        <div class="boss-helper-card__toggle-copy">
           <span>自动跟随当前岗位</span>
-          <ElSwitch
-            v-model="autoScroll"
-            inline-prompt
-            active-text="开"
-            inactive-text="关"
-            @change="
-              (v) => {
-                if (v) {
-                  scrollHandler()
-                }
-              }
-            "
-          />
+          <small>{{ autoScroll ? '当前开启自动对齐' : '当前处于手动浏览模式' }}</small>
         </div>
+        <ElSwitch
+          v-model="autoScroll"
+          inline-prompt
+          active-text="开"
+          inactive-text="关"
+          @change="
+            (v) => {
+              if (v) {
+                scrollHandler()
+              }
+            }
+          "
+        />
       </div>
     </div>
 
@@ -147,71 +198,32 @@ watch(
   --x: 0px;
   --y: 0px;
   --r: 0px;
-  overflow: hidden;
+  isolation: isolate;
   padding: 22px;
-  border-radius: 28px;
-  border: 1px solid rgb(148 163 184 / 18%);
-  background:
-    radial-gradient(circle at top right, rgb(56 189 248 / 14%), transparent 28%),
-    radial-gradient(circle at left bottom, rgb(251 191 36 / 18%), transparent 34%),
-    linear-gradient(165deg, rgb(255 255 255 / 92%), rgb(248 250 252 / 96%));
-  box-shadow:
-    0 24px 48px rgb(15 23 42 / 10%),
-    inset 0 1px 0 rgb(255 255 255 / 82%);
 }
 
 .boss-helper-card__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 18px;
+  margin-bottom: 18px;
 }
 
-.boss-helper-card__controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.boss-helper-card__nav-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.boss-helper-card__nav {
-  min-height: 40px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 82%);
-  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 18%);
-  color: #0f172a;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
-}
-
-.boss-helper-card__nav:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 0 0 1px rgb(14 165 233 / 22%),
-    0 14px 24px rgb(14 165 233 / 14%);
+.boss-helper-card__copy {
+  flex: 1;
+  min-width: 0;
 }
 
 .boss-helper-card__eyebrow {
-  display: inline-flex;
-  margin-bottom: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #0f766e;
+  margin-bottom: 8px;
+}
+
+.boss-helper-card__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
 .boss-helper-card__header h3 {
@@ -220,22 +232,119 @@ watch(
   letter-spacing: -0.03em;
 }
 
+.boss-helper-card__summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  color: var(--bh-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.boss-helper-card__copy p {
+  margin: 10px 0 0;
+  color: var(--bh-text-muted);
+  line-height: 1.7;
+}
+
+.boss-helper-card__status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: min(360px, 100%);
+}
+
+.boss-helper-card__status {
+  min-width: 0;
+  padding: 14px;
+}
+
+.boss-helper-card__status span,
+.boss-helper-card__status small {
+  color: var(--bh-text-muted);
+}
+
+.boss-helper-card__status span {
+  display: inline-flex;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.boss-helper-card__status strong {
+  display: block;
+  color: var(--bh-text-primary);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.boss-helper-card__status small {
+  display: block;
+  margin-top: 8px;
+  line-height: 1.55;
+}
+
+.boss-helper-card__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.boss-helper-card__nav-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+}
+
+.boss-helper-card__nav {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .boss-helper-card__toggle {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  min-width: 0;
   padding: 10px 14px;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 72%);
-  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 18%);
-  color: #475569;
+  color: var(--bh-text-secondary);
   font-weight: 600;
+}
+
+.boss-helper-card__toggle-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.boss-helper-card__toggle-copy span {
+  color: var(--bh-text-primary);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.boss-helper-card__toggle-copy small {
+  color: var(--bh-text-muted);
+  line-height: 1.5;
 }
 
 .card-grid-shell {
   position: relative;
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: var(--bh-radius-panel);
+  border: 1px solid var(--bh-border-subtle);
+  background: var(--bh-surface-soft);
 }
 
 .card-grid {
@@ -249,7 +358,7 @@ watch(
   scrollbar-width: none;
   scroll-snap-type: x proximity;
   overscroll-behavior-x: contain;
-  padding: 10px 2px 2px;
+  padding: 16px;
   -webkit-overflow-scrolling: touch;
 
   > * {
@@ -276,14 +385,15 @@ watch(
   display: none;
   position: absolute;
   inset: 0;
+  z-index: 2;
   will-change:
     mask-image,
     -webkit-mask-image,
     backdrop-filter;
   transform: translateZ(0);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  background-color: #ffffff20;
+  backdrop-filter: blur(var(--bh-overlay-blur));
+  -webkit-backdrop-filter: blur(var(--bh-overlay-blur));
+  background-color: var(--bh-surface-overlay);
   pointer-events: none;
   -webkit-mask-image: radial-gradient(
     circle var(--r) at var(--x) var(--y),
@@ -294,34 +404,11 @@ watch(
   transition: -webkit-mask-image 0.2s ease;
 }
 
+.boss-helper-card--blur-enabled .card-grid-overlay {
+  display: block;
+}
+
 html.dark {
-  .boss-helper-card {
-    border-color: rgb(71 85 105 / 42%);
-    background:
-      radial-gradient(circle at top right, rgb(6 182 212 / 14%), transparent 28%),
-      radial-gradient(circle at left bottom, rgb(168 85 247 / 14%), transparent 34%),
-      linear-gradient(165deg, rgb(15 23 42 / 92%), rgb(30 41 59 / 94%));
-    box-shadow:
-      0 24px 48px rgb(2 6 23 / 34%),
-      inset 0 1px 0 rgb(255 255 255 / 5%);
-  }
-
-  .boss-helper-card__eyebrow {
-    color: #67e8f9;
-  }
-
-  .boss-helper-card__toggle {
-    background: rgb(15 23 42 / 62%);
-    box-shadow: inset 0 0 0 1px rgb(71 85 105 / 32%);
-    color: #cbd5e1;
-  }
-
-  .boss-helper-card__nav {
-    background: rgb(15 23 42 / 62%);
-    box-shadow: inset 0 0 0 1px rgb(71 85 105 / 32%);
-    color: #e2e8f0;
-  }
-
   .card-grid {
     scrollbar-width: none;
   }
@@ -338,8 +425,14 @@ html.dark {
     align-items: flex-start;
   }
 
-  .boss-helper-card__controls {
+  .boss-helper-card__status-grid,
+  .boss-helper-card__toolbar {
     width: 100%;
+  }
+
+  .boss-helper-card__status-grid,
+  .boss-helper-card__toolbar {
+    grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
   }
@@ -355,6 +448,10 @@ html.dark {
   .boss-helper-card__toggle {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .card-grid {
+    padding: 14px;
   }
 }
 </style>

@@ -1,0 +1,112 @@
+.bh-glass-surface,
+.bh-glass-pill,
+.bh-glass-button,
+.bh-glass-dialog {
+  color: var(--bh-text-primary);
+}
+
+.bh-glass-surface,
+.bh-glass-pill,
+.bh-glass-dialog {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--bh-border-subtle);
+  backdrop-filter: blur(var(--bh-blur-lg));
+  -webkit-backdrop-filter: blur(var(--bh-blur-lg));
+}
+
+.bh-glass-surface {
+  border-radius: var(--bh-radius-panel);
+  background: var(--bh-glass-bg, var(--bh-surface-panel));
+  box-shadow: var(--bh-shadow-panel);
+}
+
+.bh-glass-surface--hero {
+  border-radius: var(--bh-radius-panel-lg);
+  background: var(--bh-glass-bg, var(--bh-surface-hero));
+  box-shadow: var(--bh-shadow-hero);
+}
+
+.bh-glass-surface--card {
+  background: var(--bh-glass-bg, var(--bh-surface-card));
+  box-shadow: var(--bh-shadow-card);
+}
+
+.bh-glass-surface--soft,
+.bh-glass-surface--nested {
+  border-radius: var(--bh-radius-card);
+  box-shadow: var(--bh-shadow-soft);
+}
+
+.bh-glass-surface--soft {
+  background: var(--bh-glass-bg, var(--bh-surface-soft));
+}
+
+.bh-glass-surface--nested {
+  background: var(--bh-glass-bg, var(--bh-surface-nested));
+}
+
+.bh-glass-surface--jobcard {
+  background: var(--bh-glass-bg, var(--bh-surface-jobcard));
+  box-shadow: var(--bh-shadow-card);
+}
+
+.bh-glass-pill {
+  border-radius: var(--bh-radius-pill);
+  background: var(--bh-glass-bg, var(--bh-surface-pill));
+  box-shadow: var(--bh-shadow-pill);
+  backdrop-filter: blur(var(--bh-blur-md));
+  -webkit-backdrop-filter: blur(var(--bh-blur-md));
+}
+
+.bh-glass-pill--accent {
+  background: var(--bh-glass-bg, var(--bh-surface-pill-accent));
+}
+
+.bh-glass-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--bh-radius-pill);
+  background: var(--bh-glass-bg, var(--bh-surface-pill));
+  box-shadow: var(--bh-shadow-button);
+  color: inherit;
+  cursor: pointer;
+  transition:
+    transform var(--bh-transition-base),
+    box-shadow var(--bh-transition-base),
+    background-color var(--bh-transition-base),
+    color var(--bh-transition-base);
+}
+
+.bh-glass-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--bh-shadow-button-hover);
+}
+
+.bh-glass-button--accent {
+  background: var(--bh-glass-bg, var(--bh-accent-gradient));
+  box-shadow: var(--bh-shadow-accent);
+  color: #fff;
+}
+
+.bh-glass-dialog {
+  border-color: var(--bh-border-strong);
+  border-radius: var(--bh-radius-dialog);
+  background: var(--bh-glass-bg, var(--bh-surface-dialog));
+  box-shadow: var(--bh-shadow-dialog);
+}
+
+.bh-glass-raise {
+  transition:
+    transform var(--bh-transition-base),
+    border-color var(--bh-transition-base),
+    box-shadow var(--bh-transition-base);
+}
+
+.bh-glass-raise:hover {
+  transform: translateY(-2px);
+  border-color: var(--bh-accent-line);
+  box-shadow: var(--bh-shadow-accent-soft);
+}

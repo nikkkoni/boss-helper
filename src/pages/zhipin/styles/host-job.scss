@@ -1,0 +1,17 @@
+#wrap .job-search-box .job-search-form {
+  width: 100% !important;
+  display: flex;
+
+  .city-label,
+  .search-input-box {
+    width: unset;
+  }
+
+  .search-input-box {
+    flex: 1;
+  }
+
+  .search-btn {
+    margin: 0 15px;
+  }
+}

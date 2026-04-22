@@ -10,6 +10,9 @@ import Ui from './components/Ui.vue'
 
 import './index.scss'
 
+const JOB_PANEL_CLASS = 'boss-helper-job-panel'
+const JOB_PANEL_SHELL_CLASS = 'boss-helper-job-shell'
+
 async function mountVue() {
   const selectors = getActiveSiteAdapter(location.href).getSelectors()
   const jobSearchWrapper = await elmGetter.get(
@@ -26,23 +29,14 @@ async function mountVue() {
 
   const jobEl = document.createElement('div')
   jobEl.id = selectors.extension.jobPanelId
+  jobEl.classList.add(JOB_PANEL_CLASS)
 
   jobSearchWrapper.setAttribute('help', '出界了哇!')
 
   if (routeKind === 'job-recommend' || routeKind === 'jobs') {
-    jobEl.style.cssText = `
-      background: transparent;
-      border-radius: 0;
-      padding: 0;
-    `
     const jobWarpEl = document.createElement('div')
     jobWarpEl.id = selectors.extension.jobPanelWrapId
-    jobWarpEl.style.cssText = `
-      width: 85%;
-      max-width: 870px;
-      min-width: 320px;
-      margin: 40px auto 90px auto;
-    `
+    jobWarpEl.classList.add(JOB_PANEL_SHELL_CLASS)
     jobSearchWrapper.insertBefore(jobWarpEl, jobSearchWrapper.firstElementChild)
     jobWarpEl.appendChild(jobEl)
   } else {

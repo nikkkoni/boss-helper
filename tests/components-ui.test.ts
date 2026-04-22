@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
 const {
+  mockCommonState,
   mockConf,
   mockElmGetterGet,
   mockElmGetterRm,
@@ -16,8 +17,18 @@ const {
   mockInitCookie,
   mockInitModel,
   mockRegisterWindowAgentBridge,
+  mockResetFilter,
+  mockPauseBatch,
+  mockResumeBatch,
+  mockStartBatch,
   mockUnregister,
 } = vi.hoisted(() => ({
+  mockCommonState: {
+    deliverLock: false,
+    deliverState: 'idle',
+    deliverStatusMessage: '未开始',
+    deliverStop: false,
+  },
   mockConf: {
     confInit: vi.fn(async () => {}),
     formData: {
@@ -31,7 +42,11 @@ const {
   mockInitModel: vi.fn(async () => {}),
   mockInitPager: vi.fn(async () => {}),
   mockInitUser: vi.fn(async () => {}),
+  mockPauseBatch: vi.fn(async () => {}),
   mockRegisterWindowAgentBridge: vi.fn(() => mockUnregister),
+  mockResetFilter: vi.fn(),
+  mockResumeBatch: vi.fn(async () => {}),
+  mockStartBatch: vi.fn(async () => {}),
   mockUnregister: vi.fn(),
 }))
 
@@ -48,6 +63,10 @@ vi.mock('@/stores/conf', () => ({
   useConf: () => mockConf,
 }))
 
+vi.mock('@/stores/common', () => ({
+  useCommon: () => mockCommonState,
+}))
+
 vi.mock('@/stores/jobs', () => ({
   jobList: {
     initJobList: mockInitJobList,
@@ -57,6 +76,9 @@ vi.mock('@/stores/jobs', () => ({
 
 vi.mock('@/stores/user', () => ({
   useUser: () => ({
+    info: {
+      showName: '测试账号',
+    },
     initCookie: mockInitCookie,
     initUser: mockInitUser,
   }),
@@ -85,7 +107,11 @@ vi.mock('@/pages/zhipin/hooks/usePager', () => ({
 
 vi.mock('@/pages/zhipin/hooks/useDeliveryControl', () => ({
   useDeliveryControl: () => ({
+    pauseBatch: mockPauseBatch,
     registerWindowAgentBridge: mockRegisterWindowAgentBridge,
+    resetFilter: mockResetFilter,
+    resumeBatch: mockResumeBatch,
+    startBatch: mockStartBatch,
   }),
 }))
 
@@ -132,6 +158,10 @@ describe('Ui.vue', () => {
     vi.useFakeTimers()
     document.body.innerHTML = '<div class="page-jobs-main"></div>'
     window.history.replaceState({}, '', '/web/geek/jobs')
+    mockCommonState.deliverLock = false
+    mockCommonState.deliverState = 'idle'
+    mockCommonState.deliverStatusMessage = '未开始'
+    mockCommonState.deliverStop = false
     mockElmGetterGet.mockReset()
     mockElmGetterRm.mockReset()
     mockElmGetterGet.mockResolvedValue([])
@@ -141,6 +171,10 @@ describe('Ui.vue', () => {
     mockInitCookie.mockReset()
     mockInitModel.mockReset()
     mockRegisterWindowAgentBridge.mockClear()
+    mockPauseBatch.mockReset()
+    mockResetFilter.mockReset()
+    mockResumeBatch.mockReset()
+    mockStartBatch.mockReset()
     mockUnregister.mockClear()
   })
 
@@ -151,8 +185,15 @@ describe('Ui.vue', () => {
   it('initializes stores, rearranges jobs search layout and cleans up on unmount', async () => {
     const searchEl = document.createElement('div')
     const conditionEl = document.createElement('div')
-    const searchInputEl = document.createElement('input')
+    const searchInputEl = document.createElement('div')
     const expectSelectEl = document.createElement('div')
+    const nestedConditionEl = document.createElement('div')
+    const dropdownEl = document.createElement('div')
+    conditionEl.className = 'filter-condition'
+    nestedConditionEl.className = 'c-filter-condition'
+    dropdownEl.className = 'filter-select-dropdown'
+    conditionEl.appendChild(nestedConditionEl)
+    conditionEl.appendChild(dropdownEl)
 
     mockElmGetterGet
       .mockResolvedValueOnce([searchEl, conditionEl])
@@ -186,10 +227,33 @@ describe('Ui.vue', () => {
     expect(mockInitCookie).toHaveBeenCalledTimes(1)
     expect(mockInitModel).toHaveBeenCalledTimes(1)
     expect(mockInitPager).toHaveBeenCalledTimes(1)
+    expect(searchEl.classList.contains('boss-helper-host-search-static')).toBe(true)
     expect(searchEl.style.display).toBe('none')
+    expect(searchEl.style.getPropertyPriority('display')).toBe('important')
+    expect(searchEl.getAttribute('aria-hidden')).toBe('true')
+    expect(conditionEl.classList.contains('boss-helper-host-search-static--jobs-condition')).toBe(true)
+    expect(conditionEl.style.getPropertyValue('position')).toBe('static')
+    expect(conditionEl.style.getPropertyPriority('position')).toBe('important')
+    expect(conditionEl.style.getPropertyValue('overflow')).toBe('visible')
+    expect(conditionEl.style.getPropertyValue('background')).toBe('var(--bh-surface-soft)')
+    expect(searchInputEl.classList.contains('boss-helper-host-search-static--jobs-input')).toBe(true)
+    expect(searchInputEl.style.getPropertyValue('overflow')).toBe('visible')
+    expect(expectSelectEl.classList.contains('boss-helper-host-search-static--jobs-expect')).toBe(true)
+    expect(expectSelectEl.style.getPropertyValue('overflow')).toBe('visible')
     expect(searchInputEl.parentElement).toBe(conditionEl.parentElement)
     expect(expectSelectEl.parentElement).toBe(conditionEl.parentElement)
+    expect(nestedConditionEl.style.getPropertyValue('background')).toBe('transparent')
+    expect(dropdownEl.style.getPropertyValue('z-index')).toBe('1300')
+
+    conditionEl.style.setProperty('position', 'fixed')
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(conditionEl.style.getPropertyValue('position')).toBe('static')
+    expect(conditionEl.style.getPropertyPriority('position')).toBe('important')
+
     expect(wrapper.text()).toContain('今日投递: 3/120')
+    expect(wrapper.text()).toContain('主工作区')
+    expect(wrapper.text()).toContain('运行状态')
 
     wrapper.unmount()
     expect(mockUnregister).toHaveBeenCalledTimes(1)
@@ -220,16 +284,27 @@ describe('Ui.vue', () => {
 
     await flushPromises()
 
-    expect(wrapper.find('[data-help="好好看，好好学"]').exists()).toBe(true)
+    expect(wrapper.find('[data-help="集中管理筛选、投递、外观和 AI 相关配置。"]').exists()).toBe(
+      true,
+    )
+    expect(
+      wrapper
+        .find(
+          '[data-help="这里承载 Boss 页面原生的搜索与筛选模块，功能保持原样，仅调整到工作台中展示。"]',
+        )
+        .exists(),
+    ).toBe(true)
     expect(wrapper.text()).not.toContain('有更新')
 
     wrapper.unmount()
   })
 
   it('avoids elementFromPoint in the help overlay hot path', () => {
-    const source = readFileSync('src/pages/zhipin/components/Ui.vue', 'utf8')
+    const uiSource = readFileSync('src/pages/zhipin/components/Ui.vue', 'utf8')
+    const hookSource = readFileSync('src/pages/zhipin/hooks/useHelpOverlay.ts', 'utf8')
 
-    expect(source).not.toContain('elementFromPoint(')
-    expect(source).toContain("addEventListener('mousemove', handleHelpMouseMove")
+    expect(uiSource).not.toContain('elementFromPoint(')
+    expect(hookSource).not.toContain('elementFromPoint(')
+    expect(hookSource).toContain("addEventListener('mousemove', handleHelpMouseMove")
   })
 })

@@ -1,0 +1,204 @@
+.page-jobs#wrap {
+  padding-top: 50px !important;
+
+  .boss-helper-host-search-bridge {
+    position: relative;
+    overflow: visible;
+    isolation: isolate;
+
+    .c-expect-select .expect-list .expect-item:not(.active),
+    .c-expect-select .part-time-expect:not(.active),
+    .c-expect-select .synthesis:not(.active),
+    .text-content:not(.active) {
+      color: #0f0f0f !important;
+
+      &:hover {
+        color: #0d9ea3 !important;
+      }
+    }
+
+    .c-filter-condition {
+      width: 100% !important;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .boss-helper-host-search-static,
+    .boss-helper-host-search-static.filter-condition,
+    .boss-helper-host-search-static.c-filter-condition,
+    .boss-helper-host-search-static.expect-and-search {
+      position: static !important;
+      inset: auto !important;
+      top: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      left: auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      transform: none !important;
+    }
+
+    .boss-helper-host-search-static.expect-and-search {
+      display: grid;
+      gap: 12px;
+      z-index: 20 !important;
+    }
+
+    .boss-helper-host-search-static.filter-condition,
+    .boss-helper-host-search-static.c-filter-condition {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      z-index: 20 !important;
+    }
+
+    &.boss-helper-host-search-bridge--jobs {
+      gap: 12px;
+
+      > .c-search-input,
+      > .c-expect-select,
+      > .boss-helper-host-search-static--jobs-condition {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        overflow: visible !important;
+      }
+
+      > .boss-helper-host-search-static--jobs-condition {
+        padding: 14px 16px !important;
+        border: 1px solid var(--bh-border-subtle) !important;
+        border-radius: var(--bh-radius-card) !important;
+        background: var(--bh-surface-soft) !important;
+        box-shadow: var(--bh-shadow-soft) !important;
+        color: var(--bh-text-primary) !important;
+        overflow: visible !important;
+      }
+
+      > .boss-helper-host-search-static--jobs-condition .filter-condition,
+      > .boss-helper-host-search-static--jobs-condition .search-condition-wrapper,
+      > .boss-helper-host-search-static--jobs-condition .search-condition-wrapper.clearfix,
+      > .boss-helper-host-search-static--jobs-condition .condition-wrapper,
+      > .boss-helper-host-search-static--jobs-condition .filter-wrap {
+        overflow: visible !important;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+
+      > .boss-helper-host-search-static--jobs-condition .c-filter-condition {
+        width: 100% !important;
+        padding: 0 !important;
+        border-radius: 18px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--bh-text-primary) !important;
+        overflow: visible !important;
+      }
+
+      > .boss-helper-host-search-static--jobs-condition .clear-filter,
+      > .boss-helper-host-search-static--jobs-condition .clear-all,
+      > .boss-helper-host-search-static--jobs-condition [class*='clear'] {
+        color: var(--bh-text-secondary) !important;
+      }
+
+      > .boss-helper-host-search-static--jobs-source {
+        display: none !important;
+      }
+    }
+
+    .c-search-input,
+    .c-expect-select {
+      width: 100% !important;
+      z-index: 1000 !important;
+      overflow: visible !important;
+    }
+
+    .expect-and-search {
+      width: 100% !important;
+    }
+
+    .c-expect-select .expect-list {
+      max-width: unset !important;
+
+      .expect-item {
+        flex: unset !important;
+      }
+    }
+
+    .c-search-input .related-result-wrapper {
+      z-index: 1000 !important;
+    }
+
+    .c-filter-condition .filter-city-area {
+      z-index: 10 !important;
+      width: 100% !important;
+      top: 30px !important;
+    }
+
+    .condition-filter-select,
+    .condition-position-select.is-select .current-select,
+    .condition-industry-select,
+    .city-area-select .current-select {
+      border-radius: 16px !important;
+      background: var(--bh-surface-muted) !important;
+      box-shadow: inset 0 0 0 1px var(--bh-border-subtle);
+      color: var(--bh-text-primary) !important;
+    }
+
+    .condition-filter-select .current-select,
+    .condition-position-select .current-select,
+    .condition-industry-select .current-select,
+    .city-area-select .current-select {
+      color: inherit !important;
+    }
+
+    .filter-select-dropdown,
+    .filter-select-dropdown ul,
+    .filter-select-dropdown .condition-position-detail,
+    .city-area-select .area-select-wrapper {
+      z-index: 1300 !important;
+      border: 1px solid var(--bh-border-subtle) !important;
+      border-radius: var(--bh-radius-md) !important;
+      background: var(--bh-surface-dialog) !important;
+      box-shadow: var(--bh-shadow-card) !important;
+      backdrop-filter: blur(var(--bh-blur-md));
+      -webkit-backdrop-filter: blur(var(--bh-blur-md));
+    }
+
+    .filter-select-dropdown li,
+    .city-area-select .area-dropdown-item li,
+    .city-area-select .city-area-tab li,
+    .subway-select-wrapper .subway-line-list li {
+      background: transparent !important;
+      color: var(--bh-text-primary) !important;
+    }
+
+    .filter-select-dropdown .active,
+    .city-area-select .city-area-tab .active,
+    .subway-select-wrapper .subway-line-list .active {
+      color: var(--bh-accent) !important;
+    }
+  }
+
+  .page-jobs-main.is-scroll .boss-helper-host-search-bridge--jobs > .boss-helper-host-search-static--jobs-condition,
+  .page-jobs-main.is-scroll .boss-helper-host-search-bridge--jobs > .boss-helper-host-search-static--jobs-condition .c-filter-condition,
+  .page-jobs-main.is-scroll .boss-helper-host-search-bridge--jobs > .boss-helper-host-search-static.filter-condition,
+  .page-jobs-main.is-scroll .boss-helper-host-search-bridge--jobs > .boss-helper-host-search-static.c-filter-condition {
+    position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    z-index: auto !important;
+    transform: none !important;
+    border: 1px solid var(--bh-border-subtle) !important;
+    background: var(--bh-surface-soft) !important;
+    box-shadow: var(--bh-shadow-soft) !important;
+  }
+}
+
+.page-jobs-main.is-fixed-filter {
+  padding-top: unset !important;
+}

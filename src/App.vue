@@ -97,9 +97,11 @@ function openProtocolNotice() {
     title: '注意事项',
     autofocus: true,
     confirmButtonText: '了解并同意!',
-    message: () => h(SafeHtml, { class: 'protocol-notice', tag: 'div', html: protocolNotice }),
+    message: () =>
+      h(SafeHtml, { class: 'boss-helper-protocol-notice', tag: 'div', html: protocolNotice }),
+    customClass: 'bh-glass-dialog boss-helper-protocol-box',
     customStyle:
-      '--el-messagebox-width: unset; white-space: pre-wrap; width: unset;max-width: unset;' as never,
+      '--el-messagebox-width: min(720px, calc(100vw - 32px)); width: min(720px, calc(100vw - 32px)); max-width: calc(100vw - 32px);' as never,
     callback: (action: Action) => {
       if (action === 'confirm') {
         counter.storageSet(protocolStorageKey, protocolVersion)
@@ -128,7 +130,7 @@ onMounted(async () => {
 <template>
   <ElConfigProvider namespace="ehp">
     <div class="boss-helper-launcher" :class="launcherExpanded ? 'is-expanded' : 'is-collapsed'">
-      <div class="boss-helper-launcher__panel">
+      <div class="boss-helper-launcher__panel bh-glass-surface bh-glass-surface--hero">
         <button
           v-if="!launcherExpanded"
           type="button"
@@ -148,18 +150,26 @@ onMounted(async () => {
           <div class="boss-helper-launcher__top">
             <div class="boss-helper-launcher__title-block">
               <div class="boss-helper-launcher__brand">
-                <span class="boss-helper-launcher__eyebrow">Boss Helper</span>
+                <span class="boss-helper-launcher__eyebrow bh-eyebrow">Boss Helper</span>
                 <strong>Automation Console</strong>
               </div>
               <span class="boss-helper-launcher__user-line">{{ currentUserLabel }}</span>
             </div>
 
             <div class="boss-helper-launcher__top-actions">
-              <button type="button" class="boss-helper-launcher__toggle" @click="toggleLauncher">
+              <button
+                type="button"
+                class="boss-helper-launcher__toggle bh-glass-button"
+                @click="toggleLauncher"
+              >
                 收起
               </button>
 
-              <button type="button" class="boss-helper-launcher__theme" @click="themeChange">
+              <button
+                type="button"
+                class="boss-helper-launcher__theme bh-glass-button"
+                @click="themeChange"
+              >
                 <span class="boss-helper-launcher__theme-track">
                   <span class="boss-helper-launcher__theme-thumb" />
                 </span>
@@ -168,7 +178,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="boss-helper-launcher__profile">
+          <div class="boss-helper-launcher__profile bh-glass-surface bh-glass-surface--nested">
             <ElAvatar :size="52" :src="currentUserAvatar">
               {{ currentUserLabel.slice(0, 1) }}
             </ElAvatar>
@@ -179,7 +189,11 @@ onMounted(async () => {
           </div>
 
           <div class="boss-helper-launcher__stats">
-            <article v-for="item in quickStats" :key="item.label" class="boss-helper-launcher__stat">
+            <article
+              v-for="item in quickStats"
+              :key="item.label"
+              class="boss-helper-launcher__stat bh-glass-surface bh-glass-surface--nested"
+            >
               <span>{{ item.label }}</span>
               <strong>{{ item.value }}</strong>
               <small>{{ item.caption }}</small>
@@ -189,12 +203,16 @@ onMounted(async () => {
           <div class="boss-helper-launcher__actions">
             <button
               type="button"
-              class="boss-helper-launcher__action boss-helper-launcher__action--primary"
+              class="boss-helper-launcher__action boss-helper-launcher__action--primary bh-glass-button bh-glass-button--accent"
               @click="openUserCenter"
             >
               账户配置
             </button>
-            <button type="button" class="boss-helper-launcher__action" @click="openProtocolNotice">
+            <button
+              type="button"
+              class="boss-helper-launcher__action bh-glass-button"
+              @click="openProtocolNotice"
+            >
               帮助说明
             </button>
           </div>
@@ -207,9 +225,3 @@ onMounted(async () => {
     </Teleport>
   </ElConfigProvider>
 </template>
-
-<style lang="scss">
-.protocol-notice {
-  white-space: pre-wrap;
-}
-</style>

@@ -11,6 +11,7 @@ import ConfigAmapSection from './config/ConfigAmapSection.vue'
 import ConfigControlBar from './config/ConfigControlBar.vue'
 import ConfigFilterSection from './config/ConfigFilterSection.vue'
 import ConfigSectionCard from './config/ConfigSectionCard.vue'
+import WorkspaceSectionHeader from './workspace/WorkspaceSectionHeader.vue'
 
 const conf = useConf()
 const { deliverLock } = useCommon()
@@ -41,82 +42,105 @@ const { deliverLock } = useCommon()
       :model="conf.formData"
       :disabled="deliverLock"
     >
-      <ConfigSectionCard
-        eyebrow="Control Center"
-        title="配置控制台"
-        description="先设置配置级别、模板和全局操作，再继续细调下面的各个能力分组。"
-      >
+      <section class="config-page__hero bh-glass-surface bh-glass-surface--hero">
+        <WorkspaceSectionHeader
+          eyebrow="Config Workspace"
+          title="配置控制台"
+          description="先处理全局级别、模板和配置读写，再继续进入运行展示、筛选规则与扩展能力模块。"
+          :meta="deliverLock ? '运行中，部分配置已锁定' : '当前可编辑'"
+        />
+
         <ConfigControlBar />
-      </ConfigSectionCard>
+      </section>
 
-      <div class="config-page__grid">
-        <ConfigSectionCard
-          class="config-page__card config-page__card--wide"
-          eyebrow="Filtering"
-          title="筛选配置"
-          description="岗位命中、排除与限制条件都集中在这里，建议先定基础边界，再补充更细的限制。"
-        >
-          <ConfigFilterSection />
-        </ConfigSectionCard>
+      <section class="config-page__section bh-glass-surface bh-glass-surface--soft">
+        <WorkspaceSectionHeader
+          eyebrow="Run Setup"
+          title="运行与展示设置"
+          description="先处理会直接影响运行节奏、页面表现和基础体验的配置，再继续向下收敛筛选规则。"
+        />
 
-        <ConfigSectionCard
-          eyebrow="Appearance"
-          title="外观配置"
-          description="调整插件在页面里的展示方式，这里的设置会自动保存，适合随时微调。"
-        >
-          <Appearance />
-        </ConfigSectionCard>
-
-        <ConfigSectionCard
-          v-if="conf.config_level.advanced"
-          class="config-page__card config-page__card--wide"
-          eyebrow="Location"
-          title="地址配置"
-          description="结合高德地图补足通勤距离与时间条件，进一步收紧筛选范围。"
-        >
-          <ConfigAmapSection />
-        </ConfigSectionCard>
-
-        <ConfigSectionCard
-          v-if="conf.config_level.advanced"
-          eyebrow="AI"
-          title="AI 配置"
-          description="管理 AI 筛选开关和模型配置，用于做更细的岗位内容判断。"
-        >
-          <Ai />
-        </ConfigSectionCard>
-
-        <ConfigSectionCard
-          v-if="conf.config_level.intermediate"
-          eyebrow="Delay"
-          title="延迟配置"
-          description="控制投递节奏和随机偏移，避免连续动作过于密集。"
-        >
+        <div class="config-page__grid">
           <ConfigSectionCard
-            compact
-            title="投递节奏"
-            description="建议先从默认值开始，再根据页面稳定性逐步调节。"
+            v-if="conf.config_level.intermediate"
+            eyebrow="Delay"
+            title="延迟配置"
+            description="控制投递节奏和随机偏移，避免连续动作过于密集。"
           >
-            <div class="config-delay-grid">
-              <ElFormItem
-                v-for="(item, key) in formInfoData.delay"
-                :key="key"
-                class="config-delay-grid__item"
-                :label="item.label"
-                :data-help="item['data-help']"
-              >
-                <ElInputNumber
-                  v-model="conf.formData.delay[key]"
-                  class="config-delay-grid__input"
-                  :min="item.min ?? 1"
-                  :max="99999"
-                  :disabled="item.disable"
-                />
-              </ElFormItem>
-            </div>
+            <ConfigSectionCard
+              compact
+              title="投递节奏"
+              description="建议先从默认值开始，再根据页面稳定性逐步调节。"
+            >
+              <div class="config-delay-grid">
+                <ElFormItem
+                  v-for="(item, key) in formInfoData.delay"
+                  :key="key"
+                  class="config-delay-grid__item"
+                  :label="item.label"
+                  :data-help="item['data-help']"
+                >
+                  <ElInputNumber
+                    v-model="conf.formData.delay[key]"
+                    class="config-delay-grid__input"
+                    :min="item.min ?? 1"
+                    :max="99999"
+                    :disabled="item.disable"
+                  />
+                </ElFormItem>
+              </div>
+            </ConfigSectionCard>
           </ConfigSectionCard>
-        </ConfigSectionCard>
-      </div>
+
+          <ConfigSectionCard
+            eyebrow="Appearance"
+            title="外观配置"
+            description="调整插件在页面里的展示方式，这里的设置会自动保存，适合随时微调。"
+          >
+            <Appearance />
+          </ConfigSectionCard>
+        </div>
+      </section>
+
+      <section class="config-page__section bh-glass-surface bh-glass-surface--soft">
+        <WorkspaceSectionHeader
+          eyebrow="Matching Rules"
+          title="筛选与扩展能力"
+          description="把岗位命中规则放在前面，把高德地图与 AI 这类增强能力放在后面，避免所有表单混成一个长页面。"
+        />
+
+        <div class="config-page__grid">
+          <ConfigSectionCard
+            class="config-page__card config-page__card--wide"
+            eyebrow="Filtering"
+            title="筛选配置"
+            description="岗位命中、排除与限制条件都集中在这里，建议先定基础边界，再补充更细的限制。"
+          >
+            <ConfigFilterSection />
+          </ConfigSectionCard>
+
+          <div
+            v-if="conf.config_level.advanced"
+            class="config-page__enhancement-grid config-page__card config-page__card--wide"
+          >
+            <ConfigSectionCard
+              eyebrow="Location"
+              title="地址配置"
+              description="结合高德地图补足通勤距离与时间条件，进一步收紧筛选范围。"
+            >
+              <ConfigAmapSection />
+            </ConfigSectionCard>
+
+            <ConfigSectionCard
+              eyebrow="AI"
+              title="AI 配置"
+              description="管理 AI 筛选开关和模型配置，用于做更细的岗位内容判断。"
+            >
+              <Ai />
+            </ConfigSectionCard>
+          </div>
+        </div>
+      </section>
     </ElForm>
   </div>
 </template>
@@ -130,7 +154,7 @@ const { deliverLock } = useCommon()
 
 .config-page__tips {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 14px;
 }
 
@@ -140,19 +164,30 @@ const { deliverLock } = useCommon()
   gap: 18px;
 }
 
+.config-page__hero,
+.config-page__section {
+  padding: 20px;
+}
+
 .config-page__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
   gap: 18px;
 }
 
 .config-page__card--wide {
-  grid-column: span 2;
+  grid-column: 1 / -1;
+}
+
+.config-page__enhancement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 18px;
 }
 
 .config-delay-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 14px 18px;
 }
 
@@ -172,14 +207,16 @@ const { deliverLock } = useCommon()
 }
 
 @media (max-width: 960px) {
-  .config-page__tips,
-  .config-page__grid,
-  .config-delay-grid {
-    grid-template-columns: 1fr;
-  }
-
   .config-page__card--wide {
     grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .config-page__hero,
+  .config-page__section {
+    padding: 18px;
+    border-radius: 22px;
   }
 }
 </style>
