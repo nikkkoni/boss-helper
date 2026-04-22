@@ -117,7 +117,7 @@ function syncSalaryRange() {
         description="适合先定义公司、岗位名称和职位内容等核心边界。"
       >
         <template #actions>
-          <span class="config-filter__meta bh-glass-pill">核心边界</span>
+          <span class="config-filter__meta bh-workspace-meta-pill bh-glass-pill">核心边界</span>
         </template>
 
         <div class="config-filter__fields">
@@ -208,7 +208,7 @@ function syncSalaryRange() {
         description="用薪资和公司规模进一步收敛结果集，适合在基础筛选稳定后补充。"
       >
         <template #actions>
-          <span class="config-filter__meta bh-glass-pill">进阶约束</span>
+          <span class="config-filter__meta bh-workspace-meta-pill bh-glass-pill">进阶约束</span>
         </template>
 
         <div class="config-filter__fields">
@@ -305,7 +305,7 @@ function syncSalaryRange() {
         description="这些开关常用于控制重复投递、猎头过滤和沟通状态等补充规则。"
       >
         <template #actions>
-          <span class="config-filter__meta bh-glass-pill">去重与补充规则</span>
+          <span class="config-filter__meta bh-workspace-meta-pill bh-glass-pill">去重与补充规则</span>
         </template>
 
         <div class="config-filter__toggle-grid">
@@ -347,25 +347,14 @@ function syncSalaryRange() {
   gap: 16px;
 }
 
-.config-filter__meta {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
-  color: var(--bh-text-secondary);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
 .config-filter__fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  gap: 14px 18px;
+  gap: 12px;
 }
 
 .config-filter__field-card {
-  padding: 14px;
-  min-width: 0;
+  min-height: 132px;
 }
 
 .config-filter__fields :deep(.ehp-form-item) {
@@ -442,7 +431,7 @@ function syncSalaryRange() {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
-  padding: 14px;
+  min-height: 132px;
 }
 
 .config-filter__toggle-copy {

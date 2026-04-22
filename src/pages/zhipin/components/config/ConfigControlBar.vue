@@ -104,7 +104,7 @@ async function deleteConfigTemplate() {
       <article
         v-for="item in controlSummary"
         :key="item.label"
-        class="config-control__summary bh-glass-surface bh-glass-surface--nested"
+        class="config-control__summary bh-workspace-stat-card bh-glass-surface bh-glass-surface--nested"
       >
         <span>{{ item.label }}</span>
         <strong>{{ item.value }}</strong>
@@ -293,32 +293,6 @@ async function deleteConfigTemplate() {
   gap: 12px;
 }
 
-.config-control__summary {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-}
-
-.config-control__summary span,
-.config-control__summary small {
-  color: var(--bh-text-muted);
-}
-
-.config-control__summary span {
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.config-control__summary strong {
-  color: var(--bh-text-primary);
-  font-size: 1rem;
-  line-height: 1.3;
-}
-
 .config-control__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -353,6 +327,16 @@ async function deleteConfigTemplate() {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.config-control__button-row > :deep(.ehp-button),
+.config-control__toggles > :deep(.ehp-checkbox.is-bordered) {
+  min-height: 44px;
+}
+
+.config-control__toggles > :deep(.ehp-checkbox.is-bordered) {
+  margin: 0;
+  padding-inline: 14px;
 }
 
 .config-control__button-row :deep(.ehp-button + .ehp-button) {

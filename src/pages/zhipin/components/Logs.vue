@@ -57,7 +57,7 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
           eyebrow="Job Snapshot"
           title="岗位快照"
           description="保留当前日志对应的岗位卡片结构，便于对照岗位上下文。"
-          compact
+          size="compact"
         />
         <JobCard v-if="dialogData.data?.job" :job="dialogData.data.job" />
       </div>
@@ -66,7 +66,7 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
           eyebrow="Details"
           title="日志详情"
           description="查看 AI 过滤内容、错误详情和结构化异常信息。"
-          compact
+          size="compact"
         />
 
         <ElTabs class="demo-tabs">
@@ -117,10 +117,21 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
 .logs-workbench {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 .logs-workbench__table-shell {
-  padding: 14px;
+  padding: 18px;
+}
+
+.logs-workbench :deep(.ehp-table-v2__header-row),
+.logs-workbench :deep(.ehp-table-v2__row) {
+  border-radius: var(--bh-radius-md);
+}
+
+.logs-workbench :deep(.ehp-table-v2__header-cell),
+.logs-workbench :deep(.ehp-table-v2__row-cell) {
+  padding-block: 12px;
 }
 
 :deep(.logs-workbench__dialog.ehp-dialog) {
@@ -128,7 +139,7 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
 }
 
 :deep(.logs-workbench__dialog .ehp-dialog__body) {
-  padding-top: 8px;
+  padding-top: 10px;
 }
 
 :deep(.ehp-table-v2__row-depth-0) {
@@ -159,13 +170,33 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
   }
 }
 
+.log-detail-left,
+.log-detail-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .ai-text {
   white-space: pre-wrap;
   user-select: text;
-  padding: 10px 12px;
-  line-height: 1.5;
+  padding: 14px;
+  line-height: 1.6;
   border-radius: var(--bh-radius-md);
   background: var(--bh-surface-muted);
+}
+
+:global(html.dark) .ai-text {
+  background: rgb(15 23 42 / 62%);
+}
+
+.logs-workbench :deep(.ehp-collapse-item__header) {
+  min-height: 46px;
+  padding-block: 6px;
+}
+
+.logs-workbench :deep(.ehp-tabs__item) {
+  min-height: 40px;
 }
 
 :deep(.ehp-collapse-item.active) {

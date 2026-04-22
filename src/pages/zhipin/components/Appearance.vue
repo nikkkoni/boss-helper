@@ -65,7 +65,7 @@ const boardOptions: AppearanceOption<BoardAppearanceKey>[] = [
         description="控制顶部、标题和图标这类页面级反馈，适合优先调节。"
       >
         <template #actions>
-          <span class="config-appearance__meta bh-glass-pill">页面级效果</span>
+          <span class="config-appearance__meta bh-workspace-meta-pill bh-glass-pill">页面级效果</span>
         </template>
 
         <div class="config-appearance__option-grid">
@@ -91,7 +91,7 @@ const boardOptions: AppearanceOption<BoardAppearanceKey>[] = [
         description="影响职位卡片和列表区域的展示层次，适合按个人阅读习惯调整。"
       >
         <template #actions>
-          <span class="config-appearance__meta bh-glass-pill">候选面板</span>
+          <span class="config-appearance__meta bh-workspace-meta-pill bh-glass-pill">候选面板</span>
         </template>
 
         <div class="config-appearance__option-grid">
@@ -126,16 +126,6 @@ const boardOptions: AppearanceOption<BoardAppearanceKey>[] = [
   gap: 16px;
 }
 
-.config-appearance__meta {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
-  color: var(--bh-text-secondary);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
 .config-appearance__option-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
@@ -147,7 +137,7 @@ const boardOptions: AppearanceOption<BoardAppearanceKey>[] = [
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
-  padding: 14px;
+  min-height: 132px;
 }
 
 .config-appearance__option-copy {

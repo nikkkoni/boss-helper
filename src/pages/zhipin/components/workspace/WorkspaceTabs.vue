@@ -43,31 +43,31 @@ defineExpose({
   <div ref="tabsRootRef">
     <ElTabs v-model="activeTab" class="helper-tabs" data-help="帮助模式开启后，可在各个模块上悬停查看功能说明。">
       <ElTabPane label="统计概览" name="statistics" data-help="查看当前页面处理进度、今日统计和批处理控制。">
-        <section class="helper-panel helper-panel--statistics">
+        <section class="helper-tab-stage helper-tab-stage--statistics">
           <slot name="statistics" />
         </section>
       </ElTabPane>
 
       <ElTabPane label="筛选条件" name="filter">
-        <HostSearchBridge ref="searchHostRef" class="helper-search-pane" :kind="searchPanelKind">
+        <HostSearchBridge ref="searchHostRef" class="helper-tab-stage helper-tab-stage--filter" :kind="searchPanelKind">
           <slot name="filter" />
         </HostSearchBridge>
       </ElTabPane>
 
       <ElTabPane label="投递配置" name="config" data-help="集中管理筛选、投递、外观和 AI 相关配置。">
-        <section class="helper-panel bh-glass-surface">
+        <section class="helper-tab-stage helper-tab-stage--config">
           <slot name="config" />
         </section>
       </ElTabPane>
 
       <ElTabPane label="运行日志" name="logs" data-help="查看运行记录、错误信息以及 AI 过滤详情。">
-        <section class="helper-panel bh-glass-surface">
+        <section class="helper-tab-stage helper-tab-stage--logs">
           <slot name="logs" />
         </section>
       </ElTabPane>
 
       <ElTabPane label="项目说明" name="about" class="hp-about-box" data-help="查看仓库、文档和当前项目的补充说明。">
-        <section class="helper-panel helper-panel--about">
+        <section class="helper-tab-stage helper-tab-stage--about">
           <slot name="about" />
         </section>
       </ElTabPane>
@@ -161,17 +161,14 @@ defineExpose({
   color: var(--bh-text-primary);
 }
 
-.helper-panel,
-.helper-search-pane {
+.helper-tab-stage {
   margin-top: 18px;
-  padding: 22px;
-  border-radius: var(--bh-radius-panel-lg);
+  min-width: 0;
 }
 
-.helper-search-pane,
-.helper-search-pane.workspace-host-search {
-  min-height: 120px;
-  overflow: visible !important;
+.helper-tab-stage--statistics,
+.helper-tab-stage--about {
+  margin-top: 16px;
 }
 
 .helper-tabs .ehp-tabs__content,
@@ -179,37 +176,11 @@ defineExpose({
   overflow: visible !important;
 }
 
-.helper-panel--statistics {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.helper-panel--about {
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-
 .hp-about-box {
   display: flex;
 }
 
 @media (max-width: 640px) {
-  .helper-panel,
-  .helper-search-pane {
-    padding: 18px;
-    border-radius: 22px;
-  }
-
-  .helper-panel--statistics {
-    padding: 0;
-    border-radius: 0;
-  }
-
   .helper-tabs .ehp-tabs__item {
     padding: 0 14px;
   }

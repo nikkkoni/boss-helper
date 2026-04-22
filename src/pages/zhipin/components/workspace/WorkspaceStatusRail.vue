@@ -130,6 +130,7 @@ const quickActions = computed(() => {
       eyebrow="Status Rail"
       title="运行侧栏"
       description="把当前 run 的状态、页面上下文和快捷操作收拢进一个统一模块，切换 Tab 时也能持续观察。"
+      size="compact"
     />
 
     <div class="workspace-status-rail__sections bh-workspace-section-gap">
@@ -141,7 +142,7 @@ const quickActions = computed(() => {
           eyebrow="Run"
           title="运行状态"
           description="保持当前 run 的状态、状态消息和进度摘要在同一个视线区域。"
-          compact
+          size="compact"
         />
 
         <div class="workspace-status-rail__status-row">
@@ -177,7 +178,7 @@ const quickActions = computed(() => {
           eyebrow="Context"
           title="页面上下文"
           description="帮助你快速确认当前工作台接入的页面、搜索桥接模式和账号上下文。"
-          compact
+          size="compact"
         />
 
         <dl class="workspace-status-rail__context-list">
@@ -201,7 +202,7 @@ const quickActions = computed(() => {
           eyebrow="Quick Actions"
           title="快捷操作"
           description="保留高频 run 操作，并补充到配置、筛选和日志模块的快速跳转。"
-          compact
+          size="compact"
         />
 
         <div class="workspace-status-rail__actions">

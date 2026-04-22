@@ -55,6 +55,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@playwright/cli": "^0.1.8",
     "@types/chrome": "^0.0.301",
     "@types/node": "^20.19.27",
     "@vitejs/plugin-vue": "^6.0.5",

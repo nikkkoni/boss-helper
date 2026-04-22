@@ -11,6 +11,60 @@
   color: var(--bh-text-muted);
 }
 
+.bh-workspace-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  color: var(--bh-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.bh-workspace-info-card {
+  min-width: 0;
+  padding: 14px;
+}
+
+.bh-workspace-info-copy strong {
+  display: block;
+  color: var(--bh-text-primary);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.bh-workspace-info-copy p {
+  margin: 8px 0 0;
+  color: var(--bh-text-muted);
+  line-height: 1.6;
+}
+
+.bh-workspace-stat-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+}
+
+.bh-workspace-stat-card span,
+.bh-workspace-stat-card small {
+  color: var(--bh-text-muted);
+}
+
+.bh-workspace-stat-card span {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bh-workspace-stat-card strong {
+  color: var(--bh-text-primary);
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
 .bh-workspace-stack {
   display: flex;
   flex-direction: column;

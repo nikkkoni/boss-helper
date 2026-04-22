@@ -277,6 +277,10 @@ function getActiveTimeType(activeTime?: number): 'success' | 'warning' | 'danger
   color: inherit;
 }
 
+:global(html.dark) .job-card__content {
+  background: rgb(15 23 42 / 62%);
+}
+
 .job-card__content:focus-visible {
   outline: 2px solid var(--bh-focus-ring);
   outline-offset: 2px;

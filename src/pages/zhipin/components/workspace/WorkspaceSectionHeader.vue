@@ -5,13 +5,13 @@ withDefaults(
     title: string
     description?: string
     meta?: string
-    compact?: boolean
+    size?: 'section' | 'compact'
   }>(),
   {
     eyebrow: '',
     description: '',
     meta: '',
-    compact: false,
+    size: 'section',
   },
 )
 </script>
@@ -19,10 +19,12 @@ withDefaults(
 <template>
   <header
     class="workspace-section-header"
-    :class="{
-      'workspace-section-header--compact': compact,
-      'workspace-section-header--split': $slots.actions || meta,
-    }"
+    :class="[
+      `workspace-section-header--${size}`,
+      {
+        'workspace-section-header--split': $slots.actions || meta,
+      },
+    ]"
   >
     <div class="workspace-section-header__copy">
       <span v-if="eyebrow" class="workspace-section-header__eyebrow bh-eyebrow">{{ eyebrow }}</span>
@@ -50,12 +52,10 @@ withDefaults(
   margin-bottom: 18px;
 }
 
-.workspace-section-header--compact {
-  margin-bottom: 16px;
-}
-
 .workspace-section-header__copy {
+  flex: 1 1 320px;
   min-width: 0;
+  max-width: 720px;
 }
 
 .workspace-section-header__eyebrow {
@@ -76,17 +76,15 @@ withDefaults(
   color: var(--bh-text-primary);
 }
 
-.workspace-section-header--compact .workspace-section-header__copy h3 {
-  font-size: 1rem;
-}
-
 .workspace-section-header__copy p {
+  max-width: 62ch;
   margin: 10px 0 0;
   color: var(--bh-text-muted);
   line-height: 1.7;
 }
 
 .workspace-section-header__actions {
+  flex: 0 0 auto;
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -102,6 +100,31 @@ withDefaults(
   color: var(--bh-text-secondary);
   font-size: 0.83rem;
   font-weight: 600;
+}
+
+.workspace-section-header--compact {
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.workspace-section-header--compact .workspace-section-header__eyebrow {
+  margin-bottom: 6px;
+}
+
+.workspace-section-header--compact .workspace-section-header__copy h3 {
+  font-size: 1rem;
+}
+
+.workspace-section-header--compact .workspace-section-header__copy p {
+  margin-top: 6px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.workspace-section-header--compact .workspace-section-header__meta {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.8rem;
 }
 
 @media (max-width: 640px) {

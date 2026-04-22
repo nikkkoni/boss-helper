@@ -149,7 +149,7 @@ const { deliverLock } = useCommon()
 .config-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .config-page__tips {

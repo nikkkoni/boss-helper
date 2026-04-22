@@ -25,9 +25,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
+.tmp
+.opencode
 .output
 .playwright-mcp/
+.playwright-cli/
 playwright-report/
 test-results/
 playwright-network.txt
@@ -55,6 +57,10 @@ opencode.json
 
 # Local dev notes
 todo.md
-
+AGENTS.md
 # TypeScript incremental build
 *.tsbuildinfo
+
+
+network-chat.txt
+update.log

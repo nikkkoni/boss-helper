@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import {
   ElButton,
-  ElButtonGroup,
   ElDropdown,
   ElDropdownItem,
   ElDropdownMenu,
@@ -117,9 +116,10 @@ onMounted(() => {
         />
 
         <div class="statistics-card__actions">
-          <ElButtonGroup class="statistics-card__buttons">
+          <div class="statistics-card__buttons">
             <ElButton
               type="primary"
+              class="statistics-card__action"
               data-help="按当前筛选和投递配置开始处理当前页面岗位；暂停后会显示为继续。"
               :loading="common.deliverLock"
               @click="isPaused ? resumeBatch() : startBatch()"
@@ -129,6 +129,7 @@ onMounted(() => {
             <ElButton
               v-if="!common.deliverLock && common.deliverStop"
               type="warning"
+              class="statistics-card__action"
               data-help="重置已被筛选的岗位，开始将重新处理"
               @click="resetFilter"
             >
@@ -137,12 +138,13 @@ onMounted(() => {
             <ElButton
               v-if="common.deliverLock && !common.deliverStop"
               type="warning"
+              class="statistics-card__action"
               data-help="暂停当前批处理，保留现场状态，稍后可继续运行。"
               @click="pauseBatch()"
             >
               暂停
             </ElButton>
-          </ElButtonGroup>
+          </div>
           <ElProgress
             class="statistics-card__progress"
             data-help="根据今日已完成投递数和当日上限估算的进度，仅作参考。"
@@ -156,7 +158,7 @@ onMounted(() => {
           eyebrow="Snapshot"
           title="今日摘要"
           description="这里保留对当前扫描总量、过滤比例和历史周期统计的快速查看。"
-          compact
+          size="compact"
         />
 
         <div v-if="conf.config_level.intermediate" class="statistics-card__metric-grid">
@@ -244,7 +246,7 @@ onMounted(() => {
           eyebrow="AI Usage"
           title="AI 使用情况"
           description="保留调用次数、Token 和估算费用，便于观察当前配置的模型消耗。"
-          compact
+          size="compact"
         />
 
         <div class="statistics-card__metric-grid statistics-card__metric-grid--secondary">
@@ -282,13 +284,13 @@ onMounted(() => {
 .statistics-workbench {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .statistics-workbench__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 .statistics-card {
@@ -307,7 +309,7 @@ onMounted(() => {
 .statistics-card__metric-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  gap: 14px 16px;
+  gap: 12px;
 }
 
 .statistics-card__metric-grid--secondary {
@@ -316,19 +318,27 @@ onMounted(() => {
 
 .statistics-card__metric {
   min-width: 0;
+  padding: 14px;
+  border-radius: var(--bh-radius-card);
+  background: var(--bh-surface-nested);
 }
 
 .statistics-card__actions {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 18px;
+  gap: 16px;
 }
 
 .statistics-card__buttons {
-  flex-shrink: 0;
-  display: inline-flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 12px;
+}
+
+.statistics-card__action {
+  min-height: 44px;
+  margin: 0;
 }
 
 .statistics-card__progress {
@@ -336,7 +346,7 @@ onMounted(() => {
 }
 
 .statistics-card :deep(.ehp-statistic) {
-  min-height: 108px;
+  min-height: 96px;
 }
 
 .statistics-card :deep(.ehp-statistic__head) {
@@ -369,7 +379,6 @@ onMounted(() => {
     gap: 14px;
   }
 
-  .statistics-card__buttons,
   .statistics-card__progress {
     width: 100%;
   }

@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import WorkspaceSectionHeader from '../workspace/WorkspaceSectionHeader.vue'
+
 withDefaults(defineProps<{
   eyebrow?: string
   title: string
@@ -20,16 +22,16 @@ withDefaults(defineProps<{
       'bh-glass-surface--card': !compact,
     }"
   >
-    <header class="config-section-card__header" :class="{ 'config-section-card__header--split': $slots.actions }">
-      <div class="config-section-card__copy">
-        <span v-if="eyebrow" class="config-section-card__eyebrow bh-eyebrow">{{ eyebrow }}</span>
-        <h3>{{ title }}</h3>
-        <p v-if="description">{{ description }}</p>
-      </div>
-      <div v-if="$slots.actions" class="config-section-card__actions">
+    <WorkspaceSectionHeader
+      :eyebrow="eyebrow"
+      :title="title"
+      :description="description"
+      :size="compact ? 'compact' : 'section'"
+    >
+      <template v-if="$slots.actions" #actions>
         <slot name="actions" />
-      </div>
-    </header>
+      </template>
+    </WorkspaceSectionHeader>
 
     <div class="config-section-card__body">
       <slot />
@@ -49,39 +51,6 @@ withDefaults(defineProps<{
 .config-section-card--compact {
   padding: 18px;
   border-radius: var(--bh-radius-card);
-}
-
-.config-section-card__header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.config-section-card__header--split {
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.config-section-card__copy {
-  min-width: 0;
-}
-
-.config-section-card__eyebrow {
-  margin-bottom: 10px;
-}
-
-.config-section-card__copy h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  line-height: 1.2;
-  color: var(--bh-text-primary);
-}
-
-.config-section-card__copy p {
-  margin: 10px 0 0;
-  color: var(--bh-text-muted);
-  line-height: 1.7;
 }
 
 .config-section-card__body {

@@ -44,6 +44,20 @@ useAppearanceEffects()
 
 const helpVisible = ref(false)
 const activeTab = ref('statistics')
+const workspaceTabLabelMap: Record<string, string> = {
+  statistics: '统计概览',
+  filter: '筛选条件',
+  config: '投递配置',
+  logs: '运行日志',
+  about: '项目说明',
+}
+const workspaceTabDescriptionMap: Record<string, string> = {
+  statistics: '查看当前页面处理进度、今日统计和批处理控制。',
+  filter: '承接 Boss 原生搜索和筛选桥接模块，保持原有筛选体验。',
+  config: '集中管理筛选、投递、外观和 AI 相关配置。',
+  logs: '查看运行记录、错误信息以及 AI 过滤详情。',
+  about: '查看仓库、文档和当前项目的补充说明。',
+}
 type WorkspaceTabsExpose = {
   getSearchMountElement: () => HTMLElement | null
   getTabsRootElement: () => HTMLElement | null
@@ -93,6 +107,12 @@ const searchPanelLabel = computed(() => {
       return '经典职位页搜索桥接'
   }
 })
+const activeWorkspaceTabLabel = computed(
+  () => workspaceTabLabelMap[activeTab.value] ?? '主工作区',
+)
+const activeWorkspaceTabDescription = computed(
+  () => workspaceTabDescriptionMap[activeTab.value] ?? '在这里切换工作台核心模块。',
+)
 const isPaused = computed(() => common.deliverState === 'paused' && !common.deliverLock)
 const primaryActionLabel = computed(() => (isPaused.value ? '继续投递' : '开始投递'))
 const primaryActionDisabled = computed(() => common.deliverLock && common.deliverState !== 'paused')
@@ -205,29 +225,39 @@ onUnmounted(() => {
             data-help="这里集中展示当前工作台的主业务模块与标签切换。"
           >
             <WorkspaceSectionHeader
-              eyebrow="Workspace"
+              eyebrow="Main Workspace"
               title="主工作区"
-              description="左侧保留原有标签页结构，用于承载统计、筛选、配置、日志和项目说明。"
+              description="在这里切换统计、筛选、配置、日志和项目说明模块。"
               :meta="routeLabel"
+              size="compact"
             />
 
-            <WorkspaceTabs v-model="activeTab" ref="tabsRef" :search-panel-kind="searchPanelKind">
-              <template #statistics>
-                <Statistics />
-              </template>
+            <div class="helper-dashboard__workspace-stage bh-glass-surface bh-glass-surface--nested">
+              <WorkspaceSectionHeader
+                eyebrow="Current Module"
+                :title="activeWorkspaceTabLabel"
+                :description="activeWorkspaceTabDescription"
+                size="compact"
+              />
 
-              <template #config>
-                <Config />
-              </template>
+              <WorkspaceTabs v-model="activeTab" ref="tabsRef" :search-panel-kind="searchPanelKind">
+                <template #statistics>
+                  <Statistics />
+                </template>
 
-              <template #logs>
-                <Logs />
-              </template>
+                <template #config>
+                  <Config />
+                </template>
 
-              <template #about>
-                <About />
-              </template>
-            </WorkspaceTabs>
+                <template #logs>
+                  <Logs />
+                </template>
+
+                <template #about>
+                  <About />
+                </template>
+              </WorkspaceTabs>
+            </div>
           </section>
         </section>
       </template>
@@ -291,6 +321,13 @@ onUnmounted(() => {
   color: var(--bh-text-primary) !important;
 }
 
+.helper-dashboard .ehp-checkbox.is-bordered {
+  min-height: 44px;
+  margin: 0;
+  padding-inline: 14px;
+  border-radius: var(--bh-radius-md);
+}
+
 .helper-dashboard .ehp-form {
   .ehp-link {
     font-size: 12px;
@@ -302,6 +339,41 @@ onUnmounted(() => {
   .ehp-checkbox__label {
     padding-left: 4px;
   }
+}
+
+.helper-dashboard .ehp-input__wrapper,
+.helper-dashboard .ehp-select__wrapper,
+.helper-dashboard .ehp-textarea__inner,
+.helper-dashboard .ehp-input-number,
+.helper-dashboard .ehp-input-number .ehp-input__wrapper {
+  min-height: 44px;
+}
+
+.helper-dashboard .ehp-input-number {
+  width: 100%;
+}
+
+.helper-dashboard .ehp-button {
+  min-height: 44px;
+  padding-inline: 16px;
+  font-weight: 600;
+}
+
+.helper-dashboard .ehp-alert {
+  padding: 14px 16px;
+}
+
+.helper-dashboard .ehp-alert__title {
+  line-height: 1.5;
+}
+
+.helper-dashboard .ehp-alert__description {
+  line-height: 1.6;
+}
+
+.helper-dashboard .ehp-table,
+.helper-dashboard .ehp-table-v2 {
+  border-radius: var(--bh-radius-md);
 }
 
 .helper-dashboard .ehp-alert,
@@ -328,6 +400,14 @@ onUnmounted(() => {
 }
 
 .helper-dashboard__panel.helper-dashboard__panel--workspace.bh-glass-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: visible !important;
+}
+
+.helper-dashboard__workspace-stage {
+  padding: 18px;
   overflow: visible !important;
 }
 
@@ -335,6 +415,11 @@ onUnmounted(() => {
   .helper-dashboard__panel {
     padding: 18px;
     border-radius: 22px;
+  }
+
+  .helper-dashboard__workspace-stage {
+    padding: 16px;
+    border-radius: 20px;
   }
 }
 </style>

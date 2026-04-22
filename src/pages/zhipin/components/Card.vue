@@ -9,6 +9,7 @@ import { jobList } from '@/stores/jobs'
 
 import { useCardVisualEffects } from '../hooks/useCardVisualEffects'
 import { useDeliver } from '../hooks/useDeliver'
+import WorkspaceSectionHeader from './workspace/WorkspaceSectionHeader.vue'
 
 const deliver = useDeliver()
 const jobSetRef = ref<Record<EncryptJobId, Element | ComponentPublicInstance | null>>({})
@@ -106,23 +107,21 @@ watch(
     @mouseleave="handleBoardMouseLeave"
   >
     <div class="boss-helper-card__header">
-      <div class="boss-helper-card__copy">
-        <span class="boss-helper-card__eyebrow bh-eyebrow">Candidate Board</span>
-        <div class="boss-helper-card__title-row">
-          <h3>候选岗位面板</h3>
-          <span class="boss-helper-card__summary bh-glass-pill">{{ candidateSummary }}</span>
-        </div>
-        <p>保持横向浏览、自动跟随和左右导航能力，同时把当前处理岗位与状态提示收敛到同一块头部信息中。</p>
-      </div>
+      <WorkspaceSectionHeader
+        eyebrow="Candidate Board"
+        title="候选岗位面板"
+        description="保持横向浏览、自动跟随和左右导航能力，同时把当前处理岗位与状态提示收敛到同一块头部信息中。"
+        :meta="candidateSummary"
+      />
 
       <div class="boss-helper-card__status-grid">
-        <article class="boss-helper-card__status bh-glass-surface bh-glass-surface--nested">
+        <article class="boss-helper-card__status bh-workspace-stat-card bh-glass-surface bh-glass-surface--nested">
           <span>当前岗位</span>
           <strong>{{ currentJobLabel }}</strong>
           <small>跟随当前处理中的岗位卡片。</small>
         </article>
 
-        <article class="boss-helper-card__status bh-glass-surface bh-glass-surface--nested">
+        <article class="boss-helper-card__status bh-workspace-stat-card bh-glass-surface bh-glass-surface--nested">
           <span>当前状态</span>
           <strong>{{ currentStatusLabel }}</strong>
           <small>用于判断当前 run 在候选面板里的进度反馈。</small>
@@ -203,49 +202,9 @@ watch(
 }
 
 .boss-helper-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
   gap: 18px;
   margin-bottom: 18px;
-}
-
-.boss-helper-card__copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.boss-helper-card__eyebrow {
-  margin-bottom: 8px;
-}
-
-.boss-helper-card__title-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-.boss-helper-card__header h3 {
-  margin: 0;
-  font-size: 1.3rem;
-  letter-spacing: -0.03em;
-}
-
-.boss-helper-card__summary {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
-  color: var(--bh-text-secondary);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.boss-helper-card__copy p {
-  margin: 10px 0 0;
-  color: var(--bh-text-muted);
-  line-height: 1.7;
 }
 
 .boss-helper-card__status-grid {
@@ -256,36 +215,11 @@ watch(
 }
 
 .boss-helper-card__status {
-  min-width: 0;
-  padding: 14px;
-}
-
-.boss-helper-card__status span,
-.boss-helper-card__status small {
-  color: var(--bh-text-muted);
-}
-
-.boss-helper-card__status span {
-  display: inline-flex;
-  margin-bottom: 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.boss-helper-card__status strong {
-  display: block;
-  color: var(--bh-text-primary);
-  font-size: 0.98rem;
-  font-weight: 700;
-  line-height: 1.45;
-  word-break: break-word;
+  min-height: 124px;
 }
 
 .boss-helper-card__status small {
   display: block;
-  margin-top: 8px;
   line-height: 1.55;
 }
 
@@ -345,6 +279,7 @@ watch(
   border-radius: var(--bh-radius-panel);
   border: 1px solid var(--bh-border-subtle);
   background: var(--bh-surface-soft);
+  box-shadow: var(--bh-shadow-soft);
 }
 
 .card-grid {
@@ -411,6 +346,10 @@ watch(
 html.dark {
   .card-grid {
     scrollbar-width: none;
+  }
+
+  .card-grid-shell {
+    background: linear-gradient(165deg, rgb(15 23 42 / 74%), rgb(30 41 59 / 80%));
   }
 }
 

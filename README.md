@@ -156,6 +156,7 @@ pnpm agent:mcp -- --bootstrap
 | `pnpm agent:cli <command>` | 通过 CLI 调用 bridge |
 | `pnpm agent:doctor` | 诊断 bridge / relay / extension 状态 |
 | `pnpm agent:mcp` | 启动 stdio MCP server；默认不自动拉起浏览器链路 |
+| `npx playwright-cli` | 通用浏览器自动化 CLI（skill `playwright-cli`）；Boss 投递仍走 `boss_helper_*` |
 | `pnpm agent:orchestrate` | 运行仓库内置的自动化编排示例 |
 
 `navigate` / 搜索定位补充：
@@ -182,6 +183,7 @@ pnpm agent:mcp -- --bootstrap
 | `src/composables/useApplying/` | 投递 pipeline、过滤与 AI |
 | `src/message/` | 跨上下文消息协议与 Agent 命令模型 |
 | `src/stores/` | 配置、统计、职位、日志、用户、agent 运行态 |
+| `.opencode/skills/playwright-cli/` | 通用浏览器自动化 skill（替代原 `@playwright/mcp`） |
 | `scripts/` | bridge、CLI、MCP、orchestrator 和本地运维脚本 |
 | `tests/` | 单元测试与 Playwright E2E |
 
@@ -200,6 +202,7 @@ pnpm agent:mcp -- --bootstrap
 - 页面 DOM 或站内路由变化会直接影响选择器和自动化稳定性
 - bridge 默认只允许本机 `localhost / 127.0.0.1` 使用，不应暴露到公网
 - `start` 与 `resume` 属于显式高风险动作
+- 通用浏览器自动化已从 `@playwright/mcp` 迁移到 `playwright-cli` skill（`.opencode/skills/playwright-cli/`）；Boss 投递仍应通过 `boss_helper_*` MCP 走间接链路，不要用 `playwright-cli` 直驱 Boss 页面
 - 当前仓库不把上游浏览器商店链接视为有效安装入口；默认以源码构建和本仓库内容为准
 
 ## 相关链接

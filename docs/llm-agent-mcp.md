@@ -285,6 +285,12 @@ pnpm agent:mcp -- --bootstrap
 
 即使显式使用 `--bootstrap`，首次登录、证书接受、验证码和风控处理仍需要人工在真实浏览器中完成。任务结束后，如需关闭本地 companion bridge，可运行 `pnpm agent:stop`。
 
+### 通用浏览器自动化
+
+仓库已从 `@playwright/mcp` 迁移到 `playwright-cli` skill（`.opencode/skills/playwright-cli/`）。通用浏览器自动化（页面调试、E2E 测试、数据提取）应通过 `npx playwright-cli` 或 skill `playwright-cli` 完成。
+
+Boss 投递自动化仍应通过本文件列出的 `boss_helper_*` MCP 工具走间接链路，不要用 `playwright-cli` 直驱 Boss 页面。
+
 ## 推荐实践
 
 1. 不要跳过 `boss_helper_bootstrap_guide` / `boss_helper_agent_context`，直接对整页执行 `start`。

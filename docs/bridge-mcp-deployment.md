@@ -307,6 +307,12 @@ x-boss-helper-agent-token: <token>
 - `Content-Length` framed stdio
 - newline-delimited JSON-RPC
 
+### 通用浏览器自动化
+
+仓库已从 `@playwright/mcp` 迁移到 `playwright-cli` skill（`.opencode/skills/playwright-cli/`），用于通用浏览器自动化、E2E 测试编写和页面调试。`@playwright/cli` 已加入 dev 依赖，可通过 `npx playwright-cli` 使用。
+
+Boss 投递自动化仍应通过 `boss_helper_*` MCP 走 `bridge -> relay -> extension -> page` 间接链路，不要用 `playwright-cli` 直驱 Boss 页面。
+
 ## 常见错误
 
 ### `relay-not-connected`

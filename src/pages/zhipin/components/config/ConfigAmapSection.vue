@@ -55,7 +55,7 @@ async function amapGeocodeHandler() {
         description="先开启功能并配置 Key，再用完整地址换算出起点经纬度。"
       >
         <template #actions>
-          <span class="config-amap__meta bh-glass-pill">接入准备</span>
+          <span class="config-amap__meta bh-workspace-meta-pill bh-glass-pill">接入准备</span>
         </template>
 
         <div class="config-amap__stack">
@@ -115,7 +115,7 @@ async function amapGeocodeHandler() {
         description="分别设置直线、驾车和步行的距离或时间上限。"
       >
         <template #actions>
-          <span class="config-amap__meta bh-glass-pill">距离与时间</span>
+          <span class="config-amap__meta bh-workspace-meta-pill bh-glass-pill">距离与时间</span>
         </template>
 
         <div class="config-amap__fields config-amap__fields--metrics">
@@ -208,7 +208,7 @@ async function amapGeocodeHandler() {
       description="以下变量仅在筛选场景可用，可直接写进 Prompt 中。"
     >
       <template #actions>
-        <span class="config-amap__meta bh-glass-pill">Prompt Tokens</span>
+        <span class="config-amap__meta bh-workspace-meta-pill bh-glass-pill">Prompt Tokens</span>
       </template>
 
       <div class="config-amap__token-list">
@@ -233,16 +233,6 @@ async function amapGeocodeHandler() {
   gap: 16px;
 }
 
-.config-amap__meta {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
-  color: var(--bh-text-secondary);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
 .config-amap__stack,
 .config-amap__fields {
   display: flex;
@@ -252,8 +242,7 @@ async function amapGeocodeHandler() {
 
 .config-amap__field-card,
 .config-amap__metric-card {
-  padding: 14px;
-  min-width: 0;
+  min-height: 132px;
 }
 
 .config-amap__toggle-copy strong {
@@ -271,7 +260,7 @@ async function amapGeocodeHandler() {
 .config-amap__fields--metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: 14px 18px;
+  gap: 12px;
 }
 
 .config-amap__toggle,
@@ -321,7 +310,7 @@ async function amapGeocodeHandler() {
 
 .config-amap__token {
   display: block;
-  padding: 12px 14px;
+  padding: 14px;
   border-radius: 16px;
   background: rgb(15 23 42 / 4%);
   color: #0f172a;
@@ -331,7 +320,7 @@ async function amapGeocodeHandler() {
 }
 
 :global(html.dark) .config-amap__token {
-  background: rgb(148 163 184 / 10%);
+  background: rgb(15 23 42 / 62%);
   color: #e2e8f0;
 }
 

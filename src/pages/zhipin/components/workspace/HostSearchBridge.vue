@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
 
+import WorkspaceSectionHeader from './WorkspaceSectionHeader.vue'
+
 const props = defineProps<{
   kind: 'jobs' | 'legacy' | 'recommend'
 }>()
@@ -42,11 +44,12 @@ defineExpose({
     class="workspace-host-search bh-glass-surface bh-glass-surface--nested"
     data-help="这里承载 Boss 页面原生的搜索与筛选模块，功能保持原样，仅调整到工作台中展示。"
   >
-    <div class="workspace-host-search__header">
-      <span class="bh-eyebrow">Host Bridge</span>
-      <h3>{{ bridgeCopy.title }}</h3>
-      <p>{{ bridgeCopy.description }}</p>
-    </div>
+    <WorkspaceSectionHeader
+      eyebrow="Host Bridge"
+      :title="bridgeCopy.title"
+      :description="bridgeCopy.description"
+      size="compact"
+    />
 
     <div
       ref="mountRef"
@@ -66,22 +69,6 @@ defineExpose({
   gap: 16px;
   overflow: visible !important;
   padding: 18px;
-}
-
-.workspace-host-search__header {
-  display: grid;
-  gap: 8px;
-}
-
-.workspace-host-search__header h3 {
-  margin: 0;
-  font-size: 1.02rem;
-}
-
-.workspace-host-search__header p {
-  margin: 0;
-  color: var(--bh-text-secondary);
-  line-height: 1.7;
 }
 
 .workspace-host-search__mount {
