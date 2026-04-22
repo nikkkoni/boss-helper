@@ -338,7 +338,7 @@ onUnmounted(() => {
         data-help="鼠标移到对应元素查看提示"
       >
         <ElTabPane label="统计概览" name="statistics" data-help="失败是成功她妈">
-          <section class="helper-panel">
+          <section class="helper-panel helper-panel--statistics">
             <Statistics />
           </section>
         </ElTabPane>
@@ -403,18 +403,8 @@ onUnmounted(() => {
 
 .helper-dashboard__hero {
   position: relative;
-  overflow: hidden;
-  padding: 24px;
-  border-radius: 28px;
-  border: 1px solid rgb(148 163 184 / 24%);
-  background:
-    radial-gradient(circle at top right, rgb(251 191 36 / 24%), transparent 34%),
-    radial-gradient(circle at left bottom, rgb(14 165 233 / 16%), transparent 38%),
-    linear-gradient(160deg, rgb(255 255 255 / 88%), rgb(248 250 252 / 96%));
-  box-shadow:
-    0 28px 60px rgb(15 23 42 / 12%),
-    inset 0 1px 0 rgb(255 255 255 / 78%);
-  backdrop-filter: blur(18px);
+  display: grid;
+  gap: 18px;
 }
 
 .helper-dashboard__copy,
@@ -432,6 +422,21 @@ onUnmounted(() => {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #0f766e;
+}
+
+.helper-dashboard__copy {
+  overflow: hidden;
+  padding: 24px;
+  border-radius: 28px;
+  border: 1px solid rgb(148 163 184 / 24%);
+  background:
+    radial-gradient(circle at top right, rgb(251 191 36 / 24%), transparent 34%),
+    radial-gradient(circle at left bottom, rgb(14 165 233 / 16%), transparent 38%),
+    linear-gradient(160deg, rgb(255 255 255 / 88%), rgb(248 250 252 / 96%));
+  box-shadow:
+    0 28px 60px rgb(15 23 42 / 12%),
+    inset 0 1px 0 rgb(255 255 255 / 78%);
+  backdrop-filter: blur(18px);
 }
 
 .helper-dashboard__copy h2 {
@@ -463,7 +468,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin-top: 20px;
 }
 
 .helper-help-toggle,
@@ -474,8 +478,14 @@ onUnmounted(() => {
   min-height: 56px;
   padding: 12px 16px;
   border-radius: 20px;
-  background: rgb(255 255 255 / 60%);
-  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 16%);
+  border: 1px solid rgb(148 163 184 / 18%);
+  background:
+    radial-gradient(circle at top right, rgb(56 189 248 / 10%), transparent 32%),
+    linear-gradient(165deg, rgb(255 255 255 / 72%), rgb(248 250 252 / 82%));
+  box-shadow:
+    0 18px 36px rgb(15 23 42 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 54%);
+  backdrop-filter: blur(16px);
 }
 
 .helper-help-toggle {
@@ -523,15 +533,35 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
-  margin-top: 20px;
 }
 
 .helper-metric-card {
+  position: relative;
+  overflow: hidden;
   min-width: 0;
   padding: 16px 18px;
-  border-radius: 22px;
-  background: rgb(255 255 255 / 60%);
-  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 16%);
+  min-height: 148px;
+  border-radius: 24px;
+  border: 1px solid rgb(148 163 184 / 18%);
+  background:
+    radial-gradient(circle at top right, rgb(56 189 248 / 12%), transparent 28%),
+    radial-gradient(circle at left bottom, rgb(251 191 36 / 16%), transparent 34%),
+    linear-gradient(165deg, rgb(255 255 255 / 24%), rgb(248 250 252 / 10%));
+  box-shadow:
+    0 18px 36px rgb(15 23 42 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 46%);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.helper-metric-card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(14 165 233 / 20%);
+  box-shadow:
+    0 22px 40px rgb(14 165 233 / 10%),
+    inset 0 1px 0 rgb(255 255 255 / 52%);
 }
 
 .helper-metric-card span,
@@ -599,11 +629,12 @@ onUnmounted(() => {
   max-width: 100%;
   margin: 0 auto;
   padding: 6px;
+  overflow: hidden;
   border-radius: 999px;
   background: rgb(255 255 255 / 74%);
   box-shadow:
     inset 0 0 0 1px rgb(148 163 184 / 18%),
-    0 18px 32px rgb(15 23 42 / 8%);
+    0 8px 18px rgb(15 23 42 / 5%);
 }
 
 .helper-tabs .ehp-tabs__nav {
@@ -628,7 +659,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   height: 44px;
-  padding: 0 18px;
+  padding: 0 18px !important;
   border-radius: 999px;
   color: #475569;
   line-height: 1.1;
@@ -640,10 +671,17 @@ onUnmounted(() => {
     transform 0.2s ease;
 }
 
+.helper-tabs .ehp-tabs__item.is-top:first-child,
+.helper-tabs .ehp-tabs__item.is-top:nth-child(2),
+.helper-tabs .ehp-tabs__item.is-top:last-child {
+  padding-left: 18px !important;
+  padding-right: 18px !important;
+}
+
 .helper-tabs .ehp-tabs__item.is-active {
   background: linear-gradient(135deg, #0f766e, #0ea5e9);
   color: #fff;
-  box-shadow: 0 14px 28px rgb(14 165 233 / 22%);
+  box-shadow: 0 6px 14px rgb(14 165 233 / 16%);
 }
 
 .helper-tabs .ehp-tabs__item:hover {
@@ -665,6 +703,14 @@ onUnmounted(() => {
 
 .helper-search-pane {
   min-height: 120px;
+}
+
+.helper-panel--statistics {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .helper-panel--about {
@@ -723,7 +769,7 @@ html.dark {
     color: #e2e8f0;
   }
 
-  .helper-dashboard__hero {
+  .helper-dashboard__copy {
     border-color: rgb(71 85 105 / 44%);
     background:
       radial-gradient(circle at top right, rgb(6 182 212 / 14%), transparent 32%),
@@ -749,8 +795,6 @@ html.dark {
   .helper-dashboard__summary,
   .helper-help-toggle,
   .helper-status-pill,
-  .helper-metric-card,
-  .helper-tabs .ehp-tabs__nav-scroll,
   .helper-panel,
   .helper-search-pane {
     background: rgb(15 23 42 / 66%);
@@ -758,6 +802,32 @@ html.dark {
     box-shadow:
       inset 0 0 0 1px rgb(71 85 105 / 26%),
       0 24px 44px rgb(2 6 23 / 28%);
+  }
+
+  .helper-tabs .ehp-tabs__nav-scroll {
+    background: rgb(15 23 42 / 66%);
+    border-color: rgb(71 85 105 / 42%);
+    box-shadow:
+      inset 0 0 0 1px rgb(71 85 105 / 26%),
+      0 10px 20px rgb(2 6 23 / 18%);
+  }
+
+  .helper-metric-card {
+    border-color: rgb(71 85 105 / 42%);
+    background:
+      radial-gradient(circle at top right, rgb(6 182 212 / 12%), transparent 28%),
+      radial-gradient(circle at left bottom, rgb(168 85 247 / 12%), transparent 34%),
+      linear-gradient(165deg, rgb(15 23 42 / 28%), rgb(30 41 59 / 12%));
+    box-shadow:
+      0 24px 44px rgb(2 6 23 / 24%),
+      inset 0 1px 0 rgb(255 255 255 / 6%);
+  }
+
+  .helper-metric-card:hover {
+    border-color: rgb(34 211 238 / 28%);
+    box-shadow:
+      0 28px 48px rgb(8 145 178 / 18%),
+      inset 0 1px 0 rgb(255 255 255 / 8%);
   }
 
   .helper-dashboard__summary {
@@ -773,7 +843,22 @@ html.dark {
 
   .helper-tabs .ehp-tabs__item.is-active {
     background: linear-gradient(135deg, #0891b2, #6366f1);
-    box-shadow: 0 14px 28px rgb(99 102 241 / 22%);
+    box-shadow: 0 6px 14px rgb(99 102 241 / 18%);
+  }
+
+  .helper-help-toggle,
+  .helper-status-pill {
+    border-color: rgb(71 85 105 / 42%);
+    background:
+      radial-gradient(circle at top right, rgb(6 182 212 / 10%), transparent 32%),
+      linear-gradient(165deg, rgb(15 23 42 / 72%), rgb(30 41 59 / 74%));
+  }
+
+  .helper-panel--statistics {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
   }
 }
 
@@ -795,11 +880,16 @@ html.dark {
 }
 
 @media (max-width: 640px) {
-  .helper-dashboard__hero,
+  .helper-dashboard__copy,
   .helper-panel,
   .helper-search-pane {
     padding: 18px;
     border-radius: 22px;
+  }
+
+  .helper-panel--statistics {
+    padding: 0;
+    border-radius: 0;
   }
 
   .helper-tabs .ehp-tabs__item {

@@ -13,9 +13,6 @@ const deliver = useDeliver()
 const jobSetRef = ref<Record<EncryptJobId, Element | ComponentPublicInstance | null>>({})
 const autoScroll = ref(true)
 const cards = ref<HTMLDivElement>()
-const dragging = ref(false)
-const dragStartX = ref(0)
-const dragStartScrollLeft = ref(0)
 
 function scroll(e: WheelEvent) {
   if (!cards.value) {
@@ -30,36 +27,6 @@ function scroll(e: WheelEvent) {
   e.preventDefault()
   cards.value.scrollLeft = cards.value.scrollLeft + e.deltaY / 2
   autoScroll.value = false
-}
-
-function handlePointerDown(event: PointerEvent) {
-  if (!cards.value || event.button !== 0) {
-    return
-  }
-
-  dragging.value = true
-  dragStartX.value = event.clientX
-  dragStartScrollLeft.value = cards.value.scrollLeft
-  cards.value.setPointerCapture?.(event.pointerId)
-  autoScroll.value = false
-}
-
-function handlePointerMove(event: PointerEvent) {
-  if (!dragging.value || !cards.value) {
-    return
-  }
-
-  const deltaX = event.clientX - dragStartX.value
-  cards.value.scrollLeft = dragStartScrollLeft.value - deltaX
-}
-
-function handlePointerUp(event: PointerEvent) {
-  if (!dragging.value || !cards.value) {
-    return
-  }
-
-  dragging.value = false
-  cards.value.releasePointerCapture?.(event.pointerId)
 }
 
 function nudgeCards(direction: 'prev' | 'next') {
@@ -155,12 +122,6 @@ watch(
       <div
         ref="cards"
         class="card-grid"
-        :class="{ 'is-dragging': dragging }"
-        @pointerdown="handlePointerDown"
-        @pointermove="handlePointerMove"
-        @pointerup="handlePointerUp"
-        @pointercancel="handlePointerUp"
-        @pointerleave="handlePointerUp"
         @wheel.stop="scroll"
       >
         <JobCard
@@ -288,8 +249,6 @@ watch(
   scrollbar-width: none;
   scroll-snap-type: x proximity;
   overscroll-behavior-x: contain;
-  touch-action: pan-x;
-  cursor: grab;
   padding: 10px 2px 2px;
   -webkit-overflow-scrolling: touch;
 
@@ -311,10 +270,6 @@ watch(
     border: 0;
     box-shadow: none;
   }
-}
-
-.card-grid.is-dragging {
-  cursor: grabbing;
 }
 
 .card-grid-overlay {

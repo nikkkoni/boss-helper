@@ -8,6 +8,8 @@ import { ExtStorage } from '@/message'
 import { useConf } from '@/stores/conf'
 import { useStatistics } from '@/stores/statistics'
 
+import ConfigSectionCard from './config/ConfigSectionCard.vue'
+
 const title = useTitle(undefined, { observe: true })
 const { todayData } = useStatistics()
 const { formData } = useConf()
@@ -105,19 +107,55 @@ watch(
 </script>
 
 <template>
-  <div>
+  <div class="config-appearance">
     <Alert
       id="appearance-alert-1"
-      style="margin-bottom: 10px"
       type="success"
       description="此处提供一些便捷的外观调整功能。目前出于开发阶段, 暂无帮助文档，自行探索. 自动保存"
     />
-    <ElCheckbox v-model="conf.hideHeader" label="隐藏头" border />
-    <ElCheckbox v-model="conf.changeIcon" label="更换图标" border />
-    <ElCheckbox v-model="conf.dynamicTitle" label="动态标题" border />
-    <ElCheckbox v-model="conf.blurCard" label="模糊卡片" border />
-    <ElCheckbox v-model="conf.listSink" label="列表下沉" border />
+
+    <div class="config-appearance__grid">
+      <ConfigSectionCard
+        compact
+        title="页面界面"
+        description="控制顶部、标题和图标这类页面级反馈，适合优先调节。"
+      >
+        <div class="config-appearance__options">
+          <ElCheckbox v-model="conf.hideHeader" label="隐藏头" border />
+          <ElCheckbox v-model="conf.changeIcon" label="更换图标" border />
+          <ElCheckbox v-model="conf.dynamicTitle" label="动态标题" border />
+        </div>
+      </ConfigSectionCard>
+
+      <ConfigSectionCard
+        compact
+        title="候选卡片"
+        description="影响职位卡片和列表区域的展示层次，适合按个人阅读习惯调整。"
+      >
+        <div class="config-appearance__options">
+          <ElCheckbox v-model="conf.blurCard" label="模糊卡片" border />
+          <ElCheckbox v-model="conf.listSink" label="列表下沉" border />
+        </div>
+      </ConfigSectionCard>
+    </div>
   </div>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.config-appearance {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.config-appearance__grid {
+  display: grid;
+  gap: 16px;
+}
+
+.config-appearance__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+</style>

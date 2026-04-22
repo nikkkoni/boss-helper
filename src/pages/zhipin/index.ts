@@ -31,9 +31,9 @@ async function mountVue() {
 
   if (routeKind === 'job-recommend' || routeKind === 'jobs') {
     jobEl.style.cssText = `
-      background: #fff;
-      border-radius: 12px;
-      padding: 24px 24px 16px;
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
     `
     const jobWarpEl = document.createElement('div')
     jobWarpEl.id = selectors.extension.jobPanelWrapId

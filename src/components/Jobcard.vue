@@ -151,12 +151,9 @@ function getActiveTimeType(activeTime?: number): 'success' | 'warning' | 'danger
   gap: 0;
   transition:
     transform 0.24s ease,
-    box-shadow 0.24s ease,
     border-color 0.24s ease;
   margin: 0;
-  box-shadow:
-    0 18px 34px rgb(15 23 42 / 8%),
-    inset 0 1px 0 rgb(255 255 255 / 84%);
+  box-shadow: none;
 
   .job-card__header {
     display: flex;
@@ -286,7 +283,7 @@ function getActiveTimeType(activeTime?: number): 'success' | 'warning' | 'danger
   &.job-card-hover:hover {
     transform: translateY(-6px);
     border-color: rgb(14 165 233 / 28%);
-    box-shadow: 0 28px 52px rgb(14 165 233 / 16%);
+    box-shadow: none;
   }
 
   @media (max-width: 1200px) {
@@ -303,9 +300,7 @@ html.dark {
       radial-gradient(circle at top right, rgb(6 182 212 / 12%), transparent 30%),
       linear-gradient(180deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 96%));
     color: #e2e8f0;
-    box-shadow:
-      0 18px 34px rgb(2 6 23 / 26%),
-      inset 0 1px 0 rgb(255 255 255 / 5%);
+    box-shadow: none;
 
     .card-title {
       color: #e2e8f0;
