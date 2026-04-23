@@ -41,7 +41,6 @@ describe('stores/user', () => {
       tinyAvatar: '',
       userId: 7,
     } as any
-    conf.formData.amap.key = 'secret-amap-key'
     conf.formData.deliveryLimit.value = 88
 
     const saved = await user.saveUser({ uid: 7 })
@@ -49,9 +48,6 @@ describe('stores/user', () => {
     expect(saved.gender).toBe('unknown')
     expect(saved.form).toEqual(
       expect.objectContaining({
-        amap: expect.objectContaining({
-          key: '',
-        }),
         deliveryLimit: expect.objectContaining({
           value: 88,
         }),
@@ -315,7 +311,6 @@ describe('stores/user', () => {
       uid: '99',
       statistics: JSON.stringify({ t: { date: '2026-04-10', success: 1, total: 2 }, s: [] }),
       form: {
-        amap: { key: 'secret' },
         deliveryLimit: { value: 6 },
       },
     } as never)

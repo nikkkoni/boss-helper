@@ -18,7 +18,6 @@ export const BOSS_HELPER_AGENT_AUDIT_OUTCOMES = Object.freeze([
 const STEP_REASON_CODES = Object.freeze({
 	activityFilter: 'activity-filter',
 	aiFiltering: 'ai-filtering',
-	amap: 'amap-filter',
 	communicated: 'duplicate-communicated',
 	company: 'company-filter',
 	companySizeRange: 'company-size-filter',
@@ -29,7 +28,6 @@ const STEP_REASON_CODES = Object.freeze({
 	jobFriendStatus: 'friend-status-filter',
 	jobTitle: 'job-title-filter',
 	loadCard: 'job-card-unavailable',
-	resolveAmap: 'amap-unavailable',
 	salaryRange: 'salary-filter',
 	sameCompanyFilter: 'duplicate-same-company',
 	sameHrFilter: 'duplicate-same-hr',
@@ -81,8 +79,6 @@ const PAGE_STEPS = new Set([
 
 const CONFIG_STEPS = new Set([
 	'aiFiltering',
-	'amap',
-	'resolveAmap',
 ])
 
 function trimString(value, fallback = '') {
@@ -98,14 +94,6 @@ function isAiFilteringConfigIssue(step, message, detail) {
 	return (
 		step === 'aiFiltering'
 		&& /没有找到AI筛选的模型|模型不可用|未配置模型/.test(`${message}\n${detailMessage}`)
-	)
-}
-
-function isAmapConfigIssue(step, message, detail) {
-	const detailMessage = typeof detail?.errorMessage === 'string' ? detail.errorMessage : ''
-	return (
-		(step === 'resolveAmap' || step === 'amap' || step === 'jobAddress')
-		&& /高德地图未初始化|高德地图api数据异常|amap/i.test(`${message}\n${detailMessage}`)
 	)
 }
 
@@ -169,10 +157,6 @@ export function resolveBossHelperAgentAuditReasonCode(input = {}) {
 
 	if (isAiFilteringConfigIssue(step, message, detail)) {
 		return 'ai-filtering-model-missing'
-	}
-
-	if (isAmapConfigIssue(step, message, detail)) {
-		return 'amap-config-unavailable'
 	}
 
 	if (STEP_REASON_CODES[step]) {
@@ -241,7 +225,7 @@ export function resolveBossHelperAgentLogAudit(input = {}) {
 		}
 	}
 
-	if (isAiFilteringConfigIssue(step, message, detail) || isAmapConfigIssue(step, message, detail)) {
+	if (isAiFilteringConfigIssue(step, message, detail)) {
 		return {
 			category: 'config',
 			outcome: dangerStatuses.has(status) ? 'failed' : 'skipped',

@@ -2,7 +2,6 @@ import { defineStore, storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 
 import type { AIFilteringScoreDetail, BossHelperError } from '@/types/deliverError'
-import type { amapDistance, amapGeocode } from '@/utils/amap'
 
 import type { MyJobListData } from './jobs'
 import { createLogColumns } from './logColumns'
@@ -41,10 +40,6 @@ export interface logData {
     rating?: number
   }
   el?: Element
-  amap?: {
-    geocode?: Awaited<ReturnType<typeof amapGeocode>>
-    distance?: Awaited<ReturnType<typeof amapDistance>>
-  }
   bossData?: bossZpBossData
   message?: string
   state?: string
@@ -89,7 +84,6 @@ export const stateNames = [
   ['warning', '公司规模筛选'],
   ['warning', '工作内容筛选'],
   ['warning', 'Hr职位筛选'],
-  ['warning', '高德地图筛选'],
   ['warning', 'AI筛选'],
   ['warning', '好友状态'],
   ['warning', '活跃度过滤'],

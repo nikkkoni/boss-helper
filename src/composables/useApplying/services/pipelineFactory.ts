@@ -1,7 +1,7 @@
 import type { Pipeline } from '../type'
 
 import { handles, type ApplyingHandleOptions } from '../handles'
-import { createLoadCardStep, createResolveAmapStep } from './amapStep'
+import { createLoadCardStep } from './amapStep'
 import { compilePipeline, withStepName } from './pipelineCompiler'
 
 export interface CreateApplyingPipelineOptions extends ApplyingHandleOptions {
@@ -16,8 +16,6 @@ export interface CreateApplyingPipelineOptions extends ApplyingHandleOptions {
 export async function createApplyingPipeline(options: CreateApplyingPipelineOptions = {}) {
   const h = handles(options)
   const loadCard = createLoadCardStep()
-  const resolveAmap = createResolveAmapStep()
-  const amapStep = h.amap()
   const aiFilteringStep = h.aiFiltering()
   const includeAiFiltering = options.includeAiFiltering !== false
   const pipeline: Pipeline = [
@@ -36,12 +34,6 @@ export async function createApplyingPipeline(options: CreateApplyingPipelineOpti
       withStepName('jobAddress', h.jobAddress()),
       withStepName('jobFriendStatus', h.jobFriendStatus()),
       withStepName('jobContent', h.jobContent()),
-      amapStep != null
-        ? [
-            withStepName('resolveAmap', resolveAmap),
-            withStepName('amap', amapStep),
-          ]
-        : undefined,
       includeAiFiltering ? withStepName('aiFiltering', aiFilteringStep) : undefined,
     ],
   ]

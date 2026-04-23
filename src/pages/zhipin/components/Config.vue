@@ -6,8 +6,6 @@ import { useCommon } from '@/stores/common'
 import { formInfoData, useConf } from '@/stores/conf'
 
 import Ai from './Ai.vue'
-import Appearance from './Appearance.vue'
-import ConfigAmapSection from './config/ConfigAmapSection.vue'
 import ConfigControlBar from './config/ConfigControlBar.vue'
 import ConfigFilterSection from './config/ConfigFilterSection.vue'
 import ConfigSectionCard from './config/ConfigSectionCard.vue'
@@ -56,8 +54,8 @@ const { deliverLock } = useCommon()
       <section class="config-page__section bh-glass-surface bh-glass-surface--soft">
         <WorkspaceSectionHeader
           eyebrow="Run Setup"
-          title="运行与展示设置"
-          description="先处理会直接影响运行节奏、页面表现和基础体验的配置，再继续向下收敛筛选规则。"
+          title="运行设置"
+          description="先处理会直接影响运行节奏和基础体验的配置，再继续向下收敛筛选规则。"
         />
 
         <div class="config-page__grid">
@@ -91,14 +89,6 @@ const { deliverLock } = useCommon()
               </div>
             </ConfigSectionCard>
           </ConfigSectionCard>
-
-          <ConfigSectionCard
-            eyebrow="Appearance"
-            title="外观配置"
-            description="调整插件在页面里的展示方式，这里的设置会自动保存，适合随时微调。"
-          >
-            <Appearance />
-          </ConfigSectionCard>
         </div>
       </section>
 
@@ -106,7 +96,7 @@ const { deliverLock } = useCommon()
         <WorkspaceSectionHeader
           eyebrow="Matching Rules"
           title="筛选与扩展能力"
-          description="把岗位命中规则放在前面，把高德地图与 AI 这类增强能力放在后面，避免所有表单混成一个长页面。"
+          description="把岗位命中规则放在前面，把 AI 这类增强能力放在后面，避免所有表单混成一个长页面。"
         />
 
         <div class="config-page__grid">
@@ -123,14 +113,6 @@ const { deliverLock } = useCommon()
             v-if="conf.config_level.advanced"
             class="config-page__enhancement-grid config-page__card config-page__card--wide"
           >
-            <ConfigSectionCard
-              eyebrow="Location"
-              title="地址配置"
-              description="结合高德地图补足通勤距离与时间条件，进一步收紧筛选范围。"
-            >
-              <ConfigAmapSection />
-            </ConfigSectionCard>
-
             <ConfigSectionCard
               eyebrow="AI"
               title="AI 配置"

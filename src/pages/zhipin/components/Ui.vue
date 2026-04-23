@@ -12,7 +12,6 @@ import { useUser } from '@/stores/user'
 import { logger } from '@/utils/logger'
 
 import { useDeliver } from '../hooks/useDeliver'
-import { useAppearanceEffects } from '../hooks/useAppearanceEffects'
 import { useDeliveryControl } from '../hooks/useDeliveryControl'
 import { useHostSearchPanel } from '../hooks/useHostSearchPanel'
 import { usePager } from '../hooks/usePager'
@@ -40,8 +39,6 @@ const conf = useConf()
 const { mountSearchPanel, searchPanelKind } = useHostSearchPanel()
 let unregisterAgentBridge: (() => void) | undefined
 
-useAppearanceEffects()
-
 const helpVisible = ref(false)
 const activeTab = ref('statistics')
 const workspaceTabLabelMap: Record<string, string> = {
@@ -54,7 +51,7 @@ const workspaceTabLabelMap: Record<string, string> = {
 const workspaceTabDescriptionMap: Record<string, string> = {
   statistics: '查看当前页面处理进度、今日统计和批处理控制。',
   filter: '承接 Boss 原生搜索和筛选桥接模块，保持原有筛选体验。',
-  config: '集中管理筛选、投递、外观和 AI 相关配置。',
+  config: '集中管理筛选、投递和 AI 相关配置。',
   logs: '查看运行记录、错误信息以及 AI 过滤详情。',
   about: '查看仓库、文档和当前项目的补充说明。',
 }
@@ -322,10 +319,17 @@ onUnmounted(() => {
 }
 
 .helper-dashboard .ehp-checkbox.is-bordered {
+  max-width: 100%;
   min-height: 44px;
+  height: auto;
   margin: 0;
   padding-inline: 14px;
   border-radius: var(--bh-radius-md);
+  white-space: normal;
+}
+
+.helper-dashboard .ehp-checkbox.is-bordered .ehp-checkbox__label {
+  overflow-wrap: anywhere;
 }
 
 .helper-dashboard .ehp-form {

@@ -12,7 +12,6 @@ export type BossHelperAgentPlanStage =
   | 'current-status'
   | 'filters'
   | 'load-card'
-  | 'amap'
   | 'ai-filtering'
   | 'ready'
 

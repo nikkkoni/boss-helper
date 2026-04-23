@@ -1,18 +1,13 @@
 // @vitest-environment jsdom
 
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import Jobcard from '@/components/Jobcard.vue'
-import { __resetAppearanceConfigStateForTests } from '@/pages/zhipin/hooks/useAppearanceConfig'
 
 import { createJob, createJobCard } from './helpers/jobs'
 
 describe('Jobcard.vue', () => {
-  beforeEach(() => {
-    __resetAppearanceConfigStateForTests()
-  })
-
   it('loads missing card data and reveals the description when clicked', async () => {
     const job = createJob()
     job.getCard = vi.fn(async () => {

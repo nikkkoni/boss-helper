@@ -64,7 +64,6 @@ export function summarizeFilteringResult(result: Partial<FilteringResult> | null
 }
 
 export async function runInternalAIFiltering(options: {
-  amapPrompt: string
   ctx: logData
   gpt: Llm
   model?: Pick<modelData, 'data'>
@@ -78,14 +77,13 @@ export async function runInternalAIFiltering(options: {
         boss: options.ctx.bossData,
         card: options.ctx.listData.card!,
         amap: {
-          straightDistance: (options.ctx.amap?.distance?.straight?.distance ?? 0) / 1000,
-          drivingDistance: (options.ctx.amap?.distance?.driving?.distance ?? 0) / 1000,
-          drivingDuration: (options.ctx.amap?.distance?.driving?.duration ?? 0) / 60,
-          walkingDistance: (options.ctx.amap?.distance?.walking?.distance ?? 0) / 1000,
-          walkingDuration: (options.ctx.amap?.distance?.walking?.duration ?? 0) / 60,
+          straightDistance: 0,
+          drivingDistance: 0,
+          drivingDuration: 0,
+          walkingDistance: 0,
+          walkingDuration: 0,
         },
       },
-      amap: options.amapPrompt,
       json: true,
       structuredOutput: {
         name: 'boss_helper_ai_filtering',

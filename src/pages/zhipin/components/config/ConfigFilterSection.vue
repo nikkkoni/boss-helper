@@ -355,6 +355,8 @@ function syncSalaryRange() {
 
 .config-filter__field-card {
   min-height: 132px;
+  min-width: 0;
+  padding: 16px;
 }
 
 .config-filter__fields :deep(.ehp-form-item) {
@@ -432,6 +434,8 @@ function syncSalaryRange() {
   gap: 14px;
   align-items: start;
   min-height: 132px;
+  min-width: 0;
+  padding: 16px;
 }
 
 .config-filter__toggle-copy {
@@ -454,9 +458,10 @@ function syncSalaryRange() {
 .config-filter__toggle-card :deep(.ehp-checkbox) {
   margin: 0;
   align-self: start;
+  max-width: 100%;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 960px) {
   .config-filter__toggle-card {
     grid-template-columns: 1fr;
   }

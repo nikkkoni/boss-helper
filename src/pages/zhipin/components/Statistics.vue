@@ -83,10 +83,6 @@ const repeatRatio = computed(() => {
   return formatPercent(statistics.todayData.repeat, statistics.todayData.total)
 })
 
-const activityRatio = computed(() => {
-  return formatPercent(statistics.todayData.activityFilter, statistics.todayData.total)
-})
-
 const aiRequestCount = computed(() => statistics.todayData.aiRequestCount ?? 0)
 const aiTotalTokens = computed(() => statistics.todayData.aiTotalTokens ?? 0)
 const aiTotalCost = computed(() => statistics.todayData.aiTotalCost ?? 0)
@@ -183,14 +179,6 @@ onMounted(() => {
               data-help="统计当天岗位中已沟通的比例,已沟通/总数"
               :value="repeatRatio"
               title="沟通比例："
-              suffix="%"
-            />
-          </div>
-          <div class="statistics-card__metric">
-            <ElStatistic
-              data-help="统计当天岗位中的活跃情况,不活跃/总数"
-              :value="activityRatio"
-              title="活跃比例："
               suffix="%"
             />
           </div>

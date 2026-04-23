@@ -5,7 +5,11 @@ import { computed, ref, watch, type Ref } from 'vue'
 import { getRootVue } from '@/composables/useVue'
 import { counter } from '@/message'
 import type { CookieInfo } from '@/message'
-import { amapKeyStorageKey, formDataKey, sanitizeSensitiveFormData } from '@/stores/conf/shared'
+import {
+  formDataKey,
+  sanitizeSensitiveFormData,
+  stripRemovedConfigFields,
+} from '@/stores/conf/shared'
 import { useStatistics } from '@/stores/statistics'
 import type { FormData } from '@/types/formData'
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
@@ -227,12 +231,11 @@ const useUserStore = defineStore('user', () => {
     }
 
     if (targetAccount.form) {
-      if (typeof targetAccount.form.amap?.key === 'string' && targetAccount.form.amap.key.trim()) {
-        await counter.storageSet(amapKeyStorageKey, targetAccount.form.amap.key.trim())
-      }
-      const nextFormData = deepmerge<FormData>(jsonClone(defaultFormData), targetAccount.form, {
-        clone: false,
-      })
+      const nextFormData = deepmerge<FormData>(
+        jsonClone(defaultFormData),
+        stripRemovedConfigFields(targetAccount.form),
+        { clone: false },
+      )
       await counter.storageSet(formDataKey, sanitizeSensitiveFormData(nextFormData))
     }
 

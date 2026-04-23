@@ -186,42 +186,6 @@ export const formInfoData: FormInfoData = {
       'data-help': '投递完翻到下一页之后等待的间隔，太快易风控，默认值 60s',
     },
   },
-  amap: {
-    enable: {
-      label: '启用',
-      'data-help': '启用高德地图, 用于获取工作地址的距离和时间进行筛选，需要配置自己的key',
-    },
-    key: {
-      label: '高德地图key',
-      'data-help': '高德地图key, 需要自己申请',
-    },
-    origins: {
-      label: '起点经纬度',
-      'data-help': '起点经纬度, 经度和纬度用","分隔, 可以输入完整地址点击按钮自动获取',
-    },
-    straightDistance: {
-      label: '直线距离',
-      'data-help': '直线距离, 为0禁用，单位: km',
-    },
-    drivingDistance: {
-      label: '驾车距离',
-      'data-help':
-        '驾车距离, 为0禁用，会考虑当前时间的路况，不同时间结果不一样，策略为"速度优先", 单位: km',
-    },
-    drivingDuration: {
-      label: '驾车时间',
-      'data-help':
-        '驾车时间, 为0禁用，会考虑当前时间的路况，不同时间结果不一样，策略为"速度优先", 单位: 分钟',
-    },
-    walkingDistance: {
-      label: '步行距离',
-      'data-help': '步行距离, 为0禁用，单位: km',
-    },
-    walkingDuration: {
-      label: '步行时间',
-      'data-help': '步行时间, 为0禁用，单位: 分钟',
-    },
-  },
 }
 
 export const defaultFormData: FormData = {
@@ -299,16 +263,6 @@ export const defaultFormData: FormData = {
     score: 10,
     externalMode: false,
     externalTimeoutMs: 120000,
-  },
-  amap: {
-    key: '',
-    origins: '',
-    straightDistance: 0,
-    drivingDistance: 0,
-    drivingDuration: 0,
-    walkingDistance: 0,
-    walkingDuration: 0,
-    enable: false,
   },
   record: {
     enable: false,

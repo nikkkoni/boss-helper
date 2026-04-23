@@ -3,18 +3,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
-  mockAmapDistance,
-  mockAmapGeocode,
   mockExternalReview,
 } = vi.hoisted(() => ({
-  mockAmapDistance: vi.fn(),
-  mockAmapGeocode: vi.fn(),
   mockExternalReview: vi.fn(),
-}))
-
-vi.mock('@/utils/amap', () => ({
-  amapDistance: mockAmapDistance,
-  amapGeocode: mockAmapGeocode,
 }))
 
 vi.mock('@/pages/zhipin/hooks/agentReview', () => ({
@@ -39,7 +30,6 @@ import type { logData } from '@/stores/log'
 import { useStatistics } from '@/stores/statistics'
 import { useUser } from '@/stores/user'
 import {
-  AmapError,
   AIFilteringError,
   FriendStatusError,
   JobAddressError,
@@ -131,8 +121,6 @@ describe('useApplying handles', () => {
     resetStatistics()
     useModel().modelData = []
     conf.formData.aiFiltering.enable = false
-    mockAmapDistance.mockReset()
-    mockAmapGeocode.mockReset()
     mockExternalReview.mockReset()
   })
 
@@ -237,7 +225,7 @@ describe('useApplying handles', () => {
     ).rejects.toBeInstanceOf(FriendStatusError)
   })
 
-  it('checks salary, company size, address, activity and amap boundaries', async () => {
+  it('checks salary, company size, address, and activity boundaries', async () => {
     const conf = useConf()
     const job = createJob({
       brandScaleName: '20-99人',
@@ -247,15 +235,7 @@ describe('useApplying handles', () => {
       }),
       salaryDesc: '25-35K',
     })
-    const ctx = createLogContext(job, {
-      amap: {
-        distance: {
-          driving: { distance: 12000, duration: 1800, ok: true },
-          straight: { distance: 5000, duration: 0, ok: true },
-          walking: { distance: 1000, duration: 600, ok: true },
-        },
-      },
-    })
+    const ctx = createLogContext(job)
 
     conf.formData.salaryRange.enable = true
     conf.formData.salaryRange.value = [10, 20, true]
@@ -279,10 +259,6 @@ describe('useApplying handles', () => {
     await expect(getHandler(handles().activityFilter())({ data: job }, ctx)).rejects.toThrow(
       '不活跃',
     )
-
-    conf.formData.amap.enable = true
-    conf.formData.amap.drivingDistance = 5
-    await expect(getHandler(handles().amap())({ data: job }, ctx)).rejects.toThrow('驾车距离超标')
   })
 
   it('covers whitelist filters, advanced salary units and successful address checks', async () => {
@@ -620,40 +596,31 @@ describe('useApplying handles', () => {
     ).rejects.toThrow('请求超时')
   })
 
-  it('handles missing amap straight distance data without throwing optional-chain errors', async () => {
+  it('passes zeroed location tokens to AI filtering for removed legacy prompt fields', async () => {
     const conf = useConf()
     const model = useModel()
     const job = createJob({ card: createJobCard() })
-    const ctx = createLogContext(job, {
-      amap: {
-        distance: {
-          driving: { distance: 1500, duration: 600, ok: true },
-          straight: undefined as any,
-          walking: { distance: 800, duration: 480, ok: true },
-        },
-      },
-    })
+    const ctx = createLogContext(job)
 
     conf.formData.aiFiltering.enable = true
     conf.formData.aiFiltering.externalMode = false
     conf.formData.aiFiltering.model = 'model-1'
     conf.formData.aiFiltering.score = 0
-    conf.formData.amap.enable = true
     model.modelData = [createModelItem()]
 
     vi.spyOn(model, 'getModel').mockReturnValueOnce({
       message: vi.fn(async (args: { data: { amap: Record<string, number> } }) => {
         expect(args.data.amap).toEqual({
-          drivingDistance: 1.5,
-          drivingDuration: 10,
+          drivingDistance: 0,
+          drivingDuration: 0,
           straightDistance: 0,
-          walkingDistance: 0.8,
-          walkingDuration: 8,
+          walkingDistance: 0,
+          walkingDuration: 0,
         })
 
         return {
           content: '```json\n{"negative":[],"positive":[{"reason":"可接受","score":10}]}\n```',
-          prompt: 'amap prompt',
+          prompt: 'legacy prompt',
           reasoning_content: null,
         }
       }),
@@ -668,7 +635,7 @@ describe('useApplying handles', () => {
     )
   })
 
-  it('does not resolve amap when ai filtering is enabled but amap is disabled', async () => {
+  it('runs ai filtering without extra location resolution steps', async () => {
     const conf = useConf()
     const model = useModel()
     const job = createJob({ card: createJobCard() })
@@ -682,7 +649,6 @@ describe('useApplying handles', () => {
     conf.formData.aiFiltering.externalMode = false
     conf.formData.aiFiltering.model = 'model-1'
     conf.formData.aiFiltering.score = 0
-    conf.formData.amap.enable = false
     model.modelData = [createModelItem()]
 
     vi.spyOn(model, 'getModel').mockReturnValueOnce({
@@ -702,8 +668,6 @@ describe('useApplying handles', () => {
       })(),
     ).resolves.toBeUndefined()
 
-    expect(mockAmapGeocode).not.toHaveBeenCalled()
-    expect(mockAmapDistance).not.toHaveBeenCalled()
     expect(ctx.aiFilteringScore).toEqual(
       expect.objectContaining({
         accepted: true,
@@ -713,10 +677,9 @@ describe('useApplying handles', () => {
     )
   })
 
-  it('covers activity fallback timestamps and amap guard branches', async () => {
+  it('covers activity fallback timestamps', async () => {
     const conf = useConf()
     conf.formData.activityFilter.value = true
-    conf.formData.amap.enable = true
 
     const recentJob = createJob({
       card: createJobCard({
@@ -756,41 +719,6 @@ describe('useApplying handles', () => {
     await expect(
       getHandler(handles().activityFilter())({ data: emptyJob }, createLogContext(emptyJob)),
     ).rejects.toThrow('无活跃内容')
-
-    const amapHandler = getHandler(handles().amap())
-    await expect(amapHandler({ data: recentJob }, createLogContext(recentJob))).rejects.toThrow(
-      '高德地图api数据异常',
-    )
-
-    const uninitializedCtx = createLogContext(recentJob, {
-      amap: {
-        distance: {
-          driving: { distance: 1000, duration: 100, ok: true },
-          straight: { distance: 1000, duration: 0, ok: false },
-          walking: { distance: 500, duration: 300, ok: true },
-        },
-      },
-    })
-    await expect(amapHandler({ data: recentJob }, uninitializedCtx)).rejects.toThrow(
-      '高德地图未初始化',
-    )
-
-    conf.formData.amap.straightDistance = 0
-    conf.formData.amap.drivingDistance = 0
-    conf.formData.amap.drivingDuration = 10
-    conf.formData.amap.walkingDistance = 0
-    conf.formData.amap.walkingDuration = 0
-
-    const durationCtx = createLogContext(recentJob, {
-      amap: {
-        distance: {
-          driving: { distance: 1000, duration: 900, ok: true },
-          straight: { distance: 1000, duration: 0, ok: true },
-          walking: { distance: 500, duration: 300, ok: true },
-        },
-      },
-    })
-    await expect(amapHandler({ data: recentJob }, durationCtx)).rejects.toThrow('驾车时间超标')
   })
 
   it('wraps failing pipeline steps with detailed pipelineError context', async () => {
@@ -799,14 +727,15 @@ describe('useApplying handles', () => {
     conf.formData.sameHrFilter.value = false
     conf.formData.friendStatus.value = false
     conf.formData.activityFilter.value = false
-    conf.formData.amap.enable = true
+    conf.formData.jobAddress.enable = true
     conf.formData.aiFiltering.enable = false
 
-    const job = createJob({ card: createJobCard() })
+    const job = createJob({
+      card: undefined,
+      getCard: vi.fn(async () => null as unknown as NonNullable<ReturnType<typeof createJob>['card']>),
+    })
     const ctx = createLogContext(job)
     const pipeline = await createHandle()
-
-    mockAmapGeocode.mockRejectedValueOnce(new Error('地图服务不可用'))
 
     await expect(
       (async () => {
@@ -814,20 +743,20 @@ describe('useApplying handles', () => {
           await step({ data: job }, ctx)
         }
       })(),
-    ).rejects.toBeInstanceOf(AmapError)
+    ).rejects.toThrow('Card 信息获取失败')
 
     expect(ctx.pipelineError).toEqual(
       expect.objectContaining({
-        errorMessage: '错误: 地图服务不可用',
-        errorName: '高德地图筛选',
+        errorMessage: 'Card 信息获取失败',
+        errorName: '未知错误',
         jobId: 'job-1',
         stage: 'before',
-        step: 'resolveAmap',
+        step: 'loadCard',
       }),
     )
   })
 
-  it('wraps loadCard and resolveAmap edge-case failures through createHandle', async () => {
+  it('wraps loadCard edge-case failures through createHandle', async () => {
     const conf = useConf()
     conf.formData.sameCompanyFilter.value = false
     conf.formData.sameHrFilter.value = false
@@ -837,7 +766,6 @@ describe('useApplying handles', () => {
 
     conf.formData.jobAddress.enable = true
     conf.formData.jobAddress.value = []
-    conf.formData.amap.enable = false
 
     const missingCardJob = createJob({
       card: undefined,
@@ -863,77 +791,6 @@ describe('useApplying handles', () => {
         step: 'loadCard',
       }),
     )
-
-    conf.formData.jobAddress.enable = false
-    conf.formData.amap.enable = true
-    const amapJob = createJob({ card: createJobCard() })
-    const amapPipeline = await createHandle()
-
-    mockAmapGeocode.mockResolvedValueOnce({ formatted_address: '上海' })
-    const missingLocationCtx = createLogContext(amapJob)
-    await expect(
-      (async () => {
-        for (const step of amapPipeline.before) {
-          await step({ data: amapJob }, missingLocationCtx)
-        }
-      })(),
-    ).rejects.toThrow('错误: 未获取到地址经纬度')
-
-    mockAmapGeocode.mockRejectedValueOnce('geocode failed')
-    const unknownAmapCtx = createLogContext(amapJob)
-    await expect(
-      (async () => {
-        for (const step of amapPipeline.before) {
-          await step({ data: amapJob }, unknownAmapCtx)
-        }
-      })(),
-    ).rejects.toThrow('错误: 未知')
-
-    expect(unknownAmapCtx.pipelineError).toEqual(
-      expect.objectContaining({
-        errorMessage: '错误: 未知',
-        step: 'resolveAmap',
-      }),
-    )
-  })
-
-  it('falls back to jobInfo address when card.address is missing during amap resolution', async () => {
-    const conf = useConf()
-    conf.formData.jobAddress.enable = false
-    conf.formData.amap.enable = true
-    const baseCard = createJobCard()
-
-    const amapJob = createJob({
-      card: createJobCard({
-        address: undefined,
-        jobInfo: {
-          ...baseCard.jobInfo,
-          address: '上海杨浦',
-        },
-      }),
-    })
-    const amapPipeline = await createHandle()
-    const ctx = createLogContext(amapJob)
-
-    mockAmapGeocode.mockResolvedValueOnce({
-      formatted_address: '上海市杨浦区',
-      location: '121.5,31.3',
-    })
-    mockAmapDistance.mockResolvedValueOnce({
-      driving: { distance: 0, duration: 0, ok: true },
-      straight: { distance: 0, duration: 0, ok: true },
-      walking: { distance: 0, duration: 0, ok: true },
-    })
-
-    await expect(
-      (async () => {
-        for (const step of amapPipeline.before) {
-          await step({ data: amapJob }, ctx)
-        }
-      })(),
-    ).resolves.toBeUndefined()
-
-    expect(mockAmapGeocode).toHaveBeenCalledWith('上海杨浦')
   })
 
   it('caches pipeline results and supports anonymous cache managers', async () => {

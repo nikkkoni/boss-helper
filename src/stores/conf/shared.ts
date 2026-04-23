@@ -3,26 +3,38 @@ import { jsonClone } from '@/utils/deepmerge'
 
 export const formDataKey = 'local:web-geek-job-FormData'
 export const formDataTemplatesKey = 'local:web-geek-job-FormDataTemplates'
-export const amapKeyStorageKey = 'session:web-geek-job-AmapKey'
-export const legacyAmapKeyStorageKey = 'sync:web-geek-job-AmapKey'
 export const legacySignedKeyStorageKeys = [
   'session:signedKey',
   'session:signedKeyInfo',
   'sync:signedKey',
   'sync:signedKeyInfo',
 ] as const
+export const removedSensitiveStorageKeys = [
+  'session:web-geek-job-AmapKey',
+  'sync:web-geek-job-AmapKey',
+] as const
 
 export function stripRemovedConfigFields(data: PersistedFormData) {
-  const snapshot = jsonClone(data)
+  const snapshot = jsonClone(data) as Partial<FormData> & {
+    aiFiltering?: FormData['aiFiltering'] & { vip?: boolean }
+    aiGreeting?: { vip?: boolean }
+    aiReply?: { vip?: boolean }
+    customGreeting?: unknown
+    greetingVariable?: unknown
+    delay?: FormData['delay'] & { messageSending?: number }
+    amap?: unknown
+  }
+
+  delete snapshot.amap
   delete snapshot.customGreeting
   delete snapshot.greetingVariable
   delete snapshot.aiGreeting
   delete snapshot.aiReply
   if (snapshot.aiFiltering) {
-    delete (snapshot.aiFiltering as FormData['aiFiltering'] & { vip?: boolean }).vip
+    delete snapshot.aiFiltering.vip
   }
   if (snapshot.delay) {
-    delete (snapshot.delay as { messageSending?: number }).messageSending
+    delete snapshot.delay.messageSending
   }
 
   return snapshot as Partial<FormData>
@@ -31,8 +43,5 @@ export function stripRemovedConfigFields(data: PersistedFormData) {
 export function sanitizeSensitiveFormData(data: PersistedFormData) {
   const snapshot = stripRemovedConfigFields(data)
   delete snapshot.userId
-  if (snapshot.amap) {
-    snapshot.amap.key = ''
-  }
   return snapshot
 }

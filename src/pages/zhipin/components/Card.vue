@@ -7,7 +7,6 @@ import JobCard from '@/components/Jobcard.vue'
 import type { EncryptJobId } from '@/stores/jobs'
 import { jobList } from '@/stores/jobs'
 
-import { useCardVisualEffects } from '../hooks/useCardVisualEffects'
 import { useDeliver } from '../hooks/useDeliver'
 import WorkspaceSectionHeader from './workspace/WorkspaceSectionHeader.vue'
 
@@ -15,8 +14,6 @@ const deliver = useDeliver()
 const jobSetRef = ref<Record<EncryptJobId, Element | ComponentPublicInstance | null>>({})
 const autoScroll = ref(true)
 const cards = ref<HTMLDivElement>()
-const boardRef = ref<HTMLDivElement | null>(null)
-const { blurEnabled, updatePointerHighlight, clearPointerHighlight } = useCardVisualEffects()
 
 const currentJobLabel = computed(() => deliver.currentData?.jobName ?? '等待开始')
 const currentStatusLabel = computed(() => deliver.currentData?.status.msg || '尚未开始处理')
@@ -46,22 +43,6 @@ function nudgeCards(direction: 'prev' | 'next') {
   const left = direction === 'next' ? distance : -distance
   cards.value.scrollBy({ left, behavior: 'smooth' })
   autoScroll.value = false
-}
-
-function handleBoardMouseMove(event: MouseEvent) {
-  if (!boardRef.value) {
-    return
-  }
-
-  updatePointerHighlight(event, boardRef.value)
-}
-
-function handleBoardMouseLeave() {
-  if (!boardRef.value) {
-    return
-  }
-
-  clearPointerHighlight(boardRef.value)
 }
 
 function scrollHandler() {
@@ -99,12 +80,8 @@ watch(
 
 <template>
   <div
-    ref="boardRef"
     style="order: -1"
     class="boss-helper-card bh-glass-surface bh-glass-surface--hero"
-    :class="{ 'boss-helper-card--blur-enabled': blurEnabled }"
-    @mousemove="handleBoardMouseMove"
-    @mouseleave="handleBoardMouseLeave"
   >
     <div class="boss-helper-card__header">
       <WorkspaceSectionHeader
@@ -186,18 +163,12 @@ watch(
           hover
         />
       </div>
-      <div class="card-grid-overlay" />
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .boss-helper-card {
-  position: relative;
-  --x: 0px;
-  --y: 0px;
-  --r: 0px;
-  isolation: isolate;
   padding: 22px;
 }
 
@@ -274,7 +245,6 @@ watch(
 }
 
 .card-grid-shell {
-  position: relative;
   overflow: hidden;
   border-radius: var(--bh-radius-panel);
   border: 1px solid var(--bh-border-subtle);
@@ -315,34 +285,6 @@ watch(
     box-shadow: none;
   }
 }
-
-.card-grid-overlay {
-  display: none;
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  will-change:
-    mask-image,
-    -webkit-mask-image,
-    backdrop-filter;
-  transform: translateZ(0);
-  backdrop-filter: blur(var(--bh-overlay-blur));
-  -webkit-backdrop-filter: blur(var(--bh-overlay-blur));
-  background-color: var(--bh-surface-overlay);
-  pointer-events: none;
-  -webkit-mask-image: radial-gradient(
-    circle var(--r) at var(--x) var(--y),
-    transparent 100%,
-    black 100%
-  );
-  mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), transparent 100%, black 100%);
-  transition: -webkit-mask-image 0.2s ease;
-}
-
-.boss-helper-card--blur-enabled .card-grid-overlay {
-  display: block;
-}
-
 html.dark {
   .card-grid {
     scrollbar-width: none;

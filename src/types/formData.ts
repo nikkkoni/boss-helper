@@ -43,16 +43,6 @@ export interface FormData {
   notification: FormDataCheckbox
   useCache: FormDataCheckbox
   aiFiltering: FormDataAi & { score: number; externalMode?: boolean; externalTimeoutMs?: number }
-  amap: {
-    key: string
-    origins: string
-    straightDistance: number
-    drivingDistance: number
-    drivingDuration: number
-    walkingDistance: number
-    walkingDuration: number
-    enable: boolean
-  }
   record: { model?: string[]; enable: boolean }
   // animation?: "frame" | "card" | "together";
   delay: ConfDelay
@@ -61,10 +51,7 @@ export interface FormData {
 }
 
 export type FormInfoData = {
-  [key in keyof Omit<
-    FormData,
-    'config_level' | 'aiFiltering' | 'delay' | 'userId' | 'version' | 'amap'
-  >]: {
+  [key in keyof Omit<FormData, 'config_level' | 'aiFiltering' | 'delay' | 'userId' | 'version'>]: {
     label: string
     'data-help'?: string
   }
@@ -72,12 +59,6 @@ export type FormInfoData = {
   config_level: { options: Array<{ value: ConfigLevel; label: string }>; 'data-help'?: string }
   aiFiltering: FormInfoAi
   delay: ConfInfoDelay
-  amap: {
-    [key in keyof FormData['amap']]: {
-      label: string
-      'data-help'?: string
-    }
-  }
 }
 
 export interface FormInfoAi {

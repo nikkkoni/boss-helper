@@ -39,7 +39,6 @@ export const CompanySizeError = createDeliverErrorClass('公司规模筛选')
 export const JobDescriptionError = createDeliverErrorClass('工作内容筛选')
 export const HrPositionError = createDeliverErrorClass('Hr职位筛选')
 export const JobAddressError = createDeliverErrorClass('工作地址筛选')
-export const AmapError = createDeliverErrorClass('高德地图筛选')
 
 export class AIFilteringError extends BossHelperError {
   aiScore?: AIFilteringScoreDetail

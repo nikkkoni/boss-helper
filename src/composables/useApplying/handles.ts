@@ -6,10 +6,8 @@ import type { Statistics, FormData } from '@/types/formData'
 import { AIFilteringError } from '@/types/deliverError'
 
 import { runInternalAIFiltering } from './services/aiFiltering'
-import { buildAmapPrompt } from './services/amapStep'
 import {
   createActivityFilterStep,
-  createAmapStep,
   createCommunicatedStep,
   createCompanySizeRangeStep,
   createCompanyStep,
@@ -70,7 +68,6 @@ export function handles(options: ApplyingHandleOptions = {}) {
   const jobAddress = createJobAddressStep(formData, statistics, toCause)
   const jobFriendStatus = createJobFriendStatusStep(formData)
   const activityFilter = createActivityFilterStep(formData, statistics, toCause)
-  const amap = createAmapStep(formData)
 
   const aiFiltering: StepFactory = () => {
     if (!formData.aiFiltering.enable) {
@@ -130,7 +127,6 @@ export function handles(options: ApplyingHandleOptions = {}) {
         }
 
         await runInternalAIFiltering({
-          amapPrompt: buildAmapPrompt(ctx, formData.amap.enable),
           ctx,
           gpt: model.getModel(curModel, formData.aiFiltering.prompt),
           model: curModel,
@@ -163,6 +159,5 @@ export function handles(options: ApplyingHandleOptions = {}) {
     jobFriendStatus,
     aiFiltering,
     activityFilter,
-    amap,
   }
 }

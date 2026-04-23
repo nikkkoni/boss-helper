@@ -104,9 +104,6 @@ function toPlanStage(step?: string): BossHelperAgentPlanStage {
   switch (step) {
     case 'loadCard':
       return 'load-card'
-    case 'resolveAmap':
-    case 'amap':
-      return 'amap'
     case 'aiFiltering':
       return 'ai-filtering'
     default:
@@ -308,17 +305,6 @@ function createFailureItem(options: {
       job: toAgentJobSummary(job),
       remainingSteps: [],
       stage: 'load-card',
-    }
-  }
-
-  if (step === 'resolveAmap') {
-    return {
-      decision: 'missing-info',
-      explain: '岗位地址解析失败，当前无法给出稳定的地图距离判断。',
-      issues: [createIssue('location-unavailable', message, 'error', step)],
-      job: toAgentJobSummary(job),
-      remainingSteps: [],
-      stage: 'amap',
     }
   }
 

@@ -9,16 +9,14 @@ import type { ConfigLevel, FormData, PersistedFormData, RuntimeConfigPatch } fro
 import deepmerge, { jsonClone } from '@/utils/deepmerge'
 import { exportJson, ImportJsonCancelledError, importJson } from '@/utils/jsonImportExport'
 import { logger } from '@/utils/logger'
-import { migrateStorageKeys } from '@/utils/storageMigration'
 
 import { registerUserConfigSnapshotGetter } from '../user'
 import { defaultFormData } from './info'
 import {
-  amapKeyStorageKey,
   formDataKey,
   formDataTemplatesKey,
   legacySignedKeyStorageKeys,
-  legacyAmapKeyStorageKey,
+  removedSensitiveStorageKeys,
   stripRemovedConfigFields,
   sanitizeSensitiveFormData,
 } from './shared'
@@ -28,9 +26,6 @@ export * from './shared'
 
 type FormDataTemplates = Record<string, PersistedFormData>
 export type FormDataMigration = [string, (from: PersistedFormData) => PersistedFormData]
-const confStorageMigrations = [
-  { oldKey: legacyAmapKeyStorageKey, newKey: amapKeyStorageKey },
-] as const
 
 export const FORM_DATA_MIGRATIONS: readonly FormDataMigration[] = [
   [
@@ -105,41 +100,21 @@ export const useConf = defineStore('conf', () => {
   }
 
   async function init() {
-    await migrateStorageKeys(confStorageMigrations, counter)
     let from = await counter.storageGet<PersistedFormData>(formDataKey, {})
-    const legacyAmapKey = typeof from.amap?.key === 'string' ? from.amap.key.trim() : ''
-    let sessionAmapKey = await counter.storageGet<string>(amapKeyStorageKey)
-
-    if (legacyAmapKey) {
-      if (!sessionAmapKey) {
-        sessionAmapKey = legacyAmapKey
-        await counter.storageSet(amapKeyStorageKey, sessionAmapKey)
-      }
-      from = sanitizeSensitiveFormData(from)
-      await counter.storageSet(formDataKey, from)
-    }
-
-    await Promise.all(legacySignedKeyStorageKeys.map((key) => counter.storageRm(key)))
+    await Promise.all(
+      [...legacySignedKeyStorageKeys, ...removedSensitiveStorageKeys].map((key) => counter.storageRm(key)),
+    )
 
     from = (await formDataHandler(from)) ?? from
     const data = deepmerge<FormData>(defaultFormData, stripRemovedConfigFields(from))
-    data.amap.key = sessionAmapKey ?? ''
     Object.assign(formData, data)
+    await counter.storageSet(formDataKey, sanitizeSensitiveFormData(data))
     await loadTemplates()
     isLoaded.value = true
   }
 
   function sanitizeTemplateData(data: PersistedFormData) {
     return sanitizeSensitiveFormData(data)
-  }
-
-  async function persistSensitiveFields(data: Pick<FormData, 'amap'>) {
-    const amapKey = data.amap.key.trim()
-    if (amapKey) {
-      await counter.storageSet(amapKeyStorageKey, amapKey)
-      return
-    }
-    await counter.storageRm(amapKeyStorageKey)
   }
 
   async function loadTemplates() {
@@ -159,7 +134,7 @@ export const useConf = defineStore('conf', () => {
   async function confSaving() {
     const v = sanitizeSensitiveFormData(formData)
     try {
-      await persistSensitiveFields(formData)
+      await Promise.all(removedSensitiveStorageKeys.map((key) => counter.storageRm(key)))
       await counter.storageSet(formDataKey, v)
       logger.debug('formData保存', v)
       ElMessage.success('保存成功，配置已热更新')
@@ -194,7 +169,6 @@ export const useConf = defineStore('conf', () => {
       stripRemovedConfigFields(template),
       { clone: false },
     )
-    nextFormData.amap.key = (await counter.storageGet<string>(amapKeyStorageKey)) ?? ''
     deepmerge(formData, nextFormData, { clone: false })
     logger.debug('formData模板已应用', name)
     ElMessage.success(`模板已应用: ${name}`)
@@ -225,7 +199,7 @@ export const useConf = defineStore('conf', () => {
     logger.debug('formData运行时更新', sanitizedPatch)
 
     if (options.persist) {
-      await persistSensitiveFields(formData)
+      await Promise.all(removedSensitiveStorageKeys.map((key) => counter.storageRm(key)))
       await counter.storageSet(formDataKey, sanitizeSensitiveFormData(formData))
       logger.debug('formData运行时更新已持久化')
     }
@@ -242,7 +216,6 @@ export const useConf = defineStore('conf', () => {
       defaultFormData,
       stripRemovedConfigFields(await counter.storageGet<PersistedFormData>(formDataKey, {})),
     )
-    v.amap.key = (await counter.storageGet<string>(amapKeyStorageKey)) ?? ''
     deepmerge(formData, v, { clone: false })
     logger.debug('formData已重置')
     ElMessage.success('重置成功')
@@ -253,7 +226,6 @@ export const useConf = defineStore('conf', () => {
       defaultFormData,
       stripRemovedConfigFields(await counter.storageGet<PersistedFormData>(formDataKey, {})),
     )
-    data.amap.key = ''
     exportJson(data, '投递配置')
   }
 
@@ -262,18 +234,14 @@ export const useConf = defineStore('conf', () => {
       let jsonData = await importJson<PersistedFormData>()
 
       jsonData.userId = undefined
-      if (typeof jsonData.amap?.key === 'string' && jsonData.amap.key.trim()) {
-        await counter.storageSet(amapKeyStorageKey, jsonData.amap.key.trim())
-      }
       jsonData = (await formDataHandler(jsonData)) ?? jsonData
       const nextFormData = deepmerge<FormData>(
         jsonClone(defaultFormData),
         stripRemovedConfigFields(jsonData),
         { clone: false },
       )
-      nextFormData.amap.key = (await counter.storageGet<string>(amapKeyStorageKey)) ?? ''
       deepmerge(formData, nextFormData, { clone: false })
-      await persistSensitiveFields(formData)
+      await Promise.all(removedSensitiveStorageKeys.map((key) => counter.storageRm(key)))
       await counter.storageSet(formDataKey, sanitizeSensitiveFormData(formData))
       ElMessage.success('导入成功，配置已热更新')
     } catch (error) {

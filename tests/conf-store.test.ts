@@ -36,11 +36,10 @@ vi.mock('@/stores/user', () => ({
 import { counter } from '@/message'
 import {
   applyFormDataMigrations,
-  amapKeyStorageKey,
   defaultFormData,
   formDataKey,
   formDataTemplatesKey,
-  legacyAmapKeyStorageKey,
+  removedSensitiveStorageKeys,
   useConf,
 } from '@/stores/conf'
 import type { FormData, PersistedFormData } from '@/types/formData'
@@ -159,8 +158,9 @@ describe('useConf store', () => {
     expect(conf.formData.companySizeRange.value).toEqual([20, 99, false])
   })
 
-  it('hydrates session amap keys, loads templates, and persists runtime patches', async () => {
-    await counter.storageSet(legacyAmapKeyStorageKey, 'legacy-sync-amap')
+  it('drops removed location config, loads templates, and persists runtime patches', async () => {
+    await counter.storageSet(removedSensitiveStorageKeys[0], 'legacy-sync-amap')
+    await counter.storageSet(removedSensitiveStorageKeys[1], 'legacy-sync-amap')
     await counter.storageSet(formDataKey, {
       amap: {
         key: 'legacy-amap',
@@ -184,11 +184,10 @@ describe('useConf store', () => {
 
     expect(conf.isLoaded).toBe(true)
     expect(conf.formData.deliveryLimit.value).toBe(6)
-    expect(conf.formData.amap.key).toBe('legacy-sync-amap')
     expect(conf.templateNames).toEqual(['Alpha', 'Zebra'])
-    expect(await counter.storageGet(amapKeyStorageKey)).toBe('legacy-sync-amap')
-    expect(await counter.storageGet(legacyAmapKeyStorageKey)).toBeNull()
-    expect((await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.amap?.key).toBe('')
+    expect(await counter.storageGet(removedSensitiveStorageKeys[0])).toBeNull()
+    expect(await counter.storageGet(removedSensitiveStorageKeys[1])).toBeNull()
+    expect(await counter.storageGet<Partial<FormData>>(formDataKey, {})).not.toHaveProperty('amap')
 
     const snapshot = await conf.applyRuntimeConfigPatch(
       {
@@ -204,13 +203,12 @@ describe('useConf store', () => {
     expect(
       (await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.deliveryLimit?.value,
     ).toBe(8)
-    expect((await counter.storageGet<Partial<FormData>>(formDataKey, {}))?.amap?.key).toBe('')
+    expect(await counter.storageGet<Partial<FormData>>(formDataKey, {})).not.toHaveProperty('amap')
   })
 
   it('saves, applies, deletes, reloads, exports, and imports templates and config', async () => {
     const conf = useConf()
     conf.formData.deliveryLimit.value = 7
-    conf.formData.amap.key = 'session-key'
 
     await conf.saveTemplate('  Team A  ')
     expect(conf.templateNames).toEqual(['Team A'])
@@ -220,7 +218,6 @@ describe('useConf store', () => {
     conf.formData.sameCompanyFilter.value = true
     await conf.applyTemplate('Team A')
     expect(conf.formData.deliveryLimit.value).toBe(7)
-    expect(conf.formData.amap.key).toBe('')
     expect(conf.formData.sameCompanyFilter.value).toBe(defaultFormData.sameCompanyFilter.value)
 
     await conf.deleteTemplate('Team A')
@@ -231,19 +228,18 @@ describe('useConf store', () => {
     await expect(conf.deleteTemplate('missing')).rejects.toThrow('模板不存在')
 
     conf.formData.deliveryLimit.value = 9
-    conf.formData.amap.key = 'session-key'
     await conf.confSaving()
     expect(await counter.storageGet(formDataKey, {})).toEqual(
       expect.objectContaining({
         deliveryLimit: expect.objectContaining({ value: 9 }),
       }),
     )
-    expect(await counter.storageGet(amapKeyStorageKey)).toBe('session-key')
+    expect(await counter.storageGet(removedSensitiveStorageKeys[0])).toBeNull()
+    expect(await counter.storageGet(removedSensitiveStorageKeys[1])).toBeNull()
 
     conf.formData.deliveryLimit.value = 2
     await conf.confReload()
     expect(conf.formData.deliveryLimit.value).toBe(9)
-    expect(conf.formData.amap.key).toBe('session-key')
   })
 
   it('handles account switching, import cancellation, import failures, and save failures', async () => {
@@ -275,10 +271,7 @@ describe('useConf store', () => {
       .spyOn(await import('@/utils/jsonImportExport'), 'exportJson')
       .mockImplementation(() => undefined)
     await conf.confExport()
-    expect(exportJsonSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ amap: expect.objectContaining({ key: '' }) }),
-      '投递配置',
-    )
+    expect(exportJsonSpy).toHaveBeenCalledWith(expect.not.objectContaining({ amap: expect.anything() }), '投递配置')
 
     const importModule = await import('@/utils/jsonImportExport')
     vi.spyOn(importModule, 'importJson').mockRejectedValueOnce(
@@ -302,7 +295,8 @@ describe('useConf store', () => {
     await conf.confImport()
     expect(conf.formData.deliveryLimit.value).toBe(11)
     expect(conf.formData.friendStatus.value).toBe(false)
-    expect(await counter.storageGet(amapKeyStorageKey)).toBe('new-key')
+    expect(await counter.storageGet(removedSensitiveStorageKeys[0])).toBeNull()
+    expect(await counter.storageGet(removedSensitiveStorageKeys[1])).toBeNull()
     expect(await counter.storageGet(formDataKey, {})).toEqual(
       expect.objectContaining({
         deliveryLimit: expect.objectContaining({ value: 11 }),

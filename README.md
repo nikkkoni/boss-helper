@@ -27,7 +27,7 @@ CLI / MCP / 外部脚本
 
 - 浏览器扩展负责页面内职位读取、筛选、投递与状态展示
 - `SiteAdapter` 与 `src/utils/selectors.ts` 收敛 Boss 页面 DOM 和路由耦合
-- applying pipeline 负责规则过滤、高德通勤与 AI 筛选等执行步骤
+- applying pipeline 负责规则过滤与 AI 筛选等执行步骤
 - `scripts/` 提供本地 bridge、bootstrap、CLI、MCP server 和 orchestrator
 - 支持 Chrome / Edge / Firefox 构建，本地调试优先推荐 Chrome
 
@@ -35,7 +35,6 @@ CLI / MCP / 外部脚本
 
 - 批量投递、定向投递和批次控制
 - 岗位名、公司、薪资、公司规模、HR、已沟通等规则过滤
-- 高德地图距离 / 时长过滤
 - AI 筛选、外部 AI 审核闭环
 - 运行统计、结构化日志、风险摘要和 run checkpoint
 - CLI、bridge、MCP、外部 Agent 自动化接入
@@ -192,7 +191,6 @@ pnpm agent:mcp -- --bootstrap
 当前仓库的基础能力主要在本地运行，但某些可选功能会访问外部服务：
 
 - Boss 直聘网页接口
-- 高德地图 REST API：仅在启用通勤过滤并配置 key 后使用
 - OpenAI 兼容接口：仅在你配置自己的模型与 API Key 后使用
 
 如果你不使用这些可选能力，文档和开发流程仍然成立。
