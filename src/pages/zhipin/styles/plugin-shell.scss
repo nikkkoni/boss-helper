@@ -17,10 +17,32 @@
 }
 
 #boss-helper-job-wrap.boss-helper-job-shell {
+  position: relative;
+  isolation: isolate;
   width: 100%;
   max-width: 1320px;
   min-width: 320px;
   margin: 32px auto 90px;
+}
+
+#boss-helper-job-wrap.boss-helper-job-shell::before {
+  content: '';
+  position: absolute;
+  inset: -14px -14px -18px;
+  z-index: -1;
+  border-radius: calc(var(--bh-radius-panel-lg) + 10px);
+  background:
+    radial-gradient(circle at 18% 0%, rgb(14 165 233 / 10%), transparent 24%),
+    radial-gradient(circle at 84% 8%, rgb(251 191 36 / 10%), transparent 22%),
+    linear-gradient(180deg, rgb(248 250 252 / 94%), rgb(241 245 249 / 96%));
+  box-shadow: var(--bh-shadow-hero);
+}
+
+html.dark #boss-helper-job-wrap.boss-helper-job-shell::before {
+  background:
+    radial-gradient(circle at 18% 0%, rgb(34 211 238 / 12%), transparent 24%),
+    radial-gradient(circle at 84% 8%, rgb(99 102 241 / 14%), transparent 24%),
+    linear-gradient(180deg, rgb(2 6 23 / 94%), rgb(15 23 42 / 96%));
 }
 
 .boss-helper-host-search-bridge {

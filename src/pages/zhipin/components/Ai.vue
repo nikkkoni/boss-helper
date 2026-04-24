@@ -38,6 +38,8 @@ function change(v: Partial<FormDataAi>) {
   <div class="config-ai">
     <ConfigSectionCard
       compact
+      collapsible
+      default-collapsed
       title="AI 筛选"
       description="开启后会把职位内容交给模型进一步判断，适合对文本质量要求更高的场景。"
     >
@@ -78,6 +80,8 @@ function change(v: Partial<FormDataAi>) {
 
     <ConfigSectionCard
       compact
+      collapsible
+      default-collapsed
       title="模型管理"
       description="集中维护需要使用的 LLM 模型、地址和鉴权信息。"
     >

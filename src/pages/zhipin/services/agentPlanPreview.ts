@@ -62,6 +62,7 @@ function buildPlanConfigSummary(options: {
   const aiFilteringEnabled = config.aiFiltering.enable === true
   const aiFilteringExternal = aiFilteringEnabled && config.aiFiltering.externalMode === true
   const aiFilteringModelReady = !aiFilteringEnabled
+    || aiFilteringExternal
     || (typeof config.aiFiltering.model === 'string' && availableModelKeys.has(config.aiFiltering.model))
 
   return {

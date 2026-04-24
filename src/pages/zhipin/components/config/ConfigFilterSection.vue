@@ -113,6 +113,8 @@ function syncSalaryRange() {
     <div class="config-filter__sections">
       <ConfigSectionCard
         compact
+        collapsible
+        default-collapsed
         title="关键词与岗位条件"
         description="适合先定义公司、岗位名称和职位内容等核心边界。"
       >
@@ -204,6 +206,8 @@ function syncSalaryRange() {
       <ConfigSectionCard
         v-if="conf.config_level.intermediate"
         compact
+        collapsible
+        default-collapsed
         title="范围与规模"
         description="用薪资和公司规模进一步收敛结果集，适合在基础筛选稳定后补充。"
       >
@@ -301,6 +305,8 @@ function syncSalaryRange() {
 
       <ConfigSectionCard
         compact
+        collapsible
+        default-collapsed
         title="附加限制"
         description="这些开关常用于控制重复投递、猎头过滤和沟通状态等补充规则。"
       >

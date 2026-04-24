@@ -74,7 +74,7 @@ export function handles(options: ApplyingHandleOptions = {}) {
       return
     }
     const model = getModelStore()
-    const curModel = model.modelData.find((v) => conf.formData.aiFiltering.model === v.key)
+    const curModel = model.modelData.find((v) => formData.aiFiltering.model === v.key)
     const requiresInternalModel = formData.aiFiltering.externalMode !== true
     if (requiresInternalModel && !curModel) {
       throw new AIFilteringError('没有找到AI筛选的模型')

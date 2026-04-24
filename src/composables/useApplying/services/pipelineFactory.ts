@@ -16,8 +16,8 @@ export interface CreateApplyingPipelineOptions extends ApplyingHandleOptions {
 export async function createApplyingPipeline(options: CreateApplyingPipelineOptions = {}) {
   const h = handles(options)
   const loadCard = createLoadCardStep()
-  const aiFilteringStep = h.aiFiltering()
   const includeAiFiltering = options.includeAiFiltering !== false
+  const aiFilteringStep = includeAiFiltering ? h.aiFiltering() : undefined
   const pipeline: Pipeline = [
     withStepName('communicated', h.communicated()),
     withStepName('sameCompanyFilter', h.SameCompanyFilter()),

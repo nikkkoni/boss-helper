@@ -88,6 +88,11 @@ const aiTotalTokens = computed(() => statistics.todayData.aiTotalTokens ?? 0)
 const aiTotalCost = computed(() => statistics.todayData.aiTotalCost ?? 0)
 
 const isPaused = computed(() => common.deliverState === 'paused' && !common.deliverLock)
+const dailyProgressPercent = computed(() =>
+  Math.min(formatPercent(statistics.todayData.success, deliveryLimit.value), 100),
+)
+const selectedCycle = computed(() => statisticCycleData[statisticCycle.value] ?? statisticCycleData[0])
+const selectedCycleTotal = computed(() => cycle.value + statistics.todayData.success)
 
 onMounted(() => {
   statistics.updateStatistics()
@@ -103,125 +108,122 @@ onMounted(() => {
     />
 
     <div class="statistics-workbench__grid">
-      <section class="statistics-card bh-glass-surface bh-glass-surface--card">
+      <section class="statistics-card statistics-card--wide bh-glass-surface bh-glass-surface--card">
         <WorkspaceSectionHeader
-          eyebrow="Run Control"
-          title="批处理控制"
-          description="把当前 run 的开始、继续、暂停与重置筛选操作集中在一张控制卡里。"
-          :meta="`今日进度 ${statistics.todayData.success}/${deliveryLimit}`"
+          eyebrow="Overview"
+          title="运行概览"
+          description="把批处理操作和今日关键指标放进同一块区域，减少在多个卡片之间反复切换。"
         />
 
-        <div class="statistics-card__actions">
-          <div class="statistics-card__buttons">
-            <ElButton
-              type="primary"
-              class="statistics-card__action"
-              data-help="按当前筛选和投递配置开始处理当前页面岗位；暂停后会显示为继续。"
-              :loading="common.deliverLock"
-              @click="isPaused ? resumeBatch() : startBatch()"
-            >
-              {{ isPaused ? '继续' : '开始' }}
-            </ElButton>
-            <ElButton
-              v-if="!common.deliverLock && common.deliverStop"
-              type="warning"
-              class="statistics-card__action"
-              data-help="重置已被筛选的岗位，开始将重新处理"
-              @click="resetFilter"
-            >
-              重置筛选
-            </ElButton>
-            <ElButton
-              v-if="common.deliverLock && !common.deliverStop"
-              type="warning"
-              class="statistics-card__action"
-              data-help="暂停当前批处理，保留现场状态，稍后可继续运行。"
-              @click="pauseBatch()"
-            >
-              暂停
-            </ElButton>
-          </div>
-          <ElProgress
-            class="statistics-card__progress"
-            data-help="根据今日已完成投递数和当日上限估算的进度，仅作参考。"
-            :percentage="Number(((statistics.todayData.success / deliveryLimit) * 100).toFixed(1))"
-          />
-        </div>
-      </section>
+        <div class="statistics-card__overview">
+          <div class="statistics-card__control-panel bh-glass-surface bh-glass-surface--nested">
+            <div class="statistics-card__status-copy">
+              <span>今日进度</span>
+              <strong>{{ statistics.todayData.success }}/{{ deliveryLimit }}</strong>
+              <p>建议上限 120-140，Boss 当前限制最高 150，仅供参考。</p>
+            </div>
 
-      <section class="statistics-card bh-glass-surface bh-glass-surface--soft">
-        <WorkspaceSectionHeader
-          eyebrow="Snapshot"
-          title="今日摘要"
-          description="这里保留对当前扫描总量、过滤比例和历史周期统计的快速查看。"
-          size="compact"
-        />
-
-        <div v-if="conf.config_level.intermediate" class="statistics-card__metric-grid">
-          <div class="statistics-card__metric">
-            <ElStatistic
-              data-help="统计当天脚本扫描过的所有岗位"
-              :value="statistics.todayData.total"
-              title="岗位总数："
-              suffix="份"
-            />
-          </div>
-          <div class="statistics-card__metric">
-            <ElStatistic
-              data-help="统计当天岗位过滤的比例,被过滤/总数"
-              :value="filterRatio"
-              title="过滤比例："
-              suffix="%"
-            />
-          </div>
-          <div class="statistics-card__metric">
-            <ElStatistic
-              data-help="统计当天岗位中已沟通的比例,已沟通/总数"
-              :value="repeatRatio"
-              title="沟通比例："
-              suffix="%"
-            />
-          </div>
-          <div class="statistics-card__metric">
-            <ElStatistic
-              :data-help="statisticCycleData[statisticCycle].help"
-              :value="cycle + statistics.todayData.success"
-              suffix="份"
-            >
-              <template #title>
-                <ElDropdown
-                  trigger="click"
-                  @command="
-                    (arg) => {
-                      statisticCycle = arg
-                    }
-                  "
+            <div class="statistics-card__actions">
+              <div class="statistics-card__buttons">
+                <ElButton
+                  type="primary"
+                  class="statistics-card__action"
+                  data-help="按当前筛选和投递配置开始处理当前页面岗位；暂停后会显示为继续。"
+                  :loading="common.deliverLock"
+                  @click="isPaused ? resumeBatch() : startBatch()"
                 >
-                  <span class="el-dropdown-link">
-                    {{ statisticCycleData[statisticCycle].label }}:
-                    <ElIcon class="el-icon--right">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-                        <path
-                          fill="currentColor"
-                          d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"
-                        />
-                      </svg>
-                    </ElIcon>
-                  </span>
-                  <template #dropdown>
-                    <ElDropdownMenu>
-                      <ElDropdownItem
-                        v-for="(item, index) in statisticCycleData"
-                        :key="index"
-                        :command="index"
-                      >
-                        {{ item.label }}
-                      </ElDropdownItem>
-                    </ElDropdownMenu>
-                  </template>
-                </ElDropdown>
-              </template>
-            </ElStatistic>
+                  {{ isPaused ? '继续' : '开始' }}
+                </ElButton>
+                <ElButton
+                  v-if="!common.deliverLock && common.deliverStop"
+                  type="warning"
+                  class="statistics-card__action"
+                  data-help="重置已被筛选的岗位，开始将重新处理"
+                  @click="resetFilter"
+                >
+                  重置筛选
+                </ElButton>
+                <ElButton
+                  v-if="common.deliverLock && !common.deliverStop"
+                  type="warning"
+                  class="statistics-card__action"
+                  data-help="暂停当前批处理，保留现场状态，稍后可继续运行。"
+                  @click="pauseBatch()"
+                >
+                  暂停
+                </ElButton>
+              </div>
+
+              <ElProgress
+                class="statistics-card__progress"
+                data-help="根据今日已完成投递数和当日上限估算的进度，仅作参考。"
+                :percentage="dailyProgressPercent"
+              />
+            </div>
+          </div>
+
+          <div v-if="conf.config_level.intermediate" class="statistics-card__metric-grid">
+            <div class="statistics-card__metric">
+              <ElStatistic
+                data-help="统计当天脚本扫描过的所有岗位"
+                :value="statistics.todayData.total"
+                title="岗位总数："
+                suffix="份"
+              />
+            </div>
+            <div class="statistics-card__metric">
+              <ElStatistic
+                data-help="统计当天岗位过滤的比例,被过滤/总数"
+                :value="filterRatio"
+                title="过滤比例："
+                suffix="%"
+              />
+            </div>
+            <div class="statistics-card__metric">
+              <ElStatistic
+                data-help="统计当天岗位中已沟通的比例,已沟通/总数"
+                :value="repeatRatio"
+                title="沟通比例："
+                suffix="%"
+              />
+            </div>
+            <div class="statistics-card__metric">
+              <ElStatistic :data-help="selectedCycle.help" :value="selectedCycleTotal" suffix="份">
+                <template #title>
+                  <ElDropdown
+                    trigger="click"
+                    @command="
+                      (arg) => {
+                        statisticCycle = arg
+                      }
+                    "
+                  >
+                    <span class="statistics-card__dropdown-link">
+                      {{ selectedCycle.label }}:
+                      <ElIcon class="el-icon--right">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+                          <path
+                            fill="currentColor"
+                            d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"
+                          />
+                        </svg>
+                      </ElIcon>
+                    </span>
+                    <template #dropdown>
+                      <ElDropdownMenu>
+                        <ElDropdownItem
+                          v-for="(item, index) in statisticCycleData"
+                          :key="index"
+                          :command="index"
+                        >
+                          {{ item.label }}
+                        </ElDropdownItem>
+                      </ElDropdownMenu>
+                    </template>
+                  </ElDropdown>
+                </template>
+              </ElStatistic>
+            </div>
           </div>
         </div>
       </section>
@@ -290,8 +292,43 @@ onMounted(() => {
   grid-column: 1 / -1;
 }
 
-.statistics-card__group--secondary {
-  margin-top: 0;
+.statistics-card__overview {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.statistics-card__control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+}
+
+.statistics-card__status-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.statistics-card__status-copy span {
+  color: var(--bh-text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.statistics-card__status-copy strong {
+  color: var(--bh-text-primary);
+  font-size: clamp(1.7rem, 1.45rem + 0.6vw, 2.15rem);
+  line-height: 1;
+}
+
+.statistics-card__status-copy p {
+  margin: 0;
+  color: var(--bh-text-secondary);
+  line-height: 1.6;
 }
 
 .statistics-card__metric-grid {
@@ -333,6 +370,14 @@ onMounted(() => {
   width: 100%;
 }
 
+.statistics-card__dropdown-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  cursor: pointer;
+}
+
 .statistics-card :deep(.ehp-statistic) {
   min-height: 96px;
 }
@@ -353,14 +398,22 @@ onMounted(() => {
 }
 
 :global(html.dark) .statistics-card :deep(.ehp-statistic__head),
-:global(html.dark) .statistics-card :deep(.el-dropdown-link) {
+:global(html.dark) .statistics-card__dropdown-link {
   color: var(--bh-text-muted);
 }
 
 @media (max-width: 768px) {
+  .statistics-card__overview {
+    grid-template-columns: 1fr;
+  }
+
   .statistics-card {
     padding: 18px;
     border-radius: 22px;
+  }
+
+  .statistics-card__control-panel {
+    padding: 16px;
   }
 
   .statistics-card__actions {

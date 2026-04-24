@@ -121,6 +121,12 @@ describe('previewAgentPlan', () => {
         skipCount: 3,
       }),
     )
+    expect(result.config).toEqual(
+      expect.objectContaining({
+        aiFilteringExternal: true,
+        aiFilteringModelReady: true,
+      }),
+    )
     expect(result.items).toEqual([
       expect.objectContaining({
         decision: 'skip',

@@ -3,14 +3,9 @@ import { ElCheckbox } from 'element-plus'
 import { computed } from 'vue'
 
 const props = defineProps<{
+  currentUserLabel: string
   helpVisible: boolean
   todayProgressLabel: string
-  items: Array<{
-    label: string
-    value: string
-    caption: string
-    help: string
-  }>
 }>()
 
 const emit = defineEmits<{
@@ -32,17 +27,24 @@ const helpModel = computed({
       <div class="workspace-overview__copy">
         <span class="workspace-overview__eyebrow bh-eyebrow">Boss Helper Workspace</span>
         <h2>投递控制台</h2>
-        <p>把筛选、统计、配置和日志整合进一个更清晰的工作台，减少在页面里来回寻找入口。</p>
+        <p>把筛选、统计、配置和日志收进同一个工作台，保留核心信息，把重复说明尽量压到最少。</p>
       </div>
 
-      <div class="workspace-overview__status-cluster">
-        <p
-          class="workspace-overview__summary bh-glass-surface bh-glass-surface--nested"
-          data-help="这里显示今天已经完成的投递数量以及当前配置的上限。"
+      <div class="workspace-overview__meta-row">
+        <div
+          class="workspace-overview__meta bh-glass-surface bh-glass-surface--nested"
+          data-help="这里显示当前识别到的 Boss 账号。"
+        >
+          <span>当前账号</span>
+          <strong>{{ currentUserLabel }}</strong>
+        </div>
+        <div
+          class="workspace-overview__meta bh-glass-surface bh-glass-surface--nested"
+          data-help="这里显示今日已完成投递数量与当前配置的上限。"
         >
           <span>今日投递</span>
           <strong>{{ todayProgressLabel }}</strong>
-        </p>
+        </div>
 
         <label
           class="workspace-overview__control bh-glass-surface bh-glass-surface--nested"
@@ -56,19 +58,6 @@ const helpModel = computed({
         </label>
       </div>
     </div>
-
-    <div class="workspace-overview__metrics bh-workspace-metric-grid">
-      <article
-        v-for="item in items"
-        :key="item.label"
-        class="workspace-overview__metric bh-glass-surface bh-glass-surface--nested"
-        :data-help="item.help"
-      >
-        <span>{{ item.label }}</span>
-        <strong>{{ item.value }}</strong>
-        <p>{{ item.caption }}</p>
-      </article>
-    </div>
   </section>
 </template>
 
@@ -78,10 +67,9 @@ const helpModel = computed({
 }
 
 .workspace-overview__header {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+  display: flex;
+  flex-direction: column;
   gap: 18px;
-  align-items: start;
 }
 
 .workspace-overview__copy {
@@ -106,27 +94,27 @@ const helpModel = computed({
   line-height: 1.75;
 }
 
-.workspace-overview__status-cluster {
+.workspace-overview__meta-row {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
 }
 
-.workspace-overview__summary,
-.workspace-overview__control,
-.workspace-overview__metric {
+.workspace-overview__meta,
+.workspace-overview__control {
   min-width: 0;
+  min-height: 128px;
   padding: 16px 18px;
 }
 
-.workspace-overview__summary {
+.workspace-overview__meta {
   display: grid;
   gap: 6px;
-  margin: 0;
+  flex: 1 1 200px;
   color: var(--bh-text-primary);
 }
 
-.workspace-overview__summary span,
-.workspace-overview__metric span {
+.workspace-overview__meta span {
   display: inline-flex;
   color: var(--bh-text-muted);
   font-size: 0.72rem;
@@ -135,73 +123,46 @@ const helpModel = computed({
   text-transform: uppercase;
 }
 
-.workspace-overview__summary strong {
+.workspace-overview__meta strong {
   display: block;
-  font-size: clamp(1.6rem, 1.2rem + 0.7vw, 2rem);
-  line-height: 1;
+  font-size: clamp(1rem, 0.92rem + 0.45vw, 1.32rem);
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .workspace-overview__control {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
+.workspace-overview__control-copy {
+  min-width: 0;
+}
+
 .workspace-overview__control-copy strong,
-.workspace-overview__control-copy span,
-.workspace-overview__metric strong,
-.workspace-overview__metric p {
+.workspace-overview__control-copy span {
   display: block;
 }
 
-.workspace-overview__control-copy strong,
-.workspace-overview__metric strong {
+.workspace-overview__control-copy strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-bottom: 2px;
   font-size: 0.98rem;
 }
 
-.workspace-overview__control-copy strong {
-  margin-bottom: 2px;
-}
-
-.workspace-overview__control-copy span,
-.workspace-overview__metric p {
+.workspace-overview__control-copy span {
   margin-top: 2px;
   color: var(--bh-text-muted);
   font-size: 0.84rem;
 }
 
-.workspace-overview__metrics {
-  margin-top: 18px;
-  gap: 14px;
-}
-
-.workspace-overview__metric {
-  min-height: 148px;
-}
-
-.workspace-overview__metric strong {
-  display: block;
-  margin-top: 10px;
-  font-size: 1.18rem;
-  font-weight: 700;
-}
-
-.workspace-overview__metric p {
-  margin: 10px 0 0;
-  line-height: 1.5;
-}
-
 @media (max-width: 960px) {
-  .workspace-overview__header {
-    grid-template-columns: 1fr;
-  }
-
   .workspace-overview__control {
-    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }
 
@@ -211,15 +172,14 @@ const helpModel = computed({
     border-radius: 22px;
   }
 
-  .workspace-overview__summary,
-  .workspace-overview__control,
-  .workspace-overview__metric {
+  .workspace-overview__meta,
+  .workspace-overview__control {
     padding: 14px 16px;
   }
 
   .workspace-overview__control {
-    flex-direction: column;
-    align-items: flex-start;
+    grid-template-columns: 1fr;
+    align-items: start;
   }
 }
 </style>

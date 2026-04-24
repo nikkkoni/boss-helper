@@ -115,6 +115,8 @@ async function deleteConfigTemplate() {
     <div class="config-control__grid">
       <ConfigSectionCard
         compact
+        collapsible
+        default-collapsed
         title="基础设置"
         description="决定展示层级、通知和缓存等全局行为，通常是进入配置页后的第一步。"
       >
@@ -166,6 +168,8 @@ async function deleteConfigTemplate() {
       <ConfigSectionCard
         v-if="conf.config_level.intermediate"
         compact
+        collapsible
+        default-collapsed
         title="配置模板"
         description="保存多套可切换方案，应用模板时不会自动保存当前配置。"
       >
@@ -207,6 +211,8 @@ async function deleteConfigTemplate() {
 
     <ConfigSectionCard
       compact
+      collapsible
+      default-collapsed
       title="快捷操作"
       description="保存、重载和导入导出都集中在这里，做完改动后建议优先保存一次。"
     >

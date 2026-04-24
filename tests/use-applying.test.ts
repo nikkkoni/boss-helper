@@ -503,6 +503,65 @@ describe('useApplying handles', () => {
     expect(useStatistics().todayData.aiTotalCost).toBe(0.002)
   })
 
+  it('uses the supplied runtime ai filtering config when building overridden handles', async () => {
+    const conf = useConf()
+    const model = useModel()
+    const runtimeFormData = jsonClone(defaultFormData)
+    const job = createJob({ card: createJobCard() })
+    const ctx = createLogContext(job)
+
+    conf.formData.aiFiltering.enable = true
+    conf.formData.aiFiltering.model = 'stale-model'
+    runtimeFormData.aiFiltering.enable = true
+    runtimeFormData.aiFiltering.externalMode = false
+    runtimeFormData.aiFiltering.model = 'runtime-model'
+    runtimeFormData.aiFiltering.prompt = 'runtime prompt'
+    runtimeFormData.aiFiltering.score = 0
+    model.modelData = [createModelItem({ key: 'runtime-model', name: 'Runtime model' })]
+
+    const getModelSpy = vi.spyOn(model, 'getModel').mockReturnValue({
+      message: vi.fn(async () => ({
+        content: '```json\n{"negative":[],"positive":[{"reason":"匹配","score":10}]}\n```',
+        prompt: 'runtime prompt body',
+        reasoning_content: null,
+      })),
+    } as unknown as Llm)
+
+    await expect(
+      getHandler(handles({ formData: runtimeFormData }).aiFiltering())({ data: job }, ctx),
+    ).resolves.toBeUndefined()
+
+    expect(getModelSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'runtime-model' }),
+      'runtime prompt',
+    )
+    expect(ctx.aiFilteringScore).toEqual(
+      expect.objectContaining({
+        accepted: true,
+        rating: 10,
+        source: 'internal',
+      }),
+    )
+  })
+
+  it('does not require a configured AI model when the compiled pipeline excludes AI filtering', async () => {
+    const runtimeFormData = jsonClone(defaultFormData)
+    runtimeFormData.aiFiltering.enable = true
+    runtimeFormData.aiFiltering.externalMode = false
+    runtimeFormData.aiFiltering.model = 'missing-model'
+
+    await expect(
+      createHandle({
+        formData: runtimeFormData,
+        includeAiFiltering: false,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        before: expect.any(Array),
+      }),
+    )
+  })
+
   it('covers ai filtering setup, accepted external reviews and internal edge cases', async () => {
     const conf = useConf()
     const model = useModel()

@@ -48,13 +48,6 @@ const workspaceTabLabelMap: Record<string, string> = {
   logs: '运行日志',
   about: '项目说明',
 }
-const workspaceTabDescriptionMap: Record<string, string> = {
-  statistics: '查看当前页面处理进度、今日统计和批处理控制。',
-  filter: '承接 Boss 原生搜索和筛选桥接模块，保持原有筛选体验。',
-  config: '集中管理筛选、投递和 AI 相关配置。',
-  logs: '查看运行记录、错误信息以及 AI 过滤详情。',
-  about: '查看仓库、文档和当前项目的补充说明。',
-}
 type WorkspaceTabsExpose = {
   getSearchMountElement: () => HTMLElement | null
   getTabsRootElement: () => HTMLElement | null
@@ -73,9 +66,6 @@ const currentUserLabel = computed(
 )
 const todayProgressLabel = computed(
   () => `${todayData.success}/${conf.formData.deliveryLimit.value}`,
-)
-const dashboardSummary = computed(
-  () => `今日投递: ${todayProgressLabel.value}`,
 )
 const pageProgressLabel = computed(() =>
   deliver.total > 0 ? `${Math.min(deliver.current + 1, deliver.total)}/${deliver.total}` : '待开始',
@@ -107,9 +97,6 @@ const searchPanelLabel = computed(() => {
 const activeWorkspaceTabLabel = computed(
   () => workspaceTabLabelMap[activeTab.value] ?? '主工作区',
 )
-const activeWorkspaceTabDescription = computed(
-  () => workspaceTabDescriptionMap[activeTab.value] ?? '在这里切换工作台核心模块。',
-)
 const isPaused = computed(() => common.deliverState === 'paused' && !common.deliverLock)
 const primaryActionLabel = computed(() => (isPaused.value ? '继续投递' : '开始投递'))
 const primaryActionDisabled = computed(() => common.deliverLock && common.deliverState !== 'paused')
@@ -140,20 +127,6 @@ const deliveryStateTone = computed<'completed' | 'error' | 'idle' | 'paused' | '
   }
 })
 const deliveryStatusMessage = computed(() => common.deliverStatusMessage || '未开始')
-const workspaceOverviewItems = computed(() => [
-  {
-    label: '当前页面',
-    value: pageProgressLabel.value,
-    caption: deliver.total > 0 ? '当前页面扫描进度' : '等待开始处理',
-    help: '这里显示当前页面岗位列表的处理进度。',
-  },
-  {
-    label: '当前账号',
-    value: currentUserLabel.value,
-    caption: '当前识别到的 Boss 账号',
-    help: '这里显示当前识别到的 Boss 账号。',
-  },
-])
 
 function handlePrimaryAction() {
   if (isPaused.value) {
@@ -208,7 +181,7 @@ onUnmounted(() => {
       <template #header>
         <WorkspaceHeader
           v-model:help-visible="helpVisible"
-          :items="workspaceOverviewItems"
+          :current-user-label="currentUserLabel"
           :today-progress-label="todayProgressLabel"
         />
       </template>
@@ -224,19 +197,12 @@ onUnmounted(() => {
             <WorkspaceSectionHeader
               eyebrow="Main Workspace"
               title="主工作区"
-              description="在这里切换统计、筛选、配置、日志和项目说明模块。"
-              :meta="routeLabel"
+              description="把统计、筛选、配置、日志和项目说明收进同一个工作台，减少在页面里反复查找。"
+              :meta="activeWorkspaceTabLabel"
               size="compact"
             />
 
             <div class="helper-dashboard__workspace-stage bh-glass-surface bh-glass-surface--nested">
-              <WorkspaceSectionHeader
-                eyebrow="Current Module"
-                :title="activeWorkspaceTabLabel"
-                :description="activeWorkspaceTabDescription"
-                size="compact"
-              />
-
               <WorkspaceTabs v-model="activeTab" ref="tabsRef" :search-panel-kind="searchPanelKind">
                 <template #statistics>
                   <Statistics />
@@ -261,7 +227,6 @@ onUnmounted(() => {
 
       <template #aside>
         <WorkspaceStatusRail
-          :current-user-label="currentUserLabel"
           :delivery-state-label="deliveryStateLabel"
           :delivery-state-tone="deliveryStateTone"
           :delivery-status-message="deliveryStatusMessage"
@@ -272,7 +237,6 @@ onUnmounted(() => {
           :route-label="routeLabel"
           :search-panel-label="searchPanelLabel"
           :show-pause-action="showPauseAction"
-          :today-summary="dashboardSummary"
           :total-jobs-label="totalJobsLabel"
           @open-tab="handleOpenTab"
           @pause-action="() => void pauseBatch()"

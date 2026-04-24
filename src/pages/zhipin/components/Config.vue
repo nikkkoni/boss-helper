@@ -61,6 +61,8 @@ const { deliverLock } = useCommon()
         <div class="config-page__grid">
           <ConfigSectionCard
             v-if="conf.config_level.intermediate"
+            collapsible
+            default-collapsed
             eyebrow="Delay"
             title="延迟配置"
             description="控制投递节奏和随机偏移，避免连续动作过于密集。"
@@ -102,6 +104,8 @@ const { deliverLock } = useCommon()
         <div class="config-page__grid">
           <ConfigSectionCard
             class="config-page__card config-page__card--wide"
+            collapsible
+            default-collapsed
             eyebrow="Filtering"
             title="筛选配置"
             description="岗位命中、排除与限制条件都集中在这里，建议先定基础边界，再补充更细的限制。"
@@ -114,6 +118,8 @@ const { deliverLock } = useCommon()
             class="config-page__enhancement-grid config-page__card config-page__card--wide"
           >
             <ConfigSectionCard
+              collapsible
+              default-collapsed
               eyebrow="AI"
               title="AI 配置"
               description="管理 AI 筛选开关和模型配置，用于做更细的岗位内容判断。"

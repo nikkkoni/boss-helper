@@ -6,7 +6,6 @@ import WorkspaceSectionHeader from './WorkspaceSectionHeader.vue'
 type WorkspaceTabName = 'config' | 'filter' | 'logs'
 
 const props = defineProps<{
-  currentUserLabel: string
   deliveryStateLabel: string
   deliveryStateTone: 'completed' | 'error' | 'idle' | 'paused' | 'running'
   deliveryStatusMessage: string
@@ -17,7 +16,6 @@ const props = defineProps<{
   routeLabel: string
   searchPanelLabel: string
   showPauseAction?: boolean
-  todaySummary: string
   totalJobsLabel: string
 }>()
 
@@ -30,11 +28,6 @@ const emit = defineEmits<{
 
 const contextItems = computed(() => [
   {
-    label: '当前账号',
-    value: props.currentUserLabel,
-    help: '这里展示当前工作台识别到的 Boss 账号。',
-  },
-  {
     label: '页面路由',
     value: props.routeLabel,
     help: '这里展示当前工作台挂载到的 Boss 页面类型。',
@@ -43,11 +36,6 @@ const contextItems = computed(() => [
     label: '搜索桥接',
     value: props.searchPanelLabel,
     help: '这里展示当前页面接入的 Boss 原生搜索或筛选模块类型。',
-  },
-  {
-    label: '候选岗位',
-    value: props.totalJobsLabel,
-    help: '这里展示当前页面可供候选卡片带快速浏览的岗位数量。',
   },
 ])
 
@@ -59,10 +47,10 @@ const progressFacts = computed(() => [
     help: '这里展示当前页面岗位列表的处理进度。',
   },
   {
-    label: '今日投递',
-    value: props.todaySummary,
-    caption: '保持观察今日完成数量与投递上限。',
-    help: '这里集中展示当前批处理状态、页面进度和今日投递摘要。',
+    label: '候选岗位',
+    value: props.totalJobsLabel,
+    caption: '用于判断当前页大致还有多少岗位可处理。',
+    help: '这里展示当前页面已接入工作台的岗位数量。',
   },
 ])
 
@@ -124,12 +112,12 @@ const quickActions = computed(() => {
 <template>
   <section
     class="workspace-status-rail bh-glass-surface bh-glass-surface--card"
-    data-help="这里集中展示运行状态、页面上下文和高频快捷操作。"
+    data-help="这里集中展示运行状态、页面上下文和高频操作，避免在多个区域反复寻找。"
   >
     <WorkspaceSectionHeader
       eyebrow="Status Rail"
       title="运行侧栏"
-      description="把当前 run 的状态、页面上下文和快捷操作收拢进一个统一模块，切换 Tab 时也能持续观察。"
+      description="把当前 run 的状态、页面信息和快捷操作收进一个固定侧栏，主工作区只保留具体内容。"
       size="compact"
     />
 
@@ -141,7 +129,7 @@ const quickActions = computed(() => {
         <WorkspaceSectionHeader
           eyebrow="Run"
           title="运行状态"
-          description="保持当前 run 的状态、状态消息和进度摘要在同一个视线区域。"
+          description="持续观察当前 run 状态，并快速判断是否需要暂停、继续或检查日志。"
           size="compact"
         />
 
@@ -177,7 +165,7 @@ const quickActions = computed(() => {
         <WorkspaceSectionHeader
           eyebrow="Context"
           title="页面上下文"
-          description="帮助你快速确认当前工作台接入的页面、搜索桥接模式和账号上下文。"
+          description="只保留页面类型和搜索桥接方式，避免和顶部概览重复。"
           size="compact"
         />
 
