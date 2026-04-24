@@ -155,7 +155,7 @@ const passthrough = (tag: string) =>
 
 describe('Ui.vue', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
+    vi.useRealTimers()
     document.body.innerHTML = '<div class="page-jobs-main"></div>'
     window.history.replaceState({}, '', '/web/geek/jobs')
     mockCommonState.deliverLock = false
@@ -231,14 +231,20 @@ describe('Ui.vue', () => {
     expect(searchEl.style.display).toBe('none')
     expect(searchEl.style.getPropertyPriority('display')).toBe('important')
     expect(searchEl.getAttribute('aria-hidden')).toBe('true')
-    expect(conditionEl.classList.contains('boss-helper-host-search-static--jobs-condition')).toBe(true)
+    expect(conditionEl.classList.contains('boss-helper-host-search-static--jobs-condition')).toBe(
+      true,
+    )
     expect(conditionEl.style.getPropertyValue('position')).toBe('static')
     expect(conditionEl.style.getPropertyPriority('position')).toBe('important')
     expect(conditionEl.style.getPropertyValue('overflow')).toBe('visible')
     expect(conditionEl.style.getPropertyValue('background')).toBe('var(--bh-surface-soft)')
-    expect(searchInputEl.classList.contains('boss-helper-host-search-static--jobs-input')).toBe(true)
+    expect(searchInputEl.classList.contains('boss-helper-host-search-static--jobs-input')).toBe(
+      true,
+    )
     expect(searchInputEl.style.getPropertyValue('overflow')).toBe('visible')
-    expect(expectSelectEl.classList.contains('boss-helper-host-search-static--jobs-expect')).toBe(true)
+    expect(expectSelectEl.classList.contains('boss-helper-host-search-static--jobs-expect')).toBe(
+      true,
+    )
     expect(expectSelectEl.style.getPropertyValue('overflow')).toBe('visible')
     expect(searchInputEl.parentElement).toBe(conditionEl.parentElement)
     expect(expectSelectEl.parentElement).toBe(conditionEl.parentElement)
@@ -251,7 +257,7 @@ describe('Ui.vue', () => {
     expect(conditionEl.style.getPropertyValue('position')).toBe('static')
     expect(conditionEl.style.getPropertyPriority('position')).toBe('important')
 
-    expect(wrapper.text()).toContain('今日投递: 3/120')
+    expect(wrapper.text()).toContain('今日投递3/120')
     expect(wrapper.text()).toContain('主工作区')
     expect(wrapper.text()).toContain('运行状态')
 

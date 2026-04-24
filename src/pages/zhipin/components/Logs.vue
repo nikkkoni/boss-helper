@@ -10,7 +10,7 @@ import {
   ElTabPane,
   ElTabs,
 } from 'element-plus'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import JobCard from '@/components/Jobcard.vue'
 import { useLog } from '@/stores/log'
@@ -22,6 +22,20 @@ const { filterData, columns, dialogData } = useLog()
 
 const aiFilterActiveNames = ref('response')
 const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
+const currentLogContext = computed(() => dialogData.value.data?.data)
+const hasAiFilteringDetail = computed(() => {
+  const context = currentLogContext.value
+  return Boolean(
+    context?.aiFilteringQ ||
+    context?.aiFilteringR ||
+    context?.aiFilteringAtext ||
+    context?.aiFilteringAjson ||
+    context?.aiFilteringScore,
+  )
+})
+const aiFilteringStructuredResult = computed(
+  () => currentLogContext.value?.aiFilteringAjson ?? currentLogContext.value?.aiFilteringScore,
+)
 
 // watchEffect(() => {
 //   tableRef.value?.scrollToRow(data.value.length - 1);
@@ -70,25 +84,39 @@ const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
         />
 
         <ElTabs class="demo-tabs">
-          <ElTabPane v-if="dialogData.data?.data?.aiFilteringQ" label="AI过滤" name="first">
+          <ElTabPane v-if="hasAiFilteringDetail" label="AI过滤" name="first">
             <ElCollapse v-model="aiFilterActiveNames" accordion>
-              <ElCollapseItem title="Prompt" name="prompt">
+              <ElCollapseItem v-if="currentLogContext?.aiFilteringQ" title="Prompt" name="prompt">
                 <div class="ai-text">
-                  {{ dialogData.data.data.aiFilteringQ }}
+                  {{ currentLogContext.aiFilteringQ }}
                 </div>
               </ElCollapseItem>
               <ElCollapseItem
-                v-if="dialogData.data.data.aiFilteringR"
+                v-if="currentLogContext?.aiFilteringR"
                 title="思考过程"
                 name="thinking"
               >
                 <div class="ai-text">
-                  {{ dialogData.data.data.aiFilteringR }}
+                  {{ currentLogContext.aiFilteringR }}
                 </div>
               </ElCollapseItem>
-              <ElCollapseItem title="响应" name="response" class="active">
+              <ElCollapseItem
+                v-if="currentLogContext?.aiFilteringAtext"
+                title="响应"
+                name="response"
+                class="active"
+              >
                 <div class="ai-text">
-                  {{ dialogData.data.data.aiFilteringAtext }}
+                  {{ currentLogContext.aiFilteringAtext }}
+                </div>
+              </ElCollapseItem>
+              <ElCollapseItem
+                v-if="aiFilteringStructuredResult"
+                title="结构化结果"
+                name="structured"
+              >
+                <div class="ai-text">
+                  {{ formatJson(aiFilteringStructuredResult) }}
                 </div>
               </ElCollapseItem>
             </ElCollapse>

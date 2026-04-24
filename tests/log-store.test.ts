@@ -112,4 +112,27 @@ describe('log store query', () => {
       }).items[0]?.job?.encryptJobId,
     ).toBe('job-new')
   })
+
+  it('uses AI filtering details as the default success message', () => {
+    const log = useLog()
+    const job = createJob({ encryptJobId: 'job-ai-pass', jobName: 'AI Pass Job' })
+
+    log.add(job, null, {
+      listData: job,
+      aiFilteringAtext: '分数20\n积极:\n匹配度高/(20分)',
+      aiFilteringScore: {
+        accepted: true,
+        rating: 20,
+        reason: '匹配度高',
+        source: 'internal',
+        threshold: 10,
+      },
+    })
+
+    expect(log.data.value[0]).toMatchObject({
+      message: '分数20\n积极:\n匹配度高/(20分)',
+      state: 'success',
+      state_name: '投递成功',
+    })
+  })
 })

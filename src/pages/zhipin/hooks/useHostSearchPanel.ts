@@ -23,7 +23,7 @@ type JobsBridgeStaticOptions = {
 
 export function useHostSearchPanel() {
   const searchPanelPlan = getActiveSiteAdapter(location.href).getSearchPanelPlan(location.pathname)
-  const jobsBridgeObservers: MutationObserver[] = []
+  const jobsBridgeObservers: Array<{ disconnect: () => void }> = []
 
   function resetJobsBridgeObservers() {
     while (jobsBridgeObservers.length > 0) {
@@ -208,8 +208,12 @@ export function useHostSearchPanel() {
     applyJobsBridgeStaticLayout(element, options)
 
     let queued = false
-
-    const scheduleApply = () => {
+    let disposed = false
+    let observing = false
+    const observer = new MutationObserver(() => {
+      if (disposed) {
+        return
+      }
       if (queued) {
         return
       }
@@ -217,20 +221,38 @@ export function useHostSearchPanel() {
       queued = true
       queueMicrotask(() => {
         queued = false
+        if (disposed) {
+          return
+        }
+        observer.disconnect()
+        observing = false
         applyJobsBridgeStaticLayout(element, options)
+        if (!disposed) {
+          observer.observe(element, {
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+          })
+          observing = true
+        }
       })
-    }
-
-    const observer = new MutationObserver(() => {
-      scheduleApply()
     })
 
     observer.observe(element, {
       attributes: true,
       attributeFilter: ['class', 'style'],
     })
+    observing = true
 
-    jobsBridgeObservers.push(observer)
+    jobsBridgeObservers.push({
+      disconnect: () => {
+        disposed = true
+        if (!observing) {
+          return
+        }
+        observer.disconnect()
+        observing = false
+      },
+    })
   }
 
   async function mountSearchPanel(searchMount: HTMLElement | null | undefined) {
@@ -261,25 +283,30 @@ export function useHostSearchPanel() {
       searchMount.appendChild(container)
 
       try {
-        const [searchEl, conditionEl] = await elmGetter.get<HTMLDivElement>(searchPanelPlan.blockSelectors, {
-          timeoutMs: SELECTOR_TIMEOUT_MS,
-        })
+        const [searchEl, conditionEl] = await elmGetter.get<HTMLDivElement>(
+          searchPanelPlan.blockSelectors,
+          {
+            timeoutMs: SELECTOR_TIMEOUT_MS,
+          },
+        )
 
         searchEl.classList.add(HOST_SEARCH_STATIC_CLASS, HOST_SEARCH_STATIC_JOBS_SOURCE_CLASS)
         conditionEl.classList.add(HOST_SEARCH_STATIC_CLASS, HOST_SEARCH_STATIC_JOBS_CONDITION_CLASS)
         stabilizeJobsBridgeElement(conditionEl, { kind: 'condition' })
 
         try {
-          const [searchInputEl, expectSelectEl] = await elmGetter.get<HTMLInputElement | HTMLDivElement>(
-            searchPanelPlan.inputSelectors,
-            {
-              parent: searchEl,
-              timeoutMs: SELECTOR_TIMEOUT_MS,
-            },
-          )
+          const [searchInputEl, expectSelectEl] = await elmGetter.get<
+            HTMLInputElement | HTMLDivElement
+          >(searchPanelPlan.inputSelectors, {
+            parent: searchEl,
+            timeoutMs: SELECTOR_TIMEOUT_MS,
+          })
 
           searchInputEl.classList.add(HOST_SEARCH_STATIC_CLASS, HOST_SEARCH_STATIC_JOBS_INPUT_CLASS)
-          expectSelectEl.classList.add(HOST_SEARCH_STATIC_CLASS, HOST_SEARCH_STATIC_JOBS_EXPECT_CLASS)
+          expectSelectEl.classList.add(
+            HOST_SEARCH_STATIC_CLASS,
+            HOST_SEARCH_STATIC_JOBS_EXPECT_CLASS,
+          )
           stabilizeJobsBridgeElement(searchInputEl, { kind: 'search-input' })
           stabilizeJobsBridgeElement(expectSelectEl, { kind: 'expect-select' })
           stabilizeJobsBridgeElement(searchEl, { hidden: true, kind: 'source' })
@@ -302,9 +329,12 @@ export function useHostSearchPanel() {
     }
 
     try {
-      const [searchEl, conditionEl] = await elmGetter.get<HTMLDivElement>(searchPanelPlan.blockSelectors, {
-        timeoutMs: SELECTOR_TIMEOUT_MS,
-      })
+      const [searchEl, conditionEl] = await elmGetter.get<HTMLDivElement>(
+        searchPanelPlan.blockSelectors,
+        {
+          timeoutMs: SELECTOR_TIMEOUT_MS,
+        },
+      )
       searchMount.appendChild(searchEl)
       searchMount.appendChild(conditionEl)
       void elmGetter.rm(searchPanelPlan.scanSelector, {

@@ -143,9 +143,23 @@ const useLogStore = defineStore('log', () => {
     }
   }
 
+  function getSuccessMessage(logdata?: logData) {
+    const aiFilteringText = logdata?.aiFilteringAtext?.trim()
+    if (aiFilteringText) {
+      return aiFilteringText
+    }
+
+    const aiFilteringReason = logdata?.aiFilteringScore?.reason?.trim()
+    if (aiFilteringReason) {
+      return aiFilteringReason
+    }
+
+    return undefined
+  }
+
   function add(job: MyJobListData, err: logErr, logdata?: logData, msg?: string) {
     const state = !err ? 'success' : err.state
-    const message = msg ?? (err ? err.message : undefined)
+    const message = msg ?? (err ? err.message : getSuccessMessage(logdata))
 
     data.value.push({
       createdAt: new Date().toISOString(),
