@@ -18,10 +18,11 @@ import { useModel } from '@/composables/useModel'
 import type { Prompt } from '@/composables/useModel/type'
 import type { MyJobListData } from '@/stores/jobs'
 import { jobList } from '@/stores/jobs'
+import type { FormDataAiKey } from '@/types/formData'
 import { logger } from '@/utils/logger'
 
 const props = defineProps<{
-  data: 'aiFiltering'
+  data: FormDataAiKey
   state: {
     currentModel: Ref<string | undefined>
     message: Ref<string | Prompt>

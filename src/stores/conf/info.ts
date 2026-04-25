@@ -53,6 +53,57 @@ export const formInfoData: FormInfoData = {
     'data-help':
       '投递工作的公司规模, 推荐使用boss自带选项进行筛选。严格宽松定义在薪资高级配置中有写',
   },
+  customGreeting: {
+    label: '自定义招呼语',
+    'data-help':
+      '固定文本或模板招呼语入口；AI 打招呼在 AI 能力面板单独开启。两者同时开启时优先发送 AI 生成内容。',
+  },
+  aiGreeting: {
+    label: 'AI 打招呼',
+    'data-help':
+      '独立开关，不需要同时开启自定义招呼语；投递成功后由 LLM 结合岗位和卡片信息生成开场消息。',
+    example: [
+      `请根据下面的 Boss 直聘岗位信息，生成一条投递成功后发给招聘者的开场消息。
+
+要求：
+- 只输出消息正文，不要解释
+- 80 字以内，自然、礼貌、具体
+- 不要编造没有提供的经历或技能
+- 结合岗位名、公司、技能要求和岗位描述表达匹配度
+
+岗位信息：
+岗位名：{{ card.jobName }}
+公司：{{ card.brandName }}
+招聘者：{{ card.bossName }} / {{ card.bossTitle }}
+薪资：{{ card.salaryDesc }}
+经验学历：{{ card.experienceName }} / {{ card.degreeName }}
+技能要求：{{ data.skills }}
+岗位描述：{{ card.postDescription }}`,
+      [
+        {
+          role: 'system',
+          content:
+            '你是求职助手，负责生成 Boss 直聘投递后的开场消息。只输出消息正文，语气自然礼貌，不要解释，不要编造经历。',
+        },
+        {
+          role: 'user',
+          content: `请生成 80 字以内的开场消息。
+
+岗位名：{{ card.jobName }}
+公司：{{ card.brandName }}
+招聘者：{{ card.bossName }} / {{ card.bossTitle }}
+薪资：{{ card.salaryDesc }}
+经验学历：{{ card.experienceName }} / {{ card.degreeName }}
+技能要求：{{ data.skills }}
+岗位描述：{{ card.postDescription }}`,
+        },
+      ],
+    ],
+  },
+  greetingVariable: {
+    label: '招呼语变量',
+    'data-help': '使用 mitem 模板渲染招呼语，可读取 data、boss、card 和 amap 字段。',
+  },
   activityFilter: {
     label: '活跃度过滤',
     'data-help': '打开后会自动过滤掉最近未活跃的Boss发布的工作。以免浪费每天的100次机会。',
@@ -233,8 +284,19 @@ export const defaultFormData: FormData = {
     value: [500, 2000, true],
     enable: false,
   },
+  customGreeting: {
+    value: '',
+    enable: false,
+  },
   deliveryLimit: {
     value: 120,
+  },
+  greetingVariable: {
+    value: false,
+  },
+  aiGreeting: {
+    enable: false,
+    prompt: '',
   },
   activityFilter: {
     value: true,

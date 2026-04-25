@@ -21,6 +21,7 @@ const tableRef = ref<TableV2Instance>()
 const { filterData, columns, dialogData } = useLog()
 
 const aiFilterActiveNames = ref('response')
+const aiGreetingActiveNames = ref('message')
 const formatJson = (value: unknown) => JSON.stringify(value, null, 2)
 const currentLogContext = computed(() => dialogData.value.data?.data)
 const hasAiFilteringDetail = computed(() => {
@@ -32,6 +33,10 @@ const hasAiFilteringDetail = computed(() => {
     context?.aiFilteringAjson ||
     context?.aiFilteringScore,
   )
+})
+const hasAiGreetingDetail = computed(() => {
+  const context = currentLogContext.value
+  return Boolean(context?.aiGreetingQ || context?.aiGreetingR)
 })
 const aiFilteringStructuredResult = computed(
   () => currentLogContext.value?.aiFilteringAjson ?? currentLogContext.value?.aiFilteringScore,
@@ -117,6 +122,29 @@ const aiFilteringStructuredResult = computed(
               >
                 <div class="ai-text">
                   {{ formatJson(aiFilteringStructuredResult) }}
+                </div>
+              </ElCollapseItem>
+            </ElCollapse>
+          </ElTabPane>
+          <ElTabPane v-if="hasAiGreetingDetail" label="AI打招呼" name="greeting">
+            <ElCollapse v-model="aiGreetingActiveNames" accordion>
+              <ElCollapseItem v-if="currentLogContext?.aiGreetingQ" title="Prompt" name="prompt">
+                <div class="ai-text">
+                  {{ currentLogContext.aiGreetingQ }}
+                </div>
+              </ElCollapseItem>
+              <ElCollapseItem
+                v-if="currentLogContext?.aiGreetingR"
+                title="思考过程"
+                name="thinking"
+              >
+                <div class="ai-text">
+                  {{ currentLogContext.aiGreetingR }}
+                </div>
+              </ElCollapseItem>
+              <ElCollapseItem v-if="currentLogContext?.message" title="消息" name="message">
+                <div class="ai-text">
+                  {{ currentLogContext.message }}
                 </div>
               </ElCollapseItem>
             </ElCollapse>

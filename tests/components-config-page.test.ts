@@ -43,6 +43,10 @@ const { mockConf, mockFormInfoData } = vi.hoisted(() => {
           value: [0, 1000],
         },
         config_level: 'advanced',
+        customGreeting: {
+          enable: false,
+          value: '',
+        },
         delay: {
           deliveryInterval: 5,
           deliveryIntervalRandomOffset: 1,
@@ -50,6 +54,7 @@ const { mockConf, mockFormInfoData } = vi.hoisted(() => {
         deliveryLimit: { value: 120 },
         friendStatus: { value: true },
         goldHunterFilter: { value: false },
+        greetingVariable: { value: false },
         hrPosition: keywordField(),
         jobAddress: keywordField(),
         jobContent: keywordField(),
@@ -82,6 +87,7 @@ const { mockConf, mockFormInfoData } = vi.hoisted(() => {
           { label: '高级', value: 'advanced' },
         ],
       },
+      customGreeting: fieldInfo('自定义招呼语'),
       delay: {
         deliveryInterval: { ...fieldInfo('投递间隔'), min: 1 },
         deliveryIntervalRandomOffset: { ...fieldInfo('随机偏移'), min: 0 },
@@ -89,6 +95,7 @@ const { mockConf, mockFormInfoData } = vi.hoisted(() => {
       deliveryLimit: fieldInfo('每日上限'),
       friendStatus: fieldInfo('沟通过滤'),
       goldHunterFilter: fieldInfo('猎头过滤'),
+      greetingVariable: fieldInfo('招呼语变量'),
       hrPosition: fieldInfo('HR 职位'),
       jobAddress: fieldInfo('工作地点'),
       jobContent: fieldInfo('职位内容'),
@@ -184,6 +191,7 @@ describe('Config.vue compact layout', () => {
           ElCheckbox: passthrough('label'),
           ElForm: passthrough('form'),
           ElFormItem: passthrough('label'),
+          ElInput: passthrough('textarea'),
           ElInputNumber: passthrough('input'),
           ElLink: passthrough('a'),
           ElOption: passthrough('option'),

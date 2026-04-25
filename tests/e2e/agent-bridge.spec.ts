@@ -130,7 +130,7 @@ test('routes CLI commands through the relay page into the extension controller',
   }
 })
 
-test('blocks external start when configPatch contains removed delivery-only fields', async () => {
+test('blocks external start when configPatch contains removed automation fields', async () => {
   const session = await launchExtensionSession()
   const bridgePort = await pickAvailablePort()
   const bridge = await startAgentBridge(bridgePort)
@@ -152,9 +152,9 @@ test('blocks external start when configPatch contains removed delivery-only fiel
       payload: {
         confirmHighRisk: false,
         configPatch: {
-          customGreeting: {
+          aiReply: {
             enable: true,
-            value: 'fresh build validation verification',
+            prompt: 'fresh build validation verification',
           },
         },
         jobIds: [fixtureJobId],

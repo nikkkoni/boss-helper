@@ -318,7 +318,7 @@ describe('useAgentMetaQueries', () => {
     )
   })
 
-  it('rejects removed automation fields in runtime config patches', async () => {
+  it('rejects removed automation fields and accepts custom greeting patches', async () => {
     const { useAgentMetaQueries } = await import('@/pages/zhipin/hooks/useAgentMetaQueries')
     const queries = useAgentMetaQueries(createOptions())
 
@@ -351,8 +351,8 @@ describe('useAgentMetaQueries', () => {
       }),
     ).resolves.toEqual(
       expect.objectContaining({
-        code: 'validation-failed',
-        ok: false,
+        code: 'config-updated',
+        ok: true,
       }),
     )
   })

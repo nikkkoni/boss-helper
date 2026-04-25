@@ -5,13 +5,13 @@ import { h, ref } from 'vue'
 import type { Prompt } from '@/composables/useModel/type'
 import { formInfoData, useConf } from '@/stores/conf'
 import { useUser } from '@/stores/user'
-import type { FormInfoAi } from '@/types/formData'
+import type { FormDataAiKey, FormInfoAi } from '@/types/formData'
 
 import SelectllmPromptEditor from './selectllm/SelectllmPromptEditor.vue'
 import SelectllmTestDialog from './selectllm/SelectllmTestDialog.vue'
 
 const props = defineProps<{
-  data: 'aiFiltering'
+  data: FormDataAiKey
 }>()
 
 const conf = useConf()

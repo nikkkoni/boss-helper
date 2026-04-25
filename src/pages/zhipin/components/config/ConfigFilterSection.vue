@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ElAlert, ElButton, ElCheckbox, ElLink, ElPopover } from 'element-plus'
+import { ElAlert, ElButton, ElCheckbox, ElInput, ElLink, ElPopover } from 'element-plus'
 import { computed } from 'vue'
 
 import formItem from '@/components/form/FormItem.vue'
@@ -288,6 +288,44 @@ function syncSalaryRange() {
       <ConfigSectionCard
         compact
         collapsible
+        v-if="conf.config_level.intermediate"
+        title="打招呼"
+        description="这里配置固定文本或模板；AI 打招呼在 AI 能力面板单独开启。"
+      >
+        <template #actions>
+          <span class="config-filter__meta bh-workspace-meta-pill bh-glass-pill">固定消息</span>
+        </template>
+
+        <div class="config-filter__greeting-panel bh-glass-surface bh-glass-surface--nested">
+          <form-item
+            v-bind="formInfoData.customGreeting"
+            v-model:enable="conf.formData.customGreeting.enable"
+            :disabled="deliverLock"
+          >
+            <ElInput
+              v-model="conf.formData.customGreeting.value"
+              :autosize="{ minRows: 3, maxRows: 6 }"
+              clearable
+              maxlength="500"
+              show-word-limit
+              type="textarea"
+            />
+          </form-item>
+
+          <ElCheckbox
+            v-if="conf.config_level.advanced"
+            v-bind="formInfoData.greetingVariable"
+            v-model="conf.formData.greetingVariable.value"
+            border
+          >
+            {{ formInfoData.greetingVariable.label }}
+          </ElCheckbox>
+        </div>
+      </ConfigSectionCard>
+
+      <ConfigSectionCard
+        compact
+        collapsible
         title="附加限制"
         description="控制重复投递、猎头过滤和沟通状态。"
       >
@@ -339,6 +377,12 @@ function syncSalaryRange() {
 .config-filter__field-card {
   min-height: 112px;
   min-width: 0;
+  padding: 14px;
+}
+
+.config-filter__greeting-panel {
+  display: grid;
+  gap: 12px;
   padding: 14px;
 }
 

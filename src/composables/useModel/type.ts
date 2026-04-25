@@ -30,6 +30,8 @@ export interface LlmMessageArgs {
   test?: boolean
 }
 
+export type LlmMessageType = 'aiFiltering' | 'aiGreeting'
+
 type PromptTemplateInput = object
 
 export abstract class Llm<C = unknown> {
@@ -74,7 +76,7 @@ export abstract class Llm<C = unknown> {
     }
   }
   abstract chat(message: string): Promise<string>
-  abstract message(args: LlmMessageArgs, type: 'aiFiltering'): Promise<MessageResponse>
+  abstract message(args: LlmMessageArgs, type: LlmMessageType): Promise<MessageResponse>
 }
 
 export interface MessageResponse<T = string> {

@@ -102,7 +102,7 @@ pnpm agent:mcp -- --bootstrap
 | Tool | 作用 |
 | --- | --- |
 | `boss_helper_config_get` | 读取当前配置 |
-| `boss_helper_config_update` | 更新配置；已移除的问候 / 聊天字段会触发 `validation-failed` |
+| `boss_helper_config_update` | 更新配置；非法值或仍已移除的聊天字段会触发 `validation-failed` |
 | `boss_helper_batch` | 顺序执行一组命令 |
 | `boss_helper_events_recent` | 读取最近事件快照 |
 | `boss_helper_wait_for_event` | 等待下一条匹配事件 |
@@ -207,7 +207,7 @@ pnpm agent:mcp -- --bootstrap
 
 - `start` / `resume` 在未确认时会返回结构化 `preflight` 摘要，便于你先读风险再决定是否真执行
 - 即使传了 `confirmHighRisk=true`，也不能绕过页面侧的每日投递额度和其他护栏
-- `config.update` 当前是 delivery-only 配置更新接口；像 `customGreeting`、`greetingVariable`、`aiGreeting`、`aiReply`、`delay.messageSending` 这类已移除字段应先从 patch 中删掉再调用
+- `config.update` 支持更新投递、筛选、自定义招呼语与 AI 打招呼配置；`aiReply`、`delay.messageSending` 这类已移除字段应先从 patch 中删掉再调用
 
 ## Readiness 与错误恢复
 

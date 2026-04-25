@@ -27,6 +27,8 @@ export interface BossHelperAgentPlanConfigSummary {
   aiFilteringExternal: boolean
   aiFilteringModelReady: boolean
   aiFilteringThreshold: number | null
+  aiGreetingEnabled: boolean
+  aiGreetingModelReady: boolean
   resetFiltered: boolean
   targetJobIds: string[]
 }

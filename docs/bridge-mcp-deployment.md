@@ -178,7 +178,7 @@ pnpm agent:cli resume --payload '{"confirmHighRisk":true}'
 配置更新说明：
 
 - `config.update` 当前不需要 `confirmHighRisk`
-- 当前构建已经是 delivery-only；如果 `configPatch` 包含已移除的问候 / 聊天字段，例如 `customGreeting`、`greetingVariable`、`aiGreeting`、`aiReply`、`delay.messageSending`，会返回 `validation-failed` 与 `suggestedAction=fix-input`
+- 当前构建支持自定义招呼语和 AI 打招呼；如果 `configPatch` 包含仍已移除的聊天字段，例如 `aiReply`、`delay.messageSending`，会返回 `validation-failed` 与 `suggestedAction=fix-input`
 
 ## 状态语义
 

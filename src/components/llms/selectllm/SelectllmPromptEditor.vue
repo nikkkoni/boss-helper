@@ -16,10 +16,11 @@ import type { Ref } from 'vue'
 
 import { useModel } from '@/composables/useModel'
 import type { Prompt } from '@/composables/useModel/type'
+import type { FormDataAiKey } from '@/types/formData'
 
 const props = defineProps<{
   copyOnlineResume: () => Promise<void>
-  data: 'aiFiltering'
+  data: FormDataAiKey
   inputExample: () => void
   removeMessage: (item: Prompt[number]) => void
   roleOptions: { label: string; value: string }[]

@@ -17,21 +17,19 @@ export const removedSensitiveStorageKeys = [
 export function stripRemovedConfigFields(data: PersistedFormData) {
   const snapshot = jsonClone(data) as Partial<FormData> & {
     aiFiltering?: FormData['aiFiltering'] & { vip?: boolean }
-    aiGreeting?: { vip?: boolean }
+    aiGreeting?: FormData['aiGreeting'] & { vip?: boolean }
     aiReply?: { vip?: boolean }
-    customGreeting?: unknown
-    greetingVariable?: unknown
     delay?: FormData['delay'] & { messageSending?: number }
     amap?: unknown
   }
 
   delete snapshot.amap
-  delete snapshot.customGreeting
-  delete snapshot.greetingVariable
-  delete snapshot.aiGreeting
   delete snapshot.aiReply
   if (snapshot.aiFiltering) {
     delete snapshot.aiFiltering.vip
+  }
+  if (snapshot.aiGreeting) {
+    delete snapshot.aiGreeting.vip
   }
   if (snapshot.delay) {
     delete snapshot.delay.messageSending

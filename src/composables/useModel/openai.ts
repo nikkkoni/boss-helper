@@ -5,7 +5,7 @@ import { RequestError, request } from '@/utils/request'
 import { createCircuitBreaker, isLikelyNetworkError, retryAsync } from '@/utils/retry'
 
 import { other } from './common'
-import type { LlmConf, LlmInfo, LlmMessageArgs, MessageResponse, Prompt } from './type'
+import type { LlmConf, LlmInfo, LlmMessageArgs, LlmMessageType, MessageResponse, Prompt } from './type'
 import { Llm } from './type'
 
 const openAICircuitBreaker = createCircuitBreaker({
@@ -185,7 +185,7 @@ class Gpt extends Llm<openaiLLMConf> {
 
   async message(
     { data = {}, onPrompt = (_s: string) => {}, json = false, structuredOutput }: LlmMessageArgs,
-    _type: 'aiFiltering',
+    _type: LlmMessageType,
   ): Promise<MessageResponse> {
     const prompts = this.buildPrompt(data)
     const prompt = prompts[prompts.length - 1].content

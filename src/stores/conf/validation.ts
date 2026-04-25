@@ -17,6 +17,136 @@ function pushRemovedFieldError(
   })
 }
 
+function validateBooleanField(
+  field: string,
+  value: unknown,
+  errors: BossHelperAgentValidationError[],
+) {
+  if (value != null && typeof value !== 'boolean') {
+    errors.push({
+      field,
+      code: 'invalid-boolean-value',
+      message: `${field} 必须是布尔值`,
+    })
+  }
+}
+
+function validateCustomGreeting(
+  value: RuntimeConfigPatch['customGreeting'],
+  errors: BossHelperAgentValidationError[],
+) {
+  if (value == null) {
+    return
+  }
+
+  validateBooleanField('customGreeting.enable', value.enable, errors)
+
+  if (value.value != null && typeof value.value !== 'string') {
+    errors.push({
+      field: 'customGreeting.value',
+      code: 'invalid-string-value',
+      message: 'customGreeting.value 必须是字符串',
+    })
+    return
+  }
+
+  if (value.enable === true && typeof value.value === 'string' && value.value.trim() === '') {
+    errors.push({
+      field: 'customGreeting.value',
+      code: 'empty-custom-greeting',
+      message: '启用自定义招呼语时 customGreeting.value 不能为空',
+    })
+  }
+}
+
+function validatePromptField(
+  field: string,
+  prompt: unknown,
+  enabled: boolean,
+  errors: BossHelperAgentValidationError[],
+) {
+  if (prompt == null) {
+    return
+  }
+
+  if (typeof prompt === 'string') {
+    if (enabled && prompt.trim() === '') {
+      errors.push({
+        field,
+        code: 'empty-ai-greeting-prompt',
+        message: '启用 AI 打招呼时 aiGreeting.prompt 不能为空',
+      })
+    }
+    return
+  }
+
+  if (!Array.isArray(prompt)) {
+    errors.push({
+      field,
+      code: 'invalid-prompt-value',
+      message: `${field} 必须是字符串或多轮对话数组`,
+    })
+    return
+  }
+
+  const validRoles = new Set(['system', 'user', 'assistant'])
+  const malformedIndex = prompt.findIndex(
+    (item) =>
+      item == null ||
+      typeof item !== 'object' ||
+      !validRoles.has((item as { role?: unknown }).role as string) ||
+      typeof (item as { content?: unknown }).content !== 'string',
+  )
+
+  if (malformedIndex >= 0) {
+    errors.push({
+      field: `${field}.${malformedIndex}`,
+      code: 'invalid-prompt-message',
+      message: '多轮对话提示词必须包含合法的 role 和 content',
+    })
+    return
+  }
+
+  if (
+    enabled &&
+    (prompt.length === 0 ||
+      !prompt.some((item) => typeof item.content === 'string' && item.content.trim() !== ''))
+  ) {
+    errors.push({
+      field,
+      code: 'empty-ai-greeting-prompt',
+      message: '启用 AI 打招呼时 aiGreeting.prompt 不能为空',
+    })
+  }
+}
+
+function validateAiGreeting(
+  value: RuntimeConfigPatch['aiGreeting'],
+  errors: BossHelperAgentValidationError[],
+) {
+  if (value == null) {
+    return
+  }
+
+  validateBooleanField('aiGreeting.enable', value.enable, errors)
+
+  if (value.model != null && typeof value.model !== 'string') {
+    errors.push({
+      field: 'aiGreeting.model',
+      code: 'invalid-string-value',
+      message: 'aiGreeting.model 必须是字符串',
+    })
+  } else if (value.enable === true && value.model != null && value.model.trim() === '') {
+    errors.push({
+      field: 'aiGreeting.model',
+      code: 'empty-ai-greeting-model',
+      message: '启用 AI 打招呼时 aiGreeting.model 不能为空',
+    })
+  }
+
+  validatePromptField('aiGreeting.prompt', value.prompt, value.enable === true, errors)
+}
+
 function validateRangeValue(
   field: string,
   value: unknown,
@@ -59,16 +189,11 @@ function validateRangeValue(
 export function validateConfigPatch(patch: RuntimeConfigPatch): BossHelperAgentValidationError[] {
   const errors: BossHelperAgentValidationError[] = []
 
-  if (patch.customGreeting != null) {
-    pushRemovedFieldError(errors, 'customGreeting')
-  }
+  validateCustomGreeting(patch.customGreeting, errors)
+  validateAiGreeting(patch.aiGreeting, errors)
 
   if (patch.greetingVariable != null) {
-    pushRemovedFieldError(errors, 'greetingVariable')
-  }
-
-  if (patch.aiGreeting != null) {
-    pushRemovedFieldError(errors, 'aiGreeting')
+    validateBooleanField('greetingVariable.value', patch.greetingVariable.value, errors)
   }
 
   if (patch.aiReply != null) {

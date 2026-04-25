@@ -34,7 +34,10 @@ export interface FormData {
   jobAddress: Omit<FormDataSelect, 'include'>
   salaryRange: FormSalaryRangeInput
   companySizeRange: FormDataRangeInput
+  customGreeting: FormDataInput
   deliveryLimit: FormDataInputNumber
+  greetingVariable: FormDataCheckbox
+  aiGreeting: FormDataAi
   activityFilter: FormDataCheckbox
   friendStatus: FormDataCheckbox
   sameCompanyFilter: FormDataCheckbox
@@ -51,13 +54,17 @@ export interface FormData {
 }
 
 export type FormInfoData = {
-  [key in keyof Omit<FormData, 'config_level' | 'aiFiltering' | 'delay' | 'userId' | 'version'>]: {
+  [key in keyof Omit<
+    FormData,
+    'config_level' | 'aiFiltering' | 'aiGreeting' | 'delay' | 'userId' | 'version'
+  >]: {
     label: string
     'data-help'?: string
   }
 } & {
   config_level: { options: Array<{ value: ConfigLevel; label: string }>; 'data-help'?: string }
   aiFiltering: FormInfoAi
+  aiGreeting: FormInfoAi
   delay: ConfInfoDelay
 }
 
@@ -111,6 +118,8 @@ export interface FormDataAi {
   enable: boolean
 }
 
+export type FormDataAiKey = 'aiFiltering' | 'aiGreeting'
+
 interface ConfDelay {
   deliveryStarts: number
   deliveryInterval: number
@@ -128,11 +137,8 @@ type ConfInfoDelay = {
 }
 
 export type PersistedFormData = Partial<Omit<FormData, 'delay'>> & {
-  aiGreeting?: (FormDataAi & { vip?: boolean }) | undefined
   aiReply?: (FormDataAi & { vip?: boolean }) | undefined
-  customGreeting?: FormDataInput | undefined
   delay?: Partial<FormData['delay']> & { messageSending?: number }
-  greetingVariable?: FormDataCheckbox | undefined
 }
 
 export type RuntimeConfigPatch = PersistedFormData

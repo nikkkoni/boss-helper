@@ -2,14 +2,17 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const {
-  mockExternalReview,
-} = vi.hoisted(() => ({
+const { mockExternalReview, mockSendChatByGeekChatCore } = vi.hoisted(() => ({
   mockExternalReview: vi.fn(),
+  mockSendChatByGeekChatCore: vi.fn(),
 }))
 
 vi.mock('@/pages/zhipin/hooks/agentReview', () => ({
   requestExternalAIFilterReview: mockExternalReview,
+}))
+
+vi.mock('@/composables/useWebSocket/chatCore', () => ({
+  sendChatByGeekChatCore: mockSendChatByGeekChatCore,
 }))
 
 import {
@@ -32,6 +35,7 @@ import { useUser } from '@/stores/user'
 import {
   AIFilteringError,
   FriendStatusError,
+  GreetError,
   JobAddressError,
   RepeatError,
 } from '@/types/deliverError'
@@ -122,6 +126,8 @@ describe('useApplying handles', () => {
     useModel().modelData = []
     conf.formData.aiFiltering.enable = false
     mockExternalReview.mockReset()
+    mockSendChatByGeekChatCore.mockReset()
+    mockSendChatByGeekChatCore.mockResolvedValue(undefined)
   })
 
   it('filters repeated contacts and increments repeat statistics', async () => {
@@ -437,6 +443,131 @@ describe('useApplying handles', () => {
         threshold: 80,
       }),
     )
+  })
+
+  it('sends custom greeting after delivery and renders template variables', async () => {
+    const conf = useConf()
+    const job = createJob({ card: createJobCard() })
+    const ctx = createLogContext(job, {
+      bossData: {
+        data: {
+          bossId: 2,
+          bossSource: 7,
+          encryptBossId: 'encrypt-boss-2',
+          name: 'Alice',
+        },
+      } as unknown as logData['bossData'],
+    })
+
+    conf.formData.customGreeting.enable = true
+    conf.formData.customGreeting.value = '你好 {{ boss.data.name }}，我想了解 {{ card.jobName }}'
+    conf.formData.greetingVariable.value = true
+
+    const step = getObjectStep(handles().customGreeting())
+    await expect(step.after?.({ data: job }, ctx)).resolves.toBeUndefined()
+
+    expect(ctx.message).toBe('你好 Alice，我想了解 Frontend Engineer')
+    expect(mockSendChatByGeekChatCore).toHaveBeenCalledWith({
+      content: '你好 Alice，我想了解 Frontend Engineer',
+      form_uid: '1',
+      friend_source: 7,
+      to_name: 'encrypt-boss-2',
+      to_uid: '2',
+    })
+  })
+
+  it('wraps custom greeting send failures as greet errors', async () => {
+    const conf = useConf()
+    const job = createJob({ card: createJobCard() })
+    const ctx = createLogContext(job, {
+      bossData: {
+        data: {
+          bossId: 2,
+          bossSource: 0,
+          encryptBossId: 'encrypt-boss-2',
+        },
+      } as unknown as logData['bossData'],
+    })
+
+    conf.formData.customGreeting.enable = true
+    conf.formData.customGreeting.value = 'hello'
+    mockSendChatByGeekChatCore.mockRejectedValueOnce(new Error('socket down'))
+
+    const step = getObjectStep(handles().customGreeting())
+    await expect(step.after?.({ data: job }, ctx)).rejects.toBeInstanceOf(GreetError)
+    await expect(step.after?.({ data: job }, ctx)).resolves.toBeUndefined()
+  })
+
+  it('generates AI greeting after delivery and records prompt details', async () => {
+    const conf = useConf()
+    const model = useModel()
+    const job = createJob({ card: createJobCard() })
+    const ctx = createLogContext(job, {
+      bossData: {
+        data: {
+          bossId: 2,
+          bossSource: 7,
+          encryptBossId: 'encrypt-boss-2',
+          name: 'Alice',
+          title: 'HR',
+        },
+      } as unknown as logData['bossData'],
+    })
+
+    conf.formData.aiGreeting.enable = true
+    conf.formData.aiGreeting.model = 'model-1'
+    conf.formData.aiGreeting.prompt = '生成 {{ card.jobName }} 的开场消息'
+    model.modelData = [
+      createModelItem({
+        data: {
+          advanced: {},
+          api_key: 'secret',
+          model: 'gpt-4o-mini',
+          mode: 'openai',
+          other: {
+            pricingInputPerMillion: 1,
+            pricingOutputPerMillion: 2,
+          },
+          url: 'https://api.example.com',
+        },
+      }),
+    ]
+    const llmMessage = vi.fn(async (_args: unknown, type: string) => {
+      expect(type).toBe('aiGreeting')
+      return {
+        content: '你好，我对 Frontend Engineer 很感兴趣，想进一步了解这个机会。',
+        prompt: 'rendered ai greeting prompt',
+        reasoning_content: 'reasoning',
+        usage: {
+          input_tokens: 1000,
+          output_tokens: 500,
+          total_tokens: 1500,
+        },
+      }
+    })
+    const getModelSpy = vi.spyOn(model, 'getModel').mockReturnValue({
+      message: llmMessage,
+    } as unknown as Llm)
+
+    const step = getObjectStep(handles().customGreeting())
+    await expect(step.after?.({ data: job }, ctx)).resolves.toBeUndefined()
+
+    expect(getModelSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'model-1' }),
+      '生成 {{ card.jobName }} 的开场消息',
+    )
+    expect(ctx.aiGreetingQ).toBe('rendered ai greeting prompt')
+    expect(ctx.aiGreetingR).toBe('reasoning')
+    expect(ctx.message).toBe('你好，我对 Frontend Engineer 很感兴趣，想进一步了解这个机会。')
+    expect(mockSendChatByGeekChatCore).toHaveBeenCalledWith({
+      content: '你好，我对 Frontend Engineer 很感兴趣，想进一步了解这个机会。',
+      form_uid: '1',
+      friend_source: 7,
+      to_name: 'encrypt-boss-2',
+      to_uid: '2',
+    })
+    expect(useStatistics().todayData.aiRequestCount).toBe(1)
+    expect(useStatistics().todayData.aiTotalCost).toBe(0.002)
   })
 
   it('uses internal ai filtering model and records parsed results', async () => {

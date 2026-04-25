@@ -3,6 +3,7 @@ import { ElMessage } from 'element-plus'
 import { browser } from '#imports'
 import {
   BossHelperError,
+  GreetError,
   LimitError,
   PublishError,
   RateLimitError,
@@ -102,6 +103,51 @@ export async function requestDetail(params: { securityId: string; lid: string })
   )
 
   return ensureBossApiSuccess(res.data, '获取职位详情失败')
+}
+
+export async function requestBossData(
+  card: bossZpCardData & { bossInfo?: { bossSource?: number } },
+  errorMsg?: string,
+  retries = 3,
+): Promise<bossZpBossData> {
+  if (retries === 0) {
+    throw new GreetError(errorMsg ?? '重试多次失败')
+  }
+
+  const axios = await getAxiosClient()
+  const token = await getBossToken()
+  const payload = new FormData()
+  payload.append('bossId', card.encryptUserId)
+  payload.append('securityId', card.securityId)
+  payload.append('bossSrc', String(card.bossInfo?.bossSource ?? 0))
+
+  try {
+    const res = await runWithZhipinRateLimit(() =>
+      axios<BossApiResponse<bossZpBossData>>({
+        url: 'https://www.zhipin.com/wapi/zpchat/geek/getBossData',
+        data: payload,
+        method: 'POST',
+        headers: { Zp_token: token },
+        timeout: 5000,
+      }),
+    )
+
+    if (res.data.code === 0) {
+      return res.data.zpData
+    }
+
+    if (res.data.message === '非好友关系') {
+      return requestBossData(card, '非好友关系', retries - 1)
+    }
+
+    throw new GreetError(`状态错误:${res.data.message || '未知错误'}`)
+  } catch (error) {
+    if (error instanceof GreetError) {
+      throw error
+    }
+    logger.warn(`requestBossData 重试, 剩余 ${retries - 1} 次`, error)
+    return requestBossData(card, toErrorMessage(error), retries - 1)
+  }
 }
 
 export async function sendPublishReq(

@@ -1,10 +1,15 @@
+import { miTem } from 'mitem'
+
 import { useModel } from '@/composables/useModel'
+import { sendChatByGeekChatCore } from '@/composables/useWebSocket/chatCore'
 import { requestExternalAIFilterReview } from '@/pages/zhipin/hooks/agentReview'
 import { useConf } from '@/stores/conf'
 import { useStatistics } from '@/stores/statistics'
+import { useUser } from '@/stores/user'
+import { AIFilteringError, GreetError } from '@/types/deliverError'
 import type { Statistics, FormData } from '@/types/formData'
-import { AIFilteringError } from '@/types/deliverError'
 
+import { runInternalAIGreeting } from './services/aiGreeting'
 import { runInternalAIFiltering } from './services/aiFiltering'
 import {
   createActivityFilterStep,
@@ -23,6 +28,7 @@ import {
 } from './services/filterSteps'
 import type { StepFactory } from './type'
 import { errorHandle, sameCompanyKey, sameHrKey } from './utils'
+import { requestBossData } from './utils'
 
 export interface ApplyingHandleOptions {
   currentUserId?: number | string | null
@@ -68,6 +74,87 @@ export function handles(options: ApplyingHandleOptions = {}) {
   const jobAddress = createJobAddressStep(formData, statistics, toCause)
   const jobFriendStatus = createJobFriendStatusStep(formData)
   const activityFilter = createActivityFilterStep(formData, statistics, toCause)
+
+  const customGreeting: StepFactory = () => {
+    const useCustomGreeting = formData.customGreeting.enable
+    const useAiGreeting = formData.aiGreeting.enable
+
+    if (!useCustomGreeting && !useAiGreeting) {
+      return
+    }
+
+    const template = useCustomGreeting ? miTem.compile(formData.customGreeting.value) : undefined
+
+    return {
+      after: async ({ data }, ctx) => {
+        try {
+          const uid = useUser().getUserId()
+          if (uid == null || uid === '') {
+            throw new GreetError('没有获取到uid')
+          }
+
+          const card = data.card ?? (await data.getCard())
+          if (card == null) {
+            throw new GreetError('Card 信息获取失败')
+          }
+
+          ctx.bossData ??= await requestBossData(card)
+
+          const message = useAiGreeting
+            ? await (async () => {
+                const model = getModelStore()
+                const curModel = model.modelData.find((v) => formData.aiGreeting.model === v.key)
+                if (!curModel) {
+                  throw new GreetError('没有找到AI打招呼的模型')
+                }
+
+                return runInternalAIGreeting({
+                  card,
+                  ctx,
+                  gpt: model.getModel(curModel, formData.aiGreeting.prompt),
+                  model: curModel,
+                  onPrompt: () => {},
+                })
+              })()
+            : (
+                formData.greetingVariable.value && template
+                  ? template({
+                      data,
+                      boss: ctx.bossData,
+                      card,
+                      amap: {
+                        straightDistance: 0,
+                        drivingDistance: 0,
+                        drivingDuration: 0,
+                        walkingDistance: 0,
+                        walkingDuration: 0,
+                      },
+                    })
+                  : formData.customGreeting.value
+              ).trim()
+
+          if (!message) {
+            throw new GreetError('打招呼内容为空')
+          }
+
+          ctx.message = message
+
+          await sendChatByGeekChatCore({
+            form_uid: String(uid),
+            to_uid: String(ctx.bossData.data.bossId),
+            to_name: ctx.bossData.data.encryptBossId,
+            friend_source: ctx.bossData.data.bossSource,
+            content: message,
+          })
+        } catch (e) {
+          if (e instanceof GreetError) {
+            throw e
+          }
+          throw new GreetError(errorHandle(e), toCause(e))
+        }
+      },
+    }
+  }
 
   const aiFiltering: StepFactory = () => {
     if (!formData.aiFiltering.enable) {
@@ -159,5 +246,6 @@ export function handles(options: ApplyingHandleOptions = {}) {
     jobFriendStatus,
     aiFiltering,
     activityFilter,
+    customGreeting,
   }
 }

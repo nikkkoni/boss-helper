@@ -8,7 +8,7 @@ import selectLLM from '@/components/llms/Selectllm.vue'
 import { useModel } from '@/composables/useModel'
 import { useCommon } from '@/stores/common'
 import { formInfoData, useConf } from '@/stores/conf'
-import type { FormDataAi } from '@/types/formData'
+import type { FormDataAi, FormDataAiKey } from '@/types/formData'
 
 import ConfigSectionCard from './config/ConfigSectionCard.vue'
 
@@ -17,16 +17,44 @@ const { deliverLock } = useCommon()
 const modelStore = useModel()
 const aiBoxShow = ref(false)
 const aiConfBoxShow = ref(false)
-const aiBox = ref<'aiFiltering'>('aiFiltering')
-const selectedModelName = computed(() => {
-  const modelKey = conf.formData.aiFiltering.model
+const aiBox = ref<FormDataAiKey>('aiFiltering')
+const modelSummary = computed(() => `${modelStore.modelData.length} 个模型`)
+
+function getSelectedModelName(modelKey: string | undefined) {
   if (!modelKey) {
     return '未选择模型'
   }
 
   return modelStore.modelData.find((item) => item.key === modelKey)?.name ?? '模型已不存在'
+}
+
+const selectedFilteringModelName = computed(() =>
+  getSelectedModelName(conf.formData.aiFiltering.model),
+)
+const selectedGreetingModelName = computed(() =>
+  getSelectedModelName(conf.formData.aiGreeting.model),
+)
+const greetingStatusTitle = computed(() => {
+  if (conf.formData.aiGreeting.enable) {
+    return 'AI 生成生效'
+  }
+  if (conf.formData.customGreeting.enable) {
+    return '自定义招呼语生效'
+  }
+  return '未启用招呼语'
 })
-const modelSummary = computed(() => `${modelStore.modelData.length} 个模型`)
+const greetingStatusDescription = computed(() => {
+  if (conf.formData.aiGreeting.enable && conf.formData.customGreeting.enable) {
+    return 'AI 打招呼独立生效，无需开启自定义招呼语；当前会优先发送 AI 生成内容。'
+  }
+  if (conf.formData.aiGreeting.enable) {
+    return 'AI 打招呼已独立开启；不需要开启自定义招呼语。'
+  }
+  if (conf.formData.customGreeting.enable) {
+    return '当前发送自定义文本或模板；如需 AI 生成，请开启 AI 打招呼并配置 Prompt。'
+  }
+  return '开启 AI 打招呼或自定义招呼语任一项即可发送开场消息。'
+})
 
 function change(v: Partial<FormDataAi>) {
   v.enable = !v.enable
@@ -40,8 +68,8 @@ function change(v: Partial<FormDataAi>) {
       compact
       collapsible
       default-collapsed
-      title="AI 筛选"
-      description="开启后会把职位内容交给模型进一步判断，适合对文本质量要求更高的场景。"
+      title="AI 能力"
+      description="开启后会把职位内容交给模型进一步判断或生成投递后的开场消息。"
     >
       <template #actions>
         <span class="config-ai__meta bh-workspace-meta-pill bh-glass-pill">能力开关</span>
@@ -55,9 +83,21 @@ function change(v: Partial<FormDataAi>) {
         </div>
 
         <div class="config-ai__status-card bh-workspace-stat-card bh-glass-surface bh-glass-surface--nested">
-          <span>当前模型</span>
-          <strong>{{ selectedModelName }}</strong>
-          <p>使用前请确认模型地址、鉴权和 Prompt 已配置完成。</p>
+          <span>招呼语状态</span>
+          <strong>{{ greetingStatusTitle }}</strong>
+          <p>{{ greetingStatusDescription }}</p>
+        </div>
+
+        <div class="config-ai__status-card bh-workspace-stat-card bh-glass-surface bh-glass-surface--nested">
+          <span>筛选模型</span>
+          <strong>{{ selectedFilteringModelName }}</strong>
+          <p>用于岗位内容评分。</p>
+        </div>
+
+        <div class="config-ai__status-card bh-workspace-stat-card bh-glass-surface bh-glass-surface--nested">
+          <span>招呼语模型</span>
+          <strong>{{ selectedGreetingModelName }}</strong>
+          <p>用于生成开场消息。</p>
         </div>
       </div>
 
@@ -70,6 +110,19 @@ function change(v: Partial<FormDataAi>) {
           @show="
             () => {
               aiBox = 'aiFiltering'
+              aiBoxShow = true
+            }
+          "
+          @change="change"
+        />
+        <formSwitch
+          :label="formInfoData.aiGreeting.label"
+          :data-help="formInfoData.aiGreeting['data-help']"
+          :data="conf.formData.aiGreeting"
+          :lock="deliverLock"
+          @show="
+            () => {
+              aiBox = 'aiGreeting'
               aiBoxShow = true
             }
           "

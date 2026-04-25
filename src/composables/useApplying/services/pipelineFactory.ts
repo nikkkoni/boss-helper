@@ -1,6 +1,5 @@
-import type { Pipeline } from '../type'
-
 import { handles, type ApplyingHandleOptions } from '../handles'
+import type { Pipeline } from '../type'
 import { createLoadCardStep } from './amapStep'
 import { compilePipeline, withStepName } from './pipelineCompiler'
 
@@ -18,6 +17,7 @@ export async function createApplyingPipeline(options: CreateApplyingPipelineOpti
   const loadCard = createLoadCardStep()
   const includeAiFiltering = options.includeAiFiltering !== false
   const aiFilteringStep = includeAiFiltering ? h.aiFiltering() : undefined
+  const customGreetingStep = h.customGreeting()
   const pipeline: Pipeline = [
     withStepName('communicated', h.communicated()),
     withStepName('sameCompanyFilter', h.SameCompanyFilter()),
@@ -35,6 +35,7 @@ export async function createApplyingPipeline(options: CreateApplyingPipelineOpti
       withStepName('jobFriendStatus', h.jobFriendStatus()),
       withStepName('jobContent', h.jobContent()),
       includeAiFiltering ? withStepName('aiFiltering', aiFilteringStep) : undefined,
+      withStepName('customGreeting', customGreetingStep),
     ],
   ]
 

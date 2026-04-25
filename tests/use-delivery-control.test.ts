@@ -483,7 +483,14 @@ describe('useDeliveryControl', () => {
       }),
     ).resolves.toEqual(
       expect.objectContaining({
-        code: 'validation-failed',
+        code: 'high-risk-action-confirmation-required',
+        data: expect.objectContaining({
+          preflight: expect.objectContaining({
+            command: 'start',
+            configPatchKeys: ['customGreeting'],
+            requiresConfirmHighRisk: true,
+          }),
+        }),
         ok: false,
         retryable: false,
         suggestedAction: 'fix-input',

@@ -64,12 +64,18 @@ function buildPlanConfigSummary(options: {
   const aiFilteringModelReady = !aiFilteringEnabled
     || aiFilteringExternal
     || (typeof config.aiFiltering.model === 'string' && availableModelKeys.has(config.aiFiltering.model))
+  const aiGreetingEnabled = config.aiGreeting.enable === true
+  const aiGreetingModelReady =
+    !aiGreetingEnabled ||
+    (typeof config.aiGreeting.model === 'string' && availableModelKeys.has(config.aiGreeting.model))
 
   return {
     aiFilteringEnabled,
     aiFilteringExternal,
     aiFilteringModelReady,
     aiFilteringThreshold: aiFilteringEnabled ? (config.aiFiltering.score ?? null) : null,
+    aiGreetingEnabled,
+    aiGreetingModelReady,
     resetFiltered,
     targetJobIds,
   }
@@ -83,6 +89,10 @@ function buildRemainingSteps(config: BossHelperAgentPlanConfigSummary) {
   }
 
   steps.push('apply')
+
+  if (config.aiGreetingEnabled) {
+    steps.push('ai-greeting')
+  }
 
   return steps
 }
@@ -276,6 +286,24 @@ function createPostFilterItem(options: {
       job: toAgentJobSummary(job),
       remainingSteps,
       stage: 'ai-filtering',
+    }
+  }
+
+  if (config.aiGreetingEnabled && !config.aiGreetingModelReady) {
+    return {
+      decision: 'missing-info',
+      explain: '岗位已通过当前只读前置过滤，但当前没有可用的 AI 打招呼模型，真实投递后无法生成开场消息。',
+      issues: [
+        createIssue(
+          'ai-greeting-model-missing',
+          '未找到 AI 打招呼模型，或模型尚未初始化。',
+          'error',
+          'customGreeting',
+        ),
+      ],
+      job: toAgentJobSummary(job),
+      remainingSteps,
+      stage: 'ready',
     }
   }
 
