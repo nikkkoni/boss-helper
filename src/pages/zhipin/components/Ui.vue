@@ -24,7 +24,6 @@ import Statistics from './Statistics.vue'
 import WorkspaceHeader from './workspace/WorkspaceHeader.vue'
 import WorkspaceSectionHeader from './workspace/WorkspaceSectionHeader.vue'
 import WorkspaceShell from './workspace/WorkspaceShell.vue'
-import WorkspaceStatusRail from './workspace/WorkspaceStatusRail.vue'
 import WorkspaceTabs from './workspace/WorkspaceTabs.vue'
 
 const user = useUser()
@@ -94,9 +93,7 @@ const searchPanelLabel = computed(() => {
       return '经典职位页搜索桥接'
   }
 })
-const activeWorkspaceTabLabel = computed(
-  () => workspaceTabLabelMap[activeTab.value] ?? '主工作区',
-)
+const activeWorkspaceTabLabel = computed(() => workspaceTabLabelMap[activeTab.value] ?? '主工作区')
 const isPaused = computed(() => common.deliverState === 'paused' && !common.deliverLock)
 const primaryActionLabel = computed(() => (isPaused.value ? '继续投递' : '开始投递'))
 const primaryActionDisabled = computed(() => common.deliverLock && common.deliverState !== 'paused')
@@ -164,7 +161,7 @@ onMounted(async () => {
     ElMessage.error(`分页器初始失败: ${e instanceof Error ? e.message : '未知错误'}`)
   })
 
-  // 帮助模式改为覆盖整个工作台，这样侧栏新增模块也能获得 hover 提示。
+  // 帮助模式覆盖整个工作台，主区和候选岗位面板都能获得 hover 提示。
   helpRootElement.value =
     shellRef.value?.getRootElement() ?? tabsRef.value?.getTabsRootElement() ?? null
 })
@@ -189,44 +186,43 @@ onUnmounted(() => {
       <HelpOverlay :visible="helpVisible" :root-element="helpRootElement" />
 
       <template #main>
-        <section class="helper-dashboard__panel-group bh-workspace-section-gap">
+        <section class="helper-dashboard__panel-group">
           <section
-            class="helper-dashboard__panel helper-dashboard__panel--workspace bh-glass-surface"
+            class="helper-workspace bh-glass-surface"
             data-help="这里集中展示当前工作台的主业务模块与标签切换。"
           >
-            <WorkspaceSectionHeader
-              eyebrow="Main Workspace"
-              title="主工作区"
-              description="把统计、筛选、配置、日志和项目说明收进同一个工作台，减少在页面里反复查找。"
-              :meta="activeWorkspaceTabLabel"
-              size="compact"
-            />
-
-            <div class="helper-dashboard__workspace-stage bh-glass-surface bh-glass-surface--nested">
-              <WorkspaceTabs v-model="activeTab" ref="tabsRef" :search-panel-kind="searchPanelKind">
-                <template #statistics>
-                  <Statistics />
-                </template>
-
-                <template #config>
-                  <Config />
-                </template>
-
-                <template #logs>
-                  <Logs />
-                </template>
-
-                <template #about>
-                  <About />
-                </template>
-              </WorkspaceTabs>
+            <div class="helper-workspace__topbar">
+              <WorkspaceSectionHeader
+                eyebrow="Workspace"
+                title="主工作区"
+                :meta="activeWorkspaceTabLabel"
+                size="toolbar"
+              />
             </div>
+
+            <WorkspaceTabs v-model="activeTab" ref="tabsRef" :search-panel-kind="searchPanelKind">
+              <template #statistics>
+                <Statistics />
+              </template>
+
+              <template #config>
+                <Config />
+              </template>
+
+              <template #logs>
+                <Logs />
+              </template>
+
+              <template #about>
+                <About />
+              </template>
+            </WorkspaceTabs>
           </section>
         </section>
       </template>
 
-      <template #aside>
-        <WorkspaceStatusRail
+      <Teleport to="#boss-helper-job-wrap,.page-job-inner .page-job-content">
+        <Card
           :delivery-state-label="deliveryStateLabel"
           :delivery-state-tone="deliveryStateTone"
           :delivery-status-message="deliveryStatusMessage"
@@ -243,10 +239,6 @@ onUnmounted(() => {
           @primary-action="handlePrimaryAction"
           @reset-action="resetFilter"
         />
-      </template>
-
-      <Teleport to="#boss-helper-job-wrap,.page-job-inner .page-job-content">
-        <Card />
       </Teleport>
       <!-- <Teleport to=".page-job-wrapper">
       <chatVue
@@ -363,31 +355,31 @@ onUnmounted(() => {
   overflow: unset !important;
 }
 
-.helper-dashboard__panel {
-  padding: 22px;
-}
-
-.helper-dashboard__panel.helper-dashboard__panel--workspace.bh-glass-surface {
+.helper-workspace {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   overflow: visible !important;
+  padding: 16px;
 }
 
-.helper-dashboard__workspace-stage {
-  padding: 18px;
-  overflow: visible !important;
+.helper-workspace__topbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 2px 0;
 }
 
 @media (max-width: 640px) {
-  .helper-dashboard__panel {
-    padding: 18px;
-    border-radius: 22px;
-  }
-
-  .helper-dashboard__workspace-stage {
+  .helper-workspace {
     padding: 16px;
     border-radius: 20px;
+  }
+
+  .helper-workspace__topbar {
+    align-items: flex-start;
   }
 }
 </style>

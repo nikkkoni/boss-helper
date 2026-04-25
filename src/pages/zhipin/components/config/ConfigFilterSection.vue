@@ -2,7 +2,6 @@
 import { ElAlert, ElButton, ElCheckbox, ElLink, ElPopover } from 'element-plus'
 import { computed } from 'vue'
 
-import Alert from '@/components/Alert'
 import formItem from '@/components/form/FormItem.vue'
 import formSelect from '@/components/form/FormSelect.vue'
 import SalaryRangeComponent from '@/components/form/SalaryRange.vue'
@@ -95,28 +94,12 @@ function syncSalaryRange() {
 
 <template>
   <div class="config-filter">
-    <div class="config-filter__tips">
-      <Alert
-        id="filter-config-alert-enable"
-        title="勾选启用后规则才会参与筛选，调整完成后记得保存配置。"
-        type="success"
-        show-icon
-      />
-      <Alert
-        id="filter-config-alert-mode"
-        title="包含 / 排除用于决定匹配方向，建议先定方向再补充关键词。"
-        type="success"
-        show-icon
-      />
-    </div>
-
     <div class="config-filter__sections">
       <ConfigSectionCard
         compact
         collapsible
-        default-collapsed
         title="关键词与岗位条件"
-        description="适合先定义公司、岗位名称和职位内容等核心边界。"
+        description="先定义公司、岗位名称和职位内容。"
       >
         <template #actions>
           <span class="config-filter__meta bh-workspace-meta-pill bh-glass-pill">核心边界</span>
@@ -207,9 +190,8 @@ function syncSalaryRange() {
         v-if="conf.config_level.intermediate"
         compact
         collapsible
-        default-collapsed
         title="范围与规模"
-        description="用薪资和公司规模进一步收敛结果集，适合在基础筛选稳定后补充。"
+        description="用薪资和公司规模进一步收敛结果集。"
       >
         <template #actions>
           <span class="config-filter__meta bh-workspace-meta-pill bh-glass-pill">进阶约束</span>
@@ -306,12 +288,13 @@ function syncSalaryRange() {
       <ConfigSectionCard
         compact
         collapsible
-        default-collapsed
         title="附加限制"
-        description="这些开关常用于控制重复投递、猎头过滤和沟通状态等补充规则。"
+        description="控制重复投递、猎头过滤和沟通状态。"
       >
         <template #actions>
-          <span class="config-filter__meta bh-workspace-meta-pill bh-glass-pill">去重与补充规则</span>
+          <span class="config-filter__meta bh-workspace-meta-pill bh-glass-pill"
+            >去重与补充规则</span
+          >
         </template>
 
         <div class="config-filter__toggle-grid">
@@ -339,18 +322,12 @@ function syncSalaryRange() {
 .config-filter {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.config-filter__tips {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .config-filter__sections {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .config-filter__fields {
@@ -360,9 +337,9 @@ function syncSalaryRange() {
 }
 
 .config-filter__field-card {
-  min-height: 132px;
+  min-height: 112px;
   min-width: 0;
-  padding: 16px;
+  padding: 14px;
 }
 
 .config-filter__fields :deep(.ehp-form-item) {
@@ -439,9 +416,9 @@ function syncSalaryRange() {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
-  min-height: 132px;
+  min-height: 112px;
   min-width: 0;
-  padding: 16px;
+  padding: 14px;
 }
 
 .config-filter__toggle-copy {

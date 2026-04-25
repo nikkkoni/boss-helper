@@ -5,7 +5,7 @@ withDefaults(
     title: string
     description?: string
     meta?: string
-    size?: 'section' | 'compact'
+    size?: 'section' | 'compact' | 'toolbar'
   }>(),
   {
     eyebrow: '',
@@ -125,6 +125,38 @@ withDefaults(
   min-height: 34px;
   padding: 0 12px;
   font-size: 0.8rem;
+}
+
+.workspace-section-header--toolbar {
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+.workspace-section-header--toolbar .workspace-section-header__copy {
+  flex: 1 1 auto;
+  max-width: none;
+}
+
+.workspace-section-header--toolbar .workspace-section-header__eyebrow {
+  margin-bottom: 4px;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+}
+
+.workspace-section-header--toolbar .workspace-section-header__copy h3 {
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.workspace-section-header--toolbar .workspace-section-header__copy p {
+  display: none;
+}
+
+.workspace-section-header--toolbar .workspace-section-header__meta {
+  min-height: 32px;
+  padding: 0 11px;
+  font-size: 0.78rem;
 }
 
 @media (max-width: 640px) {

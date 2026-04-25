@@ -259,7 +259,10 @@ describe('Ui.vue', () => {
 
     expect(wrapper.text()).toContain('今日投递3/120')
     expect(wrapper.text()).toContain('主工作区')
-    expect(wrapper.text()).toContain('运行状态')
+    expect(wrapper.find('.helper-workspace').exists()).toBe(true)
+    expect(wrapper.find('.helper-dashboard__workspace-stage').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('运行侧栏')
+    expect(wrapper.find('.helper-dashboard__aside').exists()).toBe(false)
 
     wrapper.unmount()
     expect(mockUnregister).toHaveBeenCalledTimes(1)

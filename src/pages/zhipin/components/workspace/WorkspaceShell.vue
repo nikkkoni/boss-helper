@@ -13,7 +13,11 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="rootRef" class="helper-dashboard bh-workspace-stack">
+  <div
+    ref="rootRef"
+    class="helper-dashboard bh-workspace-stack"
+    :class="{ 'helper-dashboard--no-aside': !$slots.aside }"
+  >
     <section class="helper-dashboard__hero">
       <slot name="header" />
     </section>
@@ -54,6 +58,10 @@ defineExpose({
   grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   gap: 20px;
   align-items: start;
+}
+
+.helper-dashboard--no-aside .helper-dashboard__body {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .helper-dashboard__main,

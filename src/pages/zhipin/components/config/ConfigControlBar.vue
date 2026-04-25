@@ -20,8 +20,8 @@ const conf = useConf()
 const selectedTemplate = ref('')
 const configLevelLabel = computed(
   () =>
-    formInfoData.config_level.options.find((item) => item.value === conf.formData.config_level)?.label
-    ?? conf.formData.config_level,
+    formInfoData.config_level.options.find((item) => item.value === conf.formData.config_level)
+      ?.label ?? conf.formData.config_level,
 )
 const controlSummary = computed(() => [
   {
@@ -100,7 +100,7 @@ async function deleteConfigTemplate() {
 
 <template>
   <div class="config-control">
-    <div class="config-control__summary-grid">
+    <div class="config-control__summary-grid" data-test="config-control-summary">
       <article
         v-for="item in controlSummary"
         :key="item.label"
@@ -112,14 +112,16 @@ async function deleteConfigTemplate() {
       </article>
     </div>
 
-    <div class="config-control__grid">
-      <ConfigSectionCard
-        compact
-        collapsible
-        default-collapsed
-        title="基础设置"
-        description="决定展示层级、通知和缓存等全局行为，通常是进入配置页后的第一步。"
+    <div class="config-control__tool-grid">
+      <section
+        class="config-control__panel bh-glass-surface bh-glass-surface--nested"
+        data-test="config-basic-panel"
       >
+        <div class="config-control__panel-title">
+          <strong>展示与上限</strong>
+          <span>配置深度、每日上限和常用开关</span>
+        </div>
+
         <div class="config-control__fields">
           <ElFormItem
             class="config-control__field config-control__field--narrow"
@@ -163,16 +165,47 @@ async function deleteConfigTemplate() {
             />
           </div>
         </div>
-      </ConfigSectionCard>
+      </section>
 
-      <ConfigSectionCard
+      <section
         v-if="conf.config_level.intermediate"
-        compact
-        collapsible
-        default-collapsed
-        title="配置模板"
-        description="保存多套可切换方案，应用模板时不会自动保存当前配置。"
+        class="config-control__panel bh-glass-surface bh-glass-surface--nested"
+        data-test="config-delay-panel"
       >
+        <div class="config-control__panel-title">
+          <strong>投递节奏</strong>
+          <span>投递间隔和随机偏移</span>
+        </div>
+
+        <div class="config-control__delay-grid">
+          <ElFormItem
+            v-for="(item, key) in formInfoData.delay"
+            :key="key"
+            class="config-control__field"
+            :label="item.label"
+            :data-help="item['data-help']"
+          >
+            <ElInputNumber
+              v-model="conf.formData.delay[key]"
+              class="config-control__number"
+              :min="item.min ?? 1"
+              :max="99999"
+              :disabled="item.disable"
+            />
+          </ElFormItem>
+        </div>
+      </section>
+
+      <section
+        v-if="conf.config_level.intermediate"
+        class="config-control__panel bh-glass-surface bh-glass-surface--nested"
+        data-test="config-template-panel"
+      >
+        <div class="config-control__panel-title">
+          <strong>配置模板</strong>
+          <span>保存和切换本地方案</span>
+        </div>
+
         <div class="config-control__fields">
           <ElFormItem
             class="config-control__field config-control__field--wide"
@@ -186,13 +219,16 @@ async function deleteConfigTemplate() {
               filterable
               placeholder="选择模板"
             >
-              <ElOption v-for="name in conf.templateNames" :key="name" :label="name" :value="name" />
+              <ElOption
+                v-for="name in conf.templateNames"
+                :key="name"
+                :label="name"
+                :value="name"
+              />
             </ElSelect>
           </ElFormItem>
           <div class="config-control__button-row">
-            <ElButton type="primary" @click="saveConfigTemplate">
-              保存为模板
-            </ElButton>
+            <ElButton type="primary" @click="saveConfigTemplate"> 保存为模板 </ElButton>
             <ElButton type="success" :disabled="!selectedTemplate" @click="applyConfigTemplate">
               应用模板
             </ElButton>
@@ -206,81 +242,84 @@ async function deleteConfigTemplate() {
             </ElButton>
           </div>
         </div>
-      </ConfigSectionCard>
+      </section>
+
+      <section
+        class="config-control__panel bh-glass-surface bh-glass-surface--nested"
+        data-test="config-write-panel"
+      >
+        <div class="config-control__panel-title">
+          <strong>配置读写</strong>
+          <span>保存、重载和推荐参数</span>
+        </div>
+
+        <div class="config-control__button-row config-control__button-row--wrap">
+          <ElButton
+            type="success"
+            data-help="保存当前配置并立即热更新到页面。"
+            @click="conf.confSaving"
+          >
+            保存配置
+          </ElButton>
+          <ElButton
+            type="warning"
+            data-help="从本地存储重新载入配置，未保存的临时改动会被覆盖。"
+            @click="conf.confReload"
+          >
+            重载配置
+          </ElButton>
+          <ElButton
+            type="primary"
+            data-help="应用仓库内置的推荐参数，用于快速获得一套较稳妥的基础配置。"
+            @click="conf.confRecommend"
+          >
+            使用推荐配置
+          </ElButton>
+        </div>
+      </section>
     </div>
 
     <ConfigSectionCard
       compact
       collapsible
       default-collapsed
-      title="快捷操作"
-      description="保存、重载和导入导出都集中在这里，做完改动后建议优先保存一次。"
+      title="维护操作"
+      description="备份、迁移和清理类操作集中在这里，默认收起以减少干扰。"
+      data-test="config-maintenance-panel"
     >
-      <div class="config-control__action-groups">
-        <div class="config-control__action-group bh-glass-surface bh-glass-surface--nested">
-          <div class="config-control__action-copy">
-            <strong>配置读写</strong>
-            <p>先保存当前改动，再根据需要重载或套用推荐参数。</p>
-          </div>
-
-          <div class="config-control__button-row config-control__button-row--wrap">
-            <ElButton type="success" data-help="保存当前配置并立即热更新到页面。" @click="conf.confSaving">
-              保存配置
-            </ElButton>
-            <ElButton type="warning" data-help="从本地存储重新载入配置，未保存的临时改动会被覆盖。" @click="conf.confReload">
-              重载配置
-            </ElButton>
-            <ElButton
-              type="primary"
-              data-help="应用仓库内置的推荐参数，用于快速获得一套较稳妥的基础配置。"
-              @click="conf.confRecommend"
-            >
-              使用推荐配置
-            </ElButton>
-          </div>
-        </div>
-
-        <div class="config-control__action-group bh-glass-surface bh-glass-surface--nested">
-          <div class="config-control__action-copy">
-            <strong>迁移与维护</strong>
-            <p>用于备份、迁移和清理本地状态；执行前建议先确认当前配置已保存。</p>
-          </div>
-
-          <div class="config-control__button-row config-control__button-row--wrap">
-            <ElButton
-              v-if="conf.config_level.intermediate"
-              type="primary"
-              data-help="导出当前本地配置为 JSON 文件，便于备份、迁移或分享。"
-              @click="conf.confExport"
-            >
-              导出配置
-            </ElButton>
-            <ElButton
-              v-if="conf.config_level.intermediate"
-              type="primary"
-              data-help="从 JSON 文件导入配置；导入后建议检查关键筛选条件再保存。"
-              @click="conf.confImport"
-            >
-              导入配置
-            </ElButton>
-            <ElButton
-              v-if="conf.formData.useCache.value"
-              type="warning"
-              data-help="清除本地缓存记录；适合排查重复投递或缓存异常时使用。"
-              @click="() => getCacheManager().clearCache()"
-            >
-              清空缓存
-            </ElButton>
-            <ElButton
-              v-if="conf.config_level.advanced"
-              type="danger"
-              data-help="清空当前内存中的配置内容；若尚未保存，可通过重载恢复本地配置。"
-              @click="conf.confDelete"
-            >
-              清空配置
-            </ElButton>
-          </div>
-        </div>
+      <div class="config-control__maintenance">
+        <ElButton
+          v-if="conf.config_level.intermediate"
+          type="primary"
+          data-help="导出当前本地配置为 JSON 文件，便于备份、迁移或分享。"
+          @click="conf.confExport"
+        >
+          导出配置
+        </ElButton>
+        <ElButton
+          v-if="conf.config_level.intermediate"
+          type="primary"
+          data-help="从 JSON 文件导入配置；导入后建议检查关键筛选条件再保存。"
+          @click="conf.confImport"
+        >
+          导入配置
+        </ElButton>
+        <ElButton
+          v-if="conf.formData.useCache.value"
+          type="warning"
+          data-help="清除本地缓存记录；适合排查重复投递或缓存异常时使用。"
+          @click="() => getCacheManager().clearCache()"
+        >
+          清空缓存
+        </ElButton>
+        <ElButton
+          v-if="conf.config_level.advanced"
+          type="danger"
+          data-help="清空当前内存中的配置内容；若尚未保存，可通过重载恢复本地配置。"
+          @click="conf.confDelete"
+        >
+          清空配置
+        </ElButton>
       </div>
     </ConfigSectionCard>
   </div>
@@ -299,10 +338,35 @@ async function deleteConfigTemplate() {
   gap: 12px;
 }
 
-.config-control__grid {
+.config-control__tool-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+}
+
+.config-control__panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+}
+
+.config-control__panel-title {
+  display: grid;
+  gap: 4px;
+}
+
+.config-control__panel-title strong {
+  color: var(--bh-text-primary);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.config-control__panel-title span {
+  color: var(--bh-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .config-control__fields {
@@ -318,7 +382,7 @@ async function deleteConfigTemplate() {
 }
 
 .config-control__field--narrow {
-  max-width: 240px;
+  max-width: 260px;
 }
 
 .config-control__field :deep(.ehp-form-item__content),
@@ -326,6 +390,12 @@ async function deleteConfigTemplate() {
 .config-control__number,
 .config-control__number :deep(.ehp-input-number) {
   width: 100%;
+}
+
+.config-control__delay-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
 }
 
 .config-control__toggles,
@@ -349,38 +419,14 @@ async function deleteConfigTemplate() {
   margin-left: 0;
 }
 
-.config-control__action-groups {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.config-control__maintenance {
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.config-control__action-group {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 14px;
-}
-
-.config-control__action-copy strong {
-  display: block;
-  color: var(--bh-text-primary);
-  font-size: 0.95rem;
-}
-
-.config-control__action-copy p {
-  margin: 8px 0 0;
-  color: var(--bh-text-muted);
-  line-height: 1.6;
-}
-
 @media (max-width: 960px) {
-  .config-control__summary-grid,
-  .config-control__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .config-control__action-groups {
+  .config-control__summary-grid {
     grid-template-columns: 1fr;
   }
 }
